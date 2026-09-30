@@ -263,7 +263,8 @@ label.f { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04
    Fluid, spring-based movement in the spirit of iOS 26: controls glide between states,
    sheets spring into place, presses give a soft squeeze and settle back. Small overshoot,
    short durations, nothing bouncy or translucent. All of it turns off with Reduce Motion. */
-.seg, nav.tabs { position: relative; isolation: isolate; }
+.seg { position: relative; isolation: isolate; }
+nav.tabs { isolation: isolate; }   /* stays position: fixed (set above); fixed already anchors the sliding pill */
 .seg button, nav.tabs button { position: relative; z-index: 1; transition: color .25s ease; }
 /* Sliding selection pill (position set from JS on the element as --ind-x / --ind-w). */
 .seg.has-ind::before, nav.tabs.has-ind::before {
