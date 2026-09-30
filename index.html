@@ -177,6 +177,8 @@ label.f { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04
 }
 .thumb img { width: 100%; height: 100%; object-fit: contain; background: var(--img-bg); }
 .thumb.lg { width: 76px; height: 76px; font-size: 22px; border-radius: 14px; }
+.thumb.art { padding: 3px; }
+.thumb.art svg { display: block; filter: drop-shadow(0 1px 1px rgba(0,0,0,.18)); }
 
 .check {
   width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); background: none; flex: none; padding: 0;
@@ -253,7 +255,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 </head>
 <body>
 <header class="top">
-  <h1>Shelf Scan</h1><span class="tagline">BETA</span>
+  <h1>Shelf Scan</h1><span class="tagline">BETA 2</span>
   <span class="spacer"></span>
   <span class="store" id="hdr-store"></span>
   <button class="sync-ind" id="sync-ind" hidden></button>
@@ -305,8 +307,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 <div id="toast"><span id="toast-msg"></span><button id="toast-undo">UNDO</button></div>
 <div id="layer"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script><script>
 "use strict";
 /* ============================================================
    Shelf Scan — beta
@@ -458,7 +459,8 @@ function freshState() {
     version: 2,
     storeName: "",
     products: buildSeedProducts(),
-    tags: {},                               // { code: { productId, created, lastSeen, updated } }  — same QR codes at every store
+    tags: {},                               // { key: { productId, created, lastSeen, updated } }; key = code, or "store:<n>|<code>" in per-store mode
+    config: { perStoreTags: false, updated: 0 },   // shared team settings (synced)
     deleted: { products: {}, tags: {} },    // tombstones: id/code -> time deleted
     outbox: { products: {}, tags: {} },     // changed since last upload
     list: null,                             // { started, items: [{productId, qty, status: "need"|"done", addedAt}] }
@@ -477,7 +479,7 @@ function load() {
 }
 function migrate() {
   const f = freshState();
-  for (const k of ["deleted", "outbox", "sync", "settings"]) state[k] = Object.assign(f[k], state[k] || {});
+  for (const k of ["deleted", "outbox", "sync", "settings", "config"]) state[k] = Object.assign(f[k], state[k] || {});
   state.deleted.products = state.deleted.products || {}; state.deleted.tags = state.deleted.tags || {};
   state.outbox.products = state.outbox.products || {}; state.outbox.tags = state.outbox.tags || {};
   state.recents = state.recents || [];
@@ -517,9 +519,56 @@ function snapshot() { return JSON.stringify(state); }
 
 const productById = id => state.products.find(p => p.id === id);
 function productByBarcode(code) { return state.products.find(p => p.barcodes.includes(code)); }
+// ---------- Shelf-tag scope (dormant per-store mode) ----------
+// Default: every store uses the same QR codes, so a tag link is stored under the raw code.
+// If stores turn out to differ, the owner flips "Shelf tags differ by store" (More → Owner setup);
+// the switch syncs to everyone. Links made after that are stored per store as "store:<number>|<code>",
+// and the old shared links still work as a fallback wherever a store has no link of its own.
+const STORE_KEY_RE = /^store:([^|]*)\|/;
+const perStoreTags = () => !!(state.config && state.config.perStoreTags);
+const storeId = () => (state.storeName || "").trim().toLowerCase();
+const codeOfKey = key => key.replace(STORE_KEY_RE, "");
+const scopeOfKey = key => { const m = key.match(STORE_KEY_RE); return m ? m[1] : ""; };
+// The key a new link for this code is saved under.
+function tagKeyFor(code) { return perStoreTags() ? `store:${storeId()}|${code}` : code; }
+// Which saved link applies to a scanned code here: this store's own link first, then the shared one.
+function lookupTag(code) {
+  if (perStoreTags()) {
+    const k = `store:${storeId()}|${code}`;
+    if (state.tags[k]) return { key: k, rec: state.tags[k] };
+  }
+  return state.tags[code] ? { key: code, rec: state.tags[code] } : null;
+}
+// Links that belong to the current scope (this store in per-store mode, shared links otherwise).
+const inScope = key => scopeOfKey(key) === (perStoreTags() ? storeId() : "") && (perStoreTags() || !STORE_KEY_RE.test(key));
 function tagForProduct(pid) {
-  for (const code in state.tags) if (state.tags[code].productId === pid) return code;
+  for (const key in state.tags) if (state.tags[key].productId === pid && inScope(key)) return key;
   return null;
+}
+// For display: this store's link, or in per-store mode the shared fallback (flagged).
+function tagInfoForProduct(pid) {
+  const own = tagForProduct(pid);
+  if (own) return { key: own, code: codeOfKey(own), ...state.tags[own], fallback: false };
+  if (perStoreTags()) for (const key in state.tags)
+    if (!STORE_KEY_RE.test(key) && state.tags[key].productId === pid) return { key, code: key, ...state.tags[key], fallback: true };
+  return null;
+}
+// Before scanning tags in per-store mode, make sure the store number is set.
+async function ensureStoreForTags() {
+  if (!perStoreTags() || storeId()) return true;
+  return new Promise(resolve => {
+    const d = el(`<div class="dialog"><p><b>Which store is this?</b><br><span class="hint">Shelf tags are linked per store, so set your store number first.</span></p>
+      <input class="field" id="store-prompt" inputmode="numeric" autocomplete="off" placeholder="Store number">
+      <div class="btns" style="margin-top:14px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="ok">Save</button></div></div>`);
+    let done = false;
+    const close = openLayer(d, { center: true, onClose: () => { if (!done) resolve(false); } });
+    const inp = d.querySelector("input");
+    const ok = () => { if (!inp.value.trim()) return; state.storeName = inp.value.trim(); save(); renderAll(); done = true; close(); resolve(true); };
+    d.querySelector('[data-a="ok"]').onclick = ok;
+    d.querySelector('[data-a="c"]').onclick = () => { done = true; close(); resolve(false); };
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") ok(); });
+    setTimeout(() => inp.focus(), 50);
+  });
 }
 function pName(p) { return p.flavor ? `${p.brand} ${p.flavor}` : p.brand; }
 function pSub(p) { return `${p.size} · ${p.pack}`; }
@@ -556,7 +605,7 @@ function dropProduct(id) {
 }
 const shareable = p => { const { _st, ...rest } = p; return rest; };
 const tagShareable = t => ({ productId: t.productId, created: t.created, updated: t.updated });
-function pendingCount() { return Object.keys(state.outbox.products).length + Object.keys(state.outbox.tags).length; }
+function pendingCount() { return Object.keys(state.outbox.products).length + Object.keys(state.outbox.tags).length + (state.outbox.config ? 1 : 0); }
 
 // Undo restores an earlier snapshot; anything that differs is re-marked so the undo also uploads.
 function restore(snap) {
@@ -594,11 +643,89 @@ function el(html) { const t = document.createElement("template"); t.innerHTML = 
 function initials(brand) {
   return brand.replace(/[^A-Za-z ]/g, "").split(/\s+/).filter(Boolean).map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 }
+// A photo the user added wins; otherwise the stock photo bundled with the app (img/index.js).
+const stockImage = p => (window.PRODUCT_IMAGES || {})[p.id] || "";
 function thumbHtml(p, lg) {
   const cls = "thumb" + (lg ? " lg" : "");
-  if (p && p.img) return `<div class="${cls}"><img src="${esc(p.img)}" alt="" loading="lazy" onerror="this.parentNode.textContent='${esc(initials(p.brand))}'"></div>`;
-  const color = (p && BRAND_COLORS[p.brand]) || "var(--thumb-fallback)";
-  return `<div class="${cls}" style="background:${color}">${esc(p ? initials(p.brand) : "?")}</div>`;
+  const src = p && (p.img || stockImage(p));
+  if (src) return `<div class="${cls}"><img src="${esc(src)}" alt="" loading="lazy" onerror="this.parentNode.textContent='${esc(initials(p.brand))}'"></div>`;
+  if (!p) return `<div class="${cls}">?</div>`;
+  return `<div class="${cls} art" style="background:${artColors(p).bg}">${productArt(p)}</div>`;
+}
+
+// ---------- Illustrated product tiles ----------
+// Package silhouette (can, bottle, 2L, glass, fridge pack…) on the brand color,
+// with a label band in the flavor's color and a count badge for multipacks.
+const FLAVOR_COLORS = [
+  [/zero|black/i, "#111111"], [/diet/i, "#C9CCD1"], [/cherry/i, "#7E0A1C"], [/vanilla/i, "#F1E3BD"],
+  [/caffeine/i, "#D4AF37"], [/root beer/i, "#4A2A18"], [/ginger/i, "#D9B44A"], [/tonic|club/i, "#A9CDEB"],
+  [/blue/i, "#1E73BE"], [/grape|violet/i, "#6A2C91"], [/strawberry/i, "#E8384F"], [/pineapple|lemon(?!ade)/i, "#F7D117"],
+  [/peach|mango/i, "#F6A04D"], [/orange/i, "#F58220"], [/lime|green/i, "#7AC143"], [/raspberry|razz/i, "#C2185B"],
+  [/berry|pomegranate/i, "#7B2E8E"], [/punch|fruit/i, "#E03A3E"], [/tropical|paradise/i, "#FF8A00"],
+  [/pink/i, "#F48FB1"], [/lemonade/i, "#F4E04D"], [/unsweet/i, "#D9C9A3"], [/sweet/i, "#B8860B"],
+  [/grapefruit|citrus/i, "#F28C6B"],
+];
+function flavorColor(p) {
+  for (const [re, c] of FLAVOR_COLORS) if (re.test(p.flavor)) return c;
+  return null;
+}
+function packageShape(p) {
+  const s = (p.size || "").toLowerCase();
+  const oz = parseFloat(s) || 0;
+  if (/glass/.test(s)) return "glass";
+  if (/can/.test(s)) return oz && oz < 9 ? "mini" : oz >= 15 ? "tall" : "can";
+  if (/\d(\.\d+)?\s*l\b|liter|litre/.test(s) || oz >= 24) return "big";
+  return "bottle";
+}
+const SHAPES = {
+  can:    { body: "M17 11h14a2 2 0 0 1 2 2v24a2 2 0 0 1-2 2H17a2 2 0 0 1-2-2V13a2 2 0 0 1 2-2zM18 8.5h12", band: [15, 20, 18, 8] },
+  mini:   { body: "M18.5 15h11a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2V17a2 2 0 0 1 2-2zM19.5 12.5h9", band: [16.5, 22, 15, 7] },
+  tall:   { body: "M18 7h12a2 2 0 0 1 2 2v30a2 2 0 0 1-2 2H18a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z", band: [16, 18, 16, 10] },
+  bottle: { body: "M21.5 5h5v4c0 2.5 4.5 3.5 4.5 8v4.5c0 2-1 2.5-1 4.5s1 2.5 1 4.5V38a3 3 0 0 1-3 3h-8a3 3 0 0 1-3-3v-11.5c0-2 1-2.5 1-4.5s-1-2.5-1-4.5V17c0-4.5 4.5-5.5 4.5-8z", band: [17, 16.5, 14, 6] },
+  big:    { body: "M20.5 4h7v4c0 2.5 6.5 3.5 6.5 9v5c0 2.5-1.5 3-1.5 5s1.5 2.5 1.5 5V39a3 3 0 0 1-3 3H17a3 3 0 0 1-3-3V28c0-2.5 1.5-3 1.5-5s-1.5-2.5-1.5-5v-1c0-5.5 6.5-6.5 6.5-9z", band: [14, 15.5, 20, 7] },
+  glass:  { body: "M22.5 4h3v9c0 3 4 3.5 4 8.5 0 3-1.5 4-1.5 7s1.5 4 1.5 7V39a3 3 0 0 1-3 3h-5a3 3 0 0 1-3-3v-3.5c0-3 1.5-4 1.5-7s-1.5-4-1.5-7c0-5 4-5.5 4-8.5z", band: [18.5, 24, 11, 7] },
+};
+const isLight = hex => {
+  const n = parseInt(hex.slice(1), 16), r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255;
+  return 0.299 * r + 0.587 * g + 0.114 * b > 170;
+};
+// Tile takes the flavor's color; the brand color moves to the label band.
+function artColors(p) {
+  const brand = BRAND_COLORS[p.brand] || "#8A8480";
+  const flavor = flavorColor(p);
+  const bg = flavor || brand;
+  const band = flavor && flavor.toLowerCase() !== brand.toLowerCase() ? brand : null;
+  return { bg, band, ink: isLight(bg) ? "#1B1B1B" : "#FFFFFF" };
+}
+const artCache = new Map();
+function productArt(p) {
+  const key = `${p.brand}|${p.flavor}|${p.size}|${p.pack}`;
+  if (artCache.has(key)) return artCache.get(key);
+  const { bg: brand, band, ink: W } = artColors(p);   // "brand" = tile color below (outlines, badge text)
+  const shape = packageShape(p);
+  const n = parseInt(p.pack, 10) || 1;
+  let g = "";
+  let clipN = 0;
+  const one = (sh, tx = 0, ty = 0, k = 1, outline = false) => {
+    const S = SHAPES[sh], [bx, by, bw, bh] = S.band, id = `c${artCache.size}-${clipN++}`;
+    // In a multipack each item gets a brand-colored outline so overlapping shapes stay distinct.
+    return `<g transform="translate(${tx} ${ty}) scale(${k})"><clipPath id="${id}"><path d="${S.body}"/></clipPath>` +
+      (outline ? `<path d="${S.body}" fill="none" stroke="${brand}" stroke-width="${(3.2 / k).toFixed(2)}" stroke-linejoin="round"/>` : "") +
+      `<path d="${S.body}" fill="${W}"/>` +
+      (band ? `<rect x="${bx - 4}" y="${by}" width="${bw + 8}" height="${bh}" fill="${band}" clip-path="url(#${id})"/>` : "") + `</g>`;
+  };
+  if (n > 1) {
+    // Three of the package side by side (back two smaller), plus a count badge.
+    const k = 0.72;
+    g = one(shape, -4.5, 9, k, true) + one(shape, 17.5, 9, k, true) + one(shape, 3.5, 3, 0.86, true) +
+        `<rect x="${n >= 10 ? 27 : 30}" y="32" width="${n >= 10 ? 20 : 16}" height="14" rx="7" fill="${W}" stroke="${brand}" stroke-width="1.5"/>` +
+        `<text x="${n >= 10 ? 37 : 38}" y="42.5" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="10" font-weight="800" fill="${brand}">${n}</text>`;
+  } else {
+    g = one(shape);
+  }
+  const svg = `<svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden="true">${g}</svg>`;
+  artCache.set(key, svg);
+  return svg;
 }
 function daysAgo(ts) { return Math.floor((Date.now() - ts) / 86400000); }
 function fmtDate(ts) { return new Date(ts).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); }
@@ -813,7 +940,8 @@ function listOf(products, onTap, extra) {
 // ---------- Binding logic (strict 1:1 for shelf tags) ----------
 async function bindTag(code, pid, { confirm = true } = {}) {
   const p = productById(pid);
-  const existing = state.tags[code];
+  const key = tagKeyFor(code);
+  const existing = state.tags[key];
   const oldCodeForProduct = tagForProduct(pid);
   if (existing && existing.productId === pid) { existing.lastSeen = Date.now(); save(); return true; }
   const warnings = [];
@@ -829,8 +957,8 @@ async function bindTag(code, pid, { confirm = true } = {}) {
   }
   const snap = snapshot();
   if (oldCodeForProduct) dropTag(oldCodeForProduct);
-  state.tags[code] = { productId: pid, created: Date.now(), lastSeen: Date.now(), updated: 0 };
-  markTag(code);
+  state.tags[key] = { productId: pid, created: Date.now(), lastSeen: Date.now(), updated: 0 };
+  markTag(key);
   save(); renderAll();
   toast(`Linked: ${pName(p)} ${p.pack}`, snap);
   return true;
@@ -888,6 +1016,7 @@ function normShared(d) {
   s.updated = d.updated || 0;
   s.products = d.products || {}; s.tags = d.tags || {};
   s.deleted.products = (d.deleted && d.deleted.products) || {}; s.deleted.tags = (d.deleted && d.deleted.tags) || {};
+  if (d.config) s.config = d.config;
   return s;
 }
 
@@ -942,7 +1071,12 @@ function applyShared(remote, { overwrite = false } = {}) {
     state.tags = tags;
     state.deleted = { products: {}, tags: {} };
     state.outbox = { products: {}, tags: {} };
+    state.config = { perStoreTags: false, updated: 0, ...(remote.config || {}) };
   } else {
+    if (remote.config && (remote.config.updated || 0) > (state.config.updated || 0)) {
+      state.config = { ...state.config, ...remote.config };
+      delete state.outbox.config;
+    }
     const localTs = id => { const p = productById(id); return Math.max(p ? p.updated || 0 : 0, state.deleted.products[id] || 0); };
     for (const id in remote.products) {
       const rp = remote.products[id];
@@ -971,14 +1105,15 @@ function applyShared(remote, { overwrite = false } = {}) {
       state.deleted.tags[code] = ts; delete state.outbox.tags[code];
     }
   }
-  // Keep things consistent: tags must point at real products, one tag per product (newest wins).
+  // Keep things consistent: tags must point at real products, one tag per product per scope (newest wins).
   const byProduct = {};
-  for (const code of Object.keys(state.tags)) {
-    const t = state.tags[code];
-    if (!productById(t.productId)) { delete state.tags[code]; continue; }
-    const prev = byProduct[t.productId];
-    if (prev && state.tags[prev].updated >= t.updated) delete state.tags[code];
-    else { if (prev) delete state.tags[prev]; byProduct[t.productId] = code; }
+  for (const key of Object.keys(state.tags)) {
+    const t = state.tags[key];
+    if (!productById(t.productId)) { delete state.tags[key]; continue; }
+    const slot = (STORE_KEY_RE.test(key) ? "store:" + scopeOfKey(key) : "shared") + "/" + t.productId;
+    const prev = byProduct[slot];
+    if (prev && state.tags[prev].updated >= t.updated) delete state.tags[key];
+    else { if (prev) delete state.tags[prev]; byProduct[slot] = key; }
   }
   if (state.list) state.list.items = state.list.items.filter(i => productById(i.productId));
   state.products.forEach(p => (p._st = undefined));
@@ -1079,6 +1214,8 @@ async function uploadChanges() {
         else { delete R.tags[c]; R.deleted.tags[c] = state.deleted.tags[c] || Date.now(); }
         n++;
       }
+      const sentConfig = state.outbox.config ? state.config.updated : null;
+      if (sentConfig !== null && (!R.config || (R.config.updated || 0) <= sentConfig)) { R.config = { ...state.config }; n++; }
       R.updated = Date.now();
       try {
         await writeRepoFile(GITHUB.dataPath, JSON.stringify(R, null, 1), sha, token,
@@ -1092,6 +1229,7 @@ async function uploadChanges() {
         const t = state.tags[c], now = t ? t.updated : state.deleted.tags[c] || 0;
         if (now === sentT[c]) delete state.outbox.tags[c];
       }
+      if (sentConfig !== null && state.config.updated === sentConfig) delete state.outbox.config;
       applyShared(R);                                        // pick up everyone else's changes too
       state.sync.lastPush = state.sync.lastPull = Date.now();
       state.sync.error = "";
@@ -1185,7 +1323,8 @@ function renderLastScan() {
     return;
   }
   const { kind, code } = lastScanned;
-  const p = kind === "tag" ? (state.tags[code] && productById(state.tags[code].productId)) : productByBarcode(code);
+  const t = kind === "tag" && lookupTag(code);
+  const p = kind === "tag" ? (t && productById(t.rec.productId)) : productByBarcode(code);
   box.innerHTML = `${p ? thumbHtml(p) : ""}<div class="grow"><div class="label">Last scan · ${kind === "tag" ? "Shelf tag" : "Barcode"}</div>
     <div style="font-weight:650;margin-top:2px">${p ? esc(pName(p)) + `<div class="muted small" style="font-weight:500">${esc(pSub(p))}</div>` : "Not linked yet"}</div>
     <div class="code">${esc(code)}</div></div>`;
@@ -1209,7 +1348,9 @@ async function handleCode(raw, kind) {
 }
 
 async function handleTag(code) {
-  const known = state.tags[code];
+  if (!(await ensureStoreForTags())) return;
+  const found = lookupTag(code);
+  const known = found && found.rec;
   if (pending && pending.kind === "tagForProduct") {
     const pid = pending.pid; setPending(null);
     await bindTag(code, pid);
@@ -1223,7 +1364,7 @@ async function handleTag(code) {
   if (known) {
     known.lastSeen = Date.now(); save();
     const p = productById(known.productId);
-    if (!p) { delete state.tags[code]; save(); return handleTag(code); }
+    if (!p) { delete state.tags[found.key]; save(); return handleTag(code); }
     return productSheet(p.id, { tagCode: code });
   }
   const choice = await menu("New shelf tag", [
@@ -1645,32 +1786,38 @@ function renderTagResults() {
   const v = $("#view-tags");
   v.querySelectorAll("#tag-seg button").forEach(b => b.classList.toggle("active", b.dataset.f === tagFilter));
   const byProduct = {};
-  for (const c in state.tags) byProduct[state.tags[c].productId] = { code: c, ...state.tags[c] };
+  for (const p of state.products) { const t = tagInfoForProduct(p.id); if (t) byProduct[p.id] = t; }
   let items = searchProducts(tagQuery);
   const isStale = t => t && daysAgo(t.lastSeen || t.created || 0) > STALE_DAYS;
   if (tagFilter === "tagged") items = items.filter(p => byProduct[p.id]);
   if (tagFilter === "none") items = items.filter(p => !byProduct[p.id]);
   if (tagFilter === "stale") items = items.filter(p => isStale(byProduct[p.id]));
   if (!tagQuery) items = [...items].sort((a, b) => catSort(a.category, b.category) || pName(a).localeCompare(pName(b)));
-  const nTagged = Object.keys(state.tags).length;
-  v.querySelector("#tag-count").textContent = `${items.length} shown · ${nTagged} tag${nTagged === 1 ? "" : "s"} linked`;
+  const nTagged = Object.keys(byProduct).length;
+  v.querySelector("#tag-count").textContent = `${items.length} shown · ${nTagged} tag${nTagged === 1 ? "" : "s"} linked` +
+    (perStoreTags() ? ` · store ${state.storeName || "not set"}` : "");
   const box = v.querySelector("#tag-results");
   box.innerHTML = "";
   if (!items.length) { box.appendChild(el(`<div class="empty"><p>Nothing here.</p></div>`)); return; }
   box.appendChild(listOf(items.slice(0, 200), pid => tagMenu(productById(pid), byProduct[pid]), p => {
     const t = byProduct[p.id];
-    return `<div style="text-align:right">${t ? `<span class="pill ok">TAGGED</span>${isStale(t) ? ` <span class="pill warn">STALE</span>` : ""}` : `<span class="pill">NO TAG</span>`}</div>`;
+    return `<div style="text-align:right">${t ? (t.fallback ? `<span class="pill">ALL STORES</span>` : `<span class="pill ok">TAGGED</span>`) + (isStale(t) ? ` <span class="pill warn">STALE</span>` : "") : `<span class="pill">NO TAG</span>`}</div>`;
   }));
 }
 async function tagMenu(p, t) {
-  const opts = [{ label: t ? "Scan a new tag (replace)" : "Scan its shelf tag", value: "scan" }];
-  if (t) opts.push({ label: "Show tag code", value: "show" }, { label: "Unlink tag", value: "unlink", danger: true });
+  const own = t && !t.fallback;
+  const opts = [{ label: own ? "Scan a new tag (replace)" : perStoreTags() ? "Scan this store's shelf tag" : "Scan its shelf tag", value: "scan" }];
+  if (t) opts.push({ label: "Show tag code", value: "show" });
+  if (own) opts.push({ label: "Unlink tag", value: "unlink", danger: true });
   const c = await menu(`${pName(p)} — ${p.pack}`, opts);
-  if (c === "scan") { setMode("count"); setPending({ kind: "tagForProduct", pid: p.id }); showView("scan"); startCamera(); }
+  if (c === "scan") {
+    if (!(await ensureStoreForTags())) return;
+    setMode("count"); setPending({ kind: "tagForProduct", pid: p.id }); showView("scan"); startCamera();
+  }
   if (c === "show") confirmDialog(`<code style="word-break:break-all">${esc(t.code)}</code><br><br><span class="hint">Linked ${fmtDate(t.created)}${t.lastSeen ? " · last scanned here " + fmtDate(t.lastSeen) : ""}</span>`, { ok: "OK", cancel: "Close" });
   if (c === "unlink") {
     const snap = snapshot();
-    dropTag(t.code); save(); renderAll(); toast("Tag unlinked", snap);
+    dropTag(t.key); save(); renderAll(); toast("Tag unlinked", snap);
   }
 }
 
@@ -1714,10 +1861,14 @@ function renderMore() {
         <label class="f" for="own-token">GitHub key</label><input class="field" id="own-token" type="password" autocomplete="off" placeholder="github_pat_…">
         <label class="f" for="own-pass">Team password</label><input class="field" id="own-pass" type="text" autocomplete="off" autocapitalize="off" placeholder="At least 6 characters">
         <button class="btn primary block" id="btn-own-save" style="margin-top:12px">Save key and enable uploads</button>
+        <div class="set-row" style="margin-top:14px">
+          <label class="grow" for="per-store"><b>Shelf tags differ by store</b><br><span class="hint">Leave off unless the same product has a different QR code at different stores. Turning it on applies to everyone after it syncs. Existing links keep working as a fallback.</span></label>
+          <input type="checkbox" id="per-store" ${perStoreTags() ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)">
+        </div>
       </details>
     </div>
     <button class="btn block danger" id="btn-reset">Reset this phone</button>
-    <p class="foot">Shelf Scan beta · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
+    <p class="foot">Shelf Scan Beta 2 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
       Product lookups from <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener" style="color:inherit">Open Food Facts</a></p>`;
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
   v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
@@ -1731,6 +1882,18 @@ function renderMore() {
     setPass(""); cachedToken = null; renderAll();
   };
   v.querySelector("#btn-own-save").onclick = ownerSetup;
+  v.querySelector("#per-store").onchange = async e => {
+    const on = e.target.checked;
+    const ok = await confirmDialog(on
+      ? "Link shelf tags per store for everyone?<br><br>New links will only apply at the store they were made in. Existing links keep working at every store until a store links its own."
+      : "Go back to one set of shelf-tag links for all stores?<br><br>Links made per store will stop being used.", { ok: on ? "Turn on" : "Turn off" });
+    if (!ok) { e.target.checked = !on; return; }
+    state.config = { ...state.config, perStoreTags: on, updated: Date.now() };
+    state.outbox.config = 1;
+    save(); renderAll(); scheduleUpload();
+    toast(on ? "Tags are now linked per store" : "Tags are shared across all stores");
+    if (on && !storeId()) ensureStoreForTags();
+  };
   v.querySelector("#btn-reset").onclick = async () => {
     const n = pendingCount();
     if (!(await confirmDialog(`Erase everything on this phone and start fresh from the shared data?${n ? `<br><br><b>${n} change${n === 1 ? " hasn't" : "s haven't"} uploaded</b> and will be lost.` : ""}`, { ok: "Erase", danger: true }))) return;
