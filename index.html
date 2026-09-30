@@ -931,6 +931,7 @@ function migrate() {
   if (state.list) {
     delete state.list.storeId;
     for (const i of state.list.items) i.status = ["done", "pulled", "stocked"].includes(i.status) ? "done" : "need";
+    mergeListDuplicates();
   }
   // Coming from the alpha: queue everything set up so far so it gets shared once uploads are on.
   if (state.version !== 2) {
@@ -1845,6 +1846,7 @@ function renderLastScan() {
 }
 
 function onDecoded(text, formatName) {
+  if (view !== "scan") return;                   // camera kept warm on other tabs: don't act on codes there
   if (modalDepth > 0) return;                    // ignore scans while a sheet is open
   const now = Date.now();
   if (text === lastScan.code && now - lastScan.at < 2500) return;
@@ -2007,6 +2009,20 @@ function productSheet(pid, { tagCode = null } = {}) {
 }
 function ensureList() { if (!state.list) state.list = { started: Date.now(), items: [] }; }
 
+const MAX_PHOTOS = 6;   // shelf photos per list item (e.g. main aisle + endcap + a second angle)
+// One list item per product + pack: fold any duplicates together, keeping every photo and adding quantities.
+function mergeListDuplicates() {
+  if (!state.list) return;
+  const byId = new Map();
+  for (const it of state.list.items) {
+    const first = byId.get(it.productId);
+    if (!first) { byId.set(it.productId, it); continue; }
+    first.photos = [...(first.photos || []), ...(it.photos || [])].slice(-MAX_PHOTOS);
+    if (it.qty) first.qty = (first.qty || 0) + it.qty;
+    if (it.status === "need") first.status = "need";
+  }
+  state.list.items = [...byId.values()];
+}
 // After a product is identified in Count mode: snap the shelf (default) or enter a quantity (setting).
 function addFromScan(pid, opts = {}) {
   if ((state.settings.afterScan || "photo") === "qty") return productSheet(pid, opts);
@@ -2132,11 +2148,11 @@ async function saveShelfPhoto(pid, blob) {
   ensureList();
   const snap = snapshot();
   const it = state.list.items.find(i => i.productId === pid);
-  if (it) { it.photos = [id, ...(it.photos || []).slice(1)]; it.status = "need"; }
+  if (it) { it.photos = [...(it.photos || []), id].slice(-MAX_PHOTOS); it.status = "need"; }   // same product + pack: one item, all its photos
   else state.list.items.push({ productId: pid, qty: null, status: "need", addedAt: Date.now(), photos: [id] });
   bumpRecent(pid);
   save(); renderAll(); schedulePhotoSweep();
-  toast(it ? `Photo updated: ${pName(p)} ${p.pack}` : `Added ${pName(p)} ${p.pack}`, snap);
+  toast(it ? `Added photo ${it.photos.length}: ${pName(p)} ${p.pack}` : `Added ${pName(p)} ${p.pack}`, snap);
 }
 // Full-screen photo viewer with pinch/double-tap zoom, plus add-angle / retake.
 async function viewPhotos(it, start = 0) {
@@ -2161,10 +2177,10 @@ async function viewPhotos(it, start = 0) {
     d.querySelector(".viewer-dots").innerHTML = ids.length > 1 ? ids.map((_, i) => `<button class="dot${i === idx ? " on" : ""}" data-i="${i}" aria-label="Photo ${i + 1}"></button>`).join("") : "";
     d.querySelectorAll(".dot").forEach(b => (b.onclick = () => { idx = +b.dataset.i; show(); }));
     const acts = d.querySelector(".viewer-actions");
-    acts.innerHTML = `${ids.length < 2 ? `<button class="btn primary" data-a="add">${icon("camera")}Add another angle</button>` : ""}
+    acts.innerHTML = `${ids.length < MAX_PHOTOS ? `<button class="btn primary" data-a="add">${icon("camera")}Add another angle</button>` : ""}
       <button class="btn" data-a="retake">Retake</button>`;
     const add = acts.querySelector('[data-a="add"]');
-    if (add) add.onclick = async () => { const b = await cameraPhoto(); if (!b) return; const id = newPhotoId(); await putPhoto(id, b); it.photos = [...(it.photos || []), id].slice(0, 2); save(); idx = it.photos.length - 1; show(); renderList(); };
+    if (add) add.onclick = async () => { const b = await cameraPhoto(); if (!b) return; const id = newPhotoId(); await putPhoto(id, b); it.photos = [...(it.photos || []), id].slice(-MAX_PHOTOS); save(); idx = it.photos.length - 1; show(); renderList(); };
     acts.querySelector('[data-a="retake"]').onclick = async () => { const b = await cameraPhoto(); if (!b) return; const id = newPhotoId(); await putPhoto(id, b); const old = it.photos[idx]; it.photos[idx] = id; save(); delPhoto(old); show(); renderList(); };
   };
   d.querySelector('[data-a="close"]').onclick = close;
@@ -2340,7 +2356,7 @@ function showView(v) {
   document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.id === "view-" + v));
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.view === v));
   syncIndicator($("#tabs"));
-  if (v !== "scan") stopCamera(); else if (state.settings.camOK) startCamera();
+  if (v !== "scan") sleepCameraSoon(); else wakeCamera();
   renderAll();
   window.scrollTo(0, 0);
 }
@@ -2394,7 +2410,7 @@ function renderList() {
       const photos = it.photos || [];
       // Shelf photo (tap for full screen) replaces the product tile; a quantity shows only if one was entered.
       const lead = photos.length
-        ? `<button class="shelf-thumb" data-a="photo" aria-label="View shelf photo"><img data-photo="${esc(photos[0])}" alt="">${photos.length > 1 ? `<span class="count">2</span>` : ""}</button>`
+        ? `<button class="shelf-thumb" data-a="photo" aria-label="View shelf photo"><img data-photo="${esc(photos[0])}" alt="">${photos.length > 1 ? `<span class="count">${photos.length}</span>` : ""}</button>`
         : thumbHtml(p);
       const qtyBtn = it.qty
         ? `<button class="qty-tap" data-a="qty" aria-label="Change quantity"><b>${it.qty}</b><span>${esc(p.unit)}${it.qty === 1 ? "" : "s"}</span></button>`
@@ -2451,7 +2467,7 @@ async function listItemMenu(it, p) {
   const photos = it.photos || [];
   const choice = await menu(`${pName(p)} — ${p.pack}`, [
     ...(photos.length ? [{ label: "View shelf photo", value: "view" }] : []),
-    ...(photos.length === 1 ? [{ label: "Add another angle", value: "angle" }] : []),
+    ...(photos.length && photos.length < MAX_PHOTOS ? [{ label: "Add another angle", value: "angle" }] : []),
     ...(!photos.length ? [{ label: "Add shelf photo", value: "angle" }] : []),
     { label: it.qty ? "Change quantity" : "Add a quantity", value: "qty" },
     { label: "Remove from list", value: "remove", danger: true },
@@ -2460,7 +2476,7 @@ async function listItemMenu(it, p) {
   if (choice === "angle") {
     const b = await cameraPhoto(); if (!b) return;
     const id = newPhotoId(); await putPhoto(id, b);
-    it.photos = [...photos, id].slice(0, 2); save(); renderAll(); toast("Photo added");
+    it.photos = [...photos, id].slice(-MAX_PHOTOS); save(); renderAll(); toast("Photo added");
     return;
   }
   if (choice === "qty") return editQty(it, p);
@@ -2911,7 +2927,7 @@ async function startCamera() {
 function scanLoop(detector) {
   const tick = async () => {
     if (!camOn || cam.legacy) return;
-    if (!cam.busy && modalDepth === 0 && !document.hidden) {
+    if (!cam.busy && modalDepth === 0 && !document.hidden && view === "scan") {
       cam.busy = true;
       try {
         const r = await scanFrame(detector);
@@ -2959,7 +2975,24 @@ async function startLegacyCamera() {
   setPhotoFirst(false);
   if (!state.settings.camOK) { state.settings.camOK = true; save(); }
 }
+// Keep the camera warm for a minute after leaving the Scan tab, so coming back is instant.
+const CAMERA_WARM_MS = 60000;
+let camSleepTimer = null;
+function sleepCameraSoon() {
+  clearTimeout(camSleepTimer);
+  if (camOn) camSleepTimer = setTimeout(() => { if (view !== "scan") stopCamera(); }, CAMERA_WARM_MS);
+}
+function wakeCamera() {
+  clearTimeout(camSleepTimer); camSleepTimer = null;
+  if (camOn) {
+    // Still running: make sure the preview is playing (iOS can pause a video while its tab is hidden).
+    const v = cam.video || document.querySelector("#reader video");
+    if (v && v.paused) v.play().catch(() => {});
+    lastScan = { code: "", at: 0 };
+  } else if (state.settings.camOK) startCamera();
+}
 async function stopCamera() {
+  clearTimeout(camSleepTimer); camSleepTimer = null;
   if (!camOn) return;
   if (cam.legacy && scanner) { try { await scanner.stop(); } catch (e) {} }
   stopStream();
