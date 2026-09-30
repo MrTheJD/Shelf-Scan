@@ -1,6 +1,6 @@
 {
  "version": 1,
- "updated": 1790794230166,
+ "updated": 1790794600150,
  "products": {
   "diet-coke-caffeine-free-16-9-oz-bottle-6pk": {
    "id": "diet-coke-caffeine-free-16-9-oz-bottle-6pk",
@@ -80,6 +80,22 @@
    "custom": true,
    "retired": false,
    "updated": 1790794222844
+  },
+  "dr-pepper-zero-sugar-20oz-single": {
+   "id": "dr-pepper-zero-sugar-20oz-single",
+   "brand": "Dr Pepper",
+   "flavor": "Zero Sugar",
+   "size": "20oz",
+   "pack": "Single",
+   "category": "12oz Cans",
+   "unit": "pack",
+   "barcodes": [
+    "078000035308"
+   ],
+   "img": "https://images.openfoodfacts.org/images/products/007/800/003/5308/front_en.63.200.jpg",
+   "custom": true,
+   "retired": false,
+   "updated": 1790794594577
   }
  },
  "tags": {
@@ -182,6 +198,11 @@
    "productId": "fairlife-core-power-414-ml-single",
    "created": 1790794225720,
    "updated": 1790794225720
+  },
+  "w-mt.co/q/30dmmd21Mq0G-0M4QV0": {
+   "productId": "dr-pepper-zero-sugar-20oz-single",
+   "created": 1790794595535,
+   "updated": 1790794595535
   }
  },
  "deleted": {
