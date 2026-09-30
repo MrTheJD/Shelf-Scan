@@ -1,6 +1,6 @@
 {
  "version": 1,
- "updated": 1790789406388,
+ "updated": 1790794031144,
  "products": {
   "diet-coke-caffeine-free-16-9-oz-bottle-6pk": {
    "id": "diet-coke-caffeine-free-16-9-oz-bottle-6pk",
@@ -109,10 +109,16 @@
    "productId": "coca-cola-original-12oz-can-12pk",
    "created": 1790789402033,
    "updated": 1790789402033
+  },
+  "w-mt.co/q/30dEltH1Mq4J0-7A655": {
+   "productId": "core-power-chocolate-14oz-bottle-single",
+   "created": 1790794026495,
+   "updated": 1790794026495
   }
  },
  "deleted": {
   "products": {},
   "tags": {}
- }
+ },
+ "tagsResetAt": 0
 }
