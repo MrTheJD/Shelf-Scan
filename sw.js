@@ -1,14 +1,19 @@
 // Offline support: app shell is cached on install; the scanner library and
 // product images are cached the first time they load. Shared data and GitHub
 // calls always go to the network (the app keeps its own copy for offline use).
-const CACHE = "shelfscan-v9";
+const CACHE = "shelfscan-v10";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 const SCANNER_LIB = "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js";
+// Barcode decoder (WebAssembly). Cached up front so scanning works offline; its small helper modules
+// are cached the first time the camera starts.
+const DECODER = ["https://cdn.jsdelivr.net/npm/barcode-detector@3.2.2/ponyfill/+esm",
+                 "https://cdn.jsdelivr.net/npm/zxing-wasm@3.1.3/dist/reader/zxing_reader.wasm"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE)
     // cache: "reload" so a new version never stores a stale copy from the browser's HTTP cache.
-    .then(c => c.addAll(SHELL.map(u => new Request(u, { cache: "reload" }))).then(() => c.add(SCANNER_LIB).catch(() => {})))
+    .then(c => c.addAll(SHELL.map(u => new Request(u, { cache: "reload" })))
+      .then(() => Promise.all([SCANNER_LIB, ...DECODER].map(u => c.add(u).catch(() => {})))))
     .then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", e => {
