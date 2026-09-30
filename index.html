@@ -313,7 +313,7 @@ nav.tabs button, nav.tabs button:active { transform: none; }   /* no squeeze: Sa
 .view.active { animation: viewIn .42s var(--ease-out) both; }
 .item.enter { animation: rowIn .55s var(--spring) both; }
 .banner { animation: bannerIn .5s var(--spring) both; }
-.check.on svg.i { animation: checkIn .45s var(--spring) both; }
+.check.on.pop svg.i { animation: checkIn .45s var(--spring) both; }   /* only when just crossed off */
 .item .name, .item .thumb { transition: color .3s ease, opacity .3s ease; }
 .last.refresh > * { animation: lastIn .45s var(--spring) both; }
 #reader video { animation: fade .45s ease both; }
@@ -350,7 +350,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 </head>
 <body>
 <header class="top">
-  <h1>Shelf Scan</h1><span class="tagline">BETA 2.2</span>
+  <h1>Shelf Scan</h1><span class="tagline">BETA 2.3</span>
   <span class="spacer"></span>
   <span class="store" id="hdr-store"></span>
   <button class="sync-ind" id="sync-ind" hidden></button>
@@ -896,19 +896,23 @@ function migrate() {
   const have = new Set(state.products.map(p => p.id));
   for (const p of buildSeedProducts()) if (!have.has(p.id) && !state.deleted.products[p.id]) state.products.push(p);
   canonicalize(state.products);
-  // Known barcodes bundled with the app: add any a phone doesn't have yet (never taking one from another product).
-  const owner = new Map();
-  for (const p of state.products) for (const b of p.barcodes) owner.set(b, p.id);
-  for (const [id, codes] of Object.entries(SEED_BARCODES)) {
-    const p = productById(id); if (!p) continue;
-    for (const c of codes) if (!owner.has(c)) { p.barcodes.push(c); owner.set(c, id); }
-  }
+  addSeedBarcodes();
   // Discontinued starter products get hidden, unless someone has already linked them to something.
   for (const id of DISCONTINUED) {
     const p = productById(id);
     if (p && !p.retired && !p.updated && !p.barcodes.length && !tagForProduct(id)) p.retired = true;
   }
   state.version = 2;
+}
+// Known barcodes bundled with the app: add any the phone doesn't have (never taking one from another product).
+// Runs on load and after every sync, since a product arriving from shared data replaces the local copy.
+function addSeedBarcodes() {
+  const owner = new Map();
+  for (const p of state.products) for (const b of p.barcodes) owner.set(b, p.id);
+  for (const [id, codes] of Object.entries(SEED_BARCODES)) {
+    const p = productById(id); if (!p) continue;
+    for (const c of codes) if (!owner.has(c)) { p.barcodes.push(c); owner.set(c, id); }
+  }
 }
 function save() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
@@ -951,6 +955,18 @@ function tagInfoForProduct(pid) {
   if (perStoreTags()) for (const key in state.tags)
     if (!STORE_KEY_RE.test(key) && state.tags[key].productId === pid) return { key, code: key, ...state.tags[key], fallback: true };
   return null;
+}
+// One pass over the tags → productId → tag info for the current scope. Screens that show every product
+// use this instead of calling tagInfoForProduct() per product (which re-scans all tags each time).
+function tagIndex() {
+  const own = new Map(), shared = new Map();
+  for (const key in state.tags) {
+    const t = state.tags[key];
+    if (inScope(key)) { if (!own.has(t.productId)) own.set(t.productId, { key, code: codeOfKey(key), ...t, fallback: false }); }
+    else if (perStoreTags() && !STORE_KEY_RE.test(key) && !shared.has(t.productId)) shared.set(t.productId, { key, code: key, ...t, fallback: true });
+  }
+  for (const [pid, t] of shared) if (!own.has(pid)) own.set(pid, t);
+  return own;
 }
 // Before scanning tags in per-store mode, make sure the store number is set.
 async function ensureStoreForTags() {
@@ -1145,6 +1161,8 @@ function normalizeBarcode(code) {
   return c;
 }
 function normalizeTag(code) { return String(code).trim(); }
+// Redraw long lists once typing pauses briefly, not on every keystroke.
+function debounce(fn, ms = 90) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 
 let toastTimer;
 function toast(msg, undoSnap) {
@@ -1275,8 +1293,10 @@ function normText(s) {
     .replace(/[^a-z0-9. ]+/g, " ")
     .replace(/\s+/g, " ").trim();
 }
+// Search text: the product's own name/size/pack, plus its list group (which only counts as a weaker match,
+// so "sprite 2l" ranks the 2L above the 1L even though both sit in the "2L & 1L" group).
 function searchText(p) {
-  if (!p._st) Object.defineProperty(p, "_st", { value: normText(`${p.brand} ${p.flavor} ${p.size} ${p.pack} ${p.category}`), writable: true, enumerable: false, configurable: true });
+  if (!p._st) Object.defineProperty(p, "_st", { value: normText(`${p.brand} ${p.flavor} ${p.size} ${p.pack}`) + " | " + normText(p.category), writable: true, enumerable: false, configurable: true });
   return p._st;
 }
 function queryTokens(q) {
@@ -1293,21 +1313,23 @@ function searchProducts(q, { category = "", includeRetired = false } = {}) {
   if (!toks.length) return pool;
   const scored = [];
   for (const p of pool) {
-    const st = searchText(p);
-    const words = st.split(" ");
-    let hits = 0, prefix = 0, exact = 0;
+    const [own, group] = searchText(p).split(" | ");
+    const words = own.split(" ");
+    let hits = 0, ownHits = 0, prefix = 0, exact = 0;
     for (const t of toks) {
-      if (st.includes(t)) {
+      const inOwn = own.includes(t);
+      if (inOwn || group.includes(t)) {
         hits++;
+        if (inOwn) ownHits++;
         if (words.some(w => w.startsWith(t))) prefix++;
         if (words.includes(t)) exact++;
       }
     }
-    if (hits) scored.push({ p, hits, prefix, exact });
+    if (hits) scored.push({ p, hits, ownHits, prefix, exact });
   }
   const full = scored.filter(s => s.hits === toks.length);
   const use = full.length ? full : scored.filter(s => s.hits >= Math.max(1, toks.length - 1));
-  use.sort((a, b) => b.hits - a.hits || b.exact - a.exact || b.prefix - a.prefix);
+  use.sort((a, b) => b.hits - a.hits || b.ownHits - a.ownHits || b.exact - a.exact || b.prefix - a.prefix);
   return use.map(s => s.p);
 }
 function bumpRecent(pid) { state.recents = [pid, ...state.recents.filter(x => x !== pid)].slice(0, 12); }
@@ -1365,19 +1387,17 @@ function pickProduct({ title = "Pick a product", initialQuery = "" } = {}) {
       };
       results.appendChild(add);
     };
-    input.addEventListener("input", renderResults);
+    input.addEventListener("input", debounce(renderResults, 60));
     renderChips(); renderResults();
     setTimeout(() => input.focus(), 50);
   });
 }
+// Builds the whole list in one parse, with a single tap handler (much faster than 200 separate rows).
 function listOf(products, onTap, extra) {
-  const wrap = el(`<div class="list"></div>`);
-  for (const p of products) {
-    const r = el(`<div class="item tap">${thumbHtml(p)}<div class="grow"><div class="name">${esc(pName(p))}</div>
-      <div class="sub">${esc(pSub(p))}</div></div>${extra ? extra(p) : ""}</div>`);
-    r.onclick = () => onTap(p.id);
-    wrap.appendChild(r);
-  }
+  const wrap = el(`<div class="list">${products.map(p =>
+    `<div class="item tap" data-pid="${esc(p.id)}">${thumbHtml(p)}<div class="grow"><div class="name">${esc(pName(p))}</div>` +
+    `<div class="sub">${esc(pSub(p))}</div></div>${extra ? extra(p) : ""}</div>`).join("")}</div>`);
+  wrap.addEventListener("click", e => { const r = e.target.closest(".item[data-pid]"); if (r) onTap(r.dataset.pid); });
   return wrap;
 }
 
@@ -1562,6 +1582,7 @@ function applyShared(remote, { overwrite = false } = {}) {
   if (state.list) state.list.items = state.list.items.filter(i => productById(i.productId));
   state.products.forEach(p => (p._st = undefined));
   canonicalize(state.products);
+  addSeedBarcodes();
 }
 
 async function pullShared({ overwrite = false, quiet = true } = {}) {
@@ -2150,6 +2171,7 @@ function renderList() {
         r.classList.toggle("done", nowDone);
         const chk = r.querySelector(".check");
         chk.classList.toggle("on", nowDone);
+        chk.classList.toggle("pop", nowDone);
         chk.innerHTML = nowDone ? icon("check") : "";
         const leftNow = state.list.items.filter(i => i.status !== "done").length;
         head.querySelector(".muted").textContent = `${leftNow} of ${state.list.items.length} left`;
@@ -2205,7 +2227,7 @@ function renderProducts() {
     v.innerHTML = `<div class="list-head"><h2>Products</h2><span class="grow"></span><button class="btn sm primary" data-a="add">${icon("plus")}Add</button></div>
       ${searchBox("Search products")}<div class="chips"></div>
       <p class="hint" id="prod-count"></p><div id="prod-results"></div>`;
-    v.querySelector("input").addEventListener("input", e => { prodQuery = e.target.value; renderProductResults(); });
+    v.querySelector("input").addEventListener("input", debounce(e => { prodQuery = e.target.value; renderProductResults(); }));
     v.querySelector('[data-a="add"]').onclick = () => editProduct(null, { prefillName: prodQuery });
   }
   const chips = v.querySelector(".chips");
@@ -2228,8 +2250,9 @@ function renderProductResults() {
   const box = v.querySelector("#prod-results");
   box.innerHTML = "";
   const shown = items.slice(0, 200);
+  const tagged = tagIndex();
   if (shown.length) box.appendChild(listOf(shown, pid => editProduct(pid), p =>
-    (tagForProduct(p.id) ? `<span class="pill ok">TAGGED</span>` : "") + (p.custom ? ` <span class="pill">CUSTOM</span>` : "")));
+    (tagged.has(p.id) ? `<span class="pill ok">TAGGED</span>` : "") + (p.custom ? ` <span class="pill">CUSTOM</span>` : "")));
   else box.appendChild(el(`<div class="empty"><p>No products match.</p></div>`));
   if (items.length > shown.length) box.appendChild(el(`<p class="hint center" style="padding:10px">${items.length - shown.length} more. Search to narrow it down.</p>`));
 }
@@ -2243,7 +2266,7 @@ function renderTags() {
       <div class="seg" id="tag-seg">
         <button data-f="all">All</button><button data-f="tagged">Tagged</button><button data-f="none">No tag</button><button data-f="stale">Stale</button></div>
       <p class="hint" id="tag-count"></p><div id="tag-results"></div>`;
-    v.querySelector("input").addEventListener("input", e => { tagQuery = e.target.value; renderTagResults(); });
+    v.querySelector("input").addEventListener("input", debounce(e => { tagQuery = e.target.value; renderTagResults(); }));
     v.querySelectorAll("#tag-seg button").forEach(b => (b.onclick = () => { tagFilter = b.dataset.f; renderTagResults(); }));
   }
   renderTagResults();
@@ -2252,8 +2275,7 @@ function renderTagResults() {
   const v = $("#view-tags");
   v.querySelectorAll("#tag-seg button").forEach(b => b.classList.toggle("active", b.dataset.f === tagFilter));
   syncIndicator(v.querySelector("#tag-seg"));
-  const byProduct = {};
-  for (const p of state.products) { const t = tagInfoForProduct(p.id); if (t) byProduct[p.id] = t; }
+  const byProduct = Object.fromEntries(tagIndex());
   let items = searchProducts(tagQuery);
   const isStale = t => t && daysAgo(t.lastSeen || t.created || 0) > STALE_DAYS;
   if (tagFilter === "tagged") items = items.filter(p => byProduct[p.id]);
@@ -2335,7 +2357,7 @@ function renderMore() {
       </details>
     </div>
     <button class="btn block danger" id="btn-reset">Reset this phone</button>
-    <p class="foot">Shelf Scan Beta 2.2 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
+    <p class="foot">Shelf Scan Beta 2.3 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
       Product lookups from <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener" style="color:inherit">Open Food Facts</a></p>`;
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
   v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
