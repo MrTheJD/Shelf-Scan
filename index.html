@@ -273,13 +273,14 @@ label.f { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04
   transition: opacity .2s ease, transform .5s var(--spring);
 }
 #toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); pointer-events: auto; }
-.update-ready {
-  position: fixed; z-index: 60; left: 50%; top: calc(64px + env(safe-area-inset-top, 0px)); transform: translateX(-50%);
-  display: flex; align-items: center; gap: 8px; border: 0; border-radius: 999px; padding: 10px 16px;
-  background: var(--text); color: var(--bg); font-weight: 700; font-size: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.25);
-  animation: bannerIn .5s var(--spring) both; white-space: nowrap;
-}
-.update-ready svg.i { width: 18px; height: 18px; }
+.update-dialog { text-align: center; }
+.update-dialog h3 { margin: 10px 0 6px; font-size: 19px; font-weight: 800; }
+.update-dialog p { color: var(--muted); font-size: 15px; }
+.update-dialog .btns { justify-content: stretch; }
+.update-dialog .btns .btn { flex: 1; }
+.update-icon { width: 52px; height: 52px; margin: 0 auto; border-radius: 16px; background: var(--red); color: var(--on-red);
+  display: flex; align-items: center; justify-content: center; }
+.update-icon svg.i { width: 26px; height: 26px; }
 
 /* ---------- Motion ----------
    Fluid, spring-based movement in the spirit of iOS 26: controls glide between states,
@@ -2788,12 +2789,22 @@ if ("serviceWorker" in navigator && location.protocol === "https:") {
   }).catch(() => {});
   navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadController) showUpdateReady(); });
 }
+// Centered pop-up; "Later" dismisses it until the app next comes back to the foreground.
+let updatePromptOpen = false, updateWaiting = false;
 function showUpdateReady() {
-  if (document.querySelector("#update-ready")) return;
-  const b = el(`<button id="update-ready" class="update-ready">${icon("refresh")}New version ready · Tap to reload</button>`);
-  b.onclick = () => location.reload();
-  document.body.appendChild(b);
+  updateWaiting = true;
+  if (updatePromptOpen) return;
+  updatePromptOpen = true;
+  const d = el(`<div class="dialog update-dialog" id="update-ready">
+    <div class="update-icon">${icon("refresh")}</div>
+    <h3>Update available</h3>
+    <p>A new version of Shelf Scan is ready. Reload to start using it. Your list and settings stay as they are.</p>
+    <div class="btns"><button class="btn quiet" data-a="later">Later</button><button class="btn primary" data-a="reload">Reload now</button></div></div>`);
+  const close = openLayer(d, { center: true, onClose: () => (updatePromptOpen = false) });
+  d.querySelector('[data-a="reload"]').onclick = () => location.reload();
+  d.querySelector('[data-a="later"]').onclick = close;
 }
+document.addEventListener("visibilitychange", () => { if (!document.hidden && updateWaiting) showUpdateReady(); });
 </script>
 </body>
 </html>
