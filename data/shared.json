@@ -1,12 +1,16 @@
 {
  "version": 1,
- "updated": 1790785032907,
+ "updated": 1790785047940,
  "products": {},
- "tags": {},
+ "tags": {
+  "w-mt.co/q/30izyqM1W94J0-7JHKE": {
+   "productId": "vitaminwater-focus-20oz-bottle-single",
+   "created": 1790785043741,
+   "updated": 1790785043741
+  }
+ },
  "deleted": {
   "products": {},
-  "tags": {
-   "w-mt.co/q/30izyqM1W94J0-7JHKE": 1790785028661
-  }
+  "tags": {}
  }
 }
