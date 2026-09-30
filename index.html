@@ -154,7 +154,8 @@ label.f { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04
   aspect-ratio: 1 / 1; max-height: 52dvh; margin-inline: auto; }
 .camera.live { max-height: none; touch-action: none; }   /* pinch goes to the camera, not the page */
 /* The feed fills the square and is cropped evenly from the center, whatever shape the camera sends. */
-#reader { position: absolute; inset: 0; overflow: hidden; }
+/* !important: the scanner library sets position:relative inline on start, which collapsed the box to 0 height. */
+#reader { position: absolute !important; inset: 0 !important; width: auto !important; height: auto !important; overflow: hidden; padding: 0 !important; border: 0 !important; }
 #reader video { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block;
   object-fit: cover; object-position: center; transform: scale(var(--view-zoom, 1)); transform-origin: center; }
 #reader #qr-shaded-region, #reader img[alt="Info icon"], #reader img[alt="Camera based scan"] { display: none !important; }
@@ -350,7 +351,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 </head>
 <body>
 <header class="top">
-  <h1>Shelf Scan</h1><span class="tagline">BETA 2.3</span>
+  <h1>Shelf Scan</h1><span class="tagline">BETA 2.3.1</span>
   <span class="spacer"></span>
   <span class="store" id="hdr-store"></span>
   <button class="sync-ind" id="sync-ind" hidden></button>
@@ -2357,7 +2358,7 @@ function renderMore() {
       </details>
     </div>
     <button class="btn block danger" id="btn-reset">Reset this phone</button>
-    <p class="foot">Shelf Scan Beta 2.3 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
+    <p class="foot">Shelf Scan Beta 2.3.1 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
       Product lookups from <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener" style="color:inherit">Open Food Facts</a></p>`;
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
   v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
