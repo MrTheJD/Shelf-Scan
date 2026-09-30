@@ -255,7 +255,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 </head>
 <body>
 <header class="top">
-  <h1>Shelf Scan</h1><span class="tagline">BETA 2</span>
+  <h1>Shelf Scan</h1><span class="tagline">BETA 2.1</span>
   <span class="spacer"></span>
   <span class="store" id="hdr-store"></span>
   <button class="sync-ind" id="sync-ind" hidden></button>
@@ -353,7 +353,7 @@ function fillIcons(root = document) {
 // Brand/flavor/format combos only. No UPCs are pre-filled: barcodes are
 // learned the first time they're scanned. Verify against the bottler order guide.
 const CATEGORY_ORDER = [
-  "12oz Cans", "Mini Cans", "20oz", "Bottle Multipacks", "2L & 1L", "Glass",
+  "12oz Cans", "Mini Cans", "16oz Cans", "20oz", "Bottle Multipacks", "2L & 1L", "Glass",
   "Water", "Sports Drinks", "Tea & Juice", "Energy", "Other"
 ];
 const FORMATS = {
@@ -389,59 +389,194 @@ const FORMATS = {
   j20:     { size: "20oz bottle", pack: "Single", category: "Tea & Juice",       unit: "bottle" },
   e16:     { size: "16oz can",    pack: "Single", category: "Energy",            unit: "can" },
   e16_4:   { size: "16oz can",    pack: "4pk",    category: "Energy",            unit: "pack" },
+  // Added in Beta 3 (cross-checked against a bottler order sheet by package)
+  c12_6:   { size: "12oz can",    pack: "6pk",    category: "12oz Cans",         unit: "pack" },
+  c75_6:   { size: "7.5oz can",   pack: "6pk",    category: "Mini Cans",         unit: "pack" },
+  b169_8:  { size: "16.9oz bottle", pack: "8pk",  category: "Bottle Multipacks", unit: "pack" },
+  g12:     { size: "12oz glass",  pack: "Single", category: "Glass",             unit: "bottle" },
+  w237:    { size: "23.7oz bottle", pack: "Single", category: "Water",           unit: "bottle" },
+  w169_12: { size: "16.9oz bottle", pack: "12pk", category: "Water",             unit: "pack" },
+  w12_8:   { size: "12oz can",    pack: "8pk",    category: "Water",             unit: "pack" },
+  s20:     { size: "20oz bottle", pack: "Single", category: "Sports Drinks",     unit: "bottle" },
+  s12_8:   { size: "12oz bottle", pack: "8pk",    category: "Sports Drinks",     unit: "pack" },
+  s12_6:   { size: "12oz bottle", pack: "6pk",    category: "Sports Drinks",     unit: "pack" },
+  s1l:     { size: "1L bottle",   pack: "Single", category: "Sports Drinks",     unit: "bottle" },
+  s700:    { size: "700ml bottle", pack: "Single", category: "Sports Drinks",    unit: "bottle" },
+  vw169_6: { size: "16.9oz bottle", pack: "6pk",  category: "Sports Drinks",     unit: "pack" },
+  cp14:    { size: "14oz bottle", pack: "Single", category: "Sports Drinks",     unit: "bottle" },
+  cp14_4:  { size: "14oz bottle", pack: "4pk",    category: "Sports Drinks",     unit: "pack" },
+  t52:     { size: "52oz bottle", pack: "Single", category: "Tea & Juice",       unit: "bottle" },
+  t169_6:  { size: "16.9oz bottle", pack: "6pk",  category: "Tea & Juice",       unit: "pack" },
+  t20:     { size: "20oz bottle", pack: "Single", category: "Tea & Juice",       unit: "bottle" },
+  t1l:     { size: "1L bottle",   pack: "Single", category: "Tea & Juice",       unit: "bottle" },
+  j2l:     { size: "2L bottle",   pack: "Single", category: "Tea & Juice",       unit: "bottle" },
+  j16:     { size: "16oz bottle", pack: "Single", category: "Tea & Juice",       unit: "bottle" },
+  e12_12:  { size: "12oz can",    pack: "12pk",   category: "Energy",            unit: "pack" },
+  e16_15:  { size: "16oz can",    pack: "15pk",   category: "Energy",            unit: "pack" },
+  e24:     { size: "24oz can",    pack: "Single", category: "Energy",            unit: "can" },
+  c12_1:   { size: "12oz can",    pack: "Single", category: "12oz Cans",         unit: "can" },
+  w12_4:   { size: "12oz can",    pack: "4pk",    category: "Water",             unit: "pack" },
+  t24:     { size: "24oz bottle", pack: "Single", category: "Tea & Juice",       unit: "bottle" },
+  hc6_8:   { size: "6oz carton",  pack: "8pk",    category: "Tea & Juice",       unit: "pack" },
+  // Added after checking every product's "Available Sizes" on coca-cola.com
+  b8_6:    { size: "8oz bottle",  pack: "6pk",    category: "Bottle Multipacks", unit: "pack" },
+  b132_6:  { size: "13.2oz bottle", pack: "6pk",  category: "Bottle Multipacks", unit: "pack" },
+  b10_6:   { size: "10oz bottle", pack: "6pk",    category: "Bottle Multipacks", unit: "pack" },
+  c16:     { size: "16oz can",    pack: "Single", category: "16oz Cans",         unit: "can" },
+  b24:     { size: "24oz bottle", pack: "Single", category: "20oz",              unit: "bottle" },
+  l3:      { size: "3L bottle",   pack: "Single", category: "2L & 1L",           unit: "bottle" },
+  g169:    { size: "16.9oz glass", pack: "Single", category: "Glass",            unit: "bottle" },
+  g65_6:   { size: "6.5oz glass", pack: "6pk",    category: "Glass",             unit: "pack" },
+  g254:    { size: "25.4oz glass", pack: "Single", category: "Glass",            unit: "bottle" },
+  w10_6:   { size: "10oz bottle", pack: "6pk",    category: "Water",             unit: "pack" },
+  w12b_8:  { size: "12oz bottle", pack: "8pk",    category: "Water",             unit: "pack" },
+  a16:     { size: "16oz can",    pack: "Single", category: "Water",             unit: "can" },
+  t12_12:  { size: "12oz can",    pack: "12pk",   category: "Tea & Juice",       unit: "pack" },
+  t16c:    { size: "16oz can",    pack: "Single", category: "Tea & Juice",       unit: "can" },
+  j169_6:  { size: "16.9oz bottle", pack: "6pk",  category: "Tea & Juice",       unit: "pack" },
 };
-const SODA_CORE   = ["c12_12","c12_24","c12_35","c75_10","b20","b20_6","b169_6","b12_8","l2","l1"];
-const SODA_FLAVOR = ["c12_12","b20","l2"];
+// Sizes below follow each product's "Available Sizes" on coca-cola.com (checked Sept 2026).
+// A container size maps to the packs Walmart carries it in: 7.5oz cans → 6pk & 10pk,
+// 8oz & 13.2oz bottles → 6pk, 12oz cans → 12pk (+8/24/35pk for the big brands),
+// 16oz cans → single, 16.9oz bottles → 6pk (+24pk core), 20oz → single, 1–3L → single.
+const MINI = ["c75_6","c75_10"];
+const SODA_CORE = ["c12_8","c12_12","c12_24","c12_35", ...MINI, "b8_6","b169_6","b169_24","b20","b20_6","b12_8","l1","l125","l2"];
 const SEED_LINES = [
-  ["Coca-Cola", ["Original", "Zero Sugar"], SODA_CORE],
-  ["Coca-Cola", ["Cherry", "Cherry Zero Sugar", "Vanilla", "Vanilla Zero Sugar", "Caffeine-Free", "Caffeine-Free Zero Sugar"], SODA_FLAVOR],
-  ["Coca-Cola", ["Original (Mexican)"], ["g12_4"]],
-  ["Coca-Cola", ["Original"], ["g8_6", "l125"]],
-  ["Diet Coke", [""], SODA_CORE],
-  ["Diet Coke", ["Caffeine-Free"], SODA_FLAVOR],
-  ["Sprite", [""], SODA_CORE],
-  ["Sprite", ["Zero"], ["c12_12","b20","l2","c12_24"]],
-  ["Fanta", ["Orange"], ["c12_12","c12_24","b20","l2","b169_6"]],
-  ["Fanta", ["Grape", "Strawberry", "Pineapple", "Peach", "Berry", "Orange Zero"], SODA_FLAVOR],
-  ["Fresca", ["Grapefruit Citrus", "Black Cherry Citrus", "Peach Citrus"], ["c12_12"]],
-  ["Barq's", ["Root Beer"], ["c12_12","b20","l2","c12_24"]],
-  ["Barq's", ["Diet Root Beer"], ["c12_12","l2"]],
-  ["Mello Yello", [""], SODA_FLAVOR],
-  ["Mello Yello", ["Zero"], ["c12_12","b20"]],
-  ["Pibb Xtra", [""], SODA_FLAVOR],
-  ["Seagram's", ["Ginger Ale", "Diet Ginger Ale", "Tonic", "Club Soda"], ["c12_12","l1"]],
-  ["Dasani", ["Purified Water"], ["w20","w1l","w169_24","w169_6"]],
-  ["smartwater", [""], ["w20","w1l","w15l"]],
-  ["smartwater", ["Alkaline"], ["w1l"]],
-  ["Topo Chico", ["Mineral Water"], ["g12_12","g12_4"]],
-  ["Topo Chico", ["Twist of Lime", "Grapefruit"], ["g12_4"]],
-  ["Powerade", ["Mountain Berry Blast", "Fruit Punch", "Lemon Lime", "Grape", "Orange", "Strawberry Lemonade", "Zero Mixed Berry", "Zero Grape", "Zero Fruit Punch"], ["s28","s20_8"]],
-  ["BODYARMOR", ["Strawberry Banana", "Fruit Punch", "Tropical Punch", "Blue Raspberry", "Orange Mango"], ["s16","s28"]],
-  ["BODYARMOR LYTE", ["Peach Mango", "Blueberry Pomegranate"], ["s16"]],
-  ["vitaminwater", ["XXX", "Power-C", "Focus", "Energy", "Essential", "Revive", "Zero Rise", "Zero Squeezed"], ["vw20"]],
-  ["Gold Peak", ["Sweet Tea", "Unsweetened Tea"], ["t185","t185_6"]],
-  ["Gold Peak", ["Diet Tea", "Raspberry Tea", "Green Tea", "Lemonade Tea"], ["t185"]],
-  ["Peace Tea", ["Georgia Peach", "Razzleberry", "Sno-Berry", "Caddy Shack"], ["t23"]],
-  ["Minute Maid", ["Lemonade", "Pink Lemonade", "Fruit Punch", "Zero Sugar Lemonade"], ["j12_12","j20"]],
-  ["Monster Energy", ["Original", "Zero Ultra", "Ultra Paradise", "Ultra Violet", "Lo-Carb"], ["e16","e16_4"]],
+  // Coca-Cola
+  ["Coca-Cola", ["Original", "Zero Sugar"], [...SODA_CORE, "c16"]],
+  ["Coca-Cola", ["Original", "Zero Sugar"], ["g8_6"]],
+  ["Coca-Cola", ["Caffeine-Free", "Caffeine-Free Zero Sugar"], ["c12_12","c12_24","l2","b20"]],
+  ["Coca-Cola", ["Original (Mexican)"], ["g12","g12_4","g169"]],
+  ["Coca-Cola", ["Cherry"], ["c12_12","c12_24", ...MINI, "b169_6","l2","b20"]],
+  ["Coca-Cola", ["Cherry Zero Sugar"], ["c12_12","c12_24", ...MINI, "b169_6","b20","l2"]],
+  ["Coca-Cola", ["Vanilla"], ["c12_12","c12_24","b169_6","b20","l2"]],
+  ["Coca-Cola", ["Vanilla Zero Sugar"], ["c12_12","c12_24","b20","l2"]],
+  ["Coca-Cola", ["Cherry Float", "Zero Sugar Cherry Float"], ["c12_12","b20"]],
+  ["Coca-Cola", ["Georgia Peach", "California Raspberry"], ["c12_12"]],
+  ["Diet Coke", [""], [...SODA_CORE, "b132_6"]],
+  ["Diet Coke", ["Caffeine-Free"], ["c12_12","c12_24","l2","b20"]],
+  ["Diet Coke", ["Cherry"], ["c12_12","b20"]],
+  // Sprite
+  ["Sprite", [""], [...SODA_CORE, "b132_6","l3"]],
+  ["Sprite", ["Zero Sugar"], ["c12_12","c12_24", ...MINI, "b169_6","b20","l2"]],
+  ["Sprite", ["(Mexican)"], ["g12_4","g169"]],
+  ["Sprite", ["Chill"], ["c12_1","c12_12","c75_6","b20"]],
+  ["Sprite", ["Chill Zero Sugar", "Chill Mango Citrus", "+ Tea Zero Sugar", "+ Tea Peach"], ["c12_1","c12_12"]],
+  ["Sprite", ["+ Tea"], ["c12_1","c12_12","b20"]],
+  ["Sprite", ["Cherry", "Lymonade"], ["c12_12","b20"]],
+  ["Sprite", ["Tropical Mix"], ["b20"]],
+  // Fanta
+  ["Fanta", ["Orange"], ["c12_8","c12_12","c12_24", ...MINI, "b132_6","c16","b169_6","b20","l2"]],
+  ["Fanta", ["Zero Sugar Orange"], ["c12_12","b20","l2"]],
+  ["Fanta", ["Strawberry", "Pineapple"], ["c12_12","c16","b20","l2"]],
+  ["Fanta", ["Grape"], ["c12_12","b20","l2"]],
+  ["Fanta", ["Berry"], ["c12_12","b20"]],
+  ["Fanta", ["Peach", "Piña Colada"], ["b20"]],
+  ["Fanta", ["Orange (Mexican)"], ["g12_4","g169"]],
+  // Fresca, Barq's, Mello Yello, Mr. Pibb, Seagram's
+  ["Fresca", ["Grapefruit Citrus"], ["c12_8","c12_12","b169_6","b20","l2"]],
+  ["Fresca", ["Black Cherry Citrus", "Peach Citrus"], ["c12_8","c12_12"]],
+  ["Barq's", ["Root Beer"], ["c12_12","c12_24", ...MINI, "b169_6","b20","l2"]],
+  ["Barq's", ["Zero Sugar Root Beer"], ["c12_12","b169_6","b20","l2"]],
+  ["Barq's", ["Red Creme Soda", "Creme Soda French Vanilla"], ["c12_12"]],
+  ["Mello Yello", [""], ["c12_12","c12_24","b169_6","b20","b24","l2"]],
+  ["Mello Yello", ["Zero Sugar"], ["c12_12","b20"]],
+  ["Mr. Pibb", [""], ["c12_12","b20","l2"]],
+  ["Mr. Pibb", ["Zero Sugar", "Thrillin' Vanilla", "Punchin' Peach"], ["c12_12","b20"]],
+  ["Seagram's", ["Ginger Ale"], ["c12_12","c12_24", ...MINI, "b10_6","b169_6","b20","l1","l125","l2"]],
+  ["Seagram's", ["Zero Sugar Ginger Ale"], ["c12_12", ...MINI, "b20","l2","l1"]],
+  ["Seagram's", ["Club Soda", "Tonic"], ["c12_12", ...MINI, "b10_6","l1"]],
+  ["Seagram's", ["Seltzer Water"], ["c12_12","b20"]],
+  ["Simply Pop", ["Raspberry", "Strawberry", "Pineapple Mango", "Fruit Punch", "Citrus Punch"], ["c12_1"]],
+  // Dr Pepper — only some Coca-Cola bottlers carry it. Retire these if yours doesn't.
+  ["Dr Pepper", [""], ["c12_12","c12_24", ...MINI, "b169_6","b20","l1","l2"]],
+  ["Dr Pepper", ["Zero Sugar"], ["c12_12","c12_24","b20","l2"]],
+  ["Diet Dr Pepper", [""], ["c12_12","c12_24","b20","l2"]],
+  ["Dr Pepper", ["Cherry", "Cream Soda"], ["c12_12","b20","l2"]],
+  // Water
+  ["Dasani", ["Purified Water"], ["w10_6","w12b_8","w169_6","w169_12","w169_24","w20","w1l","w15l"]],
+  ["smartwater", ["", "Alkaline with Antioxidant"], ["w20","w237","w1l","w15l","w12_8"]],
+  ["smartwater", [""], ["w169_6"]],
+  ["Topo Chico", ["Mineral Water"], ["g65_6","g12","g12_4","g12_12","g254","w12_8"]],
+  ["Topo Chico", ["Twist of Lime", "Grapefruit"], ["g12_4","w12_8"]],
+  ["Topo Chico Sabores", ["Passionfruit", "Raspberry with Lemon", "Lime with Mint", "Tangerine with Ginger", "Tropical Mango", "Blueberry with Hibiscus"], ["w12_8"]],
+  ["AHA", ["Lime Watermelon", "Orange Grapefruit", "Blueberry Pomegranate", "Peach Honey", "Blackberry Lemon", "Pineapple Passionfruit"], ["w12_8"]],
+  ["AHA", ["Lime Watermelon", "Blueberry Pomegranate"], ["a16"]],
+  // Sports & enhanced water
+  ["Powerade", ["Mountain Berry Blast", "Fruit Punch", "Lemon Lime", "Grape", "Orange", "Strawberry Lemonade", "Glacier Cherry"], ["s28","s20","s20_8"]],
+  ["Powerade", ["Mountain Berry Blast", "Fruit Punch"], ["s12_8"]],
+  ["Powerade", ["Zero Mixed Berry", "Zero Grape", "Zero Fruit Punch", "Zero Lemon Lime", "Zero Orange", "Zero Strawberry Lemonade"], ["s28","s20_8"]],
+  ["BODYARMOR", ["Strawberry Banana", "Fruit Punch", "Tropical Punch", "Blue Raspberry", "Orange Mango", "Mixed Berry", "Watermelon Strawberry", "Cherry Lime", "Kiwi Strawberry"], ["s16","s28"]],
+  ["BODYARMOR", ["Strawberry Banana", "Fruit Punch"], ["s12_8"]],
+  ["BODYARMOR LYTE", ["Peach Mango", "Blueberry Pomegranate", "Berry Punch", "Tropical Coconut"], ["s16"]],
+  ["BODYARMOR", ["SportWater"], ["s700","s1l"]],
+  ["vitaminwater", ["XXX", "Power-C", "Focus", "Energy", "Essential", "Elevate", "Refresh"], ["vw20"]],
+  ["vitaminwater", ["XXX", "Power-C", "Elevate"], ["vw169_6"]],
+  ["vitaminwater", ["Zero Rise", "Zero Squeezed", "Zero XXX", "Zero Power-C", "Zero Re-hydrate", "Zero Shine"], ["vw20"]],
+  ["vitaminwater", ["Zero Rise", "Zero Squeezed", "Zero XXX", "Zero Re-hydrate"], ["vw169_6"]],
+  ["Core Power", ["Chocolate", "Vanilla", "Strawberry Banana"], ["cp14","cp14_4"]],
+  ["Core Power Elite", ["Chocolate", "Vanilla"], ["cp14"]],
+  // Tea, lemonade & juice
+  ["Gold Peak", ["Sweet Tea", "Unsweetened Tea"], ["t185","t185_6","t52"]],
+  ["Gold Peak", ["Diet Tea", "Raspberry Tea", "Green Tea", "Lemonade Tea", "Slightly Sweet Tea"], ["t185"]],
+  ["Peace Tea", ["Just Peachy", "Razzleberry", "Sno-Berry", "Caddy Shack"], ["t16c","t23"]],
+  ["Peace Tea", ["Just Peachy", "Razzleberry", "Caddy Shack"], ["t12_12"]],
+  ["FUZE", ["Lemon + Sweet Tea", "Pineapple + Mango", "Strawberry + Peach", "Watermelon + Lime", "Blueberry + Lemonade"], ["t24","t1l"]],
+  ["FUZE", ["Lemon + Sweet Tea"], ["t12_12"]],
+  ["Minute Maid", ["Lemonade"], ["j12_12", ...MINI, "j169_6","j20","j2l"]],
+  ["Minute Maid", ["Fruit Punch"], ["j12_12","j169_6","j20","j2l"]],
+  ["Minute Maid", ["Pink Lemonade", "Blue Raspberry"], ["j12_12","j20","j2l"]],
+  ["Minute Maid", ["Zero Sugar Lemonade"], ["j12_12","j20"]],
+  ["Minute Maid", ["Peach"], ["j20","j2l"]],
+  ["Minute Maid", ["Tropical Punch", "Berry Punch", "Watermelon Punch", "Kiwi Strawberry", "Pineapple Burst"], ["j20"]],
+  ["Hubert's", ["Lemonade", "Strawberry Guava", "Blackberry Basil", "Tangerine Passionfruit", "Lavender Blueberry Mint", "Pomegranate Limeade"], ["j16"]],
+  ["Hi-C", ["Flashin' Fruit Punch", "Orange Lavaburst", "Torrential Tropical Punch", "Boppin' Strawberry", "Grabbin' Grape", "Strawberry Kiwi Kraze"], ["hc6_8"]],
+  // Energy (Monster family is distributed by Coca-Cola bottlers)
+  ["Monster Energy", ["Original", "Zero Ultra", "Ultra Paradise", "Ultra Violet", "Ultra Red", "Ultra Blue", "Ultra Sunrise", "Lo-Carb", "Mango Loco", "Pipeline Punch", "Pacific Punch", "Rehab Tea + Lemonade"], ["e16"]],
+  ["Monster Energy", ["Original", "Zero Ultra", "Lo-Carb"], ["e16_4","e16_15","e24"]],
+  ["Monster Energy", ["Ultra Paradise", "Ultra Violet", "Mango Loco"], ["e16_4"]],
+  ["Monster Energy", ["Java Mean Bean"], ["e16"]],
+  ["Reign", ["Melon Mania", "Razzle Berry", "Orange Dreamsicle"], ["e16"]],
+  ["NOS", ["Original", "Grape"], ["e16"]],
+  ["Full Throttle", ["Original"], ["e16"]],
 ];
+// Products from earlier catalogs that are no longer made. Hidden automatically unless someone has linked them.
+const DISCONTINUED = ["vitaminwater-revive-20oz-bottle-single",
+  // Sizes coca-cola.com no longer lists for these flavors
+  "fanta-peach-12oz-can-12pk", "fanta-peach-2l-bottle-single", "fanta-berry-2l-bottle-single"];
 const BRAND_COLORS = {
   "Coca-Cola": "#F40009", "Diet Coke": "#8C8F93", "Sprite": "#00843D", "Fanta": "#F58220",
-  "Fresca": "#5E9E47", "Barq's": "#6B3E26", "Mello Yello": "#8DAE1B", "Pibb Xtra": "#7A1B2A",
-  "Seagram's": "#1D4F91", "Dasani": "#1F7FD1", "smartwater": "#4A90C2", "Topo Chico": "#B8921F",
-  "Powerade": "#0057B8", "BODYARMOR": "#D6002A", "BODYARMOR LYTE": "#E0588A", "vitaminwater": "#7B3FA0",
-  "Gold Peak": "#A87B0A", "Peace Tea": "#D14F86", "Minute Maid": "#D9A400", "Monster Energy": "#1E1E1E",
+  "Fresca": "#5E9E47", "Barq's": "#6B3E26", "Mello Yello": "#8DAE1B", "Mr. Pibb": "#7A1B2A", "Simply Pop": "#E4572E",
+  "Topo Chico Sabores": "#C7852B", "Hi-C": "#E03A3E",
+  "Seagram's": "#1D4F91", "Dr Pepper": "#711F25", "Diet Dr Pepper": "#9A9FA5", "Dasani": "#1F7FD1", "smartwater": "#4A90C2", "Topo Chico": "#B8921F",
+  "AHA": "#0E8F9A", "Powerade": "#0057B8", "BODYARMOR": "#D6002A", "BODYARMOR LYTE": "#E0588A", "vitaminwater": "#7B3FA0",
+  "Core Power": "#00205B", "Core Power Elite": "#111B3C",
+  "Gold Peak": "#A87B0A", "Peace Tea": "#D14F86", "FUZE": "#E35205", "Minute Maid": "#D9A400", "Hubert's": "#C99700",
+  "Monster Energy": "#1E1E1E", "Reign": "#5B2BB5", "NOS": "#0055A5", "Full Throttle": "#3A3A3A",
 };
 
 function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
 
+// Products Coca-Cola renamed. The new name is shown, but the product keeps the id it was
+// created with, so shelf tags and barcodes already linked to it stay linked.
+const RENAMED = {
+  "Mr. Pibb|": "Pibb Xtra|",
+  "Barq's|Zero Sugar Root Beer": "Barq's|Diet Root Beer",
+  "Seagram's|Zero Sugar Ginger Ale": "Seagram's|Diet Ginger Ale",
+  "Peace Tea|Just Peachy": "Peace Tea|Georgia Peach",
+  "smartwater|Alkaline with Antioxidant": "smartwater|Alkaline",
+  "Sprite|Zero Sugar": "Sprite|Zero",
+  "Mello Yello|Zero Sugar": "Mello Yello|Zero",
+  "Fanta|Zero Sugar Orange": "Fanta|Orange Zero",
+};
 function buildSeedProducts() {
   const out = [], seen = new Set();
   for (const [brand, flavors, fmts] of SEED_LINES) {
     for (const flavor of flavors) {
       for (const f of fmts) {
         const fmt = FORMATS[f];
-        const id = slug(`${brand} ${flavor} ${fmt.size} ${fmt.pack}`);
+        const [idBrand, idFlavor] = (RENAMED[`${brand}|${flavor}`] || `${brand}|${flavor}`).split("|");
+        const id = slug(`${idBrand} ${idFlavor} ${fmt.size} ${fmt.pack}`);
         if (seen.has(id)) continue;
         seen.add(id);
         out.push({ id, brand, flavor, size: fmt.size, pack: fmt.pack, category: fmt.category,
@@ -450,6 +585,15 @@ function buildSeedProducts() {
     }
   }
   return out;
+}
+// Starter products always show the app's current name (e.g. after a rename), wherever their data came from.
+let SEED_NAMES = null;
+function canonicalize(products) {
+  SEED_NAMES = SEED_NAMES || Object.fromEntries(buildSeedProducts().map(p => [p.id, p]));
+  for (const p of products) {
+    const s = !p.custom && SEED_NAMES[p.id];
+    if (s && (p.brand !== s.brand || p.flavor !== s.flavor)) { p.brand = s.brand; p.flavor = s.flavor; p._st = undefined; }
+  }
 }
 
 // ---------- State ----------
@@ -509,6 +653,12 @@ function migrate() {
   // New starter products added to the app show up for existing users.
   const have = new Set(state.products.map(p => p.id));
   for (const p of buildSeedProducts()) if (!have.has(p.id) && !state.deleted.products[p.id]) state.products.push(p);
+  canonicalize(state.products);
+  // Discontinued starter products get hidden, unless someone has already linked them to something.
+  for (const id of DISCONTINUED) {
+    const p = productById(id);
+    if (p && !p.retired && !p.updated && !p.barcodes.length && !tagForProduct(id)) p.retired = true;
+  }
   state.version = 2;
 }
 function save() {
@@ -673,11 +823,13 @@ function packageShape(p) {
   const s = (p.size || "").toLowerCase();
   const oz = parseFloat(s) || 0;
   if (/glass/.test(s)) return "glass";
+  if (/carton|box|pouch/.test(s)) return "carton";
   if (/can/.test(s)) return oz && oz < 9 ? "mini" : oz >= 15 ? "tall" : "can";
   if (/\d(\.\d+)?\s*l\b|liter|litre/.test(s) || oz >= 24) return "big";
   return "bottle";
 }
 const SHAPES = {
+  carton: { body: "M16 12h16a1.5 1.5 0 0 1 1.5 1.5V39a1.5 1.5 0 0 1-1.5 1.5H16a1.5 1.5 0 0 1-1.5-1.5V13.5A1.5 1.5 0 0 1 16 12zM27 12V6.5h2V12", band: [14.5, 22, 19, 9] },
   can:    { body: "M17 11h14a2 2 0 0 1 2 2v24a2 2 0 0 1-2 2H17a2 2 0 0 1-2-2V13a2 2 0 0 1 2-2zM18 8.5h12", band: [15, 20, 18, 8] },
   mini:   { body: "M18.5 15h11a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2V17a2 2 0 0 1 2-2zM19.5 12.5h9", band: [16.5, 22, 15, 7] },
   tall:   { body: "M18 7h12a2 2 0 0 1 2 2v30a2 2 0 0 1-2 2H18a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z", band: [16, 18, 16, 10] },
@@ -1117,6 +1269,7 @@ function applyShared(remote, { overwrite = false } = {}) {
   }
   if (state.list) state.list.items = state.list.items.filter(i => productById(i.productId));
   state.products.forEach(p => (p._st = undefined));
+  canonicalize(state.products);
 }
 
 async function pullShared({ overwrite = false, quiet = true } = {}) {
@@ -1868,7 +2021,7 @@ function renderMore() {
       </details>
     </div>
     <button class="btn block danger" id="btn-reset">Reset this phone</button>
-    <p class="foot">Shelf Scan Beta 2 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
+    <p class="foot">Shelf Scan Beta 2.1 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
       Product lookups from <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener" style="color:inherit">Open Food Facts</a></p>`;
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
   v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
