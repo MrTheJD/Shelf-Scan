@@ -1,6 +1,6 @@
 {
  "version": 1,
- "updated": 1790794049443,
+ "updated": 1790794091381,
  "products": {
   "diet-coke-caffeine-free-16-9-oz-bottle-6pk": {
    "id": "diet-coke-caffeine-free-16-9-oz-bottle-6pk",
@@ -32,6 +32,22 @@
    "custom": false,
    "retired": false,
    "updated": 1790789400842
+  },
+  "core-power-strawberry-banana-14oz-bottle-single": {
+   "id": "core-power-strawberry-banana-14oz-bottle-single",
+   "brand": "Core Power",
+   "flavor": "Strawberry Banana",
+   "size": "14oz bottle",
+   "pack": "Single",
+   "category": "Sports Drinks",
+   "unit": "bottle",
+   "barcodes": [
+    "811620021982"
+   ],
+   "img": "https://images.openfoodfacts.org/images/products/081/162/002/1982/front_en.263.200.jpg",
+   "custom": false,
+   "retired": false,
+   "updated": 1790794087119
   }
  },
  "tags": {
@@ -119,6 +135,11 @@
    "productId": "core-power-vanilla-14oz-bottle-single",
    "created": 1790794045184,
    "updated": 1790794045184
+  },
+  "https://go.fairlife.com/811620021982": {
+   "productId": "core-power-strawberry-banana-14oz-bottle-single",
+   "created": 1790794086286,
+   "updated": 1790794086286
   }
  },
  "deleted": {
