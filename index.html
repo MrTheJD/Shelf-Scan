@@ -1,0 +1,1415 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#c8102e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Shelf Scan">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>Shelf Scan</title>
+<style>
+/* Layout: one-thumb phone tool — sticky red header, stacked cards, fixed bottom tab bar. */
+:root {
+  --bg: #f5f3f4; --card: #ffffff; --text: #17151a; --muted: #6d6870; --line: #e4dfe2; --chip: #eeeaec;
+  --accent: #c8102e; --accent-ink: #ffffff;
+  --ok: #1a7f37; --warn: #a35200; --bad: #b3261e; --info: #2d4fb3;
+  --ok-bg: #d8f3de; --warn-bg: #ffe7cc; --bad-bg: #ffdcd9; --info-bg: #dde7ff;
+  --banner-bg: #fff4d6; --banner-fg: #5a4300;
+  --overlay: rgba(20,10,14,.45); --toast-bg: #221e22; --toast-fg: #ffffff; --toast-action: #ffb4bf;
+  --cam-bg: #000000; --cam-fg: #d0d0d0; --thumb-fallback: #7a7479; --thumb-ink: #ffffff; --img-bg: #ffffff;
+  --shadow: 0 1px 3px rgba(40,10,20,.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121012; --card: #1d1a1d; --text: #f3f0f2; --muted: #9d969b; --line: #2f2a2e; --chip: #2b262a;
+    --accent: #e0263f;
+    --ok: #3fb95a; --warn: #e08a2a; --bad: #ff6b60; --info: #9db4ff;
+    --ok-bg: #173d22; --warn-bg: #45300f; --bad-bg: #4a1c19; --info-bg: #1f2a4a;
+    --banner-bg: #3a3014; --banner-fg: #ffe39a;
+    --shadow: none; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121012; --card: #1d1a1d; --text: #f3f0f2; --muted: #9d969b; --line: #2f2a2e; --chip: #2b262a;
+  --accent: #e0263f;
+  --ok: #3fb95a; --warn: #e08a2a; --bad: #ff6b60; --info: #9db4ff;
+  --ok-bg: #173d22; --warn-bg: #45300f; --bad-bg: #4a1c19; --info-bg: #1f2a4a;
+  --banner-bg: #3a3014; --banner-fg: #ffe39a;
+  --shadow: none; color-scheme: dark;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--bg); color: var(--text);
+  font: 16px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
+}
+button { font: inherit; color: inherit; }
+input, select { font: inherit; color: var(--text); background: var(--card); }
+header.top {
+  position: sticky; top: 0; z-index: 5;
+  background: var(--accent); color: var(--accent-ink);
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+header.top h1 { font-size: 18px; margin: 0; flex: 1; }
+header.top .store { font-size: 13px; opacity: .9; }
+main { padding: 12px 16px; max-width: 720px; margin: 0 auto; }
+.view { display: none; }
+.view.active { display: block; }
+
+nav.tabs {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+  display: flex; background: var(--card); border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+nav.tabs button {
+  flex: 1; border: 0; background: none; padding: 8px 0 10px; font-size: 11px; color: var(--muted);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+nav.tabs button .ico { font-size: 20px; line-height: 1; }
+nav.tabs button.active { color: var(--accent); font-weight: 600; }
+nav.tabs .badge {
+  background: var(--accent); color: var(--accent-ink); border-radius: 9px; font-size: 10px; padding: 0 5px; margin-left: 2px;
+}
+
+.card { background: var(--card); border-radius: 12px; box-shadow: var(--shadow); padding: 12px; margin-bottom: 12px; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.grow { flex: 1; min-width: 0; }
+.btn {
+  border: 1px solid var(--line); background: var(--card); border-radius: 10px;
+  padding: 10px 14px; font-weight: 600; cursor: pointer;
+}
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.ok { background: var(--ok); color: var(--accent-ink); border-color: var(--ok); }
+.btn.danger { color: var(--bad); }
+.btn.block { width: 100%; display: block; margin-top: 8px; }
+.btn.sm { padding: 6px 10px; font-size: 14px; }
+.btn:disabled { opacity: .5; }
+
+.seg { display: flex; background: var(--chip); border-radius: 10px; padding: 3px; margin-bottom: 10px; }
+.seg button { flex: 1; border: 0; background: none; padding: 8px 4px; border-radius: 8px; font-weight: 600; font-size: 14px; color: var(--muted); }
+.seg button.active { background: var(--card); color: var(--text); box-shadow: var(--shadow); }
+
+#reader-wrap { position: relative; background: var(--cam-bg); border-radius: 12px; overflow: hidden; min-height: 240px; }
+#reader { width: 100%; }
+#reader video { width: 100% !important; display: block; }
+#cam-placeholder { color: var(--cam-fg); text-align: center; padding: 24px 16px; }
+#reader-wrap { min-height: 0; }
+#reader-wrap:has(video) { min-height: 240px; }
+.photo-scan { display: flex !important; align-items: center; justify-content: center; gap: 10px; padding: 16px; font-size: 18px; margin-top: 0; }
+.banner {
+  background: var(--banner-bg); color: var(--banner-fg); border-radius: 10px; padding: 10px 12px; margin: 10px 0;
+  display: flex; align-items: center; gap: 8px; font-size: 14px;
+}
+.banner .grow { font-weight: 600; }
+
+input.search, input.text, select.text {
+  width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; outline: none;
+}
+input.search:focus, input.text:focus { border-color: var(--accent); }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; border: 0; background: var(--chip); border-radius: 16px; padding: 6px 12px; font-size: 13px; }
+.chip.active { background: var(--accent); color: var(--accent-ink); }
+
+.list { background: var(--card); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+.item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.item:last-child { border-bottom: 0; }
+.item.tap { cursor: pointer; }
+.item .name { font-weight: 600; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.item .sub { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.group-h { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 16px 4px 6px; }
+
+.thumb {
+  width: 44px; height: 44px; border-radius: 8px; flex: none; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; color: var(--thumb-ink);
+  background: var(--thumb-fallback);
+}
+.thumb img { width: 100%; height: 100%; object-fit: contain; background: var(--img-bg); }
+.thumb.lg { width: 72px; height: 72px; font-size: 18px; }
+
+.qty { display: flex; align-items: center; gap: 6px; }
+.qty button { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); font-size: 22px; font-weight: 700; }
+.qty input { width: 64px; text-align: center; font-size: 22px; font-weight: 700; padding: 6px; border: 1px solid var(--line); border-radius: 10px; }
+
+.check {
+  width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line); background: none; flex: none;
+  display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--accent-ink);
+}
+.check.on { background: var(--ok); border-color: var(--ok); }
+.pill { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 8px; background: var(--chip); color: var(--muted); }
+.pill.pulled { background: var(--ok-bg); color: var(--ok); }
+.pill.short { background: var(--warn-bg); color: var(--warn); }
+.pill.out { background: var(--bad-bg); color: var(--bad); }
+.pill.stocked { background: var(--info-bg); color: var(--info); }
+.pill.stale { background: var(--warn-bg); color: var(--warn); }
+.item.done .name { text-decoration: line-through; color: var(--muted); }
+
+/* Sheets & dialogs */
+.overlay {
+  position: fixed; inset: 0; background: var(--overlay); z-index: 50;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.sheet {
+  background: var(--bg); width: 100%; max-width: 720px; max-height: 92vh; overflow-y: auto;
+  border-radius: 16px 16px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+}
+.sheet h2 { margin: 0 0 10px; font-size: 19px; }
+.sheet .handle { width: 40px; height: 5px; background: var(--line); border-radius: 3px; margin: -6px auto 12px; }
+.overlay.center { align-items: center; padding: 16px; }
+.dialog { background: var(--card); border-radius: 14px; padding: 18px; width: 100%; max-width: 380px; }
+.dialog p { margin: 0 0 14px; }
+.dialog .btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+label.f { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+
+#toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom));
+  background: var(--toast-bg); color: var(--toast-fg); border-radius: 12px; padding: 10px 14px; z-index: 100;
+  display: none; align-items: center; gap: 12px; max-width: calc(100% - 32px); font-size: 14px;
+}
+#toast button { background: none; border: 0; color: var(--toast-action); font-weight: 700; }
+.empty { text-align: center; padding: 30px 16px; color: var(--muted); }
+.qty-tap { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 4px 10px; min-width: 56px; display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+.qty-tap b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.manual { display: flex; gap: 6px; margin-top: 10px; }
+.manual input { flex: 1; }
+details summary { cursor: pointer; color: var(--muted); font-size: 14px; margin-top: 10px; }
+.menu-list button { display: block; width: 100%; text-align: left; border: 0; background: var(--card); padding: 14px; border-bottom: 1px solid var(--line); font-size: 16px; }
+.menu-list button:first-child { border-radius: 12px 12px 0 0; }
+.menu-list button:last-child { border-radius: 0 0 12px 12px; border-bottom: 0; }
+.menu-list button.danger { color: var(--bad); }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Shelf Scan <span class="small" style="opacity:.75;font-weight:400">alpha</span></h1>
+  <span class="store" id="hdr-store"></span>
+</header>
+
+<main>
+  <!-- SCAN -->
+  <section class="view active" id="view-scan">
+    <div class="seg" id="mode-seg">
+      <button data-mode="count" class="active">Count</button>
+      <button data-mode="setup">Link tags</button>
+    </div>
+    <div class="small muted" id="mode-help" style="margin:-4px 2px 10px"></div>
+    <div id="pending-banner"></div>
+    <label class="btn primary block photo-scan" for="photo-input">
+      <span style="font-size:22px">📷</span><span id="photo-label">Scan with photo</span>
+    </label>
+    <input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
+    <div class="small muted" id="photo-status" style="text-align:center;min-height:18px;margin:6px 0 10px">Snap the shelf tag QR or the product barcode, close up and in focus.</div>
+    <div id="photo-reader" hidden></div>
+    <div id="reader-wrap">
+      <div id="reader"></div>
+      <div id="cam-placeholder">
+        <p>Live scanning</p>
+        <button class="btn" id="btn-cam-start">Start live camera</button>
+        <p class="small" id="cam-error" style="color:var(--toast-action)"></p>
+      </div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn sm" id="btn-cam-stop" style="display:none">Stop camera</button>
+      <div class="grow"></div>
+      <button class="btn sm" id="btn-pick-manual">Pick product</button>
+    </div>
+    <details>
+      <summary>Type a code instead (testing / damaged tag)</summary>
+      <div class="manual">
+        <input class="text" id="manual-code" placeholder="Code or URL" autocomplete="off">
+        <select class="text" id="manual-kind" style="width:auto">
+          <option value="tag">Shelf QR</option>
+          <option value="barcode">Barcode</option>
+        </select>
+        <button class="btn primary" id="btn-manual-go">Go</button>
+      </div>
+    </details>
+    <div class="card" style="margin-top:12px" id="last-scan-card">
+      <div class="small muted">Last scan</div>
+      <div id="last-scan" class="small" style="word-break:break-all">—</div>
+    </div>
+  </section>
+
+  <!-- PULL LIST -->
+  <section class="view" id="view-list"></section>
+
+  <!-- PRODUCTS -->
+  <section class="view" id="view-products"></section>
+
+  <!-- TAGS -->
+  <section class="view" id="view-tags"></section>
+
+  <!-- MORE -->
+  <section class="view" id="view-more"></section>
+</main>
+
+<nav class="tabs" id="tabs">
+  <button data-view="scan" class="active"><span class="ico">⌖</span>Scan</button>
+  <button data-view="list"><span class="ico">☰</span><span>List<span class="badge" id="list-badge" style="display:none"></span></span></button>
+  <button data-view="products"><span class="ico">▦</span>Products</button>
+  <button data-view="tags"><span class="ico">⌗</span>Tags</button>
+  <button data-view="more"><span class="ico">⋯</span>More</button>
+</nav>
+
+<div id="toast"><span id="toast-msg"></span><button id="toast-undo">UNDO</button></div>
+<div id="layer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+"use strict";
+/* ============================================================
+   Shelf Scan — alpha
+   Single-file app. Data lives in localStorage on this device.
+   ============================================================ */
+
+const STORAGE_KEY = "shelfscan.v1";
+const STALE_DAYS = 45;
+
+// ---------- Starter product list ----------
+// Brand/flavor/format combos only. No UPCs are pre-filled: barcodes are
+// learned the first time they're scanned. Verify against the bottler order guide.
+const CATEGORY_ORDER = [
+  "12oz Cans", "Mini Cans", "20oz", "Bottle Multipacks", "2L & 1L", "Glass",
+  "Water", "Sports Drinks", "Tea & Juice", "Energy", "Other"
+];
+const FORMATS = {
+  c12_12:  { size: "12oz can",    pack: "12pk",   category: "12oz Cans",         unit: "pack" },
+  c12_24:  { size: "12oz can",    pack: "24pk",   category: "12oz Cans",         unit: "pack" },
+  c12_35:  { size: "12oz can",    pack: "35pk",   category: "12oz Cans",         unit: "pack" },
+  c12_8:   { size: "12oz can",    pack: "8pk",    category: "12oz Cans",         unit: "pack" },
+  c75_10:  { size: "7.5oz can",   pack: "10pk",   category: "Mini Cans",         unit: "pack" },
+  b20:     { size: "20oz bottle", pack: "Single", category: "20oz",              unit: "bottle" },
+  b20_6:   { size: "20oz bottle", pack: "6pk",    category: "Bottle Multipacks", unit: "pack" },
+  b169_6:  { size: "16.9oz bottle", pack: "6pk",  category: "Bottle Multipacks", unit: "pack" },
+  b169_24: { size: "16.9oz bottle", pack: "24pk", category: "Bottle Multipacks", unit: "pack" },
+  b12_8:   { size: "12oz bottle", pack: "8pk",    category: "Bottle Multipacks", unit: "pack" },
+  l2:      { size: "2L bottle",   pack: "Single", category: "2L & 1L",           unit: "bottle" },
+  l1:      { size: "1L bottle",   pack: "Single", category: "2L & 1L",           unit: "bottle" },
+  l125:    { size: "1.25L bottle", pack: "Single", category: "2L & 1L",          unit: "bottle" },
+  g12_4:   { size: "12oz glass",  pack: "4pk",    category: "Glass",             unit: "pack" },
+  g8_6:    { size: "8oz glass",   pack: "6pk",    category: "Glass",             unit: "pack" },
+  g12_12:  { size: "12oz glass",  pack: "12pk",   category: "Glass",             unit: "pack" },
+  w20:     { size: "20oz bottle", pack: "Single", category: "Water",             unit: "bottle" },
+  w1l:     { size: "1L bottle",   pack: "Single", category: "Water",             unit: "bottle" },
+  w15l:    { size: "1.5L bottle", pack: "Single", category: "Water",             unit: "bottle" },
+  w169_24: { size: "16.9oz bottle", pack: "24pk", category: "Water",             unit: "pack" },
+  w169_6:  { size: "16.9oz bottle", pack: "6pk",  category: "Water",             unit: "pack" },
+  s28:     { size: "28oz bottle", pack: "Single", category: "Sports Drinks",     unit: "bottle" },
+  s20_8:   { size: "20oz bottle", pack: "8pk",    category: "Sports Drinks",     unit: "pack" },
+  s16:     { size: "16oz bottle", pack: "Single", category: "Sports Drinks",     unit: "bottle" },
+  vw20:    { size: "20oz bottle", pack: "Single", category: "Sports Drinks",     unit: "bottle" },
+  t185:    { size: "18.5oz bottle", pack: "Single", category: "Tea & Juice",     unit: "bottle" },
+  t185_6:  { size: "18.5oz bottle", pack: "6pk",  category: "Tea & Juice",       unit: "pack" },
+  t23:     { size: "23oz can",    pack: "Single", category: "Tea & Juice",       unit: "can" },
+  j12_12:  { size: "12oz can",    pack: "12pk",   category: "Tea & Juice",       unit: "pack" },
+  j20:     { size: "20oz bottle", pack: "Single", category: "Tea & Juice",       unit: "bottle" },
+  e16:     { size: "16oz can",    pack: "Single", category: "Energy",            unit: "can" },
+  e16_4:   { size: "16oz can",    pack: "4pk",    category: "Energy",            unit: "pack" },
+};
+const SODA_CORE   = ["c12_12","c12_24","c12_35","c75_10","b20","b20_6","b169_6","b12_8","l2","l1"];
+const SODA_FLAVOR = ["c12_12","b20","l2"];
+const SEED_LINES = [
+  // [brand, flavors[], formats[]]
+  ["Coca-Cola", ["Original", "Zero Sugar"], SODA_CORE],
+  ["Coca-Cola", ["Cherry", "Cherry Zero Sugar", "Vanilla", "Vanilla Zero Sugar", "Caffeine-Free", "Caffeine-Free Zero Sugar"], SODA_FLAVOR],
+  ["Coca-Cola", ["Original (Mexican)"], ["g12_4"]],
+  ["Coca-Cola", ["Original"], ["g8_6", "l125"]],
+  ["Diet Coke", [""], SODA_CORE],
+  ["Diet Coke", ["Caffeine-Free"], SODA_FLAVOR],
+  ["Sprite", [""], SODA_CORE],
+  ["Sprite", ["Zero"], ["c12_12","b20","l2","c12_24"]],
+  ["Fanta", ["Orange"], ["c12_12","c12_24","b20","l2","b169_6"]],
+  ["Fanta", ["Grape", "Strawberry", "Pineapple", "Peach", "Berry", "Orange Zero"], SODA_FLAVOR],
+  ["Fresca", ["Grapefruit Citrus", "Black Cherry Citrus", "Peach Citrus"], ["c12_12"]],
+  ["Barq's", ["Root Beer"], ["c12_12","b20","l2","c12_24"]],
+  ["Barq's", ["Diet Root Beer"], ["c12_12","l2"]],
+  ["Mello Yello", [""], SODA_FLAVOR],
+  ["Mello Yello", ["Zero"], ["c12_12","b20"]],
+  ["Pibb Xtra", [""], SODA_FLAVOR],
+  ["Seagram's", ["Ginger Ale", "Diet Ginger Ale", "Tonic", "Club Soda"], ["c12_12","l1"]],
+  ["Dasani", ["Purified Water"], ["w20","w1l","w169_24","w169_6"]],
+  ["smartwater", [""], ["w20","w1l","w15l"]],
+  ["smartwater", ["Alkaline"], ["w1l"]],
+  ["Topo Chico", ["Mineral Water"], ["g12_12","g12_4"]],
+  ["Topo Chico", ["Twist of Lime", "Grapefruit"], ["g12_4"]],
+  ["Powerade", ["Mountain Berry Blast", "Fruit Punch", "Lemon Lime", "Grape", "Orange", "Strawberry Lemonade", "Zero Mixed Berry", "Zero Grape", "Zero Fruit Punch"], ["s28","s20_8"]],
+  ["BODYARMOR", ["Strawberry Banana", "Fruit Punch", "Tropical Punch", "Blue Raspberry", "Orange Mango"], ["s16","s28"]],
+  ["BODYARMOR LYTE", ["Peach Mango", "Blueberry Pomegranate"], ["s16"]],
+  ["vitaminwater", ["XXX", "Power-C", "Focus", "Energy", "Essential", "Revive", "Zero Rise", "Zero Squeezed"], ["vw20"]],
+  ["Gold Peak", ["Sweet Tea", "Unsweetened Tea"], ["t185","t185_6"]],
+  ["Gold Peak", ["Diet Tea", "Raspberry Tea", "Green Tea", "Lemonade Tea"], ["t185"]],
+  ["Peace Tea", ["Georgia Peach", "Razzleberry", "Sno-Berry", "Caddy Shack"], ["t23"]],
+  ["Minute Maid", ["Lemonade", "Pink Lemonade", "Fruit Punch", "Zero Sugar Lemonade"], ["j12_12","j20"]],
+  ["Monster Energy", ["Original", "Zero Ultra", "Ultra Paradise", "Ultra Violet", "Lo-Carb"], ["e16","e16_4"]],
+];
+const BRAND_COLORS = {
+  "Coca-Cola": "#c8102e", "Diet Coke": "#8a8d91", "Sprite": "#00843d", "Fanta": "#f58220",
+  "Fresca": "#6aa84f", "Barq's": "#6b3e26", "Mello Yello": "#9bbb1f", "Pibb Xtra": "#7a1b2a",
+  "Seagram's": "#1d4f91", "Dasani": "#1f7fd1", "smartwater": "#4a90c2", "Topo Chico": "#c9a227",
+  "Powerade": "#0057b8", "BODYARMOR": "#e4002b", "BODYARMOR LYTE": "#f06292", "vitaminwater": "#7b3fa0",
+  "Gold Peak": "#b8860b", "Peace Tea": "#d94f8a", "Minute Maid": "#e6b800", "Monster Energy": "#222222",
+};
+
+function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
+
+function buildSeedProducts() {
+  const out = [], seen = new Set();
+  for (const [brand, flavors, fmts] of SEED_LINES) {
+    for (const flavor of flavors) {
+      for (const f of fmts) {
+        const fmt = FORMATS[f];
+        const id = slug(`${brand} ${flavor} ${fmt.size} ${fmt.pack}`);
+        if (seen.has(id)) continue;
+        seen.add(id);
+        out.push({ id, brand, flavor, size: fmt.size, pack: fmt.pack, category: fmt.category,
+                   unit: fmt.unit, barcodes: [], img: "", custom: false, retired: false });
+      }
+    }
+  }
+  return out;
+}
+
+// ---------- State ----------
+let state;
+function freshState() {
+  return {
+    version: 1,
+    storeId: "store-1",          // v1 = one store; data is keyed by store for later.
+    storeName: "",
+    products: buildSeedProducts(),
+    tags: {},                    // { storeId: { code: { productId, created, lastSeen } } }
+    list: null,                  // { storeId, started, items: [{productId, qty, status, addedAt}] }
+    recents: [],
+    settings: { beep: true },
+  };
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) { state = JSON.parse(raw); }
+  } catch (e) { /* storage unavailable */ }
+  if (!state || !state.products) state = freshState();
+  state.tags = state.tags || {};
+  state.settings = state.settings || { beep: true };
+  state.recents = state.recents || [];
+  delete state.history;
+  // Older builds had pulled/short/out/stocked; now an item is either needed or crossed off.
+  if (state.list) for (const i of state.list.items) i.status = ["done", "pulled", "stocked"].includes(i.status) ? "done" : "need";
+}
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch (e) { toast("Couldn't save — storage full or blocked"); }
+}
+function snapshot() { return JSON.stringify(state); }
+function restore(snap) { state = JSON.parse(snap); save(); renderAll(); }
+
+const storeTags = () => (state.tags[state.storeId] = state.tags[state.storeId] || {});
+const productById = id => state.products.find(p => p.id === id);
+function productByBarcode(code) { return state.products.find(p => p.barcodes.includes(code)); }
+function tagForProduct(pid) {
+  const t = storeTags();
+  for (const code in t) if (t[code].productId === pid) return code;
+  return null;
+}
+function pName(p) { return p.flavor ? `${p.brand} ${p.flavor}` : p.brand; }
+function pSub(p) { return `${p.size} · ${p.pack}`; }
+function pFull(p) { return `${pName(p)} — ${pSub(p)}`; }
+
+// ---------- Utilities ----------
+const $ = sel => document.querySelector(sel);
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+function el(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; }
+function initials(brand) {
+  return brand.replace(/[^A-Za-z ]/g, "").split(/\s+/).filter(Boolean).map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
+}
+function thumbHtml(p, lg) {
+  const cls = "thumb" + (lg ? " lg" : "");
+  if (p && p.img) return `<div class="${cls}"><img src="${esc(p.img)}" alt="" loading="lazy" onerror="this.parentNode.textContent='${esc(initials(p.brand))}'"></div>`;
+  const color = (p && BRAND_COLORS[p.brand]) || "var(--thumb-fallback)";
+  return `<div class="${cls}" style="background:${color}">${esc(p ? initials(p.brand) : "?")}</div>`;
+}
+function daysAgo(ts) { return Math.floor((Date.now() - ts) / 86400000); }
+function fmtDate(ts) { return new Date(ts).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); }
+
+function normalizeBarcode(code) {
+  let c = String(code).trim();
+  if (/^\d{13}$/.test(c) && c[0] === "0") c = c.slice(1);   // EAN-13 with leading 0 == UPC-A
+  return c;
+}
+function normalizeTag(code) { return String(code).trim(); }
+
+let toastTimer;
+function toast(msg, undoSnap) {
+  const t = $("#toast");
+  $("#toast-msg").textContent = msg;
+  const u = $("#toast-undo");
+  u.style.display = undoSnap ? "" : "none";
+  u.onclick = () => { if (undoSnap) { restore(undoSnap); toast("Undone"); } };
+  t.style.display = "flex";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (t.style.display = "none"), undoSnap ? 6000 : 2500);
+}
+
+let audioCtx;
+function beep(ok = true) {
+  if (!state.settings.beep) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.frequency.value = ok ? 1200 : 400; g.gain.value = 0.08;
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + (ok ? 0.08 : 0.2));
+  } catch (e) {}
+}
+
+// ---------- Modal layer ----------
+let modalDepth = 0;
+function openLayer(node, { center = false, onClose } = {}) {
+  const ov = el(`<div class="overlay${center ? " center" : ""}"></div>`);
+  ov.appendChild(node);
+  ov.addEventListener("click", e => { if (e.target === ov) close(); });
+  $("#layer").appendChild(ov);
+  modalDepth++;
+  function close() {
+    if (!ov.isConnected) return;
+    ov.remove(); modalDepth--;
+    if (onClose) onClose();
+  }
+  return close;
+}
+function confirmDialog(message, { ok = "Confirm", cancel = "Cancel", danger = false } = {}) {
+  return new Promise(resolve => {
+    const d = el(`<div class="dialog"><p></p><div class="btns">
+      <button class="btn" data-a="no">${esc(cancel)}</button>
+      <button class="btn ${danger ? "danger" : "primary"}" data-a="yes">${esc(ok)}</button></div></div>`);
+    d.querySelector("p").innerHTML = message;
+    let done = false;
+    const close = openLayer(d, { center: true, onClose: () => { if (!done) resolve(false); } });
+    d.querySelector('[data-a="no"]').onclick = () => { done = true; close(); resolve(false); };
+    d.querySelector('[data-a="yes"]').onclick = () => { done = true; close(); resolve(true); };
+  });
+}
+function menu(title, options) {
+  // options: [{label, value, danger}]
+  return new Promise(resolve => {
+    const s = el(`<div class="sheet"><div class="handle"></div><h2></h2><div class="menu-list"></div>
+      <button class="btn block" data-a="cancel">Cancel</button></div>`);
+    s.querySelector("h2").textContent = title;
+    let done = false;
+    const close = openLayer(s, { onClose: () => { if (!done) resolve(null); } });
+    for (const o of options) {
+      const b = el(`<button class="${o.danger ? "danger" : ""}"></button>`);
+      b.textContent = o.label;
+      b.onclick = () => { done = true; close(); resolve(o.value); };
+      s.querySelector(".menu-list").appendChild(b);
+    }
+    s.querySelector('[data-a="cancel"]').onclick = () => { done = true; close(); resolve(null); };
+  });
+}
+
+// ---------- Search ----------
+const ALIASES = {
+  cz: "coke zero", dc: "diet coke", cf: "caffeine free", coke: "coca cola", coca: "coca",
+  "2liter": "2l", "2litre": "2l", pack: "pk", liter: "l", litre: "l", ounce: "oz",
+  bb: "bodyarmor", pwr: "powerade", mm: "minute maid", vw: "vitaminwater",
+};
+function normText(s) {
+  return s.toLowerCase()
+    .replace(/coca[\s-]?cola/g, "coca cola coke")
+    .replace(/diet coke/g, "diet coke coca cola")
+    .replace(/[''`]/g, "")
+    .replace(/(\d)\s*-?\s*(liter|litre|ltr)s?\b/g, "$1l")
+    .replace(/(\d)\s*-?\s*(ounce|ounces)\b/g, "$1oz")
+    .replace(/(\d)\s*-?\s*(oz|l|pk|pack|ct)\b/g, "$1$2")
+    .replace(/(\d+)\s*pack\b/g, "$1pk")
+    .replace(/[^a-z0-9. ]+/g, " ")
+    .replace(/\s+/g, " ").trim();
+}
+function searchText(p) {
+  if (!p._st) Object.defineProperty(p, "_st", { value: normText(`${p.brand} ${p.flavor} ${p.size} ${p.pack} ${p.category}`), writable: true, enumerable: false });
+  return p._st;
+}
+function queryTokens(q) {
+  const toks = [];
+  for (let t of normText(q).split(" ").filter(Boolean)) {
+    const a = ALIASES[t];
+    if (a) toks.push(...a.split(" ")); else toks.push(t.replace(/pack$/, "pk"));
+  }
+  return toks;
+}
+function searchProducts(q, { category = "", includeRetired = false } = {}) {
+  let pool = state.products.filter(p => (includeRetired || !p.retired) && (!category || p.category === category));
+  const toks = queryTokens(q || "");
+  if (!toks.length) return pool;
+  const scored = [];
+  for (const p of pool) {
+    const st = searchText(p);
+    const words = st.split(" ");
+    let hits = 0, prefix = 0, exact = 0;
+    for (const t of toks) {
+      if (st.includes(t)) {
+        hits++;
+        if (words.some(w => w.startsWith(t))) prefix++;
+        if (words.includes(t)) exact++;
+      }
+    }
+    if (hits) scored.push({ p, hits, prefix, exact });
+  }
+  const full = scored.filter(s => s.hits === toks.length);
+  const use = full.length ? full : scored.filter(s => s.hits >= Math.max(1, toks.length - 1));
+  use.sort((a, b) => b.hits - a.hits || b.exact - a.exact || b.prefix - a.prefix);
+  return use.map(s => s.p);
+}
+function bumpRecent(pid) {
+  state.recents = [pid, ...state.recents.filter(x => x !== pid)].slice(0, 12);
+}
+function catSort(a, b) {
+  const ia = CATEGORY_ORDER.indexOf(a), ib = CATEGORY_ORDER.indexOf(b);
+  return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+}
+function allCategories() {
+  return [...new Set(state.products.map(p => p.category))].sort(catSort);
+}
+
+// ---------- Product picker ----------
+function pickProduct({ title = "Pick a product", initialQuery = "" } = {}) {
+  return new Promise(resolve => {
+    const s = el(`<div class="sheet"><div class="handle"></div><h2></h2>
+      <input class="search" type="search" placeholder="Search: e.g. zero 12pk, sprite 2l" autocomplete="off">
+      <div class="chips"></div><div class="results"></div></div>`);
+    s.querySelector("h2").textContent = title;
+    let done = false, cat = "";
+    const close = openLayer(s, { onClose: () => { if (!done) resolve(null); } });
+    const input = s.querySelector("input");
+    input.value = initialQuery;
+    const chips = s.querySelector(".chips");
+    const renderChips = () => {
+      chips.innerHTML = "";
+      for (const c of ["", ...allCategories()]) {
+        const b = el(`<button class="chip${c === cat ? " active" : ""}"></button>`);
+        b.textContent = c || "All";
+        b.onclick = () => { cat = c; renderChips(); renderResults(); };
+        chips.appendChild(b);
+      }
+    };
+    const results = s.querySelector(".results");
+    const choose = pid => { done = true; bumpRecent(pid); save(); close(); resolve(pid); };
+    const renderResults = () => {
+      const q = input.value.trim();
+      results.innerHTML = "";
+      let items;
+      if (!q && !cat && state.recents.length) {
+        const rec = state.recents.map(productById).filter(p => p && !p.retired);
+        if (rec.length) {
+          results.appendChild(el(`<div class="group-h">Recent</div>`));
+          results.appendChild(listOf(rec, choose));
+        }
+        results.appendChild(el(`<div class="group-h">All products</div>`));
+      }
+      items = searchProducts(q, { category: cat });
+      const shown = items.slice(0, 150);
+      if (shown.length) results.appendChild(listOf(shown, choose));
+      if (items.length > shown.length) results.appendChild(el(`<div class="small muted" style="padding:8px">${items.length - shown.length} more — keep typing to narrow down</div>`));
+      if (!items.length) results.appendChild(el(`<div class="empty">No match for “${esc(q)}”</div>`));
+      const add = el(`<button class="btn block">+ Add new product${q ? ` “${esc(q)}”` : ""}</button>`);
+      add.onclick = async () => {
+        const pid = await editProduct(null, { prefillName: q });
+        if (pid) choose(pid);
+      };
+      results.appendChild(add);
+    };
+    input.addEventListener("input", renderResults);
+    renderChips(); renderResults();
+    setTimeout(() => input.focus(), 50);
+  });
+}
+function listOf(products, onTap, extra) {
+  const wrap = el(`<div class="list"></div>`);
+  for (const p of products) {
+    const r = el(`<div class="item tap">${thumbHtml(p)}<div class="grow"><div class="name">${esc(pName(p))}</div>
+      <div class="sub">${esc(pSub(p))}${extra ? extra(p) : ""}</div></div></div>`);
+    r.onclick = () => onTap(p.id);
+    wrap.appendChild(r);
+  }
+  return wrap;
+}
+
+// ---------- Binding logic (strict 1:1 per store for shelf tags) ----------
+async function bindTag(code, pid, { confirm = true } = {}) {
+  const p = productById(pid);
+  const tags = storeTags();
+  const existing = tags[code];
+  const oldCodeForProduct = tagForProduct(pid);
+  if (existing && existing.productId === pid) { existing.lastSeen = Date.now(); save(); return true; }
+  const warnings = [];
+  if (existing) {
+    const other = productById(existing.productId);
+    warnings.push(`This tag is currently linked to <b>${esc(other ? pFull(other) : "a deleted product")}</b>. That product will be left with no tag.`);
+  }
+  if (oldCodeForProduct) warnings.push(`<b>${esc(pName(p))}</b> already has a different tag. The old tag will be unlinked.`);
+  if (confirm) {
+    const ok = await confirmDialog(`Link this shelf tag to<br><b>${esc(pFull(p))}</b>?${warnings.length ? "<br><br>" + warnings.join("<br><br>") : ""}`,
+      { ok: warnings.length ? "Replace" : "Link" });
+    if (!ok) return false;
+  }
+  const snap = snapshot();
+  if (oldCodeForProduct) delete tags[oldCodeForProduct];
+  tags[code] = { productId: pid, created: Date.now(), lastSeen: Date.now() };
+  save(); renderAll();
+  toast(`Tag linked → ${pName(p)} ${p.pack}`, snap);
+  return true;
+}
+async function addBarcodeToProduct(code, pid) {
+  const other = productByBarcode(code);
+  const p = productById(pid);
+  if (other && other.id === pid) return true;
+  if (other) {
+    const ok = await confirmDialog(`This barcode is on <b>${esc(pFull(other))}</b>. Move it to <b>${esc(pFull(p))}</b>?`, { ok: "Move" });
+    if (!ok) return false;
+    other.barcodes = other.barcodes.filter(b => b !== code);
+  }
+  p.barcodes.push(code);
+  save();
+  if (!p.img) fetchOffImage(p, code);
+  return true;
+}
+
+// ---------- Open Food Facts ----------
+async function offLookup(code) {
+  try {
+    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,brands,quantity,image_front_small_url,image_front_url`);
+    if (r.status === 404) return null;           // null = not in the database
+    if (!r.ok) return undefined;                 // undefined = lookup failed
+    const j = await r.json();
+    if (j.status !== 1 || !j.product) return null;
+    return {
+      name: j.product.product_name || "", brand: (j.product.brands || "").split(",")[0].trim(),
+      quantity: j.product.quantity || "", img: j.product.image_front_small_url || j.product.image_front_url || "",
+    };
+  } catch (e) { return undefined; }
+}
+async function fetchOffImage(p, code) {
+  if (!navigator.onLine) return;
+  const info = await offLookup(code);
+  if (info && info.img && !p.img) { p.img = info.img; save(); renderAll(); }
+}
+
+// ---------- Scan handling ----------
+let mode = "count";
+let pending = null;   // { kind: "bindTag", code } | { kind: "tagForProduct", pid } | { kind: "setupTag", code }
+let lastScan = { code: "", at: 0 };
+
+const MODE_HELP = {
+  count: "Scan the shelf tag or barcode where product is missing, then enter how many you need.",
+  setup: "Scan a shelf tag, then the product barcode (or pick the product). It links instantly, no confirm. Repeat down the aisle.",
+};
+function setMode(m) {
+  mode = m;
+  if (pending && pending.kind === "setupTag" && m !== "setup") pending = null;
+  document.querySelectorAll("#mode-seg button").forEach(b => b.classList.toggle("active", b.dataset.mode === m));
+  $("#mode-help").textContent = MODE_HELP[m];
+  renderPending();
+}
+function setPending(p) { pending = p; renderPending(); }
+function renderPending() {
+  const box = $("#pending-banner");
+  box.innerHTML = "";
+  // The photo button says what to shoot next, so Link tags is one tap per step.
+  const label = $("#photo-label");
+  if (label) label.textContent = mode !== "setup" ? "Scan with photo"
+    : pending && pending.kind === "setupTag" ? "Photo the product barcode" : "Photo the shelf tag";
+  if (!pending) return;
+  let msg = "";
+  if (pending.kind === "bindTag") msg = "New tag — now scan the product's barcode";
+  if (pending.kind === "rebindTag") msg = "Scan the correct product's barcode";
+  if (pending.kind === "setupTag") msg = "Tag scanned. Now scan the product barcode, or pick it.";
+  if (pending.kind === "tagForProduct") { const p = productById(pending.pid); msg = `Scan the new shelf tag for ${p ? pName(p) + " " + p.pack : "product"}`; }
+  const b = el(`<div class="banner"><span class="grow"></span>${pending.kind === "setupTag" ? `<button class="btn sm primary" data-a="pick">Pick</button>` : ""}<button class="btn sm" data-a="cancel">Cancel</button></div>`);
+  b.querySelector(".grow").textContent = msg;
+  b.querySelector('[data-a="cancel"]').onclick = () => setPending(null);
+  const pick = b.querySelector('[data-a="pick"]');
+  if (pick) pick.onclick = async () => {
+    const tagCode = pending.code;
+    const pid = await pickProduct({ title: "Which product is this tag for?" });
+    if (pid) setupLink(tagCode, pid);
+  };
+  box.appendChild(b);
+}
+// Link tags mode: link immediately, no confirm (undo is in the toast), then straight back to scanning.
+async function setupLink(tagCode, pid) {
+  setPending(null);
+  await bindTag(tagCode, pid, { confirm: false });
+  beep(true);
+}
+
+function onDecoded(text, formatName) {
+  if (modalDepth > 0) return;                    // ignore scans while a sheet is open
+  const now = Date.now();
+  if (text === lastScan.code && now - lastScan.at < 2500) return;
+  lastScan = { code: text, at: now };
+  const twoD = /QR|DATA_MATRIX|AZTEC|PDF_417/.test(formatName || "");
+  handleCode(text, twoD ? "tag" : "barcode", formatName);
+}
+
+async function handleCode(raw, kind, formatName) {
+  const code = kind === "tag" ? normalizeTag(raw) : normalizeBarcode(raw);
+  $("#last-scan").textContent = `${kind === "tag" ? "Shelf tag" : "Barcode"}${formatName ? " (" + formatName + ")" : ""}: ${code}`;
+  beep(true);
+  if (kind === "tag") return handleTag(code);
+  return handleBarcode(code);
+}
+
+async function handleTag(code) {
+  const tags = storeTags();
+  const known = tags[code];
+
+  if (pending && pending.kind === "tagForProduct") {
+    const pid = pending.pid; setPending(null);
+    await bindTag(code, pid);
+    return;
+  }
+  if (mode === "setup") {
+    setPending({ kind: "setupTag", code });
+    if (known) { const p = productById(known.productId); toast(`Currently: ${p ? pName(p) + " " + p.pack : "?"}`); }
+    return;
+  }
+  if (known) {
+    known.lastSeen = Date.now(); save();
+    const p = productById(known.productId);
+    if (!p) { delete tags[code]; save(); return handleTag(code); }
+    return productSheet(p.id, { tagCode: code });
+  }
+  // Unknown tag
+  const choice = await menu("Unknown shelf tag", [
+    { label: "Scan the product barcode", value: "scan" },
+    { label: "Pick from product list", value: "pick" },
+  ]);
+  if (choice === "scan") setPending({ kind: "bindTag", code });
+  if (choice === "pick") {
+    const pid = await pickProduct({ title: "Which product is this tag for?" });
+    if (pid && await bindTag(code, pid) && mode === "count") productSheet(pid, { tagCode: code });
+  }
+}
+
+async function handleBarcode(code) {
+  let p = productByBarcode(code);
+
+  if (pending && (pending.kind === "bindTag" || pending.kind === "rebindTag" || pending.kind === "setupTag")) {
+    const tagCode = pending.code, wasKind = pending.kind;
+    if (wasKind === "setupTag") {
+      if (!p) {
+        // Unknown barcode: go straight to the product search, learn the barcode, link the tag.
+        const pid = await pickProduct({ title: "Which product is this barcode?" });
+        if (!pid || !(await addBarcodeToProduct(code, pid))) return;
+        p = productById(pid);
+      }
+      return setupLink(tagCode, p.id);
+    }
+    if (!p) {
+      const pid = await resolveUnknownBarcode(code, "Which product is this barcode?");
+      if (!pid) return;
+      p = productById(pid);
+    }
+    setPending(null);
+    const ok = await bindTag(tagCode, p.id);
+    if (ok && mode === "count") productSheet(p.id, { tagCode });
+    return;
+  }
+  if (pending && pending.kind === "tagForProduct") { toast("That's a barcode — scan the shelf tag QR"); beep(false); return; }
+  if (mode === "setup") { toast("Scan a shelf tag first, then the product"); beep(false); return; }
+
+  if (!p) {
+    const pid = await resolveUnknownBarcode(code);
+    if (!pid) return;
+    p = productById(pid);
+  }
+  productSheet(p.id);
+}
+
+// Unknown barcode → look up on Open Food Facts, then pick existing or add new.
+async function resolveUnknownBarcode(code, title = "Unknown barcode") {
+  const s = el(`<div class="sheet"><div class="handle"></div><h2></h2>
+    <div class="small muted" style="word-break:break-all">Barcode ${esc(code)}</div>
+    <div class="card" style="margin-top:10px" id="off-box"><span class="muted small">Looking up online…</span></div>
+    <button class="btn primary block" data-a="pick">Pick existing product</button>
+    <button class="btn block" data-a="new">Add as new product</button>
+    <button class="btn block" data-a="cancel">Cancel</button></div>`);
+  s.querySelector("h2").textContent = title;
+  return new Promise(resolve => {
+    let done = false, info = null;
+    const close = openLayer(s, { onClose: () => { if (!done) resolve(null); } });
+    const box = s.querySelector("#off-box");
+    (navigator.onLine ? offLookup(code) : Promise.resolve(undefined)).then(r => {
+      info = r;
+      if (!box.isConnected) return;
+      box.innerHTML = r
+        ? `<div class="row">${r.img ? `<div class="thumb lg"><img src="${esc(r.img)}" alt=""></div>` : ""}<div class="grow">
+             <div class="name" style="font-weight:600">${esc(r.name || "(no name)")}</div>
+             <div class="small muted">${esc([r.brand, r.quantity].filter(Boolean).join(" · "))}</div>
+             <div class="small muted">from Open Food Facts</div></div></div>`
+        : `<span class="muted small">${r === null ? "Not found online." : "Online lookup unavailable."} Pick the product or add it.</span>`;
+    });
+    const finish = async pid => {
+      if (!pid) return;
+      if (!(await addBarcodeToProduct(code, pid))) return;
+      const p = productById(pid);
+      if (info && info.img && !p.img) { p.img = info.img; save(); }
+      done = true; close(); renderAll(); resolve(pid);
+    };
+    s.querySelector('[data-a="pick"]').onclick = async () => {
+      finish(await pickProduct({ title: "Which product is this barcode?" }));
+    };
+    s.querySelector('[data-a="new"]').onclick = async () => {
+      finish(await editProduct(null, { barcode: code, off: info }));
+    };
+    s.querySelector('[data-a="cancel"]').onclick = () => { done = true; close(); resolve(null); };
+  });
+}
+
+
+// ---------- Product sheet (floor: set qty) ----------
+function productSheet(pid, { tagCode = null } = {}) {
+  const p = productById(pid);
+  ensureList();
+  const existing = state.list.items.find(i => i.productId === pid);
+  const s = el(`<div class="sheet"><div class="handle"></div>
+    <div class="row">${thumbHtml(p, true)}<div class="grow"><h2 style="margin:0">${esc(pName(p))}</h2>
+      <div class="muted">${esc(pSub(p))}</div><div class="small muted">${esc(p.category)}</div></div></div>
+    ${existing ? `<div class="banner" style="margin-top:12px">Already on list: ${existing.qty} ${esc(p.unit)}${existing.qty === 1 ? "" : "s"} — this adds more</div>` : ""}
+    <label class="f" style="margin-top:14px">How many ${esc(p.unit)}s do you need?</label>
+    <div class="qty"><button data-a="minus">−</button><input type="number" inputmode="numeric" min="1" value="1"><button data-a="plus">+</button>
+      <span class="muted">${esc(p.unit)}s</span></div>
+    <button class="btn primary block" data-a="add" style="margin-top:14px">Add to list</button>
+    ${tagCode ? `<button class="btn block" data-a="wrong">Wrong product? Change</button>` : ""}
+    <button class="btn block" data-a="cancel">Cancel</button></div>`);
+  const close = openLayer(s);
+  const input = s.querySelector("input");
+  s.querySelector('[data-a="minus"]').onclick = () => (input.value = Math.max(1, (+input.value || 1) - 1));
+  s.querySelector('[data-a="plus"]').onclick = () => (input.value = (+input.value || 0) + 1);
+  s.querySelector('[data-a="add"]').onclick = () => {
+    const n = Math.max(1, Math.floor(+input.value || 1));
+    const snap = snapshot();
+    if (existing) { existing.qty += n; existing.status = "need"; }
+    else state.list.items.push({ productId: pid, qty: n, status: "need", addedAt: Date.now() });
+    bumpRecent(pid);
+    save(); close(); renderAll();
+    toast(`Added ${n} × ${pName(p)} ${p.pack}`, snap);
+  };
+  s.querySelector('[data-a="cancel"]').onclick = close;
+  if (tagCode) s.querySelector('[data-a="wrong"]').onclick = async () => {
+    close();
+    const how = await menu("Change this tag's product", [
+      { label: "Scan the correct product's barcode", value: "scan" },
+      { label: "Pick from product list", value: "pick" },
+    ]);
+    if (how === "scan") setPending({ kind: "rebindTag", code: tagCode });
+    if (how === "pick") {
+      const np = await pickProduct({ title: "Which product is this tag for?" });
+      if (np && await bindTag(tagCode, np)) productSheet(np, { tagCode });
+    }
+  };
+}
+
+function ensureList() {
+  if (!state.list || state.list.storeId !== state.storeId) {
+    state.list = { storeId: state.storeId, started: Date.now(), items: [] };
+  }
+}
+
+// ---------- Add / edit product ----------
+function editProduct(pid, { prefillName = "", barcode = "", off = null } = {}) {
+  const isNew = !pid;
+  const p = isNew
+    ? { id: "", brand: "", flavor: "", size: "", pack: "Single", category: "12oz Cans", unit: "pack", barcodes: barcode ? [barcode] : [], img: "", custom: true, retired: false }
+    : JSON.parse(JSON.stringify(productById(pid)));
+  if (isNew && off) {
+    p.brand = off.brand || "";
+    p.flavor = off.name && off.brand ? off.name.replace(new RegExp(off.brand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), "").trim() : (off.name || "");
+    p.size = off.quantity || "";
+    p.img = off.img || "";
+  } else if (isNew && prefillName) {
+    // "sprite chill" → brand Sprite, flavor chill
+    const brand = [...new Set(state.products.map(x => x.brand))].sort((a, b) => b.length - a.length)
+      .find(b => prefillName.toLowerCase().startsWith(b.toLowerCase()));
+    if (brand) { p.brand = brand; p.flavor = prefillName.slice(brand.length).trim(); }
+    else p.flavor = prefillName;
+  }
+  const cats = allCategories();
+  return new Promise(resolve => {
+    const s = el(`<div class="sheet"><div class="handle"></div><h2>${isNew ? "Add product" : "Edit product"}</h2>
+      <div class="row"><div id="ep-thumb"></div><div class="grow">
+        <label class="btn sm" style="display:inline-block">📷 Photo<input type="file" accept="image/*" capture="environment" hidden></label>
+        <button class="btn sm" data-a="clearimg">Remove photo</button></div></div>
+      <label class="f">Brand</label><input class="text" data-k="brand" list="dl-brands" placeholder="e.g. Coca-Cola">
+      <label class="f">Flavor / variety</label><input class="text" data-k="flavor" placeholder="e.g. Zero Sugar">
+      <label class="f">Size</label><input class="text" data-k="size" placeholder="e.g. 12oz can, 2L bottle">
+      <label class="f">Pack</label><input class="text" data-k="pack" placeholder="e.g. 12pk, Single">
+      <label class="f">Category (list group)</label><input class="text" data-k="category" list="dl-cats">
+      <label class="f">Count by (shipping unit)</label><input class="text" data-k="unit" list="dl-units" placeholder="pack, case, tray, bottle">
+      <label class="f">Barcodes</label><div id="ep-codes" class="small"></div>
+      <button class="btn sm" data-a="lookup" style="margin-top:6px">Look up first barcode online</button>
+      <datalist id="dl-brands">${[...new Set(state.products.map(x => x.brand))].map(b => `<option value="${esc(b)}">`).join("")}</datalist>
+      <datalist id="dl-cats">${cats.map(c => `<option value="${esc(c)}">`).join("")}</datalist>
+      <datalist id="dl-units"><option value="pack"><option value="case"><option value="tray"><option value="bottle"><option value="can"></datalist>
+      <button class="btn primary block" data-a="save" style="margin-top:16px">${isNew ? "Add product" : "Save"}</button>
+      ${isNew ? "" : `<button class="btn block" data-a="retire">${p.retired ? "Un-retire (show in lists)" : "Retire (hide from lists)"}</button>`}
+      ${!isNew && p.custom ? `<button class="btn block danger" data-a="delete">Delete product</button>` : ""}
+      <button class="btn block" data-a="cancel">Cancel</button></div>`);
+    let done = false;
+    const close = openLayer(s, { onClose: () => { if (!done) resolve(null); } });
+    s.querySelectorAll("[data-k]").forEach(inp => (inp.value = p[inp.dataset.k] || ""));
+    const readForm = () => s.querySelectorAll("[data-k]").forEach(inp => (p[inp.dataset.k] = inp.value.trim()));
+    const renderThumb = () => (s.querySelector("#ep-thumb").innerHTML = thumbHtml({ ...p, brand: p.brand || "?" }, true));
+    const renderCodes = () => {
+      const box = s.querySelector("#ep-codes");
+      box.innerHTML = p.barcodes.length ? "" : `<span class="muted">None yet — they're learned when you scan.</span>`;
+      p.barcodes.forEach((c, i) => {
+        const r = el(`<div class="row" style="margin:4px 0"><code class="grow">${esc(c)}</code><button class="btn sm danger">Remove</button></div>`);
+        r.querySelector("button").onclick = () => { p.barcodes.splice(i, 1); renderCodes(); };
+        box.appendChild(r);
+      });
+    };
+    renderThumb(); renderCodes();
+    s.querySelector('input[type="file"]').onchange = async e => {
+      const f = e.target.files[0]; if (!f) return;
+      p.img = await shrinkImage(f, 240); renderThumb();
+    };
+    s.querySelector('[data-a="clearimg"]').onclick = () => { p.img = ""; renderThumb(); };
+    s.querySelector('[data-a="lookup"]').onclick = async () => {
+      if (!p.barcodes[0]) return toast("No barcode on this product yet");
+      toast("Looking up…");
+      const info = await offLookup(p.barcodes[0]);
+      if (!info) return toast("Not found on Open Food Facts");
+      if (info.img) { p.img = info.img; renderThumb(); }
+      toast(`Found: ${info.name || "(no name)"}${info.img ? " — image added" : ""}`);
+    };
+    s.querySelector('[data-a="save"]').onclick = async () => {
+      readForm();
+      if (!p.brand) return toast("Brand is required");
+      if (!p.category) p.category = "Other";
+      if (!p.unit) p.unit = "pack";
+      // Duplicate checks
+      const dupName = state.products.find(x => x.id !== p.id && normText(pFull(x)) === normText(pFull(p)));
+      if (dupName) {
+        const use = await confirmDialog(`<b>${esc(pFull(dupName))}</b> already exists. Use that one instead?`, { ok: "Use existing", cancel: "Keep editing" });
+        if (use) { done = true; close(); resolve(dupName.id); }
+        return;
+      }
+      for (const c of p.barcodes) {
+        const other = state.products.find(x => x.id !== p.id && x.barcodes.includes(c));
+        if (other) {
+          const ok = await confirmDialog(`Barcode ${esc(c)} is on <b>${esc(pFull(other))}</b>. Move it here?`, { ok: "Move" });
+          if (!ok) return;
+          other.barcodes = other.barcodes.filter(b => b !== c);
+        }
+      }
+      const snap = snapshot();
+      if (isNew) {
+        let id = slug(pFull(p)) || "product", n = 2;
+        while (productById(id)) id = slug(pFull(p)) + "-" + n++;
+        p.id = id;
+        state.products.push(p);
+      } else {
+        const i = state.products.findIndex(x => x.id === p.id);
+        state.products[i] = p;
+      }
+      p._st = undefined;
+      save(); done = true; close(); renderAll();
+      toast(isNew ? `Added ${pName(p)}` : "Saved", snap);
+      resolve(p.id);
+    };
+    const retireBtn = s.querySelector('[data-a="retire"]');
+    if (retireBtn) retireBtn.onclick = () => {
+      const snap = snapshot();
+      const real = productById(p.id); real.retired = !real.retired;
+      save(); done = true; close(); renderAll();
+      toast(real.retired ? "Retired" : "Restored", snap); resolve(p.id);
+    };
+    const delBtn = s.querySelector('[data-a="delete"]');
+    if (delBtn) delBtn.onclick = async () => {
+      if (!(await confirmDialog(`Delete <b>${esc(pFull(p))}</b>? Its shelf tags will be unlinked.`, { ok: "Delete", danger: true }))) return;
+      const snap = snapshot();
+      state.products = state.products.filter(x => x.id !== p.id);
+      for (const sid in state.tags) for (const c in state.tags[sid]) if (state.tags[sid][c].productId === p.id) delete state.tags[sid][c];
+      if (state.list) state.list.items = state.list.items.filter(i => i.productId !== p.id);
+      save(); done = true; close(); renderAll(); toast("Deleted", snap); resolve(null);
+    };
+    s.querySelector('[data-a="cancel"]').onclick = () => { done = true; close(); resolve(null); };
+  });
+}
+function shrinkImage(file, max) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src);
+      resolve(c.toDataURL("image/jpeg", 0.75));
+    };
+    img.onerror = () => resolve("");
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+// ---------- Views ----------
+let view = "scan";
+function showView(v) {
+  view = v;
+  document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.id === "view-" + v));
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.view === v));
+  if (v !== "scan") stopCamera();
+  renderAll();
+  window.scrollTo(0, 0);
+}
+
+function renderAll() {
+  $("#hdr-store").textContent = state.storeName ? "Store " + state.storeName : "";
+  const need = state.list ? state.list.items.filter(i => i.status !== "done").length : 0;
+  const badge = $("#list-badge");
+  badge.style.display = need ? "" : "none"; badge.textContent = need;
+  if (view === "list") renderList();
+  if (view === "products") renderProducts();
+  if (view === "tags") renderTags();
+  if (view === "more") renderMore();
+}
+
+// Pull list
+let hideDone = false;
+function renderList() {
+  const v = $("#view-list");
+  v.innerHTML = "";
+  const items = state.list ? state.list.items : [];
+  if (!items.length) {
+    v.appendChild(el(`<div class="empty"><div style="font-size:40px">☰</div><p>Your list is empty.</p><p class="small">Scan a shelf tag or barcode to add what you need.</p></div>`));
+    return;
+  }
+  const left = items.filter(i => i.status !== "done").length;
+  const bar = el(`<div class="row" style="margin-bottom:4px"><span class="small muted grow">${left} of ${items.length} item${items.length === 1 ? "" : "s"} left</span>
+    <button class="btn sm">${hideDone ? "Show all" : "Hide crossed off"}</button></div>`);
+  bar.querySelector("button").onclick = () => { hideDone = !hideDone; renderList(); };
+  v.appendChild(bar);
+
+  const groups = {};
+  for (const it of items) {
+    const p = productById(it.productId); if (!p) continue;
+    if (hideDone && it.status === "done") continue;
+    (groups[p.category] = groups[p.category] || []).push({ it, p });
+  }
+  for (const cat of Object.keys(groups).sort(catSort)) {
+    v.appendChild(el(`<div class="group-h">${esc(cat)}</div>`));
+    const list = el(`<div class="list"></div>`);
+    groups[cat].sort((a, b) => pName(a.p).localeCompare(pName(b.p)));
+    for (const { it, p } of groups[cat]) {
+      const done = it.status === "done";
+      const r = el(`<div class="item tap${done ? " done" : ""}">
+        <button class="check${done ? " on" : ""}" aria-label="Cross off">${done ? "✓" : ""}</button>
+        ${thumbHtml(p)}
+        <div class="grow"><div class="name">${esc(pName(p))}</div><div class="sub">${esc(pSub(p))}</div></div>
+        <button class="qty-tap" data-a="qty" aria-label="Change quantity"><b>${it.qty}</b><span class="small muted">${esc(p.unit)}${it.qty === 1 ? "" : "s"}</span></button>
+        <button class="btn sm" data-a="more" aria-label="More">⋯</button></div>`);
+      // Tapping the row (or the circle) crosses it off; purely a reminder, no counting.
+      r.onclick = e => {
+        if (e.target.closest("[data-a]")) return;
+        it.status = done ? "need" : "done";
+        save(); renderAll();
+      };
+      r.querySelector('[data-a="qty"]').onclick = () => editQty(it, p);
+      r.querySelector('[data-a="more"]').onclick = () => listItemMenu(it, p);
+      list.appendChild(r);
+    }
+    v.appendChild(list);
+  }
+  const clr = el(`<button class="btn block danger" style="margin-top:16px">Clear list</button>`);
+  clr.onclick = clearList;
+  v.appendChild(clr);
+}
+function editQty(it, p) {
+  const snap = snapshot();
+  const s = el(`<div class="dialog"><p><b>${esc(pName(p))}</b><br><span class="muted">${esc(pSub(p))}</span></p>
+    <div class="qty" style="justify-content:center"><button data-a="m">−</button><input type="number" inputmode="numeric" value="${it.qty}"><button data-a="p">+</button></div>
+    <div class="btns" style="margin-top:14px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="s">Save</button></div></div>`);
+  const close = openLayer(s, { center: true });
+  const inp = s.querySelector("input");
+  s.querySelector('[data-a="m"]').onclick = () => (inp.value = Math.max(1, (+inp.value || 1) - 1));
+  s.querySelector('[data-a="p"]').onclick = () => (inp.value = (+inp.value || 0) + 1);
+  s.querySelector('[data-a="c"]').onclick = close;
+  s.querySelector('[data-a="s"]').onclick = () => { it.qty = Math.max(1, Math.floor(+inp.value || 1)); save(); close(); renderAll(); toast("Quantity updated", snap); };
+}
+async function listItemMenu(it, p) {
+  const choice = await menu(`${pName(p)} — ${p.pack}`, [
+    { label: "Change quantity", value: "qty" },
+    { label: "Remove from list", value: "remove", danger: true },
+  ]);
+  if (choice === "qty") return editQty(it, p);
+  if (choice === "remove") {
+    const snap = snapshot();
+    state.list.items = state.list.items.filter(x => x !== it);
+    save(); renderAll(); toast("Removed", snap);
+  }
+}
+async function clearList() {
+  if (!(await confirmDialog("Clear the whole list?", { ok: "Clear list", danger: true }))) return;
+  const snap = snapshot();
+  state.list = null;
+  save(); renderAll(); toast("List cleared", snap);
+}
+
+// Products
+let prodQuery = "", prodCat = "";
+function renderProducts() {
+  const v = $("#view-products");
+  if (!v.querySelector(".search")) {
+    v.innerHTML = `<div class="row"><input class="search grow" type="search" placeholder="Search products" autocomplete="off">
+      <button class="btn primary" data-a="add">+ Add</button></div><div class="chips"></div>
+      <div class="small muted" id="prod-count" style="margin:2px 4px 8px"></div><div id="prod-results"></div>`;
+    v.querySelector(".search").addEventListener("input", e => { prodQuery = e.target.value; renderProductResults(); });
+    v.querySelector('[data-a="add"]').onclick = () => editProduct(null, { prefillName: prodQuery });
+  }
+  const chips = v.querySelector(".chips");
+  chips.innerHTML = "";
+  for (const c of ["", ...allCategories(), "Retired"]) {
+    const b = el(`<button class="chip${c === prodCat ? " active" : ""}"></button>`);
+    b.textContent = c || "All";
+    b.onclick = () => { prodCat = c; renderProducts(); };
+    chips.appendChild(b);
+  }
+  renderProductResults();
+}
+function renderProductResults() {
+  const v = $("#view-products");
+  let items = prodCat === "Retired"
+    ? searchProducts(prodQuery, { includeRetired: true }).filter(p => p.retired)
+    : searchProducts(prodQuery, { category: prodCat });
+  if (!prodQuery) items = [...items].sort((a, b) => catSort(a.category, b.category) || pName(a).localeCompare(pName(b)));
+  v.querySelector("#prod-count").textContent = `${items.length} product${items.length === 1 ? "" : "s"}`;
+  const box = v.querySelector("#prod-results");
+  box.innerHTML = "";
+  const shown = items.slice(0, 200);
+  if (shown.length) box.appendChild(listOf(shown, pid => editProduct(pid), p =>
+    (p.barcodes.length ? " · ▮▯ " + p.barcodes.length : "") + (tagForProduct(p.id) ? " · tagged" : "") + (p.custom ? " · custom" : "")));
+  else box.appendChild(el(`<div class="empty">No products match.</div>`));
+  if (items.length > shown.length) box.appendChild(el(`<div class="small muted" style="padding:8px">${items.length - shown.length} more — search to narrow down</div>`));
+}
+
+// Tags
+let tagFilter = "all", tagQuery = "";
+function renderTags() {
+  const v = $("#view-tags");
+  if (!v.querySelector(".search")) {
+    v.innerHTML = `<input class="search" type="search" placeholder="Search products" autocomplete="off">
+      <div class="seg" style="margin-top:10px" id="tag-seg">
+        <button data-f="all">All</button><button data-f="tagged">Tagged</button><button data-f="none">No tag</button><button data-f="stale">Stale</button></div>
+      <div class="small muted" id="tag-count" style="margin:0 4px 8px"></div><div id="tag-results"></div>`;
+    v.querySelector(".search").addEventListener("input", e => { tagQuery = e.target.value; renderTagResults(); });
+    v.querySelectorAll("#tag-seg button").forEach(b => (b.onclick = () => { tagFilter = b.dataset.f; renderTagResults(); }));
+  }
+  renderTagResults();
+}
+function renderTagResults() {
+  const v = $("#view-tags");
+  v.querySelectorAll("#tag-seg button").forEach(b => b.classList.toggle("active", b.dataset.f === tagFilter));
+  const tags = storeTags();
+  const byProduct = {};
+  for (const c in tags) byProduct[tags[c].productId] = { code: c, ...tags[c] };
+  let items = searchProducts(tagQuery);
+  const isStale = t => t && daysAgo(t.lastSeen) > STALE_DAYS;
+  if (tagFilter === "tagged") items = items.filter(p => byProduct[p.id]);
+  if (tagFilter === "none") items = items.filter(p => !byProduct[p.id]);
+  if (tagFilter === "stale") items = items.filter(p => isStale(byProduct[p.id]));
+  if (!tagQuery) items = [...items].sort((a, b) => catSort(a.category, b.category) || pName(a).localeCompare(pName(b)));
+  const nTagged = Object.keys(tags).length;
+  v.querySelector("#tag-count").textContent = `${items.length} shown · ${nTagged} tag${nTagged === 1 ? "" : "s"} linked at this store`;
+  const box = v.querySelector("#tag-results");
+  box.innerHTML = "";
+  const list = el(`<div class="list"></div>`);
+  for (const p of items.slice(0, 200)) {
+    const t = byProduct[p.id];
+    const status = t
+      ? `<span class="pill pulled">TAGGED</span>${isStale(t) ? ` <span class="pill stale">STALE</span>` : ""}<div class="small muted">seen ${daysAgo(t.lastSeen) === 0 ? "today" : daysAgo(t.lastSeen) + "d ago"}</div>`
+      : `<span class="pill">NO TAG</span>`;
+    const r = el(`<div class="item tap">${thumbHtml(p)}<div class="grow"><div class="name">${esc(pName(p))}</div><div class="sub">${esc(pSub(p))}</div></div>
+      <div style="text-align:right">${status}</div></div>`);
+    r.onclick = () => tagMenu(p, t);
+    list.appendChild(r);
+  }
+  if (items.length) box.appendChild(list); else box.appendChild(el(`<div class="empty">Nothing here.</div>`));
+}
+async function tagMenu(p, t) {
+  const opts = [{ label: t ? "Scan a new tag (replace)" : "Scan its shelf tag", value: "scan" }];
+  if (t) opts.push({ label: "Show tag code", value: "show" }, { label: "Unlink tag", value: "unlink", danger: true });
+  const c = await menu(`${pName(p)} — ${p.pack}`, opts);
+  if (c === "scan") { setMode("count"); setPending({ kind: "tagForProduct", pid: p.id }); showView("scan"); startCamera(); }
+  if (c === "show") confirmDialog(`<code style="word-break:break-all">${esc(t.code)}</code><br><br><span class="small muted">Linked ${fmtDate(t.created)} · last seen ${fmtDate(t.lastSeen)}</span>`, { ok: "OK", cancel: "Close" });
+  if (c === "unlink") {
+    const snap = snapshot();
+    delete storeTags()[t.code]; save(); renderAll(); toast("Tag unlinked", snap);
+  }
+}
+
+// More
+function renderMore() {
+  const v = $("#view-more");
+  v.innerHTML = `
+    <div class="card"><label class="f" style="margin-top:0">Store number / name</label>
+      <input class="text" id="store-name" placeholder="e.g. 1234" value="${esc(state.storeName)}">
+      <div class="small muted" style="margin-top:6px">Alpha works with one store. Tags are saved per store so more can be added later.</div></div>
+    <div class="card"><div class="row"><div class="grow">Scan beep</div><input type="checkbox" id="beep" ${state.settings.beep ? "checked" : ""} style="width:22px;height:22px"></div></div>
+    <div class="card"><b>Backup</b><div class="small muted">Everything lives on this phone only. Export a backup now and then.</div>
+      <button class="btn block" id="btn-export">Copy backup</button>
+      <div class="small muted" style="margin-top:6px">Paste it into a note or email to yourself. To restore, paste it below.</div>
+      <textarea class="text" id="backup-text" rows="3" placeholder="Paste a backup here to restore" style="width:100%;margin-top:8px;font:12px monospace;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--card);color:var(--text)"></textarea>
+      <button class="btn block" id="btn-restore">Restore from pasted backup</button>
+      <label class="btn block" style="text-align:center">Restore from backup file<input type="file" accept="application/json,.json,text/plain" id="imp" hidden></label></div>
+    <div class="card small muted">Product images and barcode lookups from <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (CC-BY-SA).
+      Starter product list is a draft — verify against your order guide.</div>
+    <button class="btn block danger" id="btn-reset">Reset all data</button>
+    <div class="small muted" style="text-align:center;margin:12px 0">Shelf Scan alpha · ${state.products.length} products</div>`;
+  v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
+  v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
+  v.querySelector("#btn-export").onclick = exportBackup;
+  v.querySelector("#imp").onchange = async e => {
+    const f = e.target.files[0]; e.target.value = "";
+    if (f) restoreBackupText(await f.text());
+  };
+  v.querySelector("#btn-restore").onclick = () => restoreBackupText(v.querySelector("#backup-text").value);
+  v.querySelector("#btn-reset").onclick = async () => {
+    if (!(await confirmDialog("Erase all tags, the list and custom products on this phone?", { ok: "Erase everything", danger: true }))) return;
+    const snap = snapshot(); state = freshState(); save(); renderAll(); toast("Reset", snap);
+  };
+}
+function exportBackup() {
+  const text = JSON.stringify(state);
+  const box = $("#backup-text");
+  const fallback = () => { box.value = text; box.focus(); box.select(); toast("Backup is in the box below. Select all and copy it."); };
+  try {
+    navigator.clipboard.writeText(text).then(() => toast("Backup copied"), fallback);
+  } catch (e) { fallback(); }
+}
+async function restoreBackupText(text) {
+  let data;
+  try { data = JSON.parse(text); } catch (e) { data = null; }
+  if (!data || !data.products || !data.tags) { toast("That isn't a Shelf Scan backup"); return; }
+  if (!(await confirmDialog("Replace everything on this phone with the backup?", { ok: "Replace", danger: true }))) return;
+  const snap = snapshot(); state = data; save(); renderAll(); toast("Backup restored", snap);
+}
+
+// ---------- Camera ----------
+let scanner = null, camOn = false;
+async function startCamera() {
+  $("#cam-error").textContent = "";
+  if (camOn) return;
+  if (!window.Html5Qrcode) { $("#cam-error").textContent = "Scanner library didn't load (offline on first run?). Use “Type a code” below."; return; }
+  try {
+    scanner = scanner || new Html5Qrcode("reader", { verbose: false, formatsToSupport: scanFormats(),
+      experimentalFeatures: { useBarCodeDetectorIfSupported: true } });
+    $("#cam-placeholder").style.display = "none";
+    await scanner.start({ facingMode: "environment" },
+      { fps: 12, qrbox: (w, h) => ({ width: Math.floor(w * 0.8), height: Math.floor(Math.min(h * 0.6, w * 0.6)) }) },
+      (text, result) => onDecoded(text, result && result.result && result.result.format && result.result.format.formatName),
+      () => {});
+    camOn = true;
+    $("#btn-cam-stop").style.display = "";
+  } catch (err) {
+    $("#cam-placeholder").style.display = "";
+    $("#cam-error").textContent = "Live camera isn't available here. Use “Scan with photo” above." +
+      (location.protocol !== "https:" ? " (Live camera needs an https:// address.)" : "");
+  }
+}
+async function stopCamera() {
+  if (!camOn || !scanner) return;
+  try { await scanner.stop(); } catch (e) {}
+  camOn = false;
+  $("#cam-placeholder").style.display = "";
+  $("#btn-cam-stop").style.display = "none";
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden) stopCamera(); });
+
+// Scan from a photo (works where live camera is blocked, e.g. the claude.ai page).
+let photoScanner = null;
+function scanFormats() {
+  const F = window.Html5QrcodeSupportedFormats;
+  return F ? [F.QR_CODE, F.DATA_MATRIX, F.UPC_A, F.UPC_E, F.EAN_13, F.EAN_8, F.CODE_128, F.ITF] : undefined;
+}
+function downscale(file, max) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      if (k === 1) { URL.revokeObjectURL(img.src); return resolve(file); }
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src);
+      c.toBlob(b => resolve(b ? new File([b], "scan.jpg", { type: "image/jpeg" }) : file), "image/jpeg", 0.92);
+    };
+    img.onerror = () => resolve(file);
+    img.src = URL.createObjectURL(file);
+  });
+}
+async function scanPhoto(file) {
+  const status = $("#photo-status");
+  if (!window.Html5Qrcode) { status.textContent = "Scanner didn't load. Check your signal and reload the page."; return; }
+  status.textContent = "Reading code…";
+  photoScanner = photoScanner || new Html5Qrcode("photo-reader", { verbose: false, formatsToSupport: scanFormats() });
+  // Try a normal size first, then full resolution for small or distant codes.
+  for (const max of [1600, 3000]) {
+    try {
+      const f = await downscale(file, max);
+      const r = photoScanner.scanFileV2 ? await photoScanner.scanFileV2(f, false) : { decodedText: await photoScanner.scanFile(f, false) };
+      const fmt = r && r.result && r.result.format && r.result.format.formatName;
+      status.textContent = "Snap the shelf tag QR or the product barcode, close up and in focus.";
+      lastScan = { code: "", at: 0 };
+      onDecoded(r.decodedText, fmt);
+      return;
+    } catch (e) { /* try next size */ }
+  }
+  beep(false);
+  status.textContent = "No code found. Get closer, fill the frame with the code, and avoid glare.";
+}
+$("#photo-input").addEventListener("change", e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if (f) scanPhoto(f);
+});
+
+// ---------- Wire up ----------
+load();
+document.querySelectorAll("#tabs button").forEach(b => (b.onclick = () => showView(b.dataset.view)));
+document.querySelectorAll("#mode-seg button").forEach(b => (b.onclick = () => {
+  setMode(b.dataset.mode);
+  if (b.dataset.mode === "setup") startCamera();   // Link tags opens straight into the live camera where allowed
+}));
+$("#btn-cam-start").onclick = startCamera;
+$("#btn-cam-stop").onclick = stopCamera;
+$("#btn-pick-manual").onclick = async () => {
+  const pid = await pickProduct({ title: "Add which product?" });
+  if (!pid) return;
+  productSheet(pid);
+};
+$("#btn-manual-go").onclick = () => {
+  const v = $("#manual-code").value.trim(); if (!v) return;
+  handleCode(v, $("#manual-kind").value, "typed");
+  $("#manual-code").value = "";
+};
+$("#manual-code").addEventListener("keydown", e => { if (e.key === "Enter") $("#btn-manual-go").click(); });
+setMode("count");
+renderAll();
+save();
+
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>
