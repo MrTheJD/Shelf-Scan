@@ -290,6 +290,9 @@ nav.tabs { isolation: isolate; }   /* stays position: fixed (set above); fixed a
 .seg.has-ind button.active { background: none; box-shadow: none; }
 nav.tabs.has-ind::before { top: 4px; height: 50px; background: var(--chip); border-radius: 18px; }
 .seg.no-anim::before, nav.tabs.no-anim::before { transition: none; }
+/* While the keyboard is open, the tab bar gets out of the way (like native iOS apps) instead of riding on top of it. */
+nav.tabs { transition: transform .35s var(--ease-out), visibility 0s; }
+body.kb-open nav.tabs { transform: translateY(110%); visibility: hidden; transition: transform .2s ease, visibility 0s .2s; }
 /* Every tab keeps the same icon and label position; the active one is shown by color and the pill only. */
 nav.tabs button { height: 54px; justify-content: center; line-height: 1.2; }
 nav.tabs button svg.i { display: block; transform: none; }
@@ -1024,6 +1027,20 @@ function syncAllIndicators(animate = true) {
   document.querySelectorAll(".seg, nav.tabs").forEach(c => syncIndicator(c, animate));
 }
 window.addEventListener("resize", () => syncAllIndicators(false));
+
+// ---------- Keyboard ----------
+// iOS keeps fixed bars on top of the keyboard while you scroll, so hide the tab bar while typing.
+const TYPING = 'input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="button"]), textarea, select';
+function updateKeyboardState() {
+  const a = document.activeElement;
+  const typing = !!(a && a.matches && a.matches(TYPING));
+  const vv = window.visualViewport;
+  const squeezed = vv ? window.innerHeight - vv.height > 120 : false;   // keyboard is taking up space
+  document.body.classList.toggle("kb-open", typing || squeezed);
+}
+document.addEventListener("focusin", updateKeyboardState);
+document.addEventListener("focusout", () => setTimeout(updateKeyboardState, 60));   // let focus settle on the next field first
+if (window.visualViewport) window.visualViewport.addEventListener("resize", updateKeyboardState);
 
 let audioCtx;
 function beep(ok = true) {
