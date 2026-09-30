@@ -290,8 +290,9 @@ nav.tabs { isolation: isolate; }   /* stays position: fixed (set above); fixed a
 .seg.has-ind button.active { background: none; box-shadow: none; }
 nav.tabs.has-ind::before { top: 4px; height: 50px; background: var(--chip); border-radius: 18px; }
 .seg.no-anim::before, nav.tabs.no-anim::before { transition: none; }
-nav.tabs button svg.i { transition: transform .5s var(--spring); }
-nav.tabs button.active svg.i { transform: translateY(-1px) scale(1.08); }
+/* Every tab keeps the same icon and label position; the active one is shown by color and the pill only. */
+nav.tabs button { height: 54px; justify-content: center; line-height: 1.2; }
+nav.tabs button svg.i { display: block; transform: none; }
 
 /* Press: quick squeeze, springy release. */
 .btn, .chip, .qty-tap, .check, .more-btn, .qty button, .menu-list button, nav.tabs button, .seg button, .cam-stop, .sync-ind {
@@ -299,7 +300,8 @@ nav.tabs button.active svg.i { transform: translateY(-1px) scale(1.08); }
 }
 .btn:active, .chip:active, .qty-tap:active, .qty button:active, .more-btn:active, .cam-stop:active, .sync-ind:active { transform: scale(.94); transition-duration: .12s; transition-timing-function: ease-out; }
 .check:active { transform: scale(.88); transition-duration: .12s; }
-nav.tabs button:active, .seg button:active { transform: scale(.95); transition-duration: .12s; }
+.seg button:active { transform: scale(.95); transition-duration: .12s; }
+nav.tabs button, nav.tabs button:active { transform: none; }   /* no squeeze: Safari can leave tapped tabs looking pressed */
 .menu-list button:active { background: var(--chip); transform: scale(.985); transition-duration: .1s; }
 .item.tap { transition: transform .5s var(--spring), background-color .2s ease; }
 .item.tap:active { transform: scale(.985); transition-duration: .12s; }
