@@ -25,6 +25,13 @@
   --sheet-shadow: 0 -8px 30px rgba(0, 0, 0, .18);
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
   --r: 14px;
+  /* Motion: a gentle spring (~3% overshoot) and a soft ease-out. */
+  --spring: cubic-bezier(.2, .9, .3, 1.04);
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+}
+@supports (transition-timing-function: linear(0, 1)) {
+  :root { --spring: linear(0, 0.034 1.6%, 0.132 3.4%, 0.285 5.6%, 0.498 8.4%, 0.702 11.6%, 0.846 14.8%, 0.943 18.2%,
+    1.003 21.9%, 1.03 25.7%, 1.036 29.4%, 1.028 34.2%, 1.012 40.9%, 1.001 49.5%, 0.997 60%, 1); }
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -217,18 +224,22 @@ label.f { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04
 .empty p { margin: 0; font-size: 14px; }
 
 /* Sheets & dialogs */
-.overlay { position: fixed; inset: 0; background: var(--scrim); z-index: 50; display: flex; align-items: flex-end; justify-content: center; animation: fade .15s ease; }
+.overlay { position: fixed; inset: 0; background: var(--scrim); z-index: 50; display: flex; align-items: flex-end; justify-content: center; animation: fade .28s var(--ease-out) both; }
+.overlay.closing { animation: fadeOut .24s ease forwards; pointer-events: none; }
 .sheet {
   background: var(--bg); width: 100%; max-width: 640px; overflow-y: auto; overscroll-behavior: contain;
   max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 12px);
-  border-radius: 20px 20px 0 0; padding: 10px 16px calc(18px + env(safe-area-inset-bottom, 0px));
-  box-shadow: var(--sheet-shadow); animation: rise .2s cubic-bezier(.2,.8,.3,1);
+  /* Extra 40px below the fold so the spring's small overshoot never shows a gap at the bottom. */
+  border-radius: 22px 22px 0 0; padding: 10px 16px calc(58px + env(safe-area-inset-bottom, 0px)); margin-bottom: -40px;
+  box-shadow: var(--sheet-shadow); animation: sheetIn .6s var(--spring) both;
 }
+.overlay.closing .sheet { animation: sheetOut .26s cubic-bezier(.4, 0, .9, .6) forwards; }
 .sheet > * + * { margin-top: 10px; }
 .sheet h2 { margin: 4px 0 0; font-size: 20px; font-weight: 800; letter-spacing: -.01em; }
 .sheet .handle { width: 38px; height: 5px; background: var(--line); border-radius: 3px; margin: 0 auto 8px; }
 .overlay.center { align-items: center; padding: 16px; }
-.dialog { background: var(--surface); border-radius: 18px; padding: 20px; width: 100%; max-width: 380px; animation: pop .15s ease; }
+.dialog { background: var(--surface); border-radius: 22px; padding: 20px; width: 100%; max-width: 380px; animation: dialogIn .5s var(--spring) both; }
+.overlay.closing .dialog { animation: dialogOut .2s ease forwards; }
 .dialog p { margin: 0 0 16px; line-height: 1.45; }
 .dialog .btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 .menu-list { background: var(--surface); border-radius: var(--r); overflow: hidden; }
@@ -239,15 +250,70 @@ label.f { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04
 .qty button { width: 52px; height: 52px; border-radius: 14px; border: 0; background: var(--chip); font-size: 26px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
 .qty input { width: 80px; text-align: center; font-size: 28px; font-weight: 800; padding: 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); font-variant-numeric: tabular-nums; }
 .qty .unit { color: var(--muted); font-weight: 600; }
-@keyframes rise { from { transform: translateY(40px); opacity: .6; } to { transform: none; opacity: 1; } }
-@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes pop { from { transform: scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .overlay, .sheet, .dialog { animation: none; } .btn { transition: none; } }
-
 #toast {
-  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom, 0px));
-  background: var(--toast); color: var(--on-toast); border-radius: 14px; padding: 11px 16px; z-index: 100;
-  display: none; align-items: center; gap: 14px; max-width: calc(100% - 32px); font-size: 14px; font-weight: 550; box-shadow: 0 6px 24px rgba(0,0,0,.25);
+  position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  background: var(--toast); color: var(--on-toast); border-radius: 16px; padding: 11px 16px; z-index: 100;
+  display: flex; align-items: center; gap: 14px; max-width: calc(100% - 32px); font-size: 14px; font-weight: 550; box-shadow: 0 6px 24px rgba(0,0,0,.25);
+  opacity: 0; transform: translate(-50%, 18px) scale(.94); pointer-events: none;
+  transition: opacity .2s ease, transform .5s var(--spring);
+}
+#toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); pointer-events: auto; }
+
+/* ---------- Motion ----------
+   Fluid, spring-based movement in the spirit of iOS 26: controls glide between states,
+   sheets spring into place, presses give a soft squeeze and settle back. Small overshoot,
+   short durations, nothing bouncy or translucent. All of it turns off with Reduce Motion. */
+.seg, nav.tabs { position: relative; isolation: isolate; }
+.seg button, nav.tabs button { position: relative; z-index: 1; transition: color .25s ease; }
+/* Sliding selection pill (position set from JS on the element as --ind-x / --ind-w). */
+.seg.has-ind::before, nav.tabs.has-ind::before {
+  content: ""; position: absolute; z-index: 0; left: 0; width: var(--ind-w, 0);
+  transform: translateX(var(--ind-x, 0)); pointer-events: none;
+  transition: transform .55s var(--spring), width .55s var(--spring);
+}
+.seg.has-ind::before { top: 3px; bottom: 3px; background: var(--surface); border-radius: 10px; box-shadow: var(--shadow); }
+.seg.has-ind button.active { background: none; box-shadow: none; }
+nav.tabs.has-ind::before { top: 4px; height: 50px; background: var(--chip); border-radius: 18px; }
+.seg.no-anim::before, nav.tabs.no-anim::before { transition: none; }
+nav.tabs button svg.i { transition: transform .5s var(--spring); }
+nav.tabs button.active svg.i { transform: translateY(-1px) scale(1.08); }
+
+/* Press: quick squeeze, springy release. */
+.btn, .chip, .qty-tap, .check, .more-btn, .qty button, .menu-list button, nav.tabs button, .seg button, .cam-stop, .sync-ind {
+  transition: transform .5s var(--spring), background-color .2s ease, color .2s ease, border-color .2s ease, opacity .2s ease;
+}
+.btn:active, .chip:active, .qty-tap:active, .qty button:active, .more-btn:active, .cam-stop:active, .sync-ind:active { transform: scale(.94); transition-duration: .12s; transition-timing-function: ease-out; }
+.check:active { transform: scale(.88); transition-duration: .12s; }
+nav.tabs button:active, .seg button:active { transform: scale(.95); transition-duration: .12s; }
+.menu-list button:active { background: var(--chip); transform: scale(.985); transition-duration: .1s; }
+.item.tap { transition: transform .5s var(--spring), background-color .2s ease; }
+.item.tap:active { transform: scale(.985); transition-duration: .12s; }
+
+/* Things arriving. */
+.view.active { animation: viewIn .42s var(--ease-out) both; }
+.item.enter { animation: rowIn .55s var(--spring) both; }
+.banner { animation: bannerIn .5s var(--spring) both; }
+.check.on svg.i { animation: checkIn .45s var(--spring) both; }
+.item .name, .item .thumb { transition: color .3s ease, opacity .3s ease; }
+.last.refresh > * { animation: lastIn .45s var(--spring) both; }
+#reader video { animation: fade .45s ease both; }
+.bump { animation: bump .45s var(--spring); }
+
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { to { opacity: 0; } }
+@keyframes sheetIn { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes sheetOut { to { transform: translateY(100%); } }
+@keyframes dialogIn { from { transform: scale(.9); opacity: 0; } 40% { opacity: 1; } to { transform: none; opacity: 1; } }
+@keyframes dialogOut { to { transform: scale(.95); opacity: 0; } }
+@keyframes viewIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes rowIn { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes bannerIn { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes checkIn { from { transform: scale(.3); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes lastIn { from { opacity: .3; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes bump { 0% { transform: scale(1); } 35% { transform: scale(1.12); } 100% { transform: scale(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 #toast button { background: none; border: 0; color: var(--toast-action); font-weight: 800; letter-spacing: .04em; padding: 0; }
 
@@ -264,7 +330,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 </head>
 <body>
 <header class="top">
-  <h1>Shelf Scan</h1><span class="tagline">BETA 2.1</span>
+  <h1>Shelf Scan</h1><span class="tagline">BETA 2.2</span>
   <span class="spacer"></span>
   <span class="store" id="hdr-store"></span>
   <button class="sync-ind" id="sync-ind" hidden></button>
@@ -913,10 +979,32 @@ function toast(msg, undoSnap) {
   const u = $("#toast-undo");
   u.style.display = undoSnap ? "" : "none";
   u.onclick = () => { if (undoSnap) { restore(undoSnap); toast("Undone"); } };
-  t.style.display = "flex";
+  if (t.classList.contains("show")) bump(t.querySelector("#toast-msg"));   // replacing an open toast: small nudge
+  t.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (t.style.display = "none"), undoSnap ? 6000 : 2600);
+  toastTimer = setTimeout(() => t.classList.remove("show"), undoSnap ? 6000 : 2600);
 }
+// Replay the small "bump" spring on an element (quantities, badges, messages).
+function bump(node) {
+  if (!node) return;
+  node.classList.remove("bump"); void node.offsetWidth; node.classList.add("bump");
+}
+// Slide a segmented control's (or the tab bar's) selection pill under its active button.
+function syncIndicator(container, animate = true) {
+  if (!container) return;
+  const active = container.querySelector("button.active");
+  if (!active || !container.getClientRects().length) return;   // skip while hidden (offsetParent is null for the fixed tab bar)
+  const inset = container.matches("nav.tabs") ? 6 : 0;
+  container.classList.toggle("no-anim", !animate || !container.classList.contains("has-ind"));
+  container.style.setProperty("--ind-x", `${active.offsetLeft + inset}px`);
+  container.style.setProperty("--ind-w", `${active.offsetWidth - inset * 2}px`);
+  container.classList.add("has-ind");
+  if (!animate) requestAnimationFrame(() => container.classList.remove("no-anim"));
+}
+function syncAllIndicators(animate = true) {
+  document.querySelectorAll(".seg, nav.tabs").forEach(c => syncIndicator(c, animate));
+}
+window.addEventListener("resize", () => syncAllIndicators(false));
 
 let audioCtx;
 function beep(ok = true) {
@@ -938,9 +1026,16 @@ function openLayer(node, { center = false, onClose } = {}) {
   ov.addEventListener("click", e => { if (e.target === ov) close(); });
   $("#layer").appendChild(ov);
   modalDepth++;
+  ov.querySelectorAll(".seg").forEach(c => syncIndicator(c, false));
+  let closed = false;
   function close() {
-    if (!ov.isConnected) return;
-    ov.remove(); modalDepth--;
+    if (closed || !ov.isConnected) return;
+    closed = true; modalDepth--;
+    // Let the sheet glide away before removing it.
+    ov.classList.add("closing");
+    const done = () => ov.remove();
+    ov.addEventListener("animationend", e => { if (e.target !== ov) done(); }, { once: false });
+    setTimeout(done, 320);
     if (onClose) onClose();
   }
   return close;
@@ -1444,6 +1539,7 @@ function setMode(m) {
   mode = m;
   if (pending && pending.kind === "setupTag" && m !== "setup") pending = null;
   document.querySelectorAll("#mode-seg button").forEach(b => b.classList.toggle("active", b.dataset.mode === m));
+  syncIndicator($("#mode-seg"));
   $("#mode-help").textContent = MODE_HELP[m];
   renderPending();
 }
@@ -1504,6 +1600,8 @@ function onDecoded(text, formatName) {
 async function handleCode(raw, kind) {
   const code = kind === "tag" ? normalizeTag(raw) : normalizeBarcode(raw);
   lastScanned = { kind, code }; renderLastScan();
+  const card = $("#last-scan");
+  card.classList.remove("refresh"); void card.offsetWidth; card.classList.add("refresh");
   beep(true);
   if (kind === "tag") return handleTag(code);
   return handleBarcode(code);
@@ -1626,12 +1724,12 @@ function productSheet(pid, { tagCode = null } = {}) {
     <button class="btn block quiet" data-a="cancel">Cancel</button></div>`);
   const close = openLayer(s);
   const input = s.querySelector("input");
-  s.querySelector('[data-a="minus"]').onclick = () => (input.value = Math.max(1, (+input.value || 1) - 1));
-  s.querySelector('[data-a="plus"]').onclick = () => (input.value = (+input.value || 0) + 1);
+  s.querySelector('[data-a="minus"]').onclick = () => { input.value = Math.max(1, (+input.value || 1) - 1); bump(input); };
+  s.querySelector('[data-a="plus"]').onclick = () => { input.value = (+input.value || 0) + 1; bump(input); };
   s.querySelector('[data-a="add"]').onclick = () => {
     const n = Math.max(1, Math.floor(+input.value || 1));
     const snap = snapshot();
-    if (existing) { existing.qty += n; existing.status = "need"; }
+    if (existing) { existing.qty += n; existing.status = "need"; bumpQtyFor = pid; }
     else state.list.items.push({ productId: pid, qty: n, status: "need", addedAt: Date.now() });
     bumpRecent(pid);
     save(); close(); renderAll();
@@ -1796,6 +1894,7 @@ function showView(v) {
   view = v;
   document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.id === "view-" + v));
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.view === v));
+  syncIndicator($("#tabs"));
   if (v !== "scan") stopCamera(); else if (state.settings.camOK) startCamera();
   renderAll();
   window.scrollTo(0, 0);
@@ -1804,6 +1903,7 @@ function renderAll() {
   $("#hdr-store").textContent = state.storeName ? "Store " + state.storeName : "";
   const need = state.list ? state.list.items.filter(i => i.status !== "done").length : 0;
   const badge = $("#list-badge");
+  if (String(need) !== badge.textContent && need) { badge.textContent = need; bump(badge); }
   badge.hidden = !need; badge.textContent = need;
   renderSyncIndicator();
   if (view === "scan") renderLastScan();
@@ -1815,10 +1915,15 @@ function renderAll() {
 
 // List
 let hideDone = false;
+let listSeen = null;        // items already shown, so only newly added rows animate in
+let bumpQtyFor = null;      // product whose quantity just changed
 function renderList() {
   const v = $("#view-list");
   v.innerHTML = "";
   const items = state.list ? state.list.items : [];
+  const firstRender = listSeen === null;
+  const prevSeen = listSeen || new Set();
+  listSeen = new Set(items.map(i => i.productId));
   if (!items.length) {
     v.appendChild(el(`<div class="empty">${icon("list")}<h3>Your list is empty</h3><p>Scan a shelf tag or barcode to add what you need.</p></div>`));
     return;
@@ -1840,17 +1945,28 @@ function renderList() {
     groups[cat].sort((a, b) => pName(a.p).localeCompare(pName(b.p)));
     for (const { it, p } of groups[cat]) {
       const done = it.status === "done";
-      const r = el(`<div class="item tap${done ? " done" : ""}">
+      const isNew = !firstRender && !prevSeen.has(it.productId);
+      const r = el(`<div class="item tap${done ? " done" : ""}${isNew ? " enter" : ""}">
         <button class="check${done ? " on" : ""}" aria-label="Cross off">${done ? icon("check") : ""}</button>
         ${thumbHtml(p)}
         <div class="grow"><div class="name">${esc(pName(p))}</div><div class="sub">${esc(pSub(p))}</div></div>
         <button class="qty-tap" data-a="qty" aria-label="Change quantity"><b>${it.qty}</b><span>${esc(p.unit)}${it.qty === 1 ? "" : "s"}</span></button>
         <button class="more-btn" data-a="more" aria-label="More">${icon("dots")}</button></div>`);
-      // Tapping the row crosses it off; purely a reminder, no counting.
+      if (bumpQtyFor === it.productId) { bump(r.querySelector(".qty-tap b")); bumpQtyFor = null; }
+      // Tapping the row crosses it off (purely a reminder). Updated in place so the check and strikethrough animate.
       r.onclick = e => {
         if (e.target.closest("[data-a]")) return;
-        it.status = done ? "need" : "done";
-        save(); renderAll();
+        const nowDone = it.status !== "done";
+        it.status = nowDone ? "done" : "need";
+        save();
+        r.classList.toggle("done", nowDone);
+        const chk = r.querySelector(".check");
+        chk.classList.toggle("on", nowDone);
+        chk.innerHTML = nowDone ? icon("check") : "";
+        const leftNow = state.list.items.filter(i => i.status !== "done").length;
+        head.querySelector(".muted").textContent = `${leftNow} of ${state.list.items.length} left`;
+        $("#list-badge").hidden = !leftNow; $("#list-badge").textContent = leftNow;
+        if (hideDone && nowDone) setTimeout(() => { if (view === "list") renderList(); }, 450);
       };
       r.querySelector('[data-a="qty"]').onclick = () => editQty(it, p);
       r.querySelector('[data-a="more"]').onclick = () => listItemMenu(it, p);
@@ -1869,10 +1985,10 @@ function editQty(it, p) {
     <div class="btns" style="margin-top:18px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="s">Save</button></div></div>`);
   const close = openLayer(s, { center: true });
   const inp = s.querySelector("input");
-  s.querySelector('[data-a="m"]').onclick = () => (inp.value = Math.max(1, (+inp.value || 1) - 1));
-  s.querySelector('[data-a="p"]').onclick = () => (inp.value = (+inp.value || 0) + 1);
+  s.querySelector('[data-a="m"]').onclick = () => { inp.value = Math.max(1, (+inp.value || 1) - 1); bump(inp); };
+  s.querySelector('[data-a="p"]').onclick = () => { inp.value = (+inp.value || 0) + 1; bump(inp); };
   s.querySelector('[data-a="c"]').onclick = close;
-  s.querySelector('[data-a="s"]').onclick = () => { it.qty = Math.max(1, Math.floor(+inp.value || 1)); save(); close(); renderAll(); toast("Quantity updated", snap); };
+  s.querySelector('[data-a="s"]').onclick = () => { it.qty = Math.max(1, Math.floor(+inp.value || 1)); bumpQtyFor = it.productId; save(); close(); renderAll(); toast("Quantity updated", snap); };
 }
 async function listItemMenu(it, p) {
   const choice = await menu(`${pName(p)} — ${p.pack}`, [
@@ -1947,6 +2063,7 @@ function renderTags() {
 function renderTagResults() {
   const v = $("#view-tags");
   v.querySelectorAll("#tag-seg button").forEach(b => b.classList.toggle("active", b.dataset.f === tagFilter));
+  syncIndicator(v.querySelector("#tag-seg"));
   const byProduct = {};
   for (const p of state.products) { const t = tagInfoForProduct(p.id); if (t) byProduct[p.id] = t; }
   let items = searchProducts(tagQuery);
@@ -2030,7 +2147,7 @@ function renderMore() {
       </details>
     </div>
     <button class="btn block danger" id="btn-reset">Reset this phone</button>
-    <p class="foot">Shelf Scan Beta 2.1 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
+    <p class="foot">Shelf Scan Beta 2.2 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
       Product lookups from <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener" style="color:inherit">Open Food Facts</a></p>`;
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
   v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
@@ -2244,6 +2361,7 @@ function enterCode() {
   let kind = "tag";
   d.querySelectorAll("#code-kind button").forEach(b => (b.onclick = () => {
     kind = b.dataset.k; d.querySelectorAll("#code-kind button").forEach(x => x.classList.toggle("active", x === b));
+    syncIndicator(d.querySelector("#code-kind"));
   }));
   const inp = d.querySelector("input");
   const go = () => { const v = inp.value.trim(); if (!v) return; close(); handleCode(v, kind); };
@@ -2283,6 +2401,7 @@ $("#photo-input").addEventListener("change", e => {
 setMode("count");
 renderAll();
 save();
+syncAllIndicators(false);
 if (state.settings.camOK) startCamera();
 
 // Pull everyone's latest shared data on open, then upload anything waiting.
