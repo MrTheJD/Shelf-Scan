@@ -1,6 +1,6 @@
 {
  "version": 1,
- "updated": 1790785743025,
+ "updated": 1790785778705,
  "products": {},
  "tags": {
   "w-mt.co/q/300e4c41o90G-0TS48H": {
@@ -12,6 +12,11 @@
    "productId": "coca-cola-original-12oz-bottle-8pk",
    "created": 1790785738499,
    "updated": 1790785738499
+  },
+  "w-mt.co/q/300e8Ma1o90G-0TSG35": {
+   "productId": "coca-cola-original-16-9oz-bottle-6pk",
+   "created": 1790785774180,
+   "updated": 1790785774180
   }
  },
  "deleted": {
