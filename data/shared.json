@@ -1,7 +1,22 @@
 {
  "version": 1,
- "updated": 1790785888364,
- "products": {},
+ "updated": 1790785973671,
+ "products": {
+  "diet-coke-caffeine-free-16-9-oz-bottle-6pk": {
+   "id": "diet-coke-caffeine-free-16-9-oz-bottle-6pk",
+   "brand": "Diet Coke",
+   "flavor": "Caffeine Free",
+   "size": "16.9 oz bottle",
+   "pack": "6pk",
+   "category": "16.9 oz bottle",
+   "unit": "pack",
+   "barcodes": [],
+   "img": "",
+   "custom": true,
+   "retired": false,
+   "updated": 1790785968939
+  }
+ },
  "tags": {
   "w-mt.co/q/300e4c41o90G-0TS48H": {
    "productId": "sprite-1-25l-bottle-single",
@@ -37,6 +52,11 @@
    "productId": "coca-cola-original-1-25l-bottle-single",
    "created": 1790785883894,
    "updated": 1790785883894
+  },
+  "w-mt.co/q/300ds7M1o90G-0TS48C": {
+   "productId": "diet-coke-caffeine-free-16-9-oz-bottle-6pk",
+   "created": 1790785968943,
+   "updated": 1790785968943
   }
  },
  "deleted": {
