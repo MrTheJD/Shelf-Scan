@@ -1,9 +1,9 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#c8102e">
+<meta name="theme-color" content="#F40009">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -13,185 +13,250 @@
 <link rel="icon" href="icon-192.png">
 <title>Shelf Scan</title>
 <style>
-/* Layout: one-thumb phone tool — sticky red header, stacked cards, fixed bottom tab bar. */
+/* Layout: one-thumb phone tool. Coke-red header, warm-grey ground, white surfaces, fixed icon tab bar. */
 :root {
-  --bg: #f5f3f4; --card: #ffffff; --text: #17151a; --muted: #6d6870; --line: #e4dfe2; --chip: #eeeaec;
-  --accent: #c8102e; --accent-ink: #ffffff;
-  --ok: #1a7f37; --warn: #a35200; --bad: #b3261e; --info: #2d4fb3;
-  --ok-bg: #d8f3de; --warn-bg: #ffe7cc; --bad-bg: #ffdcd9; --info-bg: #dde7ff;
-  --banner-bg: #fff4d6; --banner-fg: #5a4300;
-  --overlay: rgba(20,10,14,.45); --toast-bg: #221e22; --toast-fg: #ffffff; --toast-action: #ffb4bf;
-  --cam-bg: #000000; --cam-fg: #d0d0d0; --thumb-fallback: #7a7479; --thumb-ink: #ffffff; --img-bg: #ffffff;
-  --shadow: 0 1px 3px rgba(40,10,20,.08);
+  --red: #F40009; --red-press: #C80008; --on-red: #FFFFFF;
+  --bg: #F4F2F0; --surface: #FFFFFF; --surface-2: #FAF9F8; --text: #111111; --muted: #6F6A66; --faint: #A39E99;
+  --line: #E8E4E0; --chip: #EEEAE6;
+  --ok: #1E8E3E; --ok-soft: #E3F4E8; --warn: #A85F00; --warn-soft: #FFF1DC;
+  --scrim: rgba(12, 8, 8, .48); --toast: #111111; --on-toast: #FFFFFF; --toast-action: #FF6B70;
+  --cam: #000000; --cam-edge: #000000; --on-cam: #D9D6D3; --img-bg: #FFFFFF; --thumb-ink: #FFFFFF; --thumb-fallback: #8A8480;
+  --shadow: 0 1px 2px rgba(40, 20, 20, .06), 0 2px 8px rgba(40, 20, 20, .05);
+  --sheet-shadow: 0 -8px 30px rgba(0, 0, 0, .18);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --r: 14px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #121012; --card: #1d1a1d; --text: #f3f0f2; --muted: #9d969b; --line: #2f2a2e; --chip: #2b262a;
-    --accent: #e0263f;
-    --ok: #3fb95a; --warn: #e08a2a; --bad: #ff6b60; --info: #9db4ff;
-    --ok-bg: #173d22; --warn-bg: #45300f; --bad-bg: #4a1c19; --info-bg: #1f2a4a;
-    --banner-bg: #3a3014; --banner-fg: #ffe39a;
-    --shadow: none; color-scheme: dark;
+    --bg: #000000; --surface: #141312; --surface-2: #1B1A19; --text: #F5F3F1; --muted: #9C9692; --faint: #6B6662;
+    --line: #262423; --chip: #221F1E; --cam: #0B0B0B; --cam-edge: #2A2827;
+    --ok: #4CC36E; --ok-soft: #13301D; --warn: #F2A742; --warn-soft: #3A2A10;
+    --shadow: none; --sheet-shadow: 0 -8px 30px rgba(0, 0, 0, .6);
+    color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #121012; --card: #1d1a1d; --text: #f3f0f2; --muted: #9d969b; --line: #2f2a2e; --chip: #2b262a;
-  --accent: #e0263f;
-  --ok: #3fb95a; --warn: #e08a2a; --bad: #ff6b60; --info: #9db4ff;
-  --ok-bg: #173d22; --warn-bg: #45300f; --bad-bg: #4a1c19; --info-bg: #1f2a4a;
-  --banner-bg: #3a3014; --banner-fg: #ffe39a;
-  --shadow: none; color-scheme: dark;
+  --bg: #000000; --surface: #141312; --surface-2: #1B1A19; --text: #F5F3F1; --muted: #9C9692; --faint: #6B6662;
+  --line: #262423; --chip: #221F1E; --cam: #0B0B0B; --cam-edge: #2A2827;
+  --ok: #4CC36E; --ok-soft: #13301D; --warn: #F2A742; --warn-soft: #3A2A10;
+  --shadow: none; --sheet-shadow: 0 -8px 30px rgba(0, 0, 0, .6);
+  color-scheme: dark;
 }
+
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { margin: 0; height: 100%; }
+html, body { margin: 0; min-height: 100%; }
 body {
-  background: var(--bg); color: var(--text);
-  font: 16px/1.35 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  background: var(--bg); color: var(--text); font: 16px/1.4 var(--font);
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  -webkit-font-smoothing: antialiased;
 }
-button { font: inherit; color: inherit; }
-input, select { font: inherit; color: var(--text); background: var(--card); }
+button { font: inherit; color: inherit; cursor: pointer; }
+input, select, textarea { font: inherit; color: var(--text); }
+svg.i { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+
+/* Header */
 header.top {
-  position: sticky; top: 0; z-index: 5;
-  background: var(--accent); color: var(--accent-ink);
-  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
-  display: flex; align-items: center; gap: 8px;
+  position: sticky; top: 0; z-index: 20;
+  background: var(--red); color: var(--on-red);
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+  display: flex; align-items: center; gap: 10px;
 }
-header.top h1 { font-size: 18px; margin: 0; flex: 1; }
-header.top .store { font-size: 13px; opacity: .9; }
-main { padding: 12px 16px; max-width: 720px; margin: 0 auto; }
+header.top h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+.tagline { font-size: 10px; font-weight: 700; letter-spacing: .12em; border: 1.5px solid rgba(255,255,255,.75); border-radius: 5px; padding: 1px 5px; }
+header.top .spacer { flex: 1; }
+.store { font-size: 13px; font-weight: 600; opacity: .92; }
+.sync-ind { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; background: none; border: 0; color: var(--on-red); padding: 4px; }
+.sync-ind svg.i { width: 20px; height: 20px; }
+
+main { padding: 14px 16px 8px; max-width: 640px; margin: 0 auto; }
 .view { display: none; }
 .view.active { display: block; }
+.view > * + * { margin-top: 12px; }
 
+/* Tab bar */
 nav.tabs {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
-  display: flex; background: var(--card); border-top: 1px solid var(--line);
-  padding-bottom: env(safe-area-inset-bottom);
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
+  display: flex; background: var(--surface); border-top: 1px solid var(--line);
+  padding: 4px 0 env(safe-area-inset-bottom, 0px);
 }
 nav.tabs button {
-  flex: 1; border: 0; background: none; padding: 8px 0 10px; font-size: 11px; color: var(--muted);
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  flex: 1; border: 0; background: none; padding: 6px 0 8px; font-size: 11px; font-weight: 600; color: var(--faint);
+  display: flex; flex-direction: column; align-items: center; gap: 3px; position: relative;
 }
-nav.tabs button .ico { font-size: 20px; line-height: 1; }
-nav.tabs button.active { color: var(--accent); font-weight: 600; }
-nav.tabs .badge {
-  background: var(--accent); color: var(--accent-ink); border-radius: 9px; font-size: 10px; padding: 0 5px; margin-left: 2px;
+nav.tabs button.active { color: var(--red); }
+.badge {
+  position: absolute; top: 2px; left: calc(50% + 6px); min-width: 18px; height: 18px; border-radius: 9px;
+  background: var(--red); color: var(--on-red); font-size: 11px; font-weight: 700; line-height: 18px; padding: 0 5px;
+  font-variant-numeric: tabular-nums;
 }
 
-.card { background: var(--card); border-radius: 12px; box-shadow: var(--shadow); padding: 12px; margin-bottom: 12px; }
+/* Building blocks */
+.card { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); padding: 14px; }
+.card h3 { margin: 0 0 4px; font-size: 16px; }
 .muted { color: var(--muted); }
 .small { font-size: 13px; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+.center { text-align: center; }
 .row { display: flex; align-items: center; gap: 10px; }
 .grow { flex: 1; min-width: 0; }
+.stack > * + * { margin-top: 8px; }
+
 .btn {
-  border: 1px solid var(--line); background: var(--card); border-radius: 10px;
-  padding: 10px 14px; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--text);
+  border-radius: 12px; padding: 11px 16px; font-weight: 650; font-size: 15px; text-decoration: none;
+  transition: transform .08s ease, background .15s ease;
 }
-.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.btn.ok { background: var(--ok); color: var(--accent-ink); border-color: var(--ok); }
-.btn.danger { color: var(--bad); }
-.btn.block { width: 100%; display: block; margin-top: 8px; }
-.btn.sm { padding: 6px 10px; font-size: 14px; }
+.btn:active { transform: scale(.98); }
+.btn.primary { background: var(--red); border-color: var(--red); color: var(--on-red); }
+.btn.primary:active { background: var(--red-press); }
+.btn.quiet { background: var(--chip); border-color: transparent; }
+.btn.danger { color: var(--red); }
+.btn.block { display: flex; width: 100%; }
+.btn.sm { padding: 7px 12px; font-size: 14px; border-radius: 10px; }
 .btn:disabled { opacity: .5; }
+.icon-btn { width: 40px; height: 40px; padding: 0; border-radius: 12px; }
 
-.seg { display: flex; background: var(--chip); border-radius: 10px; padding: 3px; margin-bottom: 10px; }
-.seg button { flex: 1; border: 0; background: none; padding: 8px 4px; border-radius: 8px; font-weight: 600; font-size: 14px; color: var(--muted); }
-.seg button.active { background: var(--card); color: var(--text); box-shadow: var(--shadow); }
+.seg { display: flex; background: var(--chip); border-radius: 12px; padding: 3px; }
+.seg button { flex: 1; border: 0; background: none; padding: 9px 4px; border-radius: 10px; font-weight: 650; font-size: 14px; color: var(--muted); }
+.seg button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
 
-#reader-wrap { position: relative; background: var(--cam-bg); border-radius: 12px; overflow: hidden; min-height: 240px; }
-#reader { width: 100%; }
-#reader video { width: 100% !important; display: block; }
-#cam-placeholder { color: var(--cam-fg); text-align: center; padding: 24px 16px; }
-#reader-wrap { min-height: 0; }
-#reader-wrap:has(video) { min-height: 240px; }
-.photo-scan { display: flex !important; align-items: center; justify-content: center; gap: 10px; padding: 16px; font-size: 18px; margin-top: 0; }
-.banner {
-  background: var(--banner-bg); color: var(--banner-fg); border-radius: 10px; padding: 10px 12px; margin: 10px 0;
-  display: flex; align-items: center; gap: 8px; font-size: 14px;
+input.field, select.field, textarea.field {
+  width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); outline: none;
 }
-.banner .grow { font-weight: 600; }
+input.field:focus, textarea.field:focus, select.field:focus { border-color: var(--red); }
+.search-wrap { position: relative; }
+.search-wrap svg.i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--faint); width: 18px; height: 18px; }
+.search-wrap input.field { padding-left: 38px; }
+label.f { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; }
 
-input.search, input.text, select.text {
-  width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; outline: none;
-}
-input.search:focus, input.text:focus { border-color: var(--accent); }
-.chips { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0; scrollbar-width: none; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0; scrollbar-width: none; }
 .chips::-webkit-scrollbar { display: none; }
-.chip { flex: none; border: 0; background: var(--chip); border-radius: 16px; padding: 6px 12px; font-size: 13px; }
-.chip.active { background: var(--accent); color: var(--accent-ink); }
+.chip { flex: none; border: 0; background: var(--chip); color: var(--text); border-radius: 999px; padding: 7px 13px; font-size: 13px; font-weight: 600; }
+.chip.active { background: var(--text); color: var(--bg); }
 
-.list { background: var(--card); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
-.item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
-.item:last-child { border-bottom: 0; }
+/* Scan */
+.camera { position: relative; background: var(--cam); border-radius: 18px; overflow: hidden; border: 1px solid var(--cam-edge); }
+#reader { width: 100%; }
+#reader video { width: 100% !important; display: block; object-fit: cover; }
+#reader img[alt="Info icon"], #reader img[alt="Camera based scan"] { display: none !important; }
+.cam-off { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 34px 16px; color: var(--on-cam); text-align: center; }
+.cam-off svg.i { width: 34px; height: 34px; opacity: .7; }
+.cam-off p { margin: 0; font-size: 13px; max-width: 30ch; }
+.cam-stop { position: absolute; top: 10px; right: 10px; z-index: 3; width: 34px; height: 34px; border-radius: 50%; border: 0; background: rgba(0,0,0,.55); color: #fff; display: flex; align-items: center; justify-content: center; }
+.cam-stop svg.i { width: 18px; height: 18px; }
+.actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.actions .btn { flex-direction: column; gap: 4px; padding: 10px 6px; font-size: 13px; }
+.actions.photo-first { grid-template-columns: 1fr 1fr; }
+.actions.photo-first .photo-btn { grid-column: 1 / -1; flex-direction: row; background: var(--red); border-color: var(--red); color: var(--on-red); font-size: 16px; padding: 15px; }
+
+.banner { display: flex; align-items: center; gap: 8px; background: var(--warn-soft); color: var(--text); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+.banner .grow { font-weight: 650; }
+
+.last { display: flex; align-items: center; gap: 12px; }
+.last .label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.last .code { font-size: 12px; color: var(--muted); word-break: break-all; }
+
+/* Lists */
+.list { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
+.item { display: flex; align-items: center; gap: 12px; padding: 11px 14px; position: relative; }
+.item + .item::before { content: ""; position: absolute; top: 0; left: 70px; right: 0; border-top: 1px solid var(--line); }
 .item.tap { cursor: pointer; }
-.item .name { font-weight: 600; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.item .sub { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.group-h { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 16px 4px 6px; }
+.item.tap:active { background: var(--surface-2); }
+.item .name { font-weight: 650; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.25; }
+.item .sub { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.group-h { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 20px 4px 8px; }
+.view > .group-h:first-child { margin-top: 4px; }
 
 .thumb {
-  width: 44px; height: 44px; border-radius: 8px; flex: none; overflow: hidden;
-  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; color: var(--thumb-ink);
-  background: var(--thumb-fallback);
+  width: 44px; height: 44px; border-radius: 10px; flex: none; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: var(--thumb-ink);
+  background: var(--thumb-fallback); letter-spacing: -.02em;
 }
 .thumb img { width: 100%; height: 100%; object-fit: contain; background: var(--img-bg); }
-.thumb.lg { width: 72px; height: 72px; font-size: 18px; }
-
-.qty { display: flex; align-items: center; gap: 6px; }
-.qty button { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); font-size: 22px; font-weight: 700; }
-.qty input { width: 64px; text-align: center; font-size: 22px; font-weight: 700; padding: 6px; border: 1px solid var(--line); border-radius: 10px; }
+.thumb.lg { width: 76px; height: 76px; font-size: 22px; border-radius: 14px; }
 
 .check {
-  width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line); background: none; flex: none;
-  display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--accent-ink);
+  width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); background: none; flex: none; padding: 0;
+  display: flex; align-items: center; justify-content: center; color: var(--on-red); transition: background .15s ease, border-color .15s ease;
 }
-.check.on { background: var(--ok); border-color: var(--ok); }
-.pill { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 8px; background: var(--chip); color: var(--muted); }
-.pill.pulled { background: var(--ok-bg); color: var(--ok); }
-.pill.short { background: var(--warn-bg); color: var(--warn); }
-.pill.out { background: var(--bad-bg); color: var(--bad); }
-.pill.stocked { background: var(--info-bg); color: var(--info); }
-.pill.stale { background: var(--warn-bg); color: var(--warn); }
-.item.done .name { text-decoration: line-through; color: var(--muted); }
+.check svg.i { width: 16px; height: 16px; stroke-width: 3; }
+.check.on { background: var(--red); border-color: var(--red); }
+.item.done .name { text-decoration: line-through; text-decoration-thickness: 2px; color: var(--muted); }
+.item.done .thumb { opacity: .45; }
+.qty-tap {
+  border: 0; background: var(--chip); border-radius: 12px; min-width: 58px; padding: 5px 10px;
+  display: flex; flex-direction: column; align-items: center; line-height: 1.1;
+}
+.qty-tap b { font-size: 21px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.qty-tap span { font-size: 11px; color: var(--muted); font-weight: 600; }
+.item.done .qty-tap { opacity: .5; }
+.more-btn { border: 0; background: none; color: var(--faint); width: 32px; height: 40px; display: flex; align-items: center; justify-content: center; padding: 0; }
+
+.pill { font-size: 11px; font-weight: 700; letter-spacing: .04em; padding: 3px 8px; border-radius: 999px; background: var(--chip); color: var(--muted); white-space: nowrap; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+
+.list-head { display: flex; align-items: baseline; gap: 10px; }
+.list-head h2 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
+.empty { text-align: center; padding: 48px 16px; color: var(--muted); }
+.empty svg.i { width: 40px; height: 40px; color: var(--faint); }
+.empty h3 { color: var(--text); margin: 12px 0 4px; }
+.empty p { margin: 0; font-size: 14px; }
 
 /* Sheets & dialogs */
-.overlay {
-  position: fixed; inset: 0; background: var(--overlay); z-index: 50;
-  display: flex; align-items: flex-end; justify-content: center;
-}
+.overlay { position: fixed; inset: 0; background: var(--scrim); z-index: 50; display: flex; align-items: flex-end; justify-content: center; animation: fade .15s ease; }
 .sheet {
-  background: var(--bg); width: 100%; max-width: 720px; max-height: 92vh; overflow-y: auto;
-  border-radius: 16px 16px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  background: var(--bg); width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto;
+  border-radius: 20px 20px 0 0; padding: 10px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+  box-shadow: var(--sheet-shadow); animation: rise .2s cubic-bezier(.2,.8,.3,1);
 }
-.sheet h2 { margin: 0 0 10px; font-size: 19px; }
-.sheet .handle { width: 40px; height: 5px; background: var(--line); border-radius: 3px; margin: -6px auto 12px; }
+.sheet > * + * { margin-top: 10px; }
+.sheet h2 { margin: 4px 0 0; font-size: 20px; font-weight: 800; letter-spacing: -.01em; }
+.sheet .handle { width: 38px; height: 5px; background: var(--line); border-radius: 3px; margin: 0 auto 8px; }
 .overlay.center { align-items: center; padding: 16px; }
-.dialog { background: var(--card); border-radius: 14px; padding: 18px; width: 100%; max-width: 380px; }
-.dialog p { margin: 0 0 14px; }
+.dialog { background: var(--surface); border-radius: 18px; padding: 20px; width: 100%; max-width: 380px; animation: pop .15s ease; }
+.dialog p { margin: 0 0 16px; line-height: 1.45; }
 .dialog .btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
-label.f { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+.menu-list { background: var(--surface); border-radius: var(--r); overflow: hidden; }
+.menu-list button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 15px 16px; font-size: 16px; font-weight: 550; }
+.menu-list button + button { border-top: 1px solid var(--line); }
+.menu-list button.danger { color: var(--red); }
+.qty { display: flex; align-items: center; gap: 8px; }
+.qty button { width: 52px; height: 52px; border-radius: 14px; border: 0; background: var(--chip); font-size: 26px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.qty input { width: 80px; text-align: center; font-size: 28px; font-weight: 800; padding: 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); font-variant-numeric: tabular-nums; }
+.qty .unit { color: var(--muted); font-weight: 600; }
+@keyframes rise { from { transform: translateY(40px); opacity: .6; } to { transform: none; opacity: 1; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop { from { transform: scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .overlay, .sheet, .dialog { animation: none; } .btn { transition: none; } }
 
 #toast {
-  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom));
-  background: var(--toast-bg); color: var(--toast-fg); border-radius: 12px; padding: 10px 14px; z-index: 100;
-  display: none; align-items: center; gap: 12px; max-width: calc(100% - 32px); font-size: 14px;
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  background: var(--toast); color: var(--on-toast); border-radius: 14px; padding: 11px 16px; z-index: 100;
+  display: none; align-items: center; gap: 14px; max-width: calc(100% - 32px); font-size: 14px; font-weight: 550; box-shadow: 0 6px 24px rgba(0,0,0,.25);
 }
-#toast button { background: none; border: 0; color: var(--toast-action); font-weight: 700; }
-.empty { text-align: center; padding: 30px 16px; color: var(--muted); }
-.qty-tap { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 4px 10px; min-width: 56px; display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
-.qty-tap b { font-size: 20px; font-variant-numeric: tabular-nums; }
-.manual { display: flex; gap: 6px; margin-top: 10px; }
-.manual input { flex: 1; }
-details summary { cursor: pointer; color: var(--muted); font-size: 14px; margin-top: 10px; }
-.menu-list button { display: block; width: 100%; text-align: left; border: 0; background: var(--card); padding: 14px; border-bottom: 1px solid var(--line); font-size: 16px; }
-.menu-list button:first-child { border-radius: 12px 12px 0 0; }
-.menu-list button:last-child { border-radius: 0 0 12px 12px; border-bottom: 0; }
-.menu-list button.danger { color: var(--bad); }
+#toast button { background: none; border: 0; color: var(--toast-action); font-weight: 800; letter-spacing: .04em; padding: 0; }
+
+/* More */
+.set-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+.set-row + .set-row { border-top: 1px solid var(--line); }
+.status-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--faint); flex: none; }
+.status-dot.ok { background: var(--ok); } .status-dot.warn { background: var(--warn); } .status-dot.bad { background: var(--red); }
+details.owner summary { cursor: pointer; font-weight: 650; color: var(--muted); font-size: 14px; list-style: none; }
+details.owner summary::-webkit-details-marker { display: none; }
+code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+.foot { text-align: center; color: var(--faint); font-size: 12px; margin: 20px 0 8px; }
 </style>
 </head>
 <body>
 <header class="top">
-  <h1>Shelf Scan <span class="small" style="opacity:.75;font-weight:400">alpha</span></h1>
+  <h1>Shelf Scan</h1><span class="tagline">BETA</span>
+  <span class="spacer"></span>
   <span class="store" id="hdr-store"></span>
+  <button class="sync-ind" id="sync-ind" hidden></button>
 </header>
 
 <main>
@@ -201,63 +266,40 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; margin-
       <button data-mode="count" class="active">Count</button>
       <button data-mode="setup">Link tags</button>
     </div>
-    <div class="small muted" id="mode-help" style="margin:-4px 2px 10px"></div>
-    <div id="pending-banner"></div>
-    <label class="btn primary block photo-scan" for="photo-input">
-      <span style="font-size:22px">📷</span><span id="photo-label">Scan with photo</span>
-    </label>
-    <input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
-    <div class="small muted" id="photo-status" style="text-align:center;min-height:18px;margin:6px 0 10px">Snap the shelf tag QR or the product barcode, close up and in focus.</div>
-    <div id="photo-reader" hidden></div>
-    <div id="reader-wrap">
+    <p class="hint" id="mode-help"></p>
+    <div class="camera" id="camera">
       <div id="reader"></div>
-      <div id="cam-placeholder">
-        <p>Live scanning</p>
-        <button class="btn" id="btn-cam-start">Start live camera</button>
-        <p class="small" id="cam-error" style="color:var(--toast-action)"></p>
+      <div class="cam-off" id="cam-off">
+        <span data-icon="camera"></span>
+        <button class="btn primary" id="btn-cam-start">Start camera</button>
+        <p id="cam-error"></p>
       </div>
+      <button class="cam-stop" id="btn-cam-stop" aria-label="Stop camera" hidden><span data-icon="x"></span></button>
     </div>
-    <div class="row" style="margin-top:8px">
-      <button class="btn sm" id="btn-cam-stop" style="display:none">Stop camera</button>
-      <div class="grow"></div>
-      <button class="btn sm" id="btn-pick-manual">Pick product</button>
+    <div id="pending-banner"></div>
+    <div class="actions" id="actions">
+      <label class="btn photo-btn" for="photo-input"><span data-icon="image"></span><span id="photo-label">Photo</span></label>
+      <button class="btn" id="btn-pick-manual"><span data-icon="search"></span>Search</button>
+      <button class="btn" id="btn-enter-code"><span data-icon="hash"></span>Enter code</button>
     </div>
-    <details>
-      <summary>Type a code instead (testing / damaged tag)</summary>
-      <div class="manual">
-        <input class="text" id="manual-code" placeholder="Code or URL" autocomplete="off">
-        <select class="text" id="manual-kind" style="width:auto">
-          <option value="tag">Shelf QR</option>
-          <option value="barcode">Barcode</option>
-        </select>
-        <button class="btn primary" id="btn-manual-go">Go</button>
-      </div>
-    </details>
-    <div class="card" style="margin-top:12px" id="last-scan-card">
-      <div class="small muted">Last scan</div>
-      <div id="last-scan" class="small" style="word-break:break-all">—</div>
-    </div>
+    <input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
+    <p class="hint center" id="photo-status" hidden></p>
+    <div class="card last" id="last-scan"></div>
+    <div id="photo-reader" hidden></div>
   </section>
 
-  <!-- PULL LIST -->
   <section class="view" id="view-list"></section>
-
-  <!-- PRODUCTS -->
   <section class="view" id="view-products"></section>
-
-  <!-- TAGS -->
   <section class="view" id="view-tags"></section>
-
-  <!-- MORE -->
   <section class="view" id="view-more"></section>
 </main>
 
 <nav class="tabs" id="tabs">
-  <button data-view="scan" class="active"><span class="ico">⌖</span>Scan</button>
-  <button data-view="list"><span class="ico">☰</span><span>List<span class="badge" id="list-badge" style="display:none"></span></span></button>
-  <button data-view="products"><span class="ico">▦</span>Products</button>
-  <button data-view="tags"><span class="ico">⌗</span>Tags</button>
-  <button data-view="more"><span class="ico">⋯</span>More</button>
+  <button data-view="scan" class="active"><span data-icon="scan"></span>Scan</button>
+  <button data-view="list"><span data-icon="list"></span>List<span class="badge" id="list-badge" hidden></span></button>
+  <button data-view="products"><span data-icon="grid"></span>Products</button>
+  <button data-view="tags"><span data-icon="tag"></span>Tags</button>
+  <button data-view="more"><span data-icon="sliders"></span>More</button>
 </nav>
 
 <div id="toast"><span id="toast-msg"></span><button id="toast-undo">UNDO</button></div>
@@ -267,12 +309,44 @@ details summary { cursor: pointer; color: var(--muted); font-size: 14px; margin-
 <script>
 "use strict";
 /* ============================================================
-   Shelf Scan — alpha
-   Single-file app. Data lives in localStorage on this device.
+   Shelf Scan — beta
+   Single-file app. Data lives in localStorage on this device and is
+   shared with everyone through data/shared.json in the GitHub repo.
    ============================================================ */
 
 const STORAGE_KEY = "shelfscan.v1";
+const PASS_KEY = "shelfscan.uploadPass";   // kept outside state so backups never carry it
 const STALE_DAYS = 45;
+const GITHUB = { owner: "MrTheJD", repo: "Shelf-Scan", branch: "main", dataPath: "data/shared.json", keyPath: "data/key.json" };
+const UPLOAD_DELAY_MS = 4000;
+
+// ---------- Icons ----------
+const ICONS = {
+  scan: "M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10",
+  list: "M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01",
+  grid: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
+  tag: "M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8zM7.5 7.5h.01",
+  sliders: "M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6",
+  camera: "M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+  image: "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21",
+  search: "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35",
+  hash: "M4 9h16M4 15h16M10 3L8 21M16 3l-2 18",
+  check: "M20 6L9 17l-5-5",
+  x: "M18 6L6 18M6 6l12 12",
+  dots: "M12 12h.01M19 12h.01M5 12h.01",
+  plus: "M12 5v14M5 12h14",
+  cloud: "M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z",
+  upload: "M16 16l-4-4-4 4M12 12v9M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3",
+  cloudoff: "M22.61 16.95A5 5 0 0 0 18 10h-1.26a8 8 0 0 0-7.05-6M5 5a8 8 0 0 0 4 15h9a5 5 0 0 0 1.7-.3M1 1l22 22",
+  refresh: "M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5",
+  box: "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96L12 12.01l8.73-5.05M12 22.08V12",
+};
+function icon(name, cls = "") {
+  return `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONS[name]}"/></svg>`;
+}
+function fillIcons(root = document) {
+  root.querySelectorAll("[data-icon]").forEach(s => { s.outerHTML = icon(s.dataset.icon); });
+}
 
 // ---------- Starter product list ----------
 // Brand/flavor/format combos only. No UPCs are pre-filled: barcodes are
@@ -318,7 +392,6 @@ const FORMATS = {
 const SODA_CORE   = ["c12_12","c12_24","c12_35","c75_10","b20","b20_6","b169_6","b12_8","l2","l1"];
 const SODA_FLAVOR = ["c12_12","b20","l2"];
 const SEED_LINES = [
-  // [brand, flavors[], formats[]]
   ["Coca-Cola", ["Original", "Zero Sugar"], SODA_CORE],
   ["Coca-Cola", ["Cherry", "Cherry Zero Sugar", "Vanilla", "Vanilla Zero Sugar", "Caffeine-Free", "Caffeine-Free Zero Sugar"], SODA_FLAVOR],
   ["Coca-Cola", ["Original (Mexican)"], ["g12_4"]],
@@ -352,11 +425,11 @@ const SEED_LINES = [
   ["Monster Energy", ["Original", "Zero Ultra", "Ultra Paradise", "Ultra Violet", "Lo-Carb"], ["e16","e16_4"]],
 ];
 const BRAND_COLORS = {
-  "Coca-Cola": "#c8102e", "Diet Coke": "#8a8d91", "Sprite": "#00843d", "Fanta": "#f58220",
-  "Fresca": "#6aa84f", "Barq's": "#6b3e26", "Mello Yello": "#9bbb1f", "Pibb Xtra": "#7a1b2a",
-  "Seagram's": "#1d4f91", "Dasani": "#1f7fd1", "smartwater": "#4a90c2", "Topo Chico": "#c9a227",
-  "Powerade": "#0057b8", "BODYARMOR": "#e4002b", "BODYARMOR LYTE": "#f06292", "vitaminwater": "#7b3fa0",
-  "Gold Peak": "#b8860b", "Peace Tea": "#d94f8a", "Minute Maid": "#e6b800", "Monster Energy": "#222222",
+  "Coca-Cola": "#F40009", "Diet Coke": "#8C8F93", "Sprite": "#00843D", "Fanta": "#F58220",
+  "Fresca": "#5E9E47", "Barq's": "#6B3E26", "Mello Yello": "#8DAE1B", "Pibb Xtra": "#7A1B2A",
+  "Seagram's": "#1D4F91", "Dasani": "#1F7FD1", "smartwater": "#4A90C2", "Topo Chico": "#B8921F",
+  "Powerade": "#0057B8", "BODYARMOR": "#D6002A", "BODYARMOR LYTE": "#E0588A", "vitaminwater": "#7B3FA0",
+  "Gold Peak": "#A87B0A", "Peace Tea": "#D14F86", "Minute Maid": "#D9A400", "Monster Energy": "#1E1E1E",
 };
 
 function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
@@ -371,7 +444,7 @@ function buildSeedProducts() {
         if (seen.has(id)) continue;
         seen.add(id);
         out.push({ id, brand, flavor, size: fmt.size, pack: fmt.pack, category: fmt.category,
-                   unit: fmt.unit, barcodes: [], img: "", custom: false, retired: false });
+                   unit: fmt.unit, barcodes: [], img: "", custom: false, retired: false, updated: 0 });
       }
     }
   }
@@ -382,47 +455,131 @@ function buildSeedProducts() {
 let state;
 function freshState() {
   return {
-    version: 1,
-    storeId: "store-1",          // v1 = one store; data is keyed by store for later.
+    version: 2,
     storeName: "",
     products: buildSeedProducts(),
-    tags: {},                    // { storeId: { code: { productId, created, lastSeen } } }
-    list: null,                  // { storeId, started, items: [{productId, qty, status, addedAt}] }
+    tags: {},                               // { code: { productId, created, lastSeen, updated } }  — same QR codes at every store
+    deleted: { products: {}, tags: {} },    // tombstones: id/code -> time deleted
+    outbox: { products: {}, tags: {} },     // changed since last upload
+    list: null,                             // { started, items: [{productId, qty, status: "need"|"done", addedAt}] }
     recents: [],
-    settings: { beep: true },
+    settings: { beep: true, camOK: false },
+    sync: { lastPull: 0, lastPush: 0, error: "" },
   };
 }
 function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) { state = JSON.parse(raw); }
+    if (raw) state = JSON.parse(raw);
   } catch (e) { /* storage unavailable */ }
   if (!state || !state.products) state = freshState();
-  state.tags = state.tags || {};
-  state.settings = state.settings || { beep: true };
+  migrate();
+}
+function migrate() {
+  const f = freshState();
+  for (const k of ["deleted", "outbox", "sync", "settings"]) state[k] = Object.assign(f[k], state[k] || {});
+  state.deleted.products = state.deleted.products || {}; state.deleted.tags = state.deleted.tags || {};
+  state.outbox.products = state.outbox.products || {}; state.outbox.tags = state.outbox.tags || {};
   state.recents = state.recents || [];
-  delete state.history;
+  state.tags = state.tags || {};
+  // v1 kept tags per store ({ "store-1": { code: {...} } }); every store uses the same codes now.
+  for (const k of Object.keys(state.tags)) {
+    const v = state.tags[k];
+    if (v && typeof v === "object" && !("productId" in v)) {
+      for (const code in v) state.tags[code] = { updated: 0, ...v[code] };
+      delete state.tags[k];
+    }
+  }
+  for (const code in state.tags) if (state.tags[code].updated === undefined) state.tags[code].updated = 0;
+  for (const p of state.products) if (p.updated === undefined) p.updated = 0;
+  delete state.history; delete state.storeId;
   // Older builds had pulled/short/out/stocked; now an item is either needed or crossed off.
-  if (state.list) for (const i of state.list.items) i.status = ["done", "pulled", "stocked"].includes(i.status) ? "done" : "need";
+  if (state.list) {
+    delete state.list.storeId;
+    for (const i of state.list.items) i.status = ["done", "pulled", "stocked"].includes(i.status) ? "done" : "need";
+  }
+  // New starter products added to the app show up for existing users.
+  const have = new Set(state.products.map(p => p.id));
+  for (const p of buildSeedProducts()) if (!have.has(p.id) && !state.deleted.products[p.id]) state.products.push(p);
+  state.version = 2;
 }
 function save() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-  catch (e) { toast("Couldn't save — storage full or blocked"); }
+  catch (e) { toast("Couldn't save. Phone storage is full or blocked."); }
 }
 function snapshot() { return JSON.stringify(state); }
-function restore(snap) { state = JSON.parse(snap); save(); renderAll(); }
 
-const storeTags = () => (state.tags[state.storeId] = state.tags[state.storeId] || {});
 const productById = id => state.products.find(p => p.id === id);
 function productByBarcode(code) { return state.products.find(p => p.barcodes.includes(code)); }
 function tagForProduct(pid) {
-  const t = storeTags();
-  for (const code in t) if (t[code].productId === pid) return code;
+  for (const code in state.tags) if (state.tags[code].productId === pid) return code;
   return null;
 }
 function pName(p) { return p.flavor ? `${p.brand} ${p.flavor}` : p.brand; }
 function pSub(p) { return `${p.size} · ${p.pack}`; }
 function pFull(p) { return `${pName(p)} — ${pSub(p)}`; }
+
+// ---------- Change tracking (what needs uploading) ----------
+function markProduct(id) {
+  const p = productById(id); if (!p) return;
+  p.updated = Date.now(); p._st = undefined;
+  delete state.deleted.products[id];
+  state.outbox.products[id] = 1;
+  scheduleUpload();
+}
+function markTag(code) {
+  const t = state.tags[code]; if (!t) return;
+  t.updated = Date.now();
+  delete state.deleted.tags[code];
+  state.outbox.tags[code] = 1;
+  scheduleUpload();
+}
+function dropTag(code) {
+  delete state.tags[code];
+  state.deleted.tags[code] = Date.now();
+  state.outbox.tags[code] = 1;
+  scheduleUpload();
+}
+function dropProduct(id) {
+  state.products = state.products.filter(p => p.id !== id);
+  state.deleted.products[id] = Date.now();
+  state.outbox.products[id] = 1;
+  for (const c in state.tags) if (state.tags[c].productId === id) dropTag(c);
+  if (state.list) state.list.items = state.list.items.filter(i => i.productId !== id);
+  scheduleUpload();
+}
+const shareable = p => { const { _st, ...rest } = p; return rest; };
+const tagShareable = t => ({ productId: t.productId, created: t.created, updated: t.updated });
+function pendingCount() { return Object.keys(state.outbox.products).length + Object.keys(state.outbox.tags).length; }
+
+// Undo restores an earlier snapshot; anything that differs is re-marked so the undo also uploads.
+function restore(snap) {
+  const prev = state;
+  state = JSON.parse(snap);
+  migrate();
+  const now = Date.now();
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const prevP = Object.fromEntries(prev.products.map(p => [p.id, p]));
+  const nextP = Object.fromEntries(state.products.map(p => [p.id, p]));
+  for (const id of new Set([...Object.keys(prevP), ...Object.keys(nextP)])) {
+    const a = prevP[id] && { ...shareable(prevP[id]), updated: 0 }, b = nextP[id] && { ...shareable(nextP[id]), updated: 0 };
+    if (same(a, b)) continue;
+    if (nextP[id]) { nextP[id].updated = now; delete state.deleted.products[id]; }
+    else state.deleted.products[id] = now;
+    state.outbox.products[id] = 1;
+  }
+  for (const code of new Set([...Object.keys(prev.tags), ...Object.keys(state.tags)])) {
+    const a = prev.tags[code] && prev.tags[code].productId, b = state.tags[code] && state.tags[code].productId;
+    if (a === b) continue;
+    if (state.tags[code]) { state.tags[code].updated = now; delete state.deleted.tags[code]; }
+    else state.deleted.tags[code] = now;
+    state.outbox.tags[code] = 1;
+  }
+  for (const id in prev.outbox.products) state.outbox.products[id] = 1;
+  for (const c in prev.outbox.tags) state.outbox.tags[c] = 1;
+  state.sync = prev.sync;
+  save(); renderAll(); scheduleUpload();
+}
 
 // ---------- Utilities ----------
 const $ = sel => document.querySelector(sel);
@@ -439,6 +596,14 @@ function thumbHtml(p, lg) {
 }
 function daysAgo(ts) { return Math.floor((Date.now() - ts) / 86400000); }
 function fmtDate(ts) { return new Date(ts).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); }
+function ago(ts) {
+  if (!ts) return "never";
+  const m = Math.round((Date.now() - ts) / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
+  if (m < 1440) return `${Math.round(m / 60)} hr ago`;
+  return fmtDate(ts);
+}
 
 function normalizeBarcode(code) {
   let c = String(code).trim();
@@ -456,7 +621,7 @@ function toast(msg, undoSnap) {
   u.onclick = () => { if (undoSnap) { restore(undoSnap); toast("Undone"); } };
   t.style.display = "flex";
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (t.style.display = "none"), undoSnap ? 6000 : 2500);
+  toastTimer = setTimeout(() => (t.style.display = "none"), undoSnap ? 6000 : 2600);
 }
 
 let audioCtx;
@@ -490,7 +655,7 @@ function confirmDialog(message, { ok = "Confirm", cancel = "Cancel", danger = fa
   return new Promise(resolve => {
     const d = el(`<div class="dialog"><p></p><div class="btns">
       <button class="btn" data-a="no">${esc(cancel)}</button>
-      <button class="btn ${danger ? "danger" : "primary"}" data-a="yes">${esc(ok)}</button></div></div>`);
+      <button class="btn ${danger ? "primary" : "primary"}" data-a="yes">${esc(ok)}</button></div></div>`);
     d.querySelector("p").innerHTML = message;
     let done = false;
     const close = openLayer(d, { center: true, onClose: () => { if (!done) resolve(false); } });
@@ -499,7 +664,6 @@ function confirmDialog(message, { ok = "Confirm", cancel = "Cancel", danger = fa
   });
 }
 function menu(title, options) {
-  // options: [{label, value, danger}]
   return new Promise(resolve => {
     const s = el(`<div class="sheet"><div class="handle"></div><h2></h2><div class="menu-list"></div>
       <button class="btn block" data-a="cancel">Cancel</button></div>`);
@@ -526,7 +690,7 @@ function normText(s) {
   return s.toLowerCase()
     .replace(/coca[\s-]?cola/g, "coca cola coke")
     .replace(/diet coke/g, "diet coke coca cola")
-    .replace(/[''`]/g, "")
+    .replace(/['’`]/g, "")
     .replace(/(\d)\s*-?\s*(liter|litre|ltr)s?\b/g, "$1l")
     .replace(/(\d)\s*-?\s*(ounce|ounces)\b/g, "$1oz")
     .replace(/(\d)\s*-?\s*(oz|l|pk|pack|ct)\b/g, "$1$2")
@@ -535,7 +699,7 @@ function normText(s) {
     .replace(/\s+/g, " ").trim();
 }
 function searchText(p) {
-  if (!p._st) Object.defineProperty(p, "_st", { value: normText(`${p.brand} ${p.flavor} ${p.size} ${p.pack} ${p.category}`), writable: true, enumerable: false });
+  if (!p._st) Object.defineProperty(p, "_st", { value: normText(`${p.brand} ${p.flavor} ${p.size} ${p.pack} ${p.category}`), writable: true, enumerable: false, configurable: true });
   return p._st;
 }
 function queryTokens(q) {
@@ -569,22 +733,20 @@ function searchProducts(q, { category = "", includeRetired = false } = {}) {
   use.sort((a, b) => b.hits - a.hits || b.exact - a.exact || b.prefix - a.prefix);
   return use.map(s => s.p);
 }
-function bumpRecent(pid) {
-  state.recents = [pid, ...state.recents.filter(x => x !== pid)].slice(0, 12);
-}
+function bumpRecent(pid) { state.recents = [pid, ...state.recents.filter(x => x !== pid)].slice(0, 12); }
 function catSort(a, b) {
   const ia = CATEGORY_ORDER.indexOf(a), ib = CATEGORY_ORDER.indexOf(b);
   return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
 }
-function allCategories() {
-  return [...new Set(state.products.map(p => p.category))].sort(catSort);
-}
+function allCategories() { return [...new Set(state.products.map(p => p.category))].sort(catSort); }
 
 // ---------- Product picker ----------
+function searchBox(placeholder) {
+  return `<div class="search-wrap">${icon("search")}<input class="field" type="search" placeholder="${esc(placeholder)}" autocomplete="off" autocorrect="off" spellcheck="false"></div>`;
+}
 function pickProduct({ title = "Pick a product", initialQuery = "" } = {}) {
   return new Promise(resolve => {
-    const s = el(`<div class="sheet"><div class="handle"></div><h2></h2>
-      <input class="search" type="search" placeholder="Search: e.g. zero 12pk, sprite 2l" autocomplete="off">
+    const s = el(`<div class="sheet"><div class="handle"></div><h2></h2>${searchBox("Try “zero 12pk” or “sprite 2l”")}
       <div class="chips"></div><div class="results"></div></div>`);
     s.querySelector("h2").textContent = title;
     let done = false, cat = "";
@@ -606,7 +768,6 @@ function pickProduct({ title = "Pick a product", initialQuery = "" } = {}) {
     const renderResults = () => {
       const q = input.value.trim();
       results.innerHTML = "";
-      let items;
       if (!q && !cat && state.recents.length) {
         const rec = state.recents.map(productById).filter(p => p && !p.retired);
         if (rec.length) {
@@ -615,12 +776,12 @@ function pickProduct({ title = "Pick a product", initialQuery = "" } = {}) {
         }
         results.appendChild(el(`<div class="group-h">All products</div>`));
       }
-      items = searchProducts(q, { category: cat });
+      const items = searchProducts(q, { category: cat });
       const shown = items.slice(0, 150);
       if (shown.length) results.appendChild(listOf(shown, choose));
-      if (items.length > shown.length) results.appendChild(el(`<div class="small muted" style="padding:8px">${items.length - shown.length} more — keep typing to narrow down</div>`));
-      if (!items.length) results.appendChild(el(`<div class="empty">No match for “${esc(q)}”</div>`));
-      const add = el(`<button class="btn block">+ Add new product${q ? ` “${esc(q)}”` : ""}</button>`);
+      if (items.length > shown.length) results.appendChild(el(`<p class="hint center" style="padding:10px">${items.length - shown.length} more. Keep typing to narrow it down.</p>`));
+      if (!items.length) results.appendChild(el(`<div class="empty"><p>No match for “${esc(q)}”</p></div>`));
+      const add = el(`<button class="btn block" style="margin-top:12px">${icon("plus")}Add new product${q ? ` “${esc(q)}”` : ""}</button>`);
       add.onclick = async () => {
         const pid = await editProduct(null, { prefillName: q });
         if (pid) choose(pid);
@@ -636,24 +797,23 @@ function listOf(products, onTap, extra) {
   const wrap = el(`<div class="list"></div>`);
   for (const p of products) {
     const r = el(`<div class="item tap">${thumbHtml(p)}<div class="grow"><div class="name">${esc(pName(p))}</div>
-      <div class="sub">${esc(pSub(p))}${extra ? extra(p) : ""}</div></div></div>`);
+      <div class="sub">${esc(pSub(p))}</div></div>${extra ? extra(p) : ""}</div>`);
     r.onclick = () => onTap(p.id);
     wrap.appendChild(r);
   }
   return wrap;
 }
 
-// ---------- Binding logic (strict 1:1 per store for shelf tags) ----------
+// ---------- Binding logic (strict 1:1 for shelf tags) ----------
 async function bindTag(code, pid, { confirm = true } = {}) {
   const p = productById(pid);
-  const tags = storeTags();
-  const existing = tags[code];
+  const existing = state.tags[code];
   const oldCodeForProduct = tagForProduct(pid);
   if (existing && existing.productId === pid) { existing.lastSeen = Date.now(); save(); return true; }
   const warnings = [];
   if (existing) {
     const other = productById(existing.productId);
-    warnings.push(`This tag is currently linked to <b>${esc(other ? pFull(other) : "a deleted product")}</b>. That product will be left with no tag.`);
+    warnings.push(`This tag is linked to <b>${esc(other ? pFull(other) : "a deleted product")}</b>. That product will be left with no tag.`);
   }
   if (oldCodeForProduct) warnings.push(`<b>${esc(pName(p))}</b> already has a different tag. The old tag will be unlinked.`);
   if (confirm) {
@@ -662,10 +822,11 @@ async function bindTag(code, pid, { confirm = true } = {}) {
     if (!ok) return false;
   }
   const snap = snapshot();
-  if (oldCodeForProduct) delete tags[oldCodeForProduct];
-  tags[code] = { productId: pid, created: Date.now(), lastSeen: Date.now() };
+  if (oldCodeForProduct) dropTag(oldCodeForProduct);
+  state.tags[code] = { productId: pid, created: Date.now(), lastSeen: Date.now(), updated: 0 };
+  markTag(code);
   save(); renderAll();
-  toast(`Tag linked → ${pName(p)} ${p.pack}`, snap);
+  toast(`Linked: ${pName(p)} ${p.pack}`, snap);
   return true;
 }
 async function addBarcodeToProduct(code, pid) {
@@ -676,8 +837,10 @@ async function addBarcodeToProduct(code, pid) {
     const ok = await confirmDialog(`This barcode is on <b>${esc(pFull(other))}</b>. Move it to <b>${esc(pFull(p))}</b>?`, { ok: "Move" });
     if (!ok) return false;
     other.barcodes = other.barcodes.filter(b => b !== code);
+    markProduct(other.id);
   }
   p.barcodes.push(code);
+  markProduct(p.id);
   save();
   if (!p.img) fetchOffImage(p, code);
   return true;
@@ -700,17 +863,276 @@ async function offLookup(code) {
 async function fetchOffImage(p, code) {
   if (!navigator.onLine) return;
   const info = await offLookup(code);
-  if (info && info.img && !p.img) { p.img = info.img; save(); renderAll(); }
+  if (info && info.img && !p.img) { p.img = info.img; markProduct(p.id); save(); renderAll(); }
+}
+
+// ============================================================
+// Shared data on GitHub
+// ============================================================
+function b64encode(str) { return btoa(unescape(encodeURIComponent(str))); }
+function b64decode(b64) { return decodeURIComponent(escape(atob(b64.replace(/\s/g, "")))); }
+const bytesToB64 = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes)));
+const b64ToBytes = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+const apiBase = `https://api.github.com/repos/${GITHUB.owner}/${GITHUB.repo}`;
+
+function emptyShared() { return { version: 1, updated: 0, products: {}, tags: {}, deleted: { products: {}, tags: {} } }; }
+function normShared(d) {
+  const s = emptyShared();
+  if (!d || typeof d !== "object") return s;
+  s.updated = d.updated || 0;
+  s.products = d.products || {}; s.tags = d.tags || {};
+  s.deleted.products = (d.deleted && d.deleted.products) || {}; s.deleted.tags = (d.deleted && d.deleted.tags) || {};
+  return s;
+}
+
+// Read a repo file. With a token: GitHub API (fresh, gives the sha needed to write).
+// Without: public API first, then the Pages copy next to the app.
+async function readRepoFile(path, token) {
+  const headers = { Accept: "application/vnd.github+json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  try {
+    const r = await fetch(`${apiBase}/contents/${path}?ref=${GITHUB.branch}&t=${Date.now()}`, { headers, cache: "no-store" });
+    if (r.status === 404) return { text: null, sha: null };
+    if (r.ok) {
+      const j = await r.json();
+      if (j.content) return { text: b64decode(j.content), sha: j.sha };
+      // Files over 1MB come back without content; fetch the raw bytes.
+      const raw = await fetch(`${apiBase}/contents/${path}?ref=${GITHUB.branch}`, { headers: { ...headers, Accept: "application/vnd.github.raw" }, cache: "no-store" });
+      if (raw.ok) return { text: await raw.text(), sha: j.sha };
+    }
+    if (token) throw new Error(`GitHub said ${r.status}`);
+  } catch (e) { if (token) throw e; }
+  const r = await fetch(`${path}?t=${Date.now()}`, { cache: "no-store" });   // Pages copy (may lag a minute)
+  if (r.status === 404) return { text: null, sha: null };
+  if (!r.ok) throw new Error(`Couldn't load shared data (${r.status})`);
+  return { text: await r.text(), sha: null };
+}
+async function writeRepoFile(path, text, sha, token, message) {
+  const r = await fetch(`${apiBase}/contents/${path}`, {
+    method: "PUT",
+    headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ message, content: b64encode(text), branch: GITHUB.branch, ...(sha ? { sha } : {}) }),
+  });
+  if (r.status === 409 || r.status === 422) { const e = new Error("conflict"); e.conflict = true; throw e; }
+  if (r.status === 401 || r.status === 403) { const e = new Error("GitHub rejected the upload key"); e.auth = true; throw e; }
+  if (!r.ok) throw new Error(`GitHub said ${r.status}`);
+  return (await r.json()).content.sha;
+}
+
+// Merge shared data into this phone. Newest change wins, item by item.
+function applyShared(remote, { overwrite = false } = {}) {
+  remote = normShared(remote);
+  if (overwrite) {
+    const map = new Map(buildSeedProducts().map(p => [p.id, p]));
+    for (const id in remote.products) map.set(id, { ...remote.products[id] });
+    for (const id in remote.deleted.products) map.delete(id);
+    state.products = [...map.values()];
+    const tags = {};
+    for (const code in remote.tags) {
+      const rt = remote.tags[code];
+      if (!map.has(rt.productId)) continue;
+      tags[code] = { ...rt, lastSeen: (state.tags[code] && state.tags[code].lastSeen) || rt.created || Date.now() };
+    }
+    state.tags = tags;
+    state.deleted = { products: {}, tags: {} };
+    state.outbox = { products: {}, tags: {} };
+  } else {
+    const localTs = id => { const p = productById(id); return Math.max(p ? p.updated || 0 : 0, state.deleted.products[id] || 0); };
+    for (const id in remote.products) {
+      const rp = remote.products[id];
+      if ((rp.updated || 0) <= localTs(id)) continue;
+      const i = state.products.findIndex(p => p.id === id);
+      if (i >= 0) state.products[i] = { ...rp }; else state.products.push({ ...rp });
+      delete state.deleted.products[id]; delete state.outbox.products[id];
+    }
+    for (const id in remote.deleted.products) {
+      const ts = remote.deleted.products[id];
+      if (ts <= localTs(id)) continue;
+      state.products = state.products.filter(p => p.id !== id);
+      state.deleted.products[id] = ts; delete state.outbox.products[id];
+    }
+    const tagTs = c => Math.max(state.tags[c] ? state.tags[c].updated || 0 : 0, state.deleted.tags[c] || 0);
+    for (const code in remote.tags) {
+      const rt = remote.tags[code];
+      if ((rt.updated || 0) <= tagTs(code)) continue;
+      state.tags[code] = { ...rt, lastSeen: (state.tags[code] && state.tags[code].lastSeen) || rt.created || Date.now() };
+      delete state.deleted.tags[code]; delete state.outbox.tags[code];
+    }
+    for (const code in remote.deleted.tags) {
+      const ts = remote.deleted.tags[code];
+      if (ts <= tagTs(code)) continue;
+      delete state.tags[code];
+      state.deleted.tags[code] = ts; delete state.outbox.tags[code];
+    }
+  }
+  // Keep things consistent: tags must point at real products, one tag per product (newest wins).
+  const byProduct = {};
+  for (const code of Object.keys(state.tags)) {
+    const t = state.tags[code];
+    if (!productById(t.productId)) { delete state.tags[code]; continue; }
+    const prev = byProduct[t.productId];
+    if (prev && state.tags[prev].updated >= t.updated) delete state.tags[code];
+    else { if (prev) delete state.tags[prev]; byProduct[t.productId] = code; }
+  }
+  if (state.list) state.list.items = state.list.items.filter(i => productById(i.productId));
+  state.products.forEach(p => (p._st = undefined));
+}
+
+async function pullShared({ overwrite = false, quiet = true } = {}) {
+  let token = null;
+  if (uploadsEnabled()) { try { token = await getToken(); } catch (e) { /* read without it */ } }
+  const { text } = await readRepoFile(GITHUB.dataPath, token);
+  const remote = text ? JSON.parse(text) : emptyShared();
+  applyShared(remote, { overwrite });
+  state.sync.lastPull = Date.now();
+  if (!uploadsEnabled()) state.sync.error = "";
+  save(); renderAll();
+  if (!quiet) toast(overwrite ? "Replaced with the shared data" : "Up to date");
+}
+
+// ---------- Upload key (encrypted with the team password) ----------
+const KDF_ITER = 250000;
+async function deriveAesKey(password, salt, iter) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: iter, hash: "SHA-256" }, base,
+    { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+async function encryptToken(token, password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveAesKey(password, salt, KDF_ITER);
+  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(token));
+  return { v: 1, kdf: "PBKDF2-SHA256", iter: KDF_ITER, salt: bytesToB64(salt), iv: bytesToB64(iv), ct: bytesToB64(ct) };
+}
+async function decryptToken(blob, password) {
+  const key = await deriveAesKey(password, b64ToBytes(blob.salt), blob.iter);
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64ToBytes(blob.iv) }, key, b64ToBytes(blob.ct));
+  return new TextDecoder().decode(pt);
+}
+function getPass() { try { return localStorage.getItem(PASS_KEY) || ""; } catch (e) { return ""; } }
+function setPass(p) { try { if (p) localStorage.setItem(PASS_KEY, p); else localStorage.removeItem(PASS_KEY); } catch (e) {} }
+const uploadsEnabled = () => !!getPass();
+let cachedToken = null;
+async function loadKeyBlob() {
+  const { text } = await readRepoFile(GITHUB.keyPath, null);
+  if (!text) throw new Error("Uploads haven't been set up for this app yet.");
+  return JSON.parse(text);
+}
+async function getToken() {
+  if (cachedToken) return cachedToken;
+  const pass = getPass();
+  if (!pass) throw new Error("Uploads are off");
+  const blob = await loadKeyBlob();
+  try { cachedToken = await decryptToken(blob, pass); }
+  catch (e) { const err = new Error("The upload password no longer works. Enable uploads again."); err.auth = true; throw err; }
+  return cachedToken;
+}
+async function checkToken(token) {
+  const r = await fetch(apiBase, { headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}` }, cache: "no-store" });
+  if (r.status === 401) throw new Error("GitHub didn't accept that key.");
+  if (!r.ok) throw new Error(`Couldn't reach the repository (${r.status}). Check that the key has access to ${GITHUB.repo}.`);
+  const j = await r.json();
+  if (j.permissions && !j.permissions.push) throw new Error("That key can read but not write. Give it Contents: Read and write.");
+}
+
+// ---------- Automatic uploads ----------
+let uploadTimer = null, uploading = false, uploadAgain = false;
+function scheduleUpload(delay = UPLOAD_DELAY_MS) {
+  renderSyncIndicator();
+  if (!uploadsEnabled()) return;
+  clearTimeout(uploadTimer);
+  uploadTimer = setTimeout(uploadChanges, delay);
+}
+async function uploadChanges() {
+  if (!uploadsEnabled() || !pendingCount()) { renderSyncIndicator(); return; }
+  if (!navigator.onLine) { state.sync.error = "offline"; renderSyncIndicator(); return; }
+  if (uploading) { uploadAgain = true; return; }
+  uploading = true; renderSyncIndicator();
+  try {
+    const token = await getToken();
+    // What we're sending, with the timestamp it had, so later edits aren't wrongly cleared.
+    const sentP = {}, sentT = {};
+    for (const id in state.outbox.products) { const p = productById(id); sentP[id] = p ? p.updated : state.deleted.products[id] || 0; }
+    for (const c in state.outbox.tags) { const t = state.tags[c]; sentT[c] = t ? t.updated : state.deleted.tags[c] || 0; }
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const { text, sha } = await readRepoFile(GITHUB.dataPath, token);
+      const R = normShared(text ? JSON.parse(text) : null);
+      let n = 0;
+      for (const id in sentP) {
+        const rTs = Math.max((R.products[id] && R.products[id].updated) || 0, R.deleted.products[id] || 0);
+        if (rTs > sentP[id]) continue;                         // someone else changed it more recently
+        const p = productById(id);
+        if (p) { R.products[id] = shareable(p); delete R.deleted.products[id]; }
+        else { delete R.products[id]; R.deleted.products[id] = state.deleted.products[id] || Date.now(); }
+        n++;
+      }
+      for (const c in sentT) {
+        const rTs = Math.max((R.tags[c] && R.tags[c].updated) || 0, R.deleted.tags[c] || 0);
+        if (rTs > sentT[c]) continue;
+        const t = state.tags[c];
+        if (t) { R.tags[c] = tagShareable(t); delete R.deleted.tags[c]; }
+        else { delete R.tags[c]; R.deleted.tags[c] = state.deleted.tags[c] || Date.now(); }
+        n++;
+      }
+      R.updated = Date.now();
+      try {
+        await writeRepoFile(GITHUB.dataPath, JSON.stringify(R, null, 1), sha, token,
+          `Shelf Scan: ${n} change${n === 1 ? "" : "s"}${state.storeName ? ` (store ${state.storeName})` : ""}`);
+      } catch (e) { if (e.conflict) continue; throw e; }   // someone uploaded at the same moment; re-read and retry
+      for (const id in sentP) {
+        const p = productById(id), now = p ? p.updated : state.deleted.products[id] || 0;
+        if (now === sentP[id]) delete state.outbox.products[id];
+      }
+      for (const c in sentT) {
+        const t = state.tags[c], now = t ? t.updated : state.deleted.tags[c] || 0;
+        if (now === sentT[c]) delete state.outbox.tags[c];
+      }
+      applyShared(R);                                        // pick up everyone else's changes too
+      state.sync.lastPush = state.sync.lastPull = Date.now();
+      state.sync.error = "";
+      save(); renderAll();
+      return;
+    }
+    throw new Error("Too many people uploading at once. Will retry.");
+  } catch (e) {
+    state.sync.error = e.message || String(e);
+    if (e.auth) cachedToken = null;
+    save();
+    if (!e.auth) scheduleUpload(30000);                      // try again shortly
+  } finally {
+    uploading = false;
+    renderSyncIndicator();
+    if (view === "more") renderMore();
+    if (uploadAgain) { uploadAgain = false; scheduleUpload(500); }
+  }
+}
+window.addEventListener("online", () => { state.sync.error = ""; scheduleUpload(500); });
+
+function syncStatus() {
+  const n = pendingCount();
+  if (!uploadsEnabled()) return { dot: "", text: "Uploads are off on this phone", short: "" };
+  if (uploading) return { dot: "warn", text: `Uploading ${n} change${n === 1 ? "" : "s"}…`, short: "up" };
+  if (state.sync.error === "offline" || (!navigator.onLine && n)) return { dot: "warn", text: `${n} change${n === 1 ? "" : "s"} waiting for signal`, short: "wait" };
+  if (state.sync.error) return { dot: "bad", text: state.sync.error, short: "err" };
+  if (n) return { dot: "warn", text: `${n} change${n === 1 ? "" : "s"} waiting to upload`, short: "wait" };
+  return { dot: "ok", text: `All changes uploaded${state.sync.lastPush ? " · " + ago(state.sync.lastPush) : ""}`, short: "ok" };
+}
+function renderSyncIndicator() {
+  const b = $("#sync-ind"); if (!b) return;
+  const s = syncStatus(), n = pendingCount();
+  b.hidden = !s.short;
+  b.innerHTML = s.short === "ok" ? icon("cloud") : s.short === "err" ? icon("cloudoff") : `${icon("upload")}${n || ""}`;
+  b.setAttribute("aria-label", s.text);
 }
 
 // ---------- Scan handling ----------
 let mode = "count";
-let pending = null;   // { kind: "bindTag", code } | { kind: "tagForProduct", pid } | { kind: "setupTag", code }
+let pending = null;   // { kind: "bindTag"|"rebindTag"|"setupTag", code } | { kind: "tagForProduct", pid }
 let lastScan = { code: "", at: 0 };
+let lastScanned = null;   // { kind, code }
 
 const MODE_HELP = {
   count: "Scan the shelf tag or barcode where product is missing, then enter how many you need.",
-  setup: "Scan a shelf tag, then the product barcode (or pick the product). It links instantly, no confirm. Repeat down the aisle.",
+  setup: "Scan a shelf tag, then the product barcode or pick the product. It links instantly. Keep going down the aisle.",
 };
 function setMode(m) {
   mode = m;
@@ -723,16 +1145,15 @@ function setPending(p) { pending = p; renderPending(); }
 function renderPending() {
   const box = $("#pending-banner");
   box.innerHTML = "";
-  // The photo button says what to shoot next, so Link tags is one tap per step.
-  const label = $("#photo-label");
-  if (label) label.textContent = mode !== "setup" ? "Scan with photo"
-    : pending && pending.kind === "setupTag" ? "Photo the product barcode" : "Photo the shelf tag";
+  const full = $("#actions").classList.contains("photo-first");
+  $("#photo-label").textContent = mode !== "setup" ? (full ? "Scan with photo" : "Photo")
+    : pending && pending.kind === "setupTag" ? (full ? "Photo the product barcode" : "Photo barcode") : (full ? "Photo the shelf tag" : "Photo tag");
   if (!pending) return;
   let msg = "";
-  if (pending.kind === "bindTag") msg = "New tag — now scan the product's barcode";
-  if (pending.kind === "rebindTag") msg = "Scan the correct product's barcode";
-  if (pending.kind === "setupTag") msg = "Tag scanned. Now scan the product barcode, or pick it.";
-  if (pending.kind === "tagForProduct") { const p = productById(pending.pid); msg = `Scan the new shelf tag for ${p ? pName(p) + " " + p.pack : "product"}`; }
+  if (pending.kind === "bindTag") msg = "New tag. Now scan the product's barcode.";
+  if (pending.kind === "rebindTag") msg = "Scan the correct product's barcode.";
+  if (pending.kind === "setupTag") msg = "Tag scanned. Scan the barcode or pick the product.";
+  if (pending.kind === "tagForProduct") { const p = productById(pending.pid); msg = `Scan the new shelf tag for ${p ? pName(p) + " " + p.pack : "this product"}.`; }
   const b = el(`<div class="banner"><span class="grow"></span>${pending.kind === "setupTag" ? `<button class="btn sm primary" data-a="pick">Pick</button>` : ""}<button class="btn sm" data-a="cancel">Cancel</button></div>`);
   b.querySelector(".grow").textContent = msg;
   b.querySelector('[data-a="cancel"]').onclick = () => setPending(null);
@@ -751,27 +1172,38 @@ async function setupLink(tagCode, pid) {
   beep(true);
 }
 
+function renderLastScan() {
+  const box = $("#last-scan");
+  if (!lastScanned) {
+    box.innerHTML = `<div class="grow"><div class="label">Last scan</div><div class="muted small" style="margin-top:2px">Nothing scanned yet</div></div>`;
+    return;
+  }
+  const { kind, code } = lastScanned;
+  const p = kind === "tag" ? (state.tags[code] && productById(state.tags[code].productId)) : productByBarcode(code);
+  box.innerHTML = `${p ? thumbHtml(p) : ""}<div class="grow"><div class="label">Last scan · ${kind === "tag" ? "Shelf tag" : "Barcode"}</div>
+    <div style="font-weight:650;margin-top:2px">${p ? esc(pName(p)) + `<div class="muted small" style="font-weight:500">${esc(pSub(p))}</div>` : "Not linked yet"}</div>
+    <div class="code">${esc(code)}</div></div>`;
+}
+
 function onDecoded(text, formatName) {
   if (modalDepth > 0) return;                    // ignore scans while a sheet is open
   const now = Date.now();
   if (text === lastScan.code && now - lastScan.at < 2500) return;
   lastScan = { code: text, at: now };
   const twoD = /QR|DATA_MATRIX|AZTEC|PDF_417/.test(formatName || "");
-  handleCode(text, twoD ? "tag" : "barcode", formatName);
+  handleCode(text, twoD ? "tag" : "barcode");
 }
 
-async function handleCode(raw, kind, formatName) {
+async function handleCode(raw, kind) {
   const code = kind === "tag" ? normalizeTag(raw) : normalizeBarcode(raw);
-  $("#last-scan").textContent = `${kind === "tag" ? "Shelf tag" : "Barcode"}${formatName ? " (" + formatName + ")" : ""}: ${code}`;
+  lastScanned = { kind, code }; renderLastScan();
   beep(true);
   if (kind === "tag") return handleTag(code);
   return handleBarcode(code);
 }
 
 async function handleTag(code) {
-  const tags = storeTags();
-  const known = tags[code];
-
+  const known = state.tags[code];
   if (pending && pending.kind === "tagForProduct") {
     const pid = pending.pid; setPending(null);
     await bindTag(code, pid);
@@ -785,11 +1217,10 @@ async function handleTag(code) {
   if (known) {
     known.lastSeen = Date.now(); save();
     const p = productById(known.productId);
-    if (!p) { delete tags[code]; save(); return handleTag(code); }
+    if (!p) { delete state.tags[code]; save(); return handleTag(code); }
     return productSheet(p.id, { tagCode: code });
   }
-  // Unknown tag
-  const choice = await menu("Unknown shelf tag", [
+  const choice = await menu("New shelf tag", [
     { label: "Scan the product barcode", value: "scan" },
     { label: "Pick from product list", value: "pick" },
   ]);
@@ -802,7 +1233,6 @@ async function handleTag(code) {
 
 async function handleBarcode(code) {
   let p = productByBarcode(code);
-
   if (pending && (pending.kind === "bindTag" || pending.kind === "rebindTag" || pending.kind === "setupTag")) {
     const tagCode = pending.code, wasKind = pending.kind;
     if (wasKind === "setupTag") {
@@ -824,9 +1254,8 @@ async function handleBarcode(code) {
     if (ok && mode === "count") productSheet(p.id, { tagCode });
     return;
   }
-  if (pending && pending.kind === "tagForProduct") { toast("That's a barcode — scan the shelf tag QR"); beep(false); return; }
+  if (pending && pending.kind === "tagForProduct") { toast("That's a barcode. Scan the shelf tag QR."); beep(false); return; }
   if (mode === "setup") { toast("Scan a shelf tag first, then the product"); beep(false); return; }
-
   if (!p) {
     const pid = await resolveUnknownBarcode(code);
     if (!pid) return;
@@ -836,13 +1265,13 @@ async function handleBarcode(code) {
 }
 
 // Unknown barcode → look up on Open Food Facts, then pick existing or add new.
-async function resolveUnknownBarcode(code, title = "Unknown barcode") {
+async function resolveUnknownBarcode(code, title = "New barcode") {
   const s = el(`<div class="sheet"><div class="handle"></div><h2></h2>
-    <div class="small muted" style="word-break:break-all">Barcode ${esc(code)}</div>
-    <div class="card" style="margin-top:10px" id="off-box"><span class="muted small">Looking up online…</span></div>
+    <p class="hint">Barcode <code>${esc(code)}</code></p>
+    <div class="card" id="off-box"><span class="hint">Looking it up…</span></div>
     <button class="btn primary block" data-a="pick">Pick existing product</button>
     <button class="btn block" data-a="new">Add as new product</button>
-    <button class="btn block" data-a="cancel">Cancel</button></div>`);
+    <button class="btn block quiet" data-a="cancel">Cancel</button></div>`);
   s.querySelector("h2").textContent = title;
   return new Promise(resolve => {
     let done = false, info = null;
@@ -853,44 +1282,39 @@ async function resolveUnknownBarcode(code, title = "Unknown barcode") {
       if (!box.isConnected) return;
       box.innerHTML = r
         ? `<div class="row">${r.img ? `<div class="thumb lg"><img src="${esc(r.img)}" alt=""></div>` : ""}<div class="grow">
-             <div class="name" style="font-weight:600">${esc(r.name || "(no name)")}</div>
-             <div class="small muted">${esc([r.brand, r.quantity].filter(Boolean).join(" · "))}</div>
-             <div class="small muted">from Open Food Facts</div></div></div>`
-        : `<span class="muted small">${r === null ? "Not found online." : "Online lookup unavailable."} Pick the product or add it.</span>`;
+             <div style="font-weight:650">${esc(r.name || "(no name)")}</div>
+             <div class="hint">${esc([r.brand, r.quantity].filter(Boolean).join(" · "))}</div>
+             <div class="hint">from Open Food Facts</div></div></div>`
+        : `<span class="hint">${r === null ? "Not found online." : "Online lookup unavailable."} Pick the product or add it.</span>`;
     });
     const finish = async pid => {
       if (!pid) return;
       if (!(await addBarcodeToProduct(code, pid))) return;
       const p = productById(pid);
-      if (info && info.img && !p.img) { p.img = info.img; save(); }
+      if (info && info.img && !p.img) { p.img = info.img; markProduct(pid); save(); }
       done = true; close(); renderAll(); resolve(pid);
     };
-    s.querySelector('[data-a="pick"]').onclick = async () => {
-      finish(await pickProduct({ title: "Which product is this barcode?" }));
-    };
-    s.querySelector('[data-a="new"]').onclick = async () => {
-      finish(await editProduct(null, { barcode: code, off: info }));
-    };
+    s.querySelector('[data-a="pick"]').onclick = async () => finish(await pickProduct({ title: "Which product is this barcode?" }));
+    s.querySelector('[data-a="new"]').onclick = async () => finish(await editProduct(null, { barcode: code, off: info }));
     s.querySelector('[data-a="cancel"]').onclick = () => { done = true; close(); resolve(null); };
   });
 }
 
-
-// ---------- Product sheet (floor: set qty) ----------
+// ---------- Product sheet (set how many are needed) ----------
 function productSheet(pid, { tagCode = null } = {}) {
   const p = productById(pid);
   ensureList();
   const existing = state.list.items.find(i => i.productId === pid);
   const s = el(`<div class="sheet"><div class="handle"></div>
     <div class="row">${thumbHtml(p, true)}<div class="grow"><h2 style="margin:0">${esc(pName(p))}</h2>
-      <div class="muted">${esc(pSub(p))}</div><div class="small muted">${esc(p.category)}</div></div></div>
-    ${existing ? `<div class="banner" style="margin-top:12px">Already on list: ${existing.qty} ${esc(p.unit)}${existing.qty === 1 ? "" : "s"} — this adds more</div>` : ""}
-    <label class="f" style="margin-top:14px">How many ${esc(p.unit)}s do you need?</label>
-    <div class="qty"><button data-a="minus">−</button><input type="number" inputmode="numeric" min="1" value="1"><button data-a="plus">+</button>
-      <span class="muted">${esc(p.unit)}s</span></div>
-    <button class="btn primary block" data-a="add" style="margin-top:14px">Add to list</button>
+      <div class="muted">${esc(pSub(p))}</div><div class="hint">${esc(p.category)}</div></div></div>
+    ${existing ? `<div class="banner">Already on your list: ${existing.qty} ${esc(p.unit)}${existing.qty === 1 ? "" : "s"}. This adds more.</div>` : ""}
+    <label class="f">How many ${esc(p.unit)}s do you need?</label>
+    <div class="qty"><button data-a="minus" aria-label="Less">−</button><input type="number" inputmode="numeric" min="1" value="1" id="qty-input"><button data-a="plus" aria-label="More">+</button>
+      <span class="unit">${esc(p.unit)}s</span></div>
+    <button class="btn primary block" data-a="add" style="margin-top:16px;padding:14px">Add to list</button>
     ${tagCode ? `<button class="btn block" data-a="wrong">Wrong product? Change</button>` : ""}
-    <button class="btn block" data-a="cancel">Cancel</button></div>`);
+    <button class="btn block quiet" data-a="cancel">Cancel</button></div>`);
   const close = openLayer(s);
   const input = s.querySelector("input");
   s.querySelector('[data-a="minus"]').onclick = () => (input.value = Math.max(1, (+input.value || 1) - 1));
@@ -918,18 +1342,13 @@ function productSheet(pid, { tagCode = null } = {}) {
     }
   };
 }
-
-function ensureList() {
-  if (!state.list || state.list.storeId !== state.storeId) {
-    state.list = { storeId: state.storeId, started: Date.now(), items: [] };
-  }
-}
+function ensureList() { if (!state.list) state.list = { started: Date.now(), items: [] }; }
 
 // ---------- Add / edit product ----------
 function editProduct(pid, { prefillName = "", barcode = "", off = null } = {}) {
   const isNew = !pid;
   const p = isNew
-    ? { id: "", brand: "", flavor: "", size: "", pack: "Single", category: "12oz Cans", unit: "pack", barcodes: barcode ? [barcode] : [], img: "", custom: true, retired: false }
+    ? { id: "", brand: "", flavor: "", size: "", pack: "Single", category: "12oz Cans", unit: "pack", barcodes: barcode ? [barcode] : [], img: "", custom: true, retired: false, updated: 0 }
     : JSON.parse(JSON.stringify(productById(pid)));
   if (isNew && off) {
     p.brand = off.brand || "";
@@ -937,7 +1356,6 @@ function editProduct(pid, { prefillName = "", barcode = "", off = null } = {}) {
     p.size = off.quantity || "";
     p.img = off.img || "";
   } else if (isNew && prefillName) {
-    // "sprite chill" → brand Sprite, flavor chill
     const brand = [...new Set(state.products.map(x => x.brand))].sort((a, b) => b.length - a.length)
       .find(b => prefillName.toLowerCase().startsWith(b.toLowerCase()));
     if (brand) { p.brand = brand; p.flavor = prefillName.slice(brand.length).trim(); }
@@ -946,24 +1364,26 @@ function editProduct(pid, { prefillName = "", barcode = "", off = null } = {}) {
   const cats = allCategories();
   return new Promise(resolve => {
     const s = el(`<div class="sheet"><div class="handle"></div><h2>${isNew ? "Add product" : "Edit product"}</h2>
-      <div class="row"><div id="ep-thumb"></div><div class="grow">
-        <label class="btn sm" style="display:inline-block">📷 Photo<input type="file" accept="image/*" capture="environment" hidden></label>
-        <button class="btn sm" data-a="clearimg">Remove photo</button></div></div>
-      <label class="f">Brand</label><input class="text" data-k="brand" list="dl-brands" placeholder="e.g. Coca-Cola">
-      <label class="f">Flavor / variety</label><input class="text" data-k="flavor" placeholder="e.g. Zero Sugar">
-      <label class="f">Size</label><input class="text" data-k="size" placeholder="e.g. 12oz can, 2L bottle">
-      <label class="f">Pack</label><input class="text" data-k="pack" placeholder="e.g. 12pk, Single">
-      <label class="f">Category (list group)</label><input class="text" data-k="category" list="dl-cats">
-      <label class="f">Count by (shipping unit)</label><input class="text" data-k="unit" list="dl-units" placeholder="pack, case, tray, bottle">
+      <div class="row"><div id="ep-thumb"></div><div class="grow row" style="flex-wrap:wrap;gap:8px">
+        <label class="btn sm">${icon("camera")}Photo<input type="file" accept="image/*" capture="environment" hidden></label>
+        <button class="btn sm quiet" data-a="clearimg">Remove photo</button></div></div>
+      <label class="f" for="ep-brand">Brand</label><input class="field" id="ep-brand" data-k="brand" list="dl-brands" placeholder="Coca-Cola">
+      <label class="f" for="ep-flavor">Flavor / variety</label><input class="field" id="ep-flavor" data-k="flavor" placeholder="Zero Sugar">
+      <div class="row" style="align-items:flex-start">
+        <div class="grow"><label class="f" for="ep-size">Size</label><input class="field" id="ep-size" data-k="size" placeholder="12oz can"></div>
+        <div class="grow"><label class="f" for="ep-pack">Pack</label><input class="field" id="ep-pack" data-k="pack" placeholder="12pk"></div>
+      </div>
+      <label class="f" for="ep-cat">List group</label><input class="field" id="ep-cat" data-k="category" list="dl-cats">
+      <label class="f" for="ep-unit">Count by</label><input class="field" id="ep-unit" data-k="unit" list="dl-units" placeholder="pack, case, tray, bottle">
       <label class="f">Barcodes</label><div id="ep-codes" class="small"></div>
-      <button class="btn sm" data-a="lookup" style="margin-top:6px">Look up first barcode online</button>
+      <button class="btn sm quiet" data-a="lookup">${icon("search")}Look up barcode online</button>
       <datalist id="dl-brands">${[...new Set(state.products.map(x => x.brand))].map(b => `<option value="${esc(b)}">`).join("")}</datalist>
       <datalist id="dl-cats">${cats.map(c => `<option value="${esc(c)}">`).join("")}</datalist>
       <datalist id="dl-units"><option value="pack"><option value="case"><option value="tray"><option value="bottle"><option value="can"></datalist>
-      <button class="btn primary block" data-a="save" style="margin-top:16px">${isNew ? "Add product" : "Save"}</button>
-      ${isNew ? "" : `<button class="btn block" data-a="retire">${p.retired ? "Un-retire (show in lists)" : "Retire (hide from lists)"}</button>`}
+      <button class="btn primary block" data-a="save" style="margin-top:18px;padding:14px">${isNew ? "Add product" : "Save"}</button>
+      ${isNew ? "" : `<button class="btn block" data-a="retire">${p.retired ? "Show in lists again" : "Retire (hide from lists)"}</button>`}
       ${!isNew && p.custom ? `<button class="btn block danger" data-a="delete">Delete product</button>` : ""}
-      <button class="btn block" data-a="cancel">Cancel</button></div>`);
+      <button class="btn block quiet" data-a="cancel">Cancel</button></div>`);
     let done = false;
     const close = openLayer(s, { onClose: () => { if (!done) resolve(null); } });
     s.querySelectorAll("[data-k]").forEach(inp => (inp.value = p[inp.dataset.k] || ""));
@@ -971,7 +1391,7 @@ function editProduct(pid, { prefillName = "", barcode = "", off = null } = {}) {
     const renderThumb = () => (s.querySelector("#ep-thumb").innerHTML = thumbHtml({ ...p, brand: p.brand || "?" }, true));
     const renderCodes = () => {
       const box = s.querySelector("#ep-codes");
-      box.innerHTML = p.barcodes.length ? "" : `<span class="muted">None yet — they're learned when you scan.</span>`;
+      box.innerHTML = p.barcodes.length ? "" : `<span class="hint">None yet. They're learned when you scan.</span>`;
       p.barcodes.forEach((c, i) => {
         const r = el(`<div class="row" style="margin:4px 0"><code class="grow">${esc(c)}</code><button class="btn sm danger">Remove</button></div>`);
         r.querySelector("button").onclick = () => { p.barcodes.splice(i, 1); renderCodes(); };
@@ -985,44 +1405,44 @@ function editProduct(pid, { prefillName = "", barcode = "", off = null } = {}) {
     };
     s.querySelector('[data-a="clearimg"]').onclick = () => { p.img = ""; renderThumb(); };
     s.querySelector('[data-a="lookup"]').onclick = async () => {
-      if (!p.barcodes[0]) return toast("No barcode on this product yet");
+      if (!p.barcodes[0]) return toast("This product has no barcode yet");
       toast("Looking up…");
       const info = await offLookup(p.barcodes[0]);
-      if (!info) return toast("Not found on Open Food Facts");
+      if (!info) return toast(info === null ? "Not found on Open Food Facts" : "Online lookup unavailable");
       if (info.img) { p.img = info.img; renderThumb(); }
-      toast(`Found: ${info.name || "(no name)"}${info.img ? " — image added" : ""}`);
+      toast(`Found: ${info.name || "(no name)"}${info.img ? ". Image added." : ""}`);
     };
     s.querySelector('[data-a="save"]').onclick = async () => {
       readForm();
-      if (!p.brand) return toast("Brand is required");
+      if (!p.brand) return toast("Enter a brand");
       if (!p.category) p.category = "Other";
       if (!p.unit) p.unit = "pack";
-      // Duplicate checks
       const dupName = state.products.find(x => x.id !== p.id && normText(pFull(x)) === normText(pFull(p)));
       if (dupName) {
         const use = await confirmDialog(`<b>${esc(pFull(dupName))}</b> already exists. Use that one instead?`, { ok: "Use existing", cancel: "Keep editing" });
         if (use) { done = true; close(); resolve(dupName.id); }
         return;
       }
+      const snap = snapshot();
       for (const c of p.barcodes) {
         const other = state.products.find(x => x.id !== p.id && x.barcodes.includes(c));
         if (other) {
           const ok = await confirmDialog(`Barcode ${esc(c)} is on <b>${esc(pFull(other))}</b>. Move it here?`, { ok: "Move" });
           if (!ok) return;
           other.barcodes = other.barcodes.filter(b => b !== c);
+          markProduct(other.id);
         }
       }
-      const snap = snapshot();
       if (isNew) {
         let id = slug(pFull(p)) || "product", n = 2;
-        while (productById(id)) id = slug(pFull(p)) + "-" + n++;
+        while (productById(id) || state.deleted.products[id]) id = slug(pFull(p)) + "-" + n++;
         p.id = id;
         state.products.push(p);
       } else {
         const i = state.products.findIndex(x => x.id === p.id);
         state.products[i] = p;
       }
-      p._st = undefined;
+      markProduct(p.id);
       save(); done = true; close(); renderAll();
       toast(isNew ? `Added ${pName(p)}` : "Saved", snap);
       resolve(p.id);
@@ -1031,16 +1451,15 @@ function editProduct(pid, { prefillName = "", barcode = "", off = null } = {}) {
     if (retireBtn) retireBtn.onclick = () => {
       const snap = snapshot();
       const real = productById(p.id); real.retired = !real.retired;
+      markProduct(real.id);
       save(); done = true; close(); renderAll();
       toast(real.retired ? "Retired" : "Restored", snap); resolve(p.id);
     };
     const delBtn = s.querySelector('[data-a="delete"]');
     if (delBtn) delBtn.onclick = async () => {
-      if (!(await confirmDialog(`Delete <b>${esc(pFull(p))}</b>? Its shelf tags will be unlinked.`, { ok: "Delete", danger: true }))) return;
+      if (!(await confirmDialog(`Delete <b>${esc(pFull(p))}</b>? Its shelf tag will be unlinked.`, { ok: "Delete", danger: true }))) return;
       const snap = snapshot();
-      state.products = state.products.filter(x => x.id !== p.id);
-      for (const sid in state.tags) for (const c in state.tags[sid]) if (state.tags[sid][c].productId === p.id) delete state.tags[sid][c];
-      if (state.list) state.list.items = state.list.items.filter(i => i.productId !== p.id);
+      dropProduct(p.id);
       save(); done = true; close(); renderAll(); toast("Deleted", snap); resolve(null);
     };
     s.querySelector('[data-a="cancel"]').onclick = () => { done = true; close(); resolve(null); };
@@ -1055,7 +1474,7 @@ function shrinkImage(file, max) {
       c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
       c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
       URL.revokeObjectURL(img.src);
-      resolve(c.toDataURL("image/jpeg", 0.75));
+      resolve(c.toDataURL("image/jpeg", 0.72));
     };
     img.onerror = () => resolve("");
     img.src = URL.createObjectURL(file);
@@ -1068,38 +1487,38 @@ function showView(v) {
   view = v;
   document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.id === "view-" + v));
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.view === v));
-  if (v !== "scan") stopCamera();
+  if (v !== "scan") stopCamera(); else if (state.settings.camOK) startCamera();
   renderAll();
   window.scrollTo(0, 0);
 }
-
 function renderAll() {
   $("#hdr-store").textContent = state.storeName ? "Store " + state.storeName : "";
   const need = state.list ? state.list.items.filter(i => i.status !== "done").length : 0;
   const badge = $("#list-badge");
-  badge.style.display = need ? "" : "none"; badge.textContent = need;
+  badge.hidden = !need; badge.textContent = need;
+  renderSyncIndicator();
+  if (view === "scan") renderLastScan();
   if (view === "list") renderList();
   if (view === "products") renderProducts();
   if (view === "tags") renderTags();
   if (view === "more") renderMore();
 }
 
-// Pull list
+// List
 let hideDone = false;
 function renderList() {
   const v = $("#view-list");
   v.innerHTML = "";
   const items = state.list ? state.list.items : [];
   if (!items.length) {
-    v.appendChild(el(`<div class="empty"><div style="font-size:40px">☰</div><p>Your list is empty.</p><p class="small">Scan a shelf tag or barcode to add what you need.</p></div>`));
+    v.appendChild(el(`<div class="empty">${icon("list")}<h3>Your list is empty</h3><p>Scan a shelf tag or barcode to add what you need.</p></div>`));
     return;
   }
   const left = items.filter(i => i.status !== "done").length;
-  const bar = el(`<div class="row" style="margin-bottom:4px"><span class="small muted grow">${left} of ${items.length} item${items.length === 1 ? "" : "s"} left</span>
-    <button class="btn sm">${hideDone ? "Show all" : "Hide crossed off"}</button></div>`);
-  bar.querySelector("button").onclick = () => { hideDone = !hideDone; renderList(); };
-  v.appendChild(bar);
-
+  const head = el(`<div class="list-head"><h2>List</h2><span class="muted grow">${left} of ${items.length} left</span>
+    <button class="btn sm quiet">${hideDone ? "Show all" : "Hide crossed off"}</button></div>`);
+  head.querySelector("button").onclick = () => { hideDone = !hideDone; renderList(); };
+  v.appendChild(head);
   const groups = {};
   for (const it of items) {
     const p = productById(it.productId); if (!p) continue;
@@ -1113,12 +1532,12 @@ function renderList() {
     for (const { it, p } of groups[cat]) {
       const done = it.status === "done";
       const r = el(`<div class="item tap${done ? " done" : ""}">
-        <button class="check${done ? " on" : ""}" aria-label="Cross off">${done ? "✓" : ""}</button>
+        <button class="check${done ? " on" : ""}" aria-label="Cross off">${done ? icon("check") : ""}</button>
         ${thumbHtml(p)}
         <div class="grow"><div class="name">${esc(pName(p))}</div><div class="sub">${esc(pSub(p))}</div></div>
-        <button class="qty-tap" data-a="qty" aria-label="Change quantity"><b>${it.qty}</b><span class="small muted">${esc(p.unit)}${it.qty === 1 ? "" : "s"}</span></button>
-        <button class="btn sm" data-a="more" aria-label="More">⋯</button></div>`);
-      // Tapping the row (or the circle) crosses it off; purely a reminder, no counting.
+        <button class="qty-tap" data-a="qty" aria-label="Change quantity"><b>${it.qty}</b><span>${esc(p.unit)}${it.qty === 1 ? "" : "s"}</span></button>
+        <button class="more-btn" data-a="more" aria-label="More">${icon("dots")}</button></div>`);
+      // Tapping the row crosses it off; purely a reminder, no counting.
       r.onclick = e => {
         if (e.target.closest("[data-a]")) return;
         it.status = done ? "need" : "done";
@@ -1130,15 +1549,15 @@ function renderList() {
     }
     v.appendChild(list);
   }
-  const clr = el(`<button class="btn block danger" style="margin-top:16px">Clear list</button>`);
+  const clr = el(`<button class="btn block danger" style="margin-top:20px">Clear list</button>`);
   clr.onclick = clearList;
   v.appendChild(clr);
 }
 function editQty(it, p) {
   const snap = snapshot();
   const s = el(`<div class="dialog"><p><b>${esc(pName(p))}</b><br><span class="muted">${esc(pSub(p))}</span></p>
-    <div class="qty" style="justify-content:center"><button data-a="m">−</button><input type="number" inputmode="numeric" value="${it.qty}"><button data-a="p">+</button></div>
-    <div class="btns" style="margin-top:14px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="s">Save</button></div></div>`);
+    <div class="qty" style="justify-content:center"><button data-a="m" aria-label="Less">−</button><input type="number" inputmode="numeric" value="${it.qty}" id="qty-edit"><button data-a="p" aria-label="More">+</button></div>
+    <div class="btns" style="margin-top:18px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="s">Save</button></div></div>`);
   const close = openLayer(s, { center: true });
   const inp = s.querySelector("input");
   s.querySelector('[data-a="m"]').onclick = () => (inp.value = Math.max(1, (+inp.value || 1) - 1));
@@ -1169,11 +1588,11 @@ async function clearList() {
 let prodQuery = "", prodCat = "";
 function renderProducts() {
   const v = $("#view-products");
-  if (!v.querySelector(".search")) {
-    v.innerHTML = `<div class="row"><input class="search grow" type="search" placeholder="Search products" autocomplete="off">
-      <button class="btn primary" data-a="add">+ Add</button></div><div class="chips"></div>
-      <div class="small muted" id="prod-count" style="margin:2px 4px 8px"></div><div id="prod-results"></div>`;
-    v.querySelector(".search").addEventListener("input", e => { prodQuery = e.target.value; renderProductResults(); });
+  if (!v.querySelector("input")) {
+    v.innerHTML = `<div class="list-head"><h2>Products</h2><span class="grow"></span><button class="btn sm primary" data-a="add">${icon("plus")}Add</button></div>
+      ${searchBox("Search products")}<div class="chips"></div>
+      <p class="hint" id="prod-count"></p><div id="prod-results"></div>`;
+    v.querySelector("input").addEventListener("input", e => { prodQuery = e.target.value; renderProductResults(); });
     v.querySelector('[data-a="add"]').onclick = () => editProduct(null, { prefillName: prodQuery });
   }
   const chips = v.querySelector(".chips");
@@ -1197,21 +1616,21 @@ function renderProductResults() {
   box.innerHTML = "";
   const shown = items.slice(0, 200);
   if (shown.length) box.appendChild(listOf(shown, pid => editProduct(pid), p =>
-    (p.barcodes.length ? " · ▮▯ " + p.barcodes.length : "") + (tagForProduct(p.id) ? " · tagged" : "") + (p.custom ? " · custom" : "")));
-  else box.appendChild(el(`<div class="empty">No products match.</div>`));
-  if (items.length > shown.length) box.appendChild(el(`<div class="small muted" style="padding:8px">${items.length - shown.length} more — search to narrow down</div>`));
+    (tagForProduct(p.id) ? `<span class="pill ok">TAGGED</span>` : "") + (p.custom ? ` <span class="pill">CUSTOM</span>` : "")));
+  else box.appendChild(el(`<div class="empty"><p>No products match.</p></div>`));
+  if (items.length > shown.length) box.appendChild(el(`<p class="hint center" style="padding:10px">${items.length - shown.length} more. Search to narrow it down.</p>`));
 }
 
 // Tags
 let tagFilter = "all", tagQuery = "";
 function renderTags() {
   const v = $("#view-tags");
-  if (!v.querySelector(".search")) {
-    v.innerHTML = `<input class="search" type="search" placeholder="Search products" autocomplete="off">
-      <div class="seg" style="margin-top:10px" id="tag-seg">
+  if (!v.querySelector("input")) {
+    v.innerHTML = `<div class="list-head"><h2>Tags</h2></div>${searchBox("Search products")}
+      <div class="seg" id="tag-seg">
         <button data-f="all">All</button><button data-f="tagged">Tagged</button><button data-f="none">No tag</button><button data-f="stale">Stale</button></div>
-      <div class="small muted" id="tag-count" style="margin:0 4px 8px"></div><div id="tag-results"></div>`;
-    v.querySelector(".search").addEventListener("input", e => { tagQuery = e.target.value; renderTagResults(); });
+      <p class="hint" id="tag-count"></p><div id="tag-results"></div>`;
+    v.querySelector("input").addEventListener("input", e => { tagQuery = e.target.value; renderTagResults(); });
     v.querySelectorAll("#tag-seg button").forEach(b => (b.onclick = () => { tagFilter = b.dataset.f; renderTagResults(); }));
   }
   renderTagResults();
@@ -1219,128 +1638,231 @@ function renderTags() {
 function renderTagResults() {
   const v = $("#view-tags");
   v.querySelectorAll("#tag-seg button").forEach(b => b.classList.toggle("active", b.dataset.f === tagFilter));
-  const tags = storeTags();
   const byProduct = {};
-  for (const c in tags) byProduct[tags[c].productId] = { code: c, ...tags[c] };
+  for (const c in state.tags) byProduct[state.tags[c].productId] = { code: c, ...state.tags[c] };
   let items = searchProducts(tagQuery);
-  const isStale = t => t && daysAgo(t.lastSeen) > STALE_DAYS;
+  const isStale = t => t && daysAgo(t.lastSeen || t.created || 0) > STALE_DAYS;
   if (tagFilter === "tagged") items = items.filter(p => byProduct[p.id]);
   if (tagFilter === "none") items = items.filter(p => !byProduct[p.id]);
   if (tagFilter === "stale") items = items.filter(p => isStale(byProduct[p.id]));
   if (!tagQuery) items = [...items].sort((a, b) => catSort(a.category, b.category) || pName(a).localeCompare(pName(b)));
-  const nTagged = Object.keys(tags).length;
-  v.querySelector("#tag-count").textContent = `${items.length} shown · ${nTagged} tag${nTagged === 1 ? "" : "s"} linked at this store`;
+  const nTagged = Object.keys(state.tags).length;
+  v.querySelector("#tag-count").textContent = `${items.length} shown · ${nTagged} tag${nTagged === 1 ? "" : "s"} linked`;
   const box = v.querySelector("#tag-results");
   box.innerHTML = "";
-  const list = el(`<div class="list"></div>`);
-  for (const p of items.slice(0, 200)) {
+  if (!items.length) { box.appendChild(el(`<div class="empty"><p>Nothing here.</p></div>`)); return; }
+  box.appendChild(listOf(items.slice(0, 200), pid => tagMenu(productById(pid), byProduct[pid]), p => {
     const t = byProduct[p.id];
-    const status = t
-      ? `<span class="pill pulled">TAGGED</span>${isStale(t) ? ` <span class="pill stale">STALE</span>` : ""}<div class="small muted">seen ${daysAgo(t.lastSeen) === 0 ? "today" : daysAgo(t.lastSeen) + "d ago"}</div>`
-      : `<span class="pill">NO TAG</span>`;
-    const r = el(`<div class="item tap">${thumbHtml(p)}<div class="grow"><div class="name">${esc(pName(p))}</div><div class="sub">${esc(pSub(p))}</div></div>
-      <div style="text-align:right">${status}</div></div>`);
-    r.onclick = () => tagMenu(p, t);
-    list.appendChild(r);
-  }
-  if (items.length) box.appendChild(list); else box.appendChild(el(`<div class="empty">Nothing here.</div>`));
+    return `<div style="text-align:right">${t ? `<span class="pill ok">TAGGED</span>${isStale(t) ? ` <span class="pill warn">STALE</span>` : ""}` : `<span class="pill">NO TAG</span>`}</div>`;
+  }));
 }
 async function tagMenu(p, t) {
   const opts = [{ label: t ? "Scan a new tag (replace)" : "Scan its shelf tag", value: "scan" }];
   if (t) opts.push({ label: "Show tag code", value: "show" }, { label: "Unlink tag", value: "unlink", danger: true });
   const c = await menu(`${pName(p)} — ${p.pack}`, opts);
   if (c === "scan") { setMode("count"); setPending({ kind: "tagForProduct", pid: p.id }); showView("scan"); startCamera(); }
-  if (c === "show") confirmDialog(`<code style="word-break:break-all">${esc(t.code)}</code><br><br><span class="small muted">Linked ${fmtDate(t.created)} · last seen ${fmtDate(t.lastSeen)}</span>`, { ok: "OK", cancel: "Close" });
+  if (c === "show") confirmDialog(`<code style="word-break:break-all">${esc(t.code)}</code><br><br><span class="hint">Linked ${fmtDate(t.created)}${t.lastSeen ? " · last scanned here " + fmtDate(t.lastSeen) : ""}</span>`, { ok: "OK", cancel: "Close" });
   if (c === "unlink") {
     const snap = snapshot();
-    delete storeTags()[t.code]; save(); renderAll(); toast("Tag unlinked", snap);
+    dropTag(t.code); save(); renderAll(); toast("Tag unlinked", snap);
   }
 }
 
 // More
 function renderMore() {
   const v = $("#view-more");
+  const s = syncStatus();
+  const on = uploadsEnabled();
   v.innerHTML = `
-    <div class="card"><label class="f" style="margin-top:0">Store number / name</label>
-      <input class="text" id="store-name" placeholder="e.g. 1234" value="${esc(state.storeName)}">
-      <div class="small muted" style="margin-top:6px">Alpha works with one store. Tags are saved per store so more can be added later.</div></div>
-    <div class="card"><div class="row"><div class="grow">Scan beep</div><input type="checkbox" id="beep" ${state.settings.beep ? "checked" : ""} style="width:22px;height:22px"></div></div>
-    <div class="card"><b>Backup</b><div class="small muted">Everything lives on this phone only. Export a backup now and then.</div>
-      <button class="btn block" id="btn-export">Copy backup</button>
-      <div class="small muted" style="margin-top:6px">Paste it into a note or email to yourself. To restore, paste it below.</div>
-      <textarea class="text" id="backup-text" rows="3" placeholder="Paste a backup here to restore" style="width:100%;margin-top:8px;font:12px monospace;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--card);color:var(--text)"></textarea>
-      <button class="btn block" id="btn-restore">Restore from pasted backup</button>
-      <label class="btn block" style="text-align:center">Restore from backup file<input type="file" accept="application/json,.json,text/plain" id="imp" hidden></label></div>
-    <div class="card small muted">Product images and barcode lookups from <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (CC-BY-SA).
-      Starter product list is a draft — verify against your order guide.</div>
-    <button class="btn block danger" id="btn-reset">Reset all data</button>
-    <div class="small muted" style="text-align:center;margin:12px 0">Shelf Scan alpha · ${state.products.length} products</div>`;
+    <div class="list-head"><h2>More</h2></div>
+    <div class="card">
+      <h3>Shared data</h3>
+      <p class="hint">Products, barcodes and tag links are shared with everyone who uses Shelf Scan. Your list stays on this phone.</p>
+      <div class="set-row"><span class="status-dot ${s.dot}"></span><span class="grow small">${esc(s.text)}</span></div>
+      <div class="set-row"><span class="grow small muted">Last updated from GitHub: ${ago(state.sync.lastPull)}</span></div>
+      <div class="stack">
+        ${on ? `<button class="btn block" id="btn-upload-now">${icon("upload")}Upload now</button>`
+             : `<button class="btn primary block" id="btn-enable">${icon("upload")}Enable uploads</button>`}
+        <button class="btn block" id="btn-sync">${icon("refresh")}Sync from GitHub</button>
+        ${on ? `<button class="btn block quiet" id="btn-disable">Turn off uploads on this phone</button>` : ""}
+      </div>
+    </div>
+    <div class="card">
+      <h3>This phone</h3>
+      <label class="f" for="store-name">Store number</label>
+      <input class="field" id="store-name" placeholder="e.g. 1234" value="${esc(state.storeName)}">
+      <div class="set-row" style="margin-top:6px"><label class="grow" for="beep">Scan beep</label><input type="checkbox" id="beep" ${state.settings.beep ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
+    </div>
+    <div class="card">
+      <h3>Backup</h3>
+      <p class="hint">Copies everything on this phone, including your list.</p>
+      <div class="stack" style="margin-top:10px">
+        <button class="btn block" id="btn-export">Copy backup</button>
+        <textarea class="field" id="backup-text" rows="3" placeholder="Paste a backup here to restore" style="font:12px ui-monospace,Menlo,monospace"></textarea>
+        <button class="btn block" id="btn-restore">Restore from pasted backup</button>
+      </div>
+    </div>
+    <div class="card">
+      <details class="owner"><summary>Owner setup: upload key</summary>
+        <p class="hint" style="margin-top:10px">Only needed once, by the repo owner. Paste a GitHub key that can write to ${esc(GITHUB.owner)}/${esc(GITHUB.repo)} and choose the team password. The key is encrypted on this phone before it's saved.</p>
+        <label class="f" for="own-token">GitHub key</label><input class="field" id="own-token" type="password" autocomplete="off" placeholder="github_pat_…">
+        <label class="f" for="own-pass">Team password</label><input class="field" id="own-pass" type="text" autocomplete="off" autocapitalize="off" placeholder="At least 6 characters">
+        <button class="btn primary block" id="btn-own-save" style="margin-top:12px">Save key and enable uploads</button>
+      </details>
+    </div>
+    <button class="btn block danger" id="btn-reset">Reset this phone</button>
+    <p class="foot">Shelf Scan beta · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
+      Product lookups from <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener" style="color:inherit">Open Food Facts</a></p>`;
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
   v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
   v.querySelector("#btn-export").onclick = exportBackup;
-  v.querySelector("#imp").onchange = async e => {
-    const f = e.target.files[0]; e.target.value = "";
-    if (f) restoreBackupText(await f.text());
-  };
   v.querySelector("#btn-restore").onclick = () => restoreBackupText(v.querySelector("#backup-text").value);
-  v.querySelector("#btn-reset").onclick = async () => {
-    if (!(await confirmDialog("Erase all tags, the list and custom products on this phone?", { ok: "Erase everything", danger: true }))) return;
-    const snap = snapshot(); state = freshState(); save(); renderAll(); toast("Reset", snap);
+  v.querySelector("#btn-sync").onclick = syncFromGitHub;
+  const en = v.querySelector("#btn-enable"); if (en) en.onclick = enableUploads;
+  const up = v.querySelector("#btn-upload-now"); if (up) up.onclick = () => { state.sync.error = ""; uploadChanges(); renderMore(); };
+  const dis = v.querySelector("#btn-disable"); if (dis) dis.onclick = async () => {
+    if (!(await confirmDialog("Turn off uploads on this phone? Your changes will stay on this phone only.", { ok: "Turn off" }))) return;
+    setPass(""); cachedToken = null; renderAll();
   };
+  v.querySelector("#btn-own-save").onclick = ownerSetup;
+  v.querySelector("#btn-reset").onclick = async () => {
+    const n = pendingCount();
+    if (!(await confirmDialog(`Erase everything on this phone and start fresh from the shared data?${n ? `<br><br><b>${n} change${n === 1 ? " hasn't" : "s haven't"} uploaded</b> and will be lost.` : ""}`, { ok: "Erase", danger: true }))) return;
+    const keep = state.sync;
+    state = freshState(); state.sync = keep; save(); renderAll();
+    pullShared({ overwrite: true, quiet: false }).catch(e => toast(e.message));
+  };
+}
+function passwordDialog(title, note) {
+  return new Promise(resolve => {
+    const d = el(`<div class="dialog"><p><b>${esc(title)}</b><br><span class="hint">${esc(note)}</span></p>
+      <input class="field" type="text" id="pw-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Password">
+      <p class="hint" id="pw-err" style="color:var(--red);margin:8px 0 0"></p>
+      <div class="btns" style="margin-top:14px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="ok">Enable</button></div></div>`);
+    let done = false;
+    const close = openLayer(d, { center: true, onClose: () => { if (!done) resolve(null); } });
+    const inp = d.querySelector("input"), err = d.querySelector("#pw-err"), ok = d.querySelector('[data-a="ok"]');
+    d.querySelector('[data-a="c"]').onclick = () => { done = true; close(); resolve(null); };
+    const go = async () => {
+      if (!inp.value) return;
+      ok.disabled = true; ok.textContent = "Checking…"; err.textContent = "";
+      try { await resolveCheck(inp.value); done = true; close(); resolve(inp.value); }
+      catch (e) { err.textContent = e.message; ok.disabled = false; ok.textContent = "Enable"; }
+    };
+    let resolveCheck;
+    d.check = fn => (resolveCheck = fn);
+    ok.onclick = go;
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+    setTimeout(() => inp.focus(), 50);
+    passwordDialog.current = d;
+  });
+}
+async function enableUploads() {
+  const p = passwordDialog("Enable uploads", "Enter the team password. You'll only need it once on this phone.");
+  passwordDialog.current.check(async pw => {
+    const blob = await loadKeyBlob();
+    let token;
+    try { token = await decryptToken(blob, pw); } catch (e) { throw new Error("That password isn't right."); }
+    await checkToken(token);
+    cachedToken = token;
+  });
+  const pw = await p;
+  if (!pw) return;
+  setPass(pw); state.sync.error = "";
+  save(); renderAll();
+  toast("Uploads enabled. Changes now upload automatically.");
+  scheduleUpload(300);
+}
+async function ownerSetup() {
+  const token = $("#own-token").value.trim(), pw = $("#own-pass").value;
+  if (!token) return toast("Paste the GitHub key first");
+  if (pw.length < 6) return toast("Use a password of at least 6 characters");
+  const btn = $("#btn-own-save");
+  btn.disabled = true; btn.textContent = "Saving…";
+  try {
+    await checkToken(token);
+    const blob = await encryptToken(token, pw);
+    const { sha } = await readRepoFile(GITHUB.keyPath, token);
+    await writeRepoFile(GITHUB.keyPath, JSON.stringify(blob, null, 1), sha, token, "Shelf Scan: set upload key");
+    setPass(pw); cachedToken = token; state.sync.error = "";
+    save(); renderAll();
+    toast("Upload key saved. Uploads are on.");
+    scheduleUpload(300);
+  } catch (e) {
+    toast(e.message || "Couldn't save the key");
+    btn.disabled = false; btn.textContent = "Save key and enable uploads";
+  }
+}
+async function syncFromGitHub() {
+  const n = pendingCount();
+  const ok = await confirmDialog(`Replace this phone's products, barcodes and tags with the shared data from GitHub? Your list is kept.${n ? `<br><br><b>${n} change${n === 1 ? " hasn't" : "s haven't"} uploaded</b> and will be lost.` : ""}`, { ok: "Replace", danger: !!n });
+  if (!ok) return;
+  if (!navigator.onLine) return toast("No signal. Try again when you're online.");
+  toast("Syncing…");
+  try { await pullShared({ overwrite: true, quiet: false }); }
+  catch (e) { toast(e.message || "Couldn't reach GitHub"); }
 }
 function exportBackup() {
   const text = JSON.stringify(state);
   const box = $("#backup-text");
-  const fallback = () => { box.value = text; box.focus(); box.select(); toast("Backup is in the box below. Select all and copy it."); };
-  try {
-    navigator.clipboard.writeText(text).then(() => toast("Backup copied"), fallback);
-  } catch (e) { fallback(); }
+  const fallback = () => { box.value = text; box.focus(); box.select(); toast("Backup is in the box. Select all and copy it."); };
+  try { navigator.clipboard.writeText(text).then(() => toast("Backup copied"), fallback); }
+  catch (e) { fallback(); }
 }
 async function restoreBackupText(text) {
   let data;
   try { data = JSON.parse(text); } catch (e) { data = null; }
   if (!data || !data.products || !data.tags) { toast("That isn't a Shelf Scan backup"); return; }
   if (!(await confirmDialog("Replace everything on this phone with the backup?", { ok: "Replace", danger: true }))) return;
-  const snap = snapshot(); state = data; save(); renderAll(); toast("Backup restored", snap);
+  const snap = snapshot(); state = data; migrate(); save(); renderAll(); toast("Backup restored", snap);
 }
 
 // ---------- Camera ----------
-let scanner = null, camOn = false;
+let scanner = null, camOn = false, camStarting = false;
+function scanFormats() {
+  const F = window.Html5QrcodeSupportedFormats;
+  return F ? [F.QR_CODE, F.DATA_MATRIX, F.UPC_A, F.UPC_E, F.EAN_13, F.EAN_8, F.CODE_128, F.ITF] : undefined;
+}
+function setPhotoFirst(on) { $("#actions").classList.toggle("photo-first", on); renderPending(); }
 async function startCamera() {
   $("#cam-error").textContent = "";
-  if (camOn) return;
-  if (!window.Html5Qrcode) { $("#cam-error").textContent = "Scanner library didn't load (offline on first run?). Use “Type a code” below."; return; }
+  if (camOn || camStarting) return;
+  if (!window.Html5Qrcode) { $("#cam-error").textContent = "The scanner didn't load. Check your signal and reopen the app."; setPhotoFirst(true); return; }
+  camStarting = true;
   try {
     scanner = scanner || new Html5Qrcode("reader", { verbose: false, formatsToSupport: scanFormats(),
       experimentalFeatures: { useBarCodeDetectorIfSupported: true } });
-    $("#cam-placeholder").style.display = "none";
+    $("#cam-off").hidden = true;
     await scanner.start({ facingMode: "environment" },
-      { fps: 12, qrbox: (w, h) => ({ width: Math.floor(w * 0.8), height: Math.floor(Math.min(h * 0.6, w * 0.6)) }) },
+      { fps: 12, qrbox: (w, h) => ({ width: Math.floor(w * 0.82), height: Math.floor(Math.min(h * 0.62, w * 0.62)) }) },
       (text, result) => onDecoded(text, result && result.result && result.result.format && result.result.format.formatName),
       () => {});
     camOn = true;
-    $("#btn-cam-stop").style.display = "";
+    $("#btn-cam-stop").hidden = false;
+    setPhotoFirst(false);
+    if (!state.settings.camOK) { state.settings.camOK = true; save(); }
   } catch (err) {
-    $("#cam-placeholder").style.display = "";
-    $("#cam-error").textContent = "Live camera isn't available here. Use “Scan with photo” above." +
-      (location.protocol !== "https:" ? " (Live camera needs an https:// address.)" : "");
-  }
+    $("#cam-off").hidden = false;
+    $("#cam-error").textContent = "The live camera isn't available here. Use the photo button below." +
+      (location.protocol !== "https:" && location.hostname !== "localhost" ? " (It needs an https:// address.)" : "");
+    setPhotoFirst(true);
+    if (state.settings.camOK) { state.settings.camOK = false; save(); }
+  } finally { camStarting = false; }
 }
 async function stopCamera() {
   if (!camOn || !scanner) return;
   try { await scanner.stop(); } catch (e) {}
   camOn = false;
-  $("#cam-placeholder").style.display = "";
-  $("#btn-cam-stop").style.display = "none";
+  $("#cam-off").hidden = false;
+  $("#btn-cam-stop").hidden = true;
 }
-document.addEventListener("visibilitychange", () => { if (document.hidden) stopCamera(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) stopCamera();
+  else if (view === "scan" && state.settings.camOK) startCamera();
+});
 
-// Scan from a photo (works where live camera is blocked, e.g. the claude.ai page).
+// Scan from a photo (fallback where the live camera is blocked).
 let photoScanner = null;
-function scanFormats() {
-  const F = window.Html5QrcodeSupportedFormats;
-  return F ? [F.QR_CODE, F.DATA_MATRIX, F.UPC_A, F.UPC_E, F.EAN_13, F.EAN_8, F.CODE_128, F.ITF] : undefined;
-}
 function downscale(file, max) {
   return new Promise(resolve => {
     const img = new Image();
@@ -1359,31 +1881,45 @@ function downscale(file, max) {
 }
 async function scanPhoto(file) {
   const status = $("#photo-status");
-  if (!window.Html5Qrcode) { status.textContent = "Scanner didn't load. Check your signal and reload the page."; return; }
+  status.hidden = false;
+  if (!window.Html5Qrcode) { status.textContent = "The scanner didn't load. Check your signal and reopen the app."; return; }
   status.textContent = "Reading code…";
   photoScanner = photoScanner || new Html5Qrcode("photo-reader", { verbose: false, formatsToSupport: scanFormats() });
-  // Try a normal size first, then full resolution for small or distant codes.
-  for (const max of [1600, 3000]) {
+  for (const max of [1600, 3000]) {        // normal size first, then full resolution for small codes
     try {
       const f = await downscale(file, max);
       const r = photoScanner.scanFileV2 ? await photoScanner.scanFileV2(f, false) : { decodedText: await photoScanner.scanFile(f, false) };
       const fmt = r && r.result && r.result.format && r.result.format.formatName;
-      status.textContent = "Snap the shelf tag QR or the product barcode, close up and in focus.";
+      status.hidden = true;
       lastScan = { code: "", at: 0 };
       onDecoded(r.decodedText, fmt);
       return;
     } catch (e) { /* try next size */ }
   }
   beep(false);
-  status.textContent = "No code found. Get closer, fill the frame with the code, and avoid glare.";
+  status.textContent = "No code found. Get closer so the code fills the photo, and avoid glare.";
 }
-$("#photo-input").addEventListener("change", e => {
-  const f = e.target.files && e.target.files[0];
-  e.target.value = "";
-  if (f) scanPhoto(f);
-});
+
+function enterCode() {
+  const d = el(`<div class="dialog"><p><b>Enter a code</b><br><span class="hint">For a damaged tag, or testing.</span></p>
+    <input class="field" id="code-input" autocomplete="off" autocapitalize="off" placeholder="Code or link">
+    <div class="seg" style="margin-top:10px" id="code-kind"><button data-k="tag" class="active">Shelf tag</button><button data-k="barcode">Barcode</button></div>
+    <div class="btns" style="margin-top:16px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="go">Go</button></div></div>`);
+  const close = openLayer(d, { center: true });
+  let kind = "tag";
+  d.querySelectorAll("#code-kind button").forEach(b => (b.onclick = () => {
+    kind = b.dataset.k; d.querySelectorAll("#code-kind button").forEach(x => x.classList.toggle("active", x === b));
+  }));
+  const inp = d.querySelector("input");
+  const go = () => { const v = inp.value.trim(); if (!v) return; close(); handleCode(v, kind); };
+  d.querySelector('[data-a="go"]').onclick = go;
+  d.querySelector('[data-a="c"]').onclick = close;
+  inp.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+  setTimeout(() => inp.focus(), 50);
+}
 
 // ---------- Wire up ----------
+fillIcons();
 load();
 document.querySelectorAll("#tabs button").forEach(b => (b.onclick = () => showView(b.dataset.view)));
 document.querySelectorAll("#mode-seg button").forEach(b => (b.onclick = () => {
@@ -1392,20 +1928,30 @@ document.querySelectorAll("#mode-seg button").forEach(b => (b.onclick = () => {
 }));
 $("#btn-cam-start").onclick = startCamera;
 $("#btn-cam-stop").onclick = stopCamera;
+$("#sync-ind").onclick = () => showView("more");
 $("#btn-pick-manual").onclick = async () => {
+  if (mode === "setup" && pending && pending.kind === "setupTag") {
+    const tagCode = pending.code;
+    const pid = await pickProduct({ title: "Which product is this tag for?" });
+    if (pid) setupLink(tagCode, pid);
+    return;
+  }
   const pid = await pickProduct({ title: "Add which product?" });
-  if (!pid) return;
-  productSheet(pid);
+  if (pid) productSheet(pid);
 };
-$("#btn-manual-go").onclick = () => {
-  const v = $("#manual-code").value.trim(); if (!v) return;
-  handleCode(v, $("#manual-kind").value, "typed");
-  $("#manual-code").value = "";
-};
-$("#manual-code").addEventListener("keydown", e => { if (e.key === "Enter") $("#btn-manual-go").click(); });
+$("#btn-enter-code").onclick = enterCode;
+$("#photo-input").addEventListener("change", e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if (f) scanPhoto(f);
+});
 setMode("count");
 renderAll();
 save();
+if (state.settings.camOK) startCamera();
+
+// Pull everyone's latest shared data on open, then upload anything waiting.
+if (navigator.onLine) pullShared().catch(() => {}).finally(() => scheduleUpload(1000));
 
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   navigator.serviceWorker.register("sw.js").catch(() => {});
