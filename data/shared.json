@@ -1,6 +1,6 @@
 {
  "version": 1,
- "updated": 1790794031144,
+ "updated": 1790794049443,
  "products": {
   "diet-coke-caffeine-free-16-9-oz-bottle-6pk": {
    "id": "diet-coke-caffeine-free-16-9-oz-bottle-6pk",
@@ -114,11 +114,18 @@
    "productId": "core-power-chocolate-14oz-bottle-single",
    "created": 1790794026495,
    "updated": 1790794026495
+  },
+  "https://go.fairlife.com/811620021968": {
+   "productId": "core-power-vanilla-14oz-bottle-single",
+   "created": 1790794045184,
+   "updated": 1790794045184
   }
  },
  "deleted": {
   "products": {},
-  "tags": {}
+  "tags": {
+   "w-mt.co/q/30chvyz1Mq4J0-77YFZ": 1790794045184
+  }
  },
  "tagsResetAt": 0
 }
