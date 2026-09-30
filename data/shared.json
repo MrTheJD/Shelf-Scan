@@ -1,6 +1,6 @@
 {
  "version": 1,
- "updated": 1790785860484,
+ "updated": 1790785888364,
  "products": {},
  "tags": {
   "w-mt.co/q/300e4c41o90G-0TS48H": {
@@ -32,6 +32,11 @@
    "productId": "coca-cola-original-2l-bottle-single",
    "created": 1790785856221,
    "updated": 1790785856221
+  },
+  "w-mt.co/q/300e4cB1o90G-0TS7Q1": {
+   "productId": "coca-cola-original-1-25l-bottle-single",
+   "created": 1790785883894,
+   "updated": 1790785883894
   }
  },
  "deleted": {
