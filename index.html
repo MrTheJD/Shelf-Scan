@@ -359,7 +359,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 </head>
 <body>
 <header class="top">
-  <h1>Shelf Scan</h1><span class="tagline">BETA 2.3.4</span>
+  <h1>Shelf Scan</h1><span class="tagline">BETA 2.3.5</span>
   <span class="spacer"></span>
   <span class="store" id="hdr-store"></span>
   <button class="sync-ind" id="sync-ind" hidden></button>
@@ -2366,7 +2366,7 @@ function renderMore() {
       </details>
     </div>
     <button class="btn block danger" id="btn-reset">Reset this phone</button>
-    <p class="foot">Shelf Scan Beta 2.3.4 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
+    <p class="foot">Shelf Scan Beta 2.3.5 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
       Product lookups from <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener" style="color:inherit">Open Food Facts</a></p>`;
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
   v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
