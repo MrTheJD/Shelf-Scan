@@ -1,6 +1,6 @@
 {
  "version": 1,
- "updated": 1790786129081,
+ "updated": 1790789406388,
  "products": {
   "diet-coke-caffeine-free-16-9-oz-bottle-6pk": {
    "id": "diet-coke-caffeine-free-16-9-oz-bottle-6pk",
@@ -15,6 +15,23 @@
    "custom": true,
    "retired": false,
    "updated": 1790785968939
+  },
+  "coca-cola-original-12oz-can-12pk": {
+   "id": "coca-cola-original-12oz-can-12pk",
+   "brand": "Coca-Cola",
+   "flavor": "Original",
+   "size": "12oz can",
+   "pack": "12pk",
+   "category": "12oz Cans",
+   "unit": "pack",
+   "barcodes": [
+    "049000028904",
+    "078000003154"
+   ],
+   "img": "",
+   "custom": false,
+   "retired": false,
+   "updated": 1790789400842
   }
  },
  "tags": {
@@ -87,12 +104,15 @@
    "productId": "fanta-orange-16-9oz-bottle-6pk",
    "created": 1790786124316,
    "updated": 1790786124316
+  },
+  "w-mt.co/q/30izyqM1W94J0-7JHKE": {
+   "productId": "coca-cola-original-12oz-can-12pk",
+   "created": 1790789402033,
+   "updated": 1790789402033
   }
  },
  "deleted": {
   "products": {},
-  "tags": {
-   "w-mt.co/q/30izyqM1W94J0-7JHKE": 1790785064328
-  }
+  "tags": {}
  }
 }
