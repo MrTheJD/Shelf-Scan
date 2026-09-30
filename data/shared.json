@@ -1,6 +1,6 @@
 {
  "version": 1,
- "updated": 1790794154270,
+ "updated": 1790794230166,
  "products": {
   "diet-coke-caffeine-free-16-9-oz-bottle-6pk": {
    "id": "diet-coke-caffeine-free-16-9-oz-bottle-6pk",
@@ -64,6 +64,22 @@
    "custom": false,
    "retired": false,
    "updated": 1790794149738
+  },
+  "fairlife-core-power-414-ml-single": {
+   "id": "fairlife-core-power-414-ml-single",
+   "brand": "fairlife",
+   "flavor": "Core Power",
+   "size": "414 mL",
+   "pack": "Single",
+   "category": "12oz Cans",
+   "unit": "pack",
+   "barcodes": [
+    "811620020657"
+   ],
+   "img": "https://images.openfoodfacts.org/images/products/081/162/002/0657/front_en.502.200.jpg",
+   "custom": true,
+   "retired": false,
+   "updated": 1790794222844
   }
  },
  "tags": {
@@ -161,6 +177,11 @@
    "productId": "core-power-elite-chocolate-14oz-bottle-single",
    "created": 1790794149328,
    "updated": 1790794149328
+  },
+  "w-mt.co/q/30bZijj1Mq4J0-7HY61": {
+   "productId": "fairlife-core-power-414-ml-single",
+   "created": 1790794225720,
+   "updated": 1790794225720
   }
  },
  "deleted": {
