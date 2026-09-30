@@ -1,6 +1,6 @@
 {
  "version": 1,
- "updated": 1790785818075,
+ "updated": 1790785841159,
  "products": {},
  "tags": {
   "w-mt.co/q/300e4c41o90G-0TS48H": {
@@ -22,6 +22,11 @@
    "productId": "coca-cola-zero-sugar-12oz-bottle-8pk",
    "created": 1790785813470,
    "updated": 1790785813470
+  },
+  "w-mt.co/q/300e8NB1o90G-0TSCA8": {
+   "productId": "diet-coke-16-9oz-bottle-6pk",
+   "created": 1790785836710,
+   "updated": 1790785836710
   }
  },
  "deleted": {
