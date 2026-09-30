@@ -273,6 +273,13 @@ label.f { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04
   transition: opacity .2s ease, transform .5s var(--spring);
 }
 #toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); pointer-events: auto; }
+.update-ready {
+  position: fixed; z-index: 60; left: 50%; top: calc(64px + env(safe-area-inset-top, 0px)); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px; border: 0; border-radius: 999px; padding: 10px 16px;
+  background: var(--text); color: var(--bg); font-weight: 700; font-size: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.25);
+  animation: bannerIn .5s var(--spring) both; white-space: nowrap;
+}
+.update-ready svg.i { width: 18px; height: 18px; }
 
 /* ---------- Motion ----------
    Fluid, spring-based movement in the spirit of iOS 26: controls glide between states,
@@ -351,7 +358,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 </head>
 <body>
 <header class="top">
-  <h1>Shelf Scan</h1><span class="tagline">BETA 2.3.1</span>
+  <h1>Shelf Scan</h1><span class="tagline">BETA 2.3.2</span>
   <span class="spacer"></span>
   <span class="store" id="hdr-store"></span>
   <button class="sync-ind" id="sync-ind" hidden></button>
@@ -2358,7 +2365,7 @@ function renderMore() {
       </details>
     </div>
     <button class="btn block danger" id="btn-reset">Reset this phone</button>
-    <p class="foot">Shelf Scan Beta 2.3.1 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
+    <p class="foot">Shelf Scan Beta 2.3.2 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
       Product lookups from <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener" style="color:inherit">Open Food Facts</a></p>`;
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
   v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
@@ -2770,8 +2777,22 @@ if (state.settings.camOK) startCamera();
 // Pull everyone's latest shared data on open, then upload anything waiting.
 if (navigator.onLine) pullShared().catch(() => {}).finally(() => scheduleUpload(1000));
 
+// Updates: check for a new version whenever the app comes back to the foreground (home-screen apps on iPhone
+// stay loaded for days), and offer a one-tap reload once it's installed.
 if ("serviceWorker" in navigator && location.protocol === "https:") {
-  navigator.serviceWorker.register("sw.js").catch(() => {});
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(reg => {
+    const check = () => reg.update().catch(() => {});
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) check(); });
+    setInterval(check, 30 * 60 * 1000);
+  }).catch(() => {});
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadController) showUpdateReady(); });
+}
+function showUpdateReady() {
+  if (document.querySelector("#update-ready")) return;
+  const b = el(`<button id="update-ready" class="update-ready">${icon("refresh")}New version ready · Tap to reload</button>`);
+  b.onclick = () => location.reload();
+  document.body.appendChild(b);
 }
 </script>
 </body>

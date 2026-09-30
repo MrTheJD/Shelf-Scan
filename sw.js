@@ -1,13 +1,14 @@
 // Offline support: app shell is cached on install; the scanner library and
 // product images are cached the first time they load. Shared data and GitHub
 // calls always go to the network (the app keeps its own copy for offline use).
-const CACHE = "shelfscan-v7";
+const CACHE = "shelfscan-v8";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 const SCANNER_LIB = "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js";
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE)
-    .then(c => c.addAll(SHELL).then(() => c.add(SCANNER_LIB).catch(() => {})))
+    // cache: "reload" so a new version never stores a stale copy from the browser's HTTP cache.
+    .then(c => c.addAll(SHELL.map(u => new Request(u, { cache: "reload" }))).then(() => c.add(SCANNER_LIB).catch(() => {})))
     .then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", e => {
@@ -20,8 +21,9 @@ self.addEventListener("fetch", e => {
   const url = new URL(req.url);
   if (url.hostname === "api.github.com" || url.pathname.includes("/data/") || url.pathname.includes("/api/v2/product/")) return;
   // Network first for the page itself so updates show up; cache as fallback.
+  // cache: "no-cache" revalidates with the server instead of reusing GitHub Pages' 10-minute browser cache.
   if (req.mode === "navigate") {
-    e.respondWith(fetch(req).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put("index.html", copy)); return r; })
+    e.respondWith(fetch(req, { cache: "no-cache" }).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put("index.html", copy)); return r; })
       .catch(() => caches.match("index.html")));
     return;
   }
