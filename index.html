@@ -53,6 +53,10 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 /* Feel like an app: no double-tap zoom, no rubber-band scrolling past the top or bottom. */
 html, body { margin: 0; min-height: 100%; overscroll-behavior: none; touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+/* iPhone home-screen apps size the window short of the real screen when a page doesn't fill it, which lifts
+   the fixed tab bar off the bottom (seen on Scan and List; long pages like Products were fine). Making every
+   page at least the full screen height keeps the tab bar on the bottom edge. */
+html, body { min-height: 100vh; min-height: 100lvh; }
 body {
   background: var(--bg); color: var(--text); font: 16px/1.4 var(--font);
   padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
@@ -359,7 +363,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 </head>
 <body>
 <header class="top">
-  <h1>Shelf Scan</h1><span class="tagline">BETA 2.3.5</span>
+  <h1>Shelf Scan</h1><span class="tagline">BETA 2.3.6</span>
   <span class="spacer"></span>
   <span class="store" id="hdr-store"></span>
   <button class="sync-ind" id="sync-ind" hidden></button>
@@ -2366,8 +2370,9 @@ function renderMore() {
       </details>
     </div>
     <button class="btn block danger" id="btn-reset">Reset this phone</button>
-    <p class="foot">Shelf Scan Beta 2.3.5 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
-      Product lookups from <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener" style="color:inherit">Open Food Facts</a></p>`;
+    <p class="foot">Shelf Scan Beta 2.3.6 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
+      Product lookups from <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener" style="color:inherit">Open Food Facts</a><br>
+      <span style="opacity:.7">Screen ${screen.width}×${screen.height} · window ${innerWidth}×${innerHeight} · page ${document.documentElement.scrollHeight}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
   v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
   v.querySelector("#btn-export").onclick = exportBackup;
