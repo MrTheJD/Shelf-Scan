@@ -1,7 +1,7 @@
 // Offline support: app shell is cached on install; the scanner library and
 // product images are cached the first time they load. Shared data and GitHub
 // calls always go to the network (the app keeps its own copy for offline use).
-const CACHE = "shelfscan-v13";
+const CACHE = "shelfscan-v14";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 const SCANNER_LIB = "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js";
 // Barcode decoder (WebAssembly). Cached up front so scanning works offline; its small helper modules

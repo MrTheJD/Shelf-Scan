@@ -396,7 +396,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 </head>
 <body>
 <header class="top">
-  <h1>Shelf Scan</h1><span class="tagline">BETA 3</span>
+  <h1>Shelf Scan</h1><span class="tagline">BETA 3.1</span>
   <span class="spacer"></span>
   <span class="store" id="hdr-store"></span>
   <button class="sync-ind" id="sync-ind" hidden></button>
@@ -1528,6 +1528,7 @@ function normShared(d) {
   s.products = d.products || {}; s.tags = d.tags || {};
   s.deleted.products = (d.deleted && d.deleted.products) || {}; s.deleted.tags = (d.deleted && d.deleted.tags) || {};
   if (d.config) s.config = d.config;
+  s.tagsResetAt = d.tagsResetAt || 0;   // set by "Reset shared tags": links made before this are gone everywhere
   return s;
 }
 
@@ -1583,10 +1584,16 @@ function applyShared(remote, { overwrite = false } = {}) {
     state.deleted = { products: {}, tags: {} };
     state.outbox = { products: {}, tags: {} };
     state.config = { perStoreTags: false, updated: 0, ...(remote.config || {}) };
+    state.sync.tagsResetAt = remote.tagsResetAt || 0;
   } else {
     if (remote.config && (remote.config.updated || 0) > (state.config.updated || 0)) {
       state.config = { ...state.config, ...remote.config };
       delete state.outbox.config;
+    }
+    // Shared tags were reset: drop every local link made before the reset (including ones never uploaded).
+    if (remote.tagsResetAt) {
+      for (const k of Object.keys(state.tags)) if ((state.tags[k].updated || 0) <= remote.tagsResetAt) { delete state.tags[k]; delete state.outbox.tags[k]; }
+      state.sync.tagsResetAt = remote.tagsResetAt;
     }
     const localTs = id => { const p = productById(id); return Math.max(p ? p.updated || 0 : 0, state.deleted.products[id] || 0); };
     for (const id in remote.products) {
@@ -1720,8 +1727,8 @@ async function uploadChanges() {
         n++;
       }
       for (const c in sentT) {
-        const rTs = Math.max((R.tags[c] && R.tags[c].updated) || 0, R.deleted.tags[c] || 0);
-        if (rTs > sentT[c]) continue;
+        const rTs = Math.max((R.tags[c] && R.tags[c].updated) || 0, R.deleted.tags[c] || 0, R.tagsResetAt || 0);
+        if (rTs > sentT[c]) continue;                         // newer elsewhere, or made before a tag reset
         const t = state.tags[c];
         if (t) { R.tags[c] = tagShareable(t); delete R.deleted.tags[c]; }
         else { delete R.tags[c]; R.deleted.tags[c] = state.deleted.tags[c] || Date.now(); }
@@ -2636,8 +2643,15 @@ function renderMore() {
         </div>
       </details>
     </div>
-    <button class="btn block danger" id="btn-reset">Reset this phone</button>
-    <p class="foot">Shelf Scan Beta 3 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
+    <div class="card">
+      <h3>Danger zone</h3>
+      <p class="hint">Reset shared tags deletes every shelf-tag link for everyone (products, barcodes and lists are kept). It needs the team password.</p>
+      <div class="stack" style="margin-top:10px">
+        <button class="btn block danger" id="btn-reset-tags">Reset shared tags</button>
+        <button class="btn block danger" id="btn-reset">Reset this phone</button>
+      </div>
+    </div>
+    <p class="foot">Shelf Scan Beta 3.1 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
       Product lookups from <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener" style="color:inherit">Open Food Facts</a><br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height} · window ${innerWidth}×${innerHeight} · page ${document.documentElement.scrollHeight}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
@@ -2669,6 +2683,7 @@ function renderMore() {
     toast(on ? "Tags are now linked per store" : "Tags are shared across all stores");
     if (on && !storeId()) ensureStoreForTags();
   };
+  v.querySelector("#btn-reset-tags").onclick = resetSharedTags;
   v.querySelector("#btn-reset").onclick = async () => {
     const n = pendingCount();
     if (!(await confirmDialog(`Erase everything on this phone and start fresh from the shared data?${n ? `<br><br><b>${n} change${n === 1 ? " hasn't" : "s haven't"} uploaded</b> and will be lost.` : ""}`, { ok: "Erase", danger: true }))) return;
@@ -2677,12 +2692,12 @@ function renderMore() {
     pullShared({ overwrite: true, quiet: false }).catch(e => toast(e.message));
   };
 }
-function passwordDialog(title, note) {
+function passwordDialog(title, note, okLabel = "Enable") {
   return new Promise(resolve => {
     const d = el(`<div class="dialog"><p><b>${esc(title)}</b><br><span class="hint">${esc(note)}</span></p>
       <input class="field" type="text" id="pw-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Password">
       <p class="hint" id="pw-err" style="color:var(--red);margin:8px 0 0"></p>
-      <div class="btns" style="margin-top:14px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="ok">Enable</button></div></div>`);
+      <div class="btns" style="margin-top:14px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="ok">${esc(okLabel)}</button></div></div>`);
     let done = false;
     const close = openLayer(d, { center: true, onClose: () => { if (!done) resolve(null); } });
     const inp = d.querySelector("input"), err = d.querySelector("#pw-err"), ok = d.querySelector('[data-a="ok"]');
@@ -2691,7 +2706,7 @@ function passwordDialog(title, note) {
       if (!inp.value) return;
       ok.disabled = true; ok.textContent = "Checking…"; err.textContent = "";
       try { await resolveCheck(inp.value); done = true; close(); resolve(inp.value); }
-      catch (e) { err.textContent = e.message; ok.disabled = false; ok.textContent = "Enable"; }
+      catch (e) { err.textContent = e.message; ok.disabled = false; ok.textContent = okLabel; }
     };
     let resolveCheck;
     d.check = fn => (resolveCheck = fn);
@@ -2700,6 +2715,42 @@ function passwordDialog(title, note) {
     setTimeout(() => inp.focus(), 50);
     passwordDialog.current = d;
   });
+}
+// Delete every shelf-tag link for everyone. Needs the team password (proved by decrypting the upload key)
+// and an explicit confirmation. Products, barcodes and lists are untouched; GitHub history keeps the old data.
+async function resetSharedTags() {
+  if (!navigator.onLine) return toast("No signal. Reset needs to reach GitHub.");
+  let token = null;
+  const p = passwordDialog("Reset shared tags", "Enter the team password to continue.", "Continue");
+  passwordDialog.current.check(async pw => {
+    const blob = await loadKeyBlob();
+    try { token = await decryptToken(blob, pw); } catch (e) { throw new Error("That password isn't right."); }
+  });
+  if (!(await p) || !token) return;
+  // Show how many links this removes before confirming.
+  let R, sha;
+  try {
+    const f = await readRepoFile(GITHUB.dataPath, token);
+    R = normShared(f.text ? JSON.parse(f.text) : null); sha = f.sha;
+  } catch (e) { return toast("Couldn't reach GitHub. Try again."); }
+  const count = new Set([...Object.keys(R.tags), ...Object.keys(state.tags)]).size;
+  const ok = await confirmDialog(`<b>Delete all ${count} shelf-tag link${count === 1 ? "" : "s"} for everyone?</b><br><br>Every phone drops its tag links the next time it syncs, and tags will need to be linked again. Products, barcodes and lists are kept.`,
+    { ok: "Reset tags", cancel: "Cancel", danger: true });
+  if (!ok) return;
+  const at = Date.now();
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      if (attempt) { const f = await readRepoFile(GITHUB.dataPath, token); R = normShared(f.text ? JSON.parse(f.text) : null); sha = f.sha; }
+      R.tags = {}; R.deleted.tags = {}; R.tagsResetAt = at; R.updated = at;
+      await writeRepoFile(GITHUB.dataPath, JSON.stringify(R, null, 1), sha, token, `Shelf Scan: reset all shelf-tag links (${count})`);
+      // This phone: drop its links right away too.
+      state.tags = {}; state.outbox.tags = {}; state.deleted.tags = {}; state.sync.tagsResetAt = at;
+      save(); renderAll();
+      toast(`Reset ${count} shelf-tag link${count === 1 ? "" : "s"} for everyone`);
+      return;
+    } catch (e) { if (!e.conflict) return toast(e.message || "Couldn't reset. Try again."); }
+  }
+  toast("GitHub was busy. Try again.");
 }
 async function enableUploads() {
   const p = passwordDialog("Enable uploads", "Enter the team password. You'll only need it once on this phone.");
