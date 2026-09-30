@@ -176,6 +176,39 @@ label.f { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04
   background: rgba(0,0,0,.55); color: #fff; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;
   opacity: 0; transition: opacity .25s ease; pointer-events: none; }
 .zoom-pill.show { opacity: 1; }
+/* Shelf-photo shutter over the live camera */
+.shot-ui { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; animation: fade .25s ease both; }
+.shot-ui > * { pointer-events: auto; }
+.shot-top { display: flex; align-items: flex-start; gap: 8px; margin: 10px; padding: 9px 12px; border-radius: 14px; background: rgba(0,0,0,.6); color: #fff; font-size: 14px; }
+.shot-top span { opacity: .8; }
+.shot-hint { font-size: 13px; opacity: .85; margin-top: 2px; }
+.shot-link { border: 0; background: none; color: #fff; text-decoration: underline; font-size: 13px; padding: 2px 0; white-space: nowrap; }
+.shot-bottom { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 14px 14px; }
+.shot-cancel { justify-self: start; border: 0; border-radius: 999px; padding: 9px 14px; background: rgba(0,0,0,.55); color: #fff; font-weight: 650; font-size: 14px; }
+.shutter { width: 74px; height: 74px; border-radius: 50%; border: 4px solid #fff; background: rgba(255,255,255,.18); padding: 5px; transition: transform .45s var(--spring); }
+.shutter span { display: block; width: 100%; height: 100%; border-radius: 50%; background: #fff; }
+.shutter:active { transform: scale(.9); transition-duration: .1s; }
+.camera.shooting .viewfinder { display: none; }
+.camera.flash::after { content: ""; position: absolute; inset: 0; z-index: 5; background: #fff; animation: fadeOut .35s ease forwards; pointer-events: none; }
+/* Shelf photo in list rows */
+.shelf-thumb { position: relative; width: 56px; height: 56px; flex: none; border: 0; padding: 0; border-radius: 12px; overflow: hidden; background: var(--chip); }
+.shelf-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.shelf-thumb.missing::after { content: "No photo"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--muted); }
+.shelf-thumb .count { position: absolute; right: 3px; bottom: 3px; min-width: 16px; height: 16px; border-radius: 8px; background: rgba(0,0,0,.65); color: #fff; font-size: 10px; font-weight: 800; line-height: 16px; text-align: center; }
+.item.done .shelf-thumb { opacity: .45; }
+/* Full-screen photo viewer */
+.viewer-overlay { padding: 0 !important; background: #000 !important; }
+.viewer { position: fixed; inset: 0; display: flex; flex-direction: column; background: #000; color: #fff; animation: fade .25s ease both; }
+.viewer-top { display: flex; align-items: center; gap: 10px; padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px; }
+.viewer-top .small { opacity: .75; }
+.viewer-x { width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255,255,255,.14); color: #fff; display: flex; align-items: center; justify-content: center; }
+.viewer-stage { flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; touch-action: none; }
+.viewer-stage img { max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center; transition: transform .08s linear; }
+.viewer-dots { display: flex; justify-content: center; gap: 8px; min-height: 20px; }
+.viewer-dots .dot { width: 8px; height: 8px; border-radius: 50%; border: 0; padding: 0; background: rgba(255,255,255,.35); }
+.viewer-dots .dot.on { background: #fff; }
+.viewer-actions { display: flex; gap: 10px; justify-content: center; padding: 10px 16px calc(14px + env(safe-area-inset-bottom, 0px)); }
+.viewer-actions .btn { flex: 1; max-width: 220px; }
 .cam-off { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 34px 16px; color: var(--on-cam); text-align: center; }
 .cam-off svg.i { width: 34px; height: 34px; opacity: .7; }
 .cam-off p { margin: 0; font-size: 13px; max-width: 30ch; }
@@ -363,7 +396,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 </head>
 <body>
 <header class="top">
-  <h1>Shelf Scan</h1><span class="tagline">BETA 2.3.6</span>
+  <h1>Shelf Scan</h1><span class="tagline">BETA 2.4</span>
   <span class="spacer"></span>
   <span class="store" id="hdr-store"></span>
   <button class="sync-ind" id="sync-ind" hidden></button>
@@ -1762,7 +1795,8 @@ function setMode(m) {
   if (pending && pending.kind === "setupTag" && m !== "setup") pending = null;
   document.querySelectorAll("#mode-seg button").forEach(b => b.classList.toggle("active", b.dataset.mode === m));
   syncIndicator($("#mode-seg"));
-  $("#mode-help").textContent = MODE_HELP[m];
+  $("#mode-help").textContent = m === "count" && (state.settings.afterScan || "photo") === "photo"
+    ? "Scan a shelf tag or barcode, then snap a photo of the shelf." : MODE_HELP[m];
   renderPending();
 }
 function setPending(p) { pending = p; renderPending(); }
@@ -1847,7 +1881,7 @@ async function handleTag(code) {
     known.lastSeen = Date.now(); save();
     const p = productById(known.productId);
     if (!p) { delete state.tags[found.key]; save(); return handleTag(code); }
-    return productSheet(p.id, { tagCode: code });
+    return addFromScan(p.id, { tagCode: code });
   }
   const choice = await menu("New shelf tag", [
     { label: "Scan the product barcode", value: "scan" },
@@ -1856,7 +1890,7 @@ async function handleTag(code) {
   if (choice === "scan") setPending({ kind: "bindTag", code });
   if (choice === "pick") {
     const pid = await pickProduct({ title: "Which product is this tag for?" });
-    if (pid && await bindTag(code, pid) && mode === "count") productSheet(pid, { tagCode: code });
+    if (pid && await bindTag(code, pid) && mode === "count") addFromScan(pid, { tagCode: code });
   }
 }
 
@@ -1880,7 +1914,7 @@ async function handleBarcode(code) {
     }
     setPending(null);
     const ok = await bindTag(tagCode, p.id);
-    if (ok && mode === "count") productSheet(p.id, { tagCode });
+    if (ok && mode === "count") addFromScan(p.id, { tagCode });
     return;
   }
   if (pending && pending.kind === "tagForProduct") { toast("That's a barcode. Scan the shelf tag QR."); beep(false); return; }
@@ -1890,7 +1924,7 @@ async function handleBarcode(code) {
     if (!pid) return;
     p = productById(pid);
   }
-  productSheet(p.id);
+  addFromScan(p.id);
 }
 
 // Unknown barcode → look up on Open Food Facts, then pick existing or add new.
@@ -1937,7 +1971,7 @@ function productSheet(pid, { tagCode = null } = {}) {
   const s = el(`<div class="sheet"><div class="handle"></div>
     <div class="row">${thumbHtml(p, true)}<div class="grow"><h2 style="margin:0">${esc(pName(p))}</h2>
       <div class="muted">${esc(pSub(p))}</div><div class="hint">${esc(p.category)}</div></div></div>
-    ${existing ? `<div class="banner">Already on your list: ${existing.qty} ${esc(p.unit)}${existing.qty === 1 ? "" : "s"}. This adds more.</div>` : ""}
+    ${existing ? `<div class="banner">Already on your list${existing.qty ? `: ${existing.qty} ${esc(p.unit)}${existing.qty === 1 ? "" : "s"}` : ""}. This adds more.</div>` : ""}
     <label class="f">How many ${esc(p.unit)}s do you need?</label>
     <div class="qty"><button data-a="minus" aria-label="Less">−</button><input type="number" inputmode="numeric" min="1" value="1" id="qty-input"><button data-a="plus" aria-label="More">+</button>
       <span class="unit">${esc(p.unit)}s</span></div>
@@ -1951,7 +1985,7 @@ function productSheet(pid, { tagCode = null } = {}) {
   s.querySelector('[data-a="add"]').onclick = () => {
     const n = Math.max(1, Math.floor(+input.value || 1));
     const snap = snapshot();
-    if (existing) { existing.qty += n; existing.status = "need"; bumpQtyFor = pid; }
+    if (existing) { existing.qty = (existing.qty || 0) + n; existing.status = "need"; bumpQtyFor = pid; }
     else state.list.items.push({ productId: pid, qty: n, status: "need", addedAt: Date.now() });
     bumpRecent(pid);
     save(); close(); renderAll();
@@ -1967,11 +2001,200 @@ function productSheet(pid, { tagCode = null } = {}) {
     if (how === "scan") setPending({ kind: "rebindTag", code: tagCode });
     if (how === "pick") {
       const np = await pickProduct({ title: "Which product is this tag for?" });
-      if (np && await bindTag(tagCode, np)) productSheet(np, { tagCode });
+      if (np && await bindTag(tagCode, np)) addFromScan(np, { tagCode });
     }
   };
 }
 function ensureList() { if (!state.list) state.list = { started: Date.now(), items: [] }; }
+
+// After a product is identified in Count mode: snap the shelf (default) or enter a quantity (setting).
+function addFromScan(pid, opts = {}) {
+  if ((state.settings.afterScan || "photo") === "qty") return productSheet(pid, opts);
+  return shelfShot(pid, opts);
+}
+
+// ---------- Shelf photos ----------
+// Stored in IndexedDB (plenty of room; localStorage is only ~5 MB). Photos stay on this phone and are
+// deleted when their list item goes away.
+const photoDB = (() => {
+  let p = null;
+  return () => p || (p = new Promise((res, rej) => {
+    const r = indexedDB.open("shelfscan-photos", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("photos");
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => { p = null; rej(r.error); };
+  }));
+})();
+async function photoTx(mode, fn) {
+  const db = await photoDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction("photos", mode), req = fn(tx.objectStore("photos"));
+    tx.oncomplete = () => res(req && req.result);
+    tx.onerror = tx.onabort = () => rej(tx.error);
+  });
+}
+const putPhoto = (id, blob) => photoTx("readwrite", s => s.put(blob, id));
+const getPhoto = id => photoTx("readonly", s => s.get(id));
+const photoKeys = () => photoTx("readonly", s => s.getAllKeys());
+const delPhoto = id => { const u = photoURLs.get(id); if (u) { URL.revokeObjectURL(u); photoURLs.delete(id); } return photoTx("readwrite", s => s.delete(id)); };
+const newPhotoId = () => `ph-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+const photoURLs = new Map();
+async function photoURL(id) {
+  if (photoURLs.has(id)) return photoURLs.get(id);
+  const blob = await getPhoto(id).catch(() => null);
+  if (!blob) return null;
+  const u = URL.createObjectURL(blob); photoURLs.set(id, u); return u;
+}
+// Fill <img data-photo="id"> placeholders after a render.
+function hydratePhotos(root) {
+  root.querySelectorAll("img[data-photo]").forEach(async img => { const u = await photoURL(img.dataset.photo); if (u) img.src = u; else img.closest(".shelf-thumb")?.classList.add("missing"); });
+}
+// Remove photos no list item points to (after clearing/removing, once the undo window has passed).
+async function sweepPhotos() {
+  try {
+    const keep = new Set(((state.list && state.list.items) || []).flatMap(i => i.photos || []));
+    for (const k of await photoKeys()) if (!keep.has(k)) await delPhoto(k);
+  } catch (e) {}
+}
+function schedulePhotoSweep() { clearTimeout(schedulePhotoSweep.t); schedulePhotoSweep.t = setTimeout(sweepPhotos, 10000); }
+// Resize an image/video frame to at most 1280px on the long side and encode as JPEG (~150 KB).
+function frameToBlob(source, w, h) {
+  const k = Math.min(1, 1280 / Math.max(w, h));
+  const c = document.createElement("canvas"); c.width = Math.round(w * k); c.height = Math.round(h * k);
+  c.getContext("2d").drawImage(source, 0, 0, c.width, c.height);
+  return new Promise(r => c.toBlob(r, "image/jpeg", 0.72));
+}
+async function fileToBlob(file) {
+  const bmp = await createImageBitmap(file);
+  const b = await frameToBlob(bmp, bmp.width, bmp.height); bmp.close && bmp.close(); return b;
+}
+// Take a photo with the iPhone camera (used when the live camera isn't running, and for extra angles).
+function cameraPhoto() {
+  return new Promise(resolve => {
+    const inp = el(`<input type="file" accept="image/*" capture="environment" hidden>`);
+    inp.onchange = async () => { const f = inp.files && inp.files[0]; inp.remove(); resolve(f ? await fileToBlob(f) : null); };
+    document.body.appendChild(inp); inp.click();
+  });
+}
+function liveVideo() {
+  const v = cam.video || document.querySelector("#reader video");
+  return camOn && v && v.readyState >= 2 && v.videoWidth ? v : null;
+}
+
+// Shutter overlay on the live camera: "Step back and snap the shelf". No skip; Cancel adds nothing.
+let shotOpen = false;
+function shelfShot(pid, { tagCode = null } = {}) {
+  const p = productById(pid);
+  const v = liveVideo();
+  if (!v) {
+    // No live camera (photo mode, legacy fallback…): use the iPhone camera instead.
+    return cameraPhoto().then(blob => { if (blob) saveShelfPhoto(pid, blob); });
+  }
+  if (shotOpen) return;
+  shotOpen = true; modalDepth++;                      // pauses scanning while the shutter is up
+  const camBox = $("#camera");
+  const ui = el(`<div class="shot-ui">
+      <div class="shot-top"><div class="grow"><b>${esc(pName(p))}</b> <span>${esc(p.pack)}</span><div class="shot-hint">Step back and snap the shelf</div></div>
+        ${tagCode ? `<button class="shot-link" data-a="wrong">Wrong item?</button>` : ""}</div>
+      <div class="shot-bottom"><button class="shot-cancel" data-a="cancel">Cancel</button>
+        <button class="shutter" data-a="snap" aria-label="Take shelf photo"><span></span></button><span class="shot-spacer"></span></div>
+    </div>`);
+  camBox.appendChild(ui); camBox.classList.add("shooting");
+  const done = () => { ui.remove(); camBox.classList.remove("shooting"); shotOpen = false; modalDepth = Math.max(0, modalDepth - 1); lastScan = { code: "", at: Date.now() }; };
+  ui.querySelector('[data-a="cancel"]').onclick = done;
+  ui.querySelector('[data-a="snap"]').onclick = async () => {
+    const vid = liveVideo(); if (!vid) { done(); return; }
+    camBox.classList.add("flash"); setTimeout(() => camBox.classList.remove("flash"), 350);
+    beep(true);
+    const blob = await frameToBlob(vid, vid.videoWidth, vid.videoHeight);
+    done();
+    if (blob) saveShelfPhoto(pid, blob);
+  };
+  const wrong = ui.querySelector('[data-a="wrong"]');
+  if (wrong) wrong.onclick = async () => {
+    done();
+    const how = await menu("Change this tag's product", [
+      { label: "Scan the correct product's barcode", value: "scan" },
+      { label: "Pick from product list", value: "pick" },
+    ]);
+    if (how === "scan") setPending({ kind: "rebindTag", code: tagCode });
+    if (how === "pick") {
+      const np = await pickProduct({ title: "Which product is this tag for?" });
+      if (np && await bindTag(tagCode, np)) addFromScan(np, { tagCode });
+    }
+  };
+}
+// Add the product to the list with its shelf photo (scanning it again replaces the photo).
+async function saveShelfPhoto(pid, blob) {
+  const p = productById(pid);
+  const id = newPhotoId();
+  try { await putPhoto(id, blob); } catch (e) { toast("Couldn't save the photo. Phone storage may be full."); return; }
+  ensureList();
+  const snap = snapshot();
+  const it = state.list.items.find(i => i.productId === pid);
+  if (it) { it.photos = [id, ...(it.photos || []).slice(1)]; it.status = "need"; }
+  else state.list.items.push({ productId: pid, qty: null, status: "need", addedAt: Date.now(), photos: [id] });
+  bumpRecent(pid);
+  save(); renderAll(); schedulePhotoSweep();
+  toast(it ? `Photo updated: ${pName(p)} ${p.pack}` : `Added ${pName(p)} ${p.pack}`, snap);
+}
+// Full-screen photo viewer with pinch/double-tap zoom, plus add-angle / retake.
+async function viewPhotos(it, start = 0) {
+  const p = productById(it.productId);
+  let idx = Math.min(start, (it.photos || []).length - 1);
+  const d = el(`<div class="viewer">
+      <div class="viewer-top"><div class="grow"><b>${esc(pName(p))}</b><div class="small">${esc(pSub(p))}</div></div>
+        <button class="viewer-x" data-a="close" aria-label="Close">${icon("x")}</button></div>
+      <div class="viewer-stage"><img alt="Shelf photo"></div>
+      <div class="viewer-dots"></div>
+      <div class="viewer-actions"></div>
+    </div>`);
+  const close = openLayer(d, { center: true });
+  d.parentElement.classList.add("viewer-overlay");
+  const img = d.querySelector("img"), stage = d.querySelector(".viewer-stage");
+  let z = 1, px = 0, py = 0;
+  const apply = () => (img.style.transform = `translate(${px}px, ${py}px) scale(${z})`);
+  const show = async () => {
+    z = 1; px = py = 0; apply();
+    const ids = it.photos || [];
+    img.src = (await photoURL(ids[idx])) || "";
+    d.querySelector(".viewer-dots").innerHTML = ids.length > 1 ? ids.map((_, i) => `<button class="dot${i === idx ? " on" : ""}" data-i="${i}" aria-label="Photo ${i + 1}"></button>`).join("") : "";
+    d.querySelectorAll(".dot").forEach(b => (b.onclick = () => { idx = +b.dataset.i; show(); }));
+    const acts = d.querySelector(".viewer-actions");
+    acts.innerHTML = `${ids.length < 2 ? `<button class="btn primary" data-a="add">${icon("camera")}Add another angle</button>` : ""}
+      <button class="btn" data-a="retake">Retake</button>`;
+    const add = acts.querySelector('[data-a="add"]');
+    if (add) add.onclick = async () => { const b = await cameraPhoto(); if (!b) return; const id = newPhotoId(); await putPhoto(id, b); it.photos = [...(it.photos || []), id].slice(0, 2); save(); idx = it.photos.length - 1; show(); renderList(); };
+    acts.querySelector('[data-a="retake"]').onclick = async () => { const b = await cameraPhoto(); if (!b) return; const id = newPhotoId(); await putPhoto(id, b); const old = it.photos[idx]; it.photos[idx] = id; save(); delPhoto(old); show(); renderList(); };
+  };
+  d.querySelector('[data-a="close"]').onclick = close;
+  // Pinch to zoom, drag to pan when zoomed, double-tap to toggle 2.5×, swipe to change photo.
+  let t0 = null, last = 0;
+  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  stage.addEventListener("touchstart", e => {
+    e.preventDefault();
+    if (e.touches.length === 2) t0 = { d: dist(e.touches), z };
+    else if (e.touches.length === 1) {
+      const now = Date.now();
+      if (now - last < 280) { z = z > 1 ? 1 : 2.5; px = py = 0; apply(); last = 0; t0 = null; return; }
+      last = now; t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY, px, py, sx: e.touches[0].clientX };
+    }
+  }, { passive: false });
+  stage.addEventListener("touchmove", e => {
+    e.preventDefault(); if (!t0) return;
+    if (e.touches.length === 2 && t0.d) { z = Math.min(5, Math.max(1, t0.z * dist(e.touches) / t0.d)); if (z === 1) px = py = 0; apply(); }
+    else if (e.touches.length === 1 && t0.x !== undefined && z > 1) { px = t0.px + e.touches[0].clientX - t0.x; py = t0.py + e.touches[0].clientY - t0.y; apply(); }
+  }, { passive: false });
+  stage.addEventListener("touchend", e => {
+    if (t0 && t0.sx !== undefined && z === 1 && e.changedTouches[0] && (it.photos || []).length > 1) {
+      const dx = e.changedTouches[0].clientX - t0.sx;
+      if (Math.abs(dx) > 50) { idx = (idx + (dx < 0 ? 1 : -1) + it.photos.length) % it.photos.length; show(); }
+    }
+    if (e.touches.length === 0) t0 = null;
+  });
+  ["gesturestart", "gesturechange"].forEach(t => stage.addEventListener(t, e => e.preventDefault()));
+  show();
+}
 
 // ---------- Add / edit product ----------
 function editProduct(pid, { prefillName = "", barcode = "", off = null } = {}) {
@@ -2168,13 +2391,23 @@ function renderList() {
     for (const { it, p } of groups[cat]) {
       const done = it.status === "done";
       const isNew = !firstRender && !prevSeen.has(it.productId);
-      const r = el(`<div class="item tap${done ? " done" : ""}${isNew ? " enter" : ""}">
+      const photos = it.photos || [];
+      // Shelf photo (tap for full screen) replaces the product tile; a quantity shows only if one was entered.
+      const lead = photos.length
+        ? `<button class="shelf-thumb" data-a="photo" aria-label="View shelf photo"><img data-photo="${esc(photos[0])}" alt="">${photos.length > 1 ? `<span class="count">2</span>` : ""}</button>`
+        : thumbHtml(p);
+      const qtyBtn = it.qty
+        ? `<button class="qty-tap" data-a="qty" aria-label="Change quantity"><b>${it.qty}</b><span>${esc(p.unit)}${it.qty === 1 ? "" : "s"}</span></button>`
+        : (photos.length ? "" : `<button class="qty-tap" data-a="qty" aria-label="Set quantity"><b>+</b><span>qty</span></button>`);
+      const r = el(`<div class="item tap${done ? " done" : ""}${isNew ? " enter" : ""}${photos.length ? " has-photo" : ""}">
         <button class="check${done ? " on" : ""}" aria-label="Cross off">${done ? icon("check") : ""}</button>
-        ${thumbHtml(p)}
+        ${lead}
         <div class="grow"><div class="name">${esc(pName(p))}</div><div class="sub">${esc(pSub(p))}</div></div>
-        <button class="qty-tap" data-a="qty" aria-label="Change quantity"><b>${it.qty}</b><span>${esc(p.unit)}${it.qty === 1 ? "" : "s"}</span></button>
+        ${qtyBtn}
         <button class="more-btn" data-a="more" aria-label="More">${icon("dots")}</button></div>`);
-      if (bumpQtyFor === it.productId) { bump(r.querySelector(".qty-tap b")); bumpQtyFor = null; }
+      const qb = r.querySelector(".qty-tap b");
+      if (bumpQtyFor === it.productId && qb) { bump(qb); bumpQtyFor = null; }
+      const ph = r.querySelector('[data-a="photo"]'); if (ph) ph.onclick = () => viewPhotos(it, 0);
       // Tapping the row crosses it off (purely a reminder). Updated in place so the check and strikethrough animate.
       r.onclick = e => {
         if (e.target.closest("[data-a]")) return;
@@ -2191,12 +2424,13 @@ function renderList() {
         $("#list-badge").hidden = !leftNow; $("#list-badge").textContent = leftNow;
         if (hideDone && nowDone) setTimeout(() => { if (view === "list") renderList(); }, 450);
       };
-      r.querySelector('[data-a="qty"]').onclick = () => editQty(it, p);
+      const qa = r.querySelector('[data-a="qty"]'); if (qa) qa.onclick = () => editQty(it, p);
       r.querySelector('[data-a="more"]').onclick = () => listItemMenu(it, p);
       list.appendChild(r);
     }
     v.appendChild(list);
   }
+  hydratePhotos(v);
   const clr = el(`<button class="btn block danger" style="margin-top:20px">Clear list</button>`);
   clr.onclick = clearList;
   v.appendChild(clr);
@@ -2204,7 +2438,7 @@ function renderList() {
 function editQty(it, p) {
   const snap = snapshot();
   const s = el(`<div class="dialog"><p><b>${esc(pName(p))}</b><br><span class="muted">${esc(pSub(p))}</span></p>
-    <div class="qty" style="justify-content:center"><button data-a="m" aria-label="Less">−</button><input type="number" inputmode="numeric" value="${it.qty}" id="qty-edit"><button data-a="p" aria-label="More">+</button></div>
+    <div class="qty" style="justify-content:center"><button data-a="m" aria-label="Less">−</button><input type="number" inputmode="numeric" value="${it.qty || 1}" id="qty-edit"><button data-a="p" aria-label="More">+</button></div>
     <div class="btns" style="margin-top:18px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="s">Save</button></div></div>`);
   const close = openLayer(s, { center: true });
   const inp = s.querySelector("input");
@@ -2214,22 +2448,33 @@ function editQty(it, p) {
   s.querySelector('[data-a="s"]').onclick = () => { it.qty = Math.max(1, Math.floor(+inp.value || 1)); bumpQtyFor = it.productId; save(); close(); renderAll(); toast("Quantity updated", snap); };
 }
 async function listItemMenu(it, p) {
+  const photos = it.photos || [];
   const choice = await menu(`${pName(p)} — ${p.pack}`, [
-    { label: "Change quantity", value: "qty" },
+    ...(photos.length ? [{ label: "View shelf photo", value: "view" }] : []),
+    ...(photos.length === 1 ? [{ label: "Add another angle", value: "angle" }] : []),
+    ...(!photos.length ? [{ label: "Add shelf photo", value: "angle" }] : []),
+    { label: it.qty ? "Change quantity" : "Add a quantity", value: "qty" },
     { label: "Remove from list", value: "remove", danger: true },
   ]);
+  if (choice === "view") return viewPhotos(it, 0);
+  if (choice === "angle") {
+    const b = await cameraPhoto(); if (!b) return;
+    const id = newPhotoId(); await putPhoto(id, b);
+    it.photos = [...photos, id].slice(0, 2); save(); renderAll(); toast("Photo added");
+    return;
+  }
   if (choice === "qty") return editQty(it, p);
   if (choice === "remove") {
     const snap = snapshot();
     state.list.items = state.list.items.filter(x => x !== it);
-    save(); renderAll(); toast("Removed", snap);
+    save(); renderAll(); toast("Removed", snap); schedulePhotoSweep();
   }
 }
 async function clearList() {
   if (!(await confirmDialog("Clear the whole list?", { ok: "Clear list", danger: true }))) return;
   const snap = snapshot();
   state.list = null;
-  save(); renderAll(); toast("List cleared", snap);
+  save(); renderAll(); toast("List cleared", snap); schedulePhotoSweep();
 }
 
 // Products
@@ -2346,6 +2591,12 @@ function renderMore() {
       <h3>This phone</h3>
       <label class="f" for="store-name">Store number</label>
       <input class="field" id="store-name" placeholder="e.g. 1234" value="${esc(state.storeName)}">
+      <label class="f">After scanning a product</label>
+      <div class="seg" id="after-scan">
+        <button data-v="photo" class="${(state.settings.afterScan || "photo") === "photo" ? "active" : ""}">Snap the shelf</button>
+        <button data-v="qty" class="${state.settings.afterScan === "qty" ? "active" : ""}">Enter quantity</button>
+      </div>
+      <p class="hint" style="margin-top:6px">${(state.settings.afterScan || "photo") === "photo" ? "Take a quick photo of the shelf, then decide how much to pull in the back." : "Type how many you need right at the shelf."}</p>
       <div class="set-row" style="margin-top:6px"><label class="grow" for="beep">Scan beep</label><input type="checkbox" id="beep" ${state.settings.beep ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
     </div>
     <div class="card">
@@ -2370,11 +2621,16 @@ function renderMore() {
       </details>
     </div>
     <button class="btn block danger" id="btn-reset">Reset this phone</button>
-    <p class="foot">Shelf Scan Beta 2.3.6 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
+    <p class="foot">Shelf Scan Beta 2.4 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
       Product lookups from <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener" style="color:inherit">Open Food Facts</a><br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height} · window ${innerWidth}×${innerHeight} · page ${document.documentElement.scrollHeight}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
   v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
+  v.querySelectorAll("#after-scan button").forEach(b => (b.onclick = () => {
+    state.settings.afterScan = b.dataset.v; save(); renderMore(); setMode(mode);
+    toast(b.dataset.v === "photo" ? "Scanning now asks for a shelf photo" : "Scanning now asks for a quantity");
+  }));
+  syncIndicator(v.querySelector("#after-scan"), false);
   v.querySelector("#btn-export").onclick = exportBackup;
   v.querySelector("#btn-restore").onclick = () => restoreBackupText(v.querySelector("#backup-text").value);
   v.querySelector("#btn-sync").onclick = syncFromGitHub;
@@ -2866,7 +3122,7 @@ $("#btn-pick-manual").onclick = async () => {
     return;
   }
   const pid = await pickProduct({ title: "Add which product?" });
-  if (pid) productSheet(pid);
+  if (pid) addFromScan(pid);
 };
 $("#btn-enter-code").onclick = enterCode;
 $("#photo-input").addEventListener("change", e => {
@@ -2878,6 +3134,7 @@ setMode("count");
 renderAll();
 save();
 syncAllIndicators(false);
+setTimeout(sweepPhotos, 3000);   // tidy photos left over from cleared lists
 if (state.settings.camOK) startCamera();
 
 // Pull everyone's latest shared data on open, then upload anything waiting.
