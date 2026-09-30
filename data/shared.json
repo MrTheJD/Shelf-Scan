@@ -1,12 +1,17 @@
 {
  "version": 1,
- "updated": 1790785707053,
+ "updated": 1790785743025,
  "products": {},
  "tags": {
   "w-mt.co/q/300e4c41o90G-0TS48H": {
    "productId": "sprite-1-25l-bottle-single",
    "created": 1790785702279,
    "updated": 1790785702279
+  },
+  "w-mt.co/q/300e23B1o90G-0TSG86": {
+   "productId": "coca-cola-original-12oz-bottle-8pk",
+   "created": 1790785738499,
+   "updated": 1790785738499
   }
  },
  "deleted": {
