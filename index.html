@@ -152,11 +152,25 @@ label.f { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04
    the mode switch and the action buttons, and the whole scan screen fits without scrolling. */
 .camera { position: relative; background: var(--cam); border-radius: 18px; overflow: hidden; border: 1px solid var(--cam-edge);
   aspect-ratio: 1 / 1; max-height: 52dvh; margin-inline: auto; }
-.camera.live { max-height: none; }
-#reader { width: 100%; }
-#reader video { width: 100% !important; display: block; object-fit: cover; }
+.camera.live { max-height: none; touch-action: none; }   /* pinch goes to the camera, not the page */
+/* The feed fills the square and is cropped evenly from the center, whatever shape the camera sends. */
+#reader { position: absolute; inset: 0; overflow: hidden; }
+#reader video { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block;
+  object-fit: cover; object-position: center; transform: scale(var(--view-zoom, 1)); transform-origin: center; }
+#reader #qr-shaded-region, #reader img[alt="Info icon"], #reader img[alt="Camera based scan"] { display: none !important; }
 .camera .cam-off { height: 100%; justify-content: center; }
-#reader img[alt="Info icon"], #reader img[alt="Camera based scan"] { display: none !important; }
+/* Our own centered scan frame (corner brackets). */
+.viewfinder { position: absolute; inset: 14%; z-index: 2; pointer-events: none;
+  background:
+    linear-gradient(#fff, #fff) left top / 26px 3px no-repeat, linear-gradient(#fff, #fff) left top / 3px 26px no-repeat,
+    linear-gradient(#fff, #fff) right top / 26px 3px no-repeat, linear-gradient(#fff, #fff) right top / 3px 26px no-repeat,
+    linear-gradient(#fff, #fff) left bottom / 26px 3px no-repeat, linear-gradient(#fff, #fff) left bottom / 3px 26px no-repeat,
+    linear-gradient(#fff, #fff) right bottom / 26px 3px no-repeat, linear-gradient(#fff, #fff) right bottom / 3px 26px no-repeat;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,.5)); opacity: .9; }
+.zoom-pill { position: absolute; left: 50%; bottom: 12px; z-index: 3; transform: translateX(-50%); padding: 4px 11px; border-radius: 999px;
+  background: rgba(0,0,0,.55); color: #fff; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;
+  opacity: 0; transition: opacity .25s ease; pointer-events: none; }
+.zoom-pill.show { opacity: 1; }
 .cam-off { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 34px 16px; color: var(--on-cam); text-align: center; }
 .cam-off svg.i { width: 34px; height: 34px; opacity: .7; }
 .cam-off p { margin: 0; font-size: 13px; max-width: 30ch; }
@@ -352,6 +366,8 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
         <button class="btn primary" id="btn-cam-start">Start camera</button>
         <p id="cam-error"></p>
       </div>
+      <div class="viewfinder" id="viewfinder" hidden></div>
+      <div class="zoom-pill" id="zoom-pill">1×</div>
       <button class="cam-stop" id="btn-cam-stop" aria-label="Stop camera" hidden><span data-icon="x"></span></button>
     </div>
     <div id="pending-banner"></div>
@@ -2283,12 +2299,15 @@ async function startCamera() {
       experimentalFeatures: { useBarCodeDetectorIfSupported: true } });
     $("#cam-off").hidden = true;
     $("#camera").classList.add("live");
-    // Square video to match the square viewfinder; the scan box is wide enough for barcodes.
+    // Ask for a square feed; iPhones may send 4:3 anyway, so CSS crops it evenly to the square box.
+    // No qrbox: the whole frame is scanned, so the centered crop can't shift where codes are read.
     await scanner.start({ facingMode: "environment" },
-      { fps: 12, aspectRatio: 1.0, qrbox: (w, h) => ({ width: Math.floor(w * 0.84), height: Math.floor(h * 0.6) }) },
+      { fps: 12, aspectRatio: 1.0 },
       (text, result) => onDecoded(text, result && result.result && result.result.format && result.result.format.formatName),
       () => {});
     camOn = true;
+    setupZoom();
+    $("#viewfinder").hidden = false;
     $("#btn-cam-stop").hidden = false;
     setPhotoFirst(false);
     if (!state.settings.camOK) { state.settings.camOK = true; save(); }
@@ -2307,8 +2326,72 @@ async function stopCamera() {
   camOn = false;
   $("#cam-off").hidden = false;
   $("#camera").classList.remove("live");
+  $("#viewfinder").hidden = true;
   $("#btn-cam-stop").hidden = true;
+  zoom.track = null; zoom.hw = null; zoom.level = 1;
+  $("#camera").style.removeProperty("--view-zoom");
 }
+
+// ---------- Pinch to zoom ----------
+// Uses the camera's real zoom when Safari exposes it (sharper, and the scanner sees the zoomed image).
+// Otherwise it enlarges the preview only, which still helps with aiming.
+const zoom = { track: null, hw: null, level: 1, min: 1, max: 4, pending: null };
+function setupZoom() {
+  zoom.track = null; zoom.hw = null; zoom.level = 1; zoom.min = 1; zoom.max = 4;
+  try {
+    const v = document.querySelector("#reader video");
+    const track = v && v.srcObject && v.srcObject.getVideoTracks()[0];
+    const caps = track && track.getCapabilities ? track.getCapabilities() : null;
+    if (caps && caps.zoom && caps.zoom.max > caps.zoom.min) {
+      zoom.track = track; zoom.hw = caps.zoom;
+      zoom.min = caps.zoom.min; zoom.max = Math.min(caps.zoom.max, caps.zoom.min * 6);
+      zoom.level = (track.getSettings && track.getSettings().zoom) || caps.zoom.min;
+    }
+  } catch (e) { /* preview zoom only */ }
+}
+function setZoom(z, { showPill = true } = {}) {
+  z = Math.min(zoom.max, Math.max(zoom.min, z));
+  zoom.level = z;
+  if (zoom.hw && zoom.track) {
+    // Coalesce rapid pinch updates into one constraint change per frame.
+    if (!zoom.pending) zoom.pending = requestAnimationFrame(() => {
+      zoom.pending = null;
+      zoom.track.applyConstraints({ advanced: [{ zoom: zoom.level }] }).catch(() => {
+        zoom.hw = null; zoom.min = 1; zoom.max = 4; setZoom(1);   // camera refused: fall back to preview zoom
+      });
+    });
+  } else {
+    $("#camera").style.setProperty("--view-zoom", z.toFixed(3));
+  }
+  if (showPill) {
+    const pill = $("#zoom-pill");
+    pill.textContent = `${(z / zoom.min).toFixed(1).replace(/\.0$/, "")}×`;
+    pill.classList.add("show");
+    clearTimeout(setZoom.t); setZoom.t = setTimeout(() => pill.classList.remove("show"), 900);
+  }
+}
+(() => {
+  const cam = $("#camera");
+  let startDist = 0, startZoom = 1, lastTap = 0;
+  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  cam.addEventListener("touchstart", e => {
+    if (!camOn) return;
+    if (e.touches.length === 2) { startDist = dist(e.touches); startZoom = zoom.level; e.preventDefault(); }
+    else if (e.touches.length === 1 && !e.target.closest("button")) {
+      // Double-tap the feed to go back to 1×.
+      const now = Date.now();
+      if (now - lastTap < 300) { setZoom(zoom.min); lastTap = 0; } else lastTap = now;
+    }
+  }, { passive: false });
+  cam.addEventListener("touchmove", e => {
+    if (!camOn || e.touches.length !== 2 || !startDist) return;
+    e.preventDefault();
+    setZoom(startZoom * (dist(e.touches) / startDist));
+  }, { passive: false });
+  cam.addEventListener("touchend", e => { if (e.touches.length < 2) startDist = 0; });
+  // iOS also fires gesture events for pinches; stop them from zooming the page.
+  ["gesturestart", "gesturechange", "gestureend"].forEach(t => cam.addEventListener(t, e => e.preventDefault()));
+})();
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) stopCamera();
   else if (view === "scan" && state.settings.camOK) startCamera();
