@@ -498,6 +498,12 @@ function migrate() {
     delete state.list.storeId;
     for (const i of state.list.items) i.status = ["done", "pulled", "stocked"].includes(i.status) ? "done" : "need";
   }
+  // Coming from the alpha: queue everything set up so far so it gets shared once uploads are on.
+  if (state.version !== 2) {
+    const now = Date.now();
+    for (const code in state.tags) { state.tags[code].updated = now; state.outbox.tags[code] = 1; }
+    for (const p of state.products) if (p.custom || p.barcodes.length || p.img || p.retired) { p.updated = now; state.outbox.products[p.id] = 1; }
+  }
   // New starter products added to the app show up for existing users.
   const have = new Set(state.products.map(p => p.id));
   for (const p of buildSeedProducts()) if (!have.has(p.id) && !state.deleted.products[p.id]) state.products.push(p);
