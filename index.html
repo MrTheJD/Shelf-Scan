@@ -690,7 +690,7 @@ function freshState() {
     outbox: { products: {} },               // changed since last upload
     notes: [],                              // newest first: { id, at, photos:[id], audio:id|null, secs, text, status, parts:[{vk, s, e}] (brand + flavor found in the text), flag, ticks:{pid: true}, err }
     recents: [],
-    settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", asrId: "tiny", models: { asr: false } },   // models: which downloads finished
+    settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", wordTiming: false, asrId: "tiny", models: { asr: false } },   // models: which downloads finished
     sync: { lastPull: 0, lastPush: 0, error: "" },
     team: { key: "", name: "", repo: "", hidden: {}, tick: {}, seen: {}, rt: {} },   // Beta 6: shared Needed list (see team.js)
   };
@@ -708,6 +708,7 @@ function migrate() {
   for (const k of ["deleted", "outbox", "sync", "settings"]) state[k] = Object.assign(f[k], state[k] || {});
   state.settings.models = { asr: !!(state.settings.models && state.settings.models.asr) };
   if (state.settings.asrId !== "tiny") { state.settings.asrId = "tiny"; state.settings.models.asr = false; }   // Beta 6: the small speech model is the default; phones that had the bigger one download it again when they choose
+  if (state.settings.wordTiming === undefined) state.settings.wordTiming = false;   // lighting up words while a note plays needs more memory; off unless chosen
   delete state.settings.smart; delete state.settings.smartV; delete state.settings.smartId;   // smart reading was removed in Beta 5.1.1
   state.deleted = { products: state.deleted.products || {} };
   state.outbox = { products: state.outbox.products || {} };
@@ -1795,6 +1796,7 @@ function checkLastCrash() {
   if (!load && !listen) return;
   busyClear("load"); busyClear("listen");
   state.settings.voiceHold = { at: Date.now(), phase: listen ? "listening" : "loading the speech model" };
+  if (listen && state.settings.wordTiming) state.settings.wordTiming = false;   // the extra memory for word times is the first thing to give up
   const n = listen && state.notes.find(x => x.id === listen);
   if (n && n.status !== "done") { n.status = "error"; n.err = "The phone ran out of memory while listening. Record it again or type it."; }
   save();
@@ -1808,7 +1810,7 @@ async function listenTo(n) {
     const i16 = new Int16Array(rec.pcm), f32 = new Float32Array(i16.length);
     for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
     if (!ai.ready.asr) { await workerCall(loadMsg(), 120000); ai.ready.asr = true; }
-    const r = await workerCall({ type: "transcribe", model: asrId(), pcm: f32 }, 120000, [f32.buffer]);
+    const r = await workerCall({ type: "transcribe", model: asrId(), words: !!state.settings.wordTiming, pcm: f32 }, 120000, [f32.buffer]);
     n.text = cleanTranscript(r.text); n.words = r.words || null; n._al = null;
     n.status = n.text ? "heard" : "empty"; n.err = "";
   } catch (e) { n.status = "error"; n.err = e.message || "Couldn't listen to this"; }
@@ -3044,6 +3046,7 @@ function renderMore() {
       <h3>Voice</h3>
       <p class="hint">Listening runs on this phone, so it works with no signal. The speech model downloads once (use Wi-Fi), then stays on the phone.</p>
       ${modelRow("asr")}
+      <div class="set-row"><label class="grow" for="word-timing">Highlight words while a note plays<br><span class="hint">Uses more memory while listening. If the app restarts after you tap Done, leave this off.</span></label><input type="checkbox" id="word-timing" ${state.settings.wordTiming ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
       <p class="hint" style="margin:-4px 0 6px 21px">Turns your recording into words and gives you a list right away.</p>
       ${dl ? `<div class="mprog" data-mprog><i></i></div><p class="hint" data-mprog-label style="margin-top:6px">Starting…</p>` : ""}
       ${ai.dl.error ? `<div class="banner warn" style="margin-top:8px">${icon("warn")}<span class="grow">${esc(ai.dl.error)}</span></div>` : ""}
@@ -3093,13 +3096,14 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 6.3 (team list) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan Beta 6.3.1 (team list) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
   v.querySelector("#team-key").onchange = e => teamSetKey(e.target.value);
   v.querySelector("#team-name").onchange = e => { state.team.name = e.target.value.trim(); save(); teamSoon(300); };
   v.querySelector("#btn-team-test").onclick = teamTest;
+  v.querySelector("#word-timing").onchange = e => { state.settings.wordTiming = e.target.checked; save(); };
   v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
   v.querySelectorAll("[data-dl]").forEach(b => (b.onclick = () => downloadModels([b.dataset.dl])));
   const del = v.querySelector("#btn-del-models"); if (del) del.onclick = async () => {

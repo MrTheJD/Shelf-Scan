@@ -49,6 +49,7 @@ self.onmessage = async e => {
       const dur = m.pcm.length / 16000;
       let r, words = null;
       try {
+        if (!m.words) throw new Error("plain");   // word times use extra memory, so they are only asked for when switched on
         r = await pipe(m.pcm, { return_timestamps: "word" });
         const raw = (r.chunks || []).map(c => [String(c.text || "").trim(), c.timestamp && c.timestamp[0], c.timestamp && c.timestamp[1]]).filter(w => w[0] && w[1] != null && w[1] < dur + 0.5);
         words = raw.map((w, i) => [w[0], +w[1].toFixed(2), +Math.min(w[2] == null ? (raw[i + 1] ? raw[i + 1][1] : dur) : w[2], dur).toFixed(2)]);
