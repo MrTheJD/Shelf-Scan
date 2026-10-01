@@ -1,6 +1,6 @@
 {
-  "name": "Shelf Scan",
-  "short_name": "Shelf Scan",
+  "name": "Shelfie",
+  "short_name": "Shelfie",
   "description": "Snap a shelf, say what you need. Voice notes become a short pull list.",
   "start_url": "./",
   "scope": "./",

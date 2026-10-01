@@ -7,11 +7,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Shelf Scan">
+<meta name="apple-mobile-web-app-title" content="Shelfie">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
-<title>Shelf Scan</title>
+<title>Shelfie</title>
 <style>
 /* Shelf Scan: one-handed iPhone tool.
    Rules: Coke red is reserved for the brand bar, primary actions and "selected"; everything else is warm neutrals.
@@ -361,11 +361,13 @@ nav.tabs button.active svg.i { animation: tabPop .5s var(--spring); }
 .no-shutter-haptic .shutter-wrap .hap, .shutter-wrap .hap.off { pointer-events: none; }
 .try-wrap { position: relative; border-radius: 12px; }
 #toast { touch-action: none; }
+
+header.top h1 img.brand { display: block; height: 24px; width: auto; }
 </style>
 </head>
 <body data-view="capture">
 <header class="top">
-  <h1>Shelf Scan</h1>
+  <h1><img class="brand" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAASUAAABICAYAAACweuNHAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAcOUlEQVR42u1dCbgVxZV+994HronI8kSMiIq4ZVQwmmEVBdw1KgbFUaOMS4TE+VxmnLjMaEBZREIQRFk1ERVBIIOOjo4aEJeoo0ZZBIwxgfAIoCNRRHl2d6q8p/R/9aq7q6qr7+0H3d93vr73vb691am/Tp065z81NTv4FgRBkfbdmLzj+/4HbP8ek1Xs8x/Z/hUm+9ExJZIi/L5Qk2/5lm/55hCUSrT/ZyYBA6Ivg/LmM/Ho86l4LH1uxWSf/A3mW77lW1qg9CMCoAYAJfH5dACisxhw/Zrt1zDZyOQItLjyLd9srHUmtcIK59a39LfcGt9BQWlI8M32Byab4PtFDIj+g8lfFIB1i2xF5Vu+aepeQWcw0z0u37LZwDYiQOkKAKHLmDxEnz9lMoGAiG/b+BQPpnlP5r6l6rVfJcGDrJZa8C2iNLJ0NK0j4c/szGQok0lMFjDd+m+2n81kHJPz2Pdv59b4jmkp/RhBiaZofPuCyXVMNsD/tzFZwuRnTAYx2SsHpu12WlVK8luVTgAYtWUylclWsMBxE99XMTklt8ibnwLVMiDZSQj73pKL9LedQXahY1SgdCWTWfD9BCaP8VU5dp6b2P5MJhczmUP/vy1XGDftB22zc4yIY4ppDFTSCmsLJgfxdmf3eA3bjyTreQqT+5jcxeRaGqCOZrKHCoQkQOrEV3tJfzyyvBvACm8Q3wGgrsotpmZi9tP+PlrCX8pkGe3F5xVMltP+Xb6nY58RCsQbHEGJ/f9B+N6DSUdyhk9h//uQ/s6d3ROZ9MtbInFIBrc6/0TttJLaKUpWUXse7aqjyr4b9vkwAqC3mXweaGwEKtz3OJ/JBaBfBdBVDqgvgSXux50TVoNPygfA5qPci6Ul/ch2pv16mHpdBUpwOUzf+HYMkzryL33M5H4mlzK5kEbM1UyOzUexRNPnKdLqp24b9nfRSRGQyNp5TDGt8hRWDH725PujuLcfS886zPBZUa9fg/vM3QUZt5SeBX+PFyNCGdYyaVfT1NHNp2YzQbl60DFn0ug3iinJ7yXFGpOPYIlAaSJYDnHt50EnPSHpe4dOzp3Vd2BYCICNbwCWQsfEebjF3hKu95LBAIrnFffQO9e15qHcvzVoaDGi8elCG/r9pTAq/RPbTQdl6EPHXCiPnNSJAppK7JyPYIlBydRSSgRKAEjtmDwNU7AvDYAobBPPMgquty879/+HOLZ1raVrc1BqHsq9yBSUyK/URgqeFKA0AxRHjExdxUguKa3TqcQOCkqTKj19Ayu7DZPfwfWTgpF8j8fDNY+SAnRtQO7OXM+2P58SglLrGFD62lwOuw58vidXFmtQmmwJSgNs3jkAEl+6fxKm/q42YY2/L+KM6HoHkm/SGpT4CnCuZ81DuV9IOH27RBOUrlNcp4kC5lM4Y1C6t8Kg9NXxPFLf1OlsONWaJvxVtN+ZpvqB5Bg3AbrTc1DafqdvH6h8SjythMkDoGDHwXUOZt8/U4x0QmHOyBXGCpTuM3T+Wk/fwI/UNSJw0cSp7Smc4ULHzkGGCfo80sIy8yAF6lv5wNcMNtb4z1uA0p95VC018GVSmsnD8P14abRr5BCFpWG+/SoPDahoSEC/BKD0iI2VJKUZqSwkMc36C+gXxinVketA99oeANhV+aC3HYMS29ZBnBJGdPPPc+F7XzqmpRQ+0ADxKJ+Rv+mifBSrKCgZrb4BIH0XAiJ9Q4tFHL+ZpmJLKbykQXqGRyIiunmWwN8QyCD84OvQFSn+6d5ct5phnJJF8OTeNU0junly5Dx5+gaWUgeK6ubKsphST84gpoH5sFqXW0v6oDS1QqAkrvdzi1ghD8I/LmW//Y5IVeKR23xljdJQXqbjLlTdm0Qs+H8RwIjgd30lk5DzrXqgtAFAaagESv8F3/uAX6AAgZTc93QhpaRspvPyeKnDclAyBqVpaYMStF0JwMAzBKQnmOweZbFQrlx/WNmNSsrdmQa0yUyPXuTZAeTr5NbXAgKj/WClMAelZqTctqDUQQr9D2h6tiAElIQydSTaXL4to1Wckyga/M58Fa5illI/A1ASbXeI4dQNV2vbQ/R3UaJSKZqQsqlAhn3fjcgEW4Yl9eZb81Hu5yynb0LJfgL/n0OJoYEc1i+UiIMOUeieyuR8Sgj+AH5zcu6QNPcpWay+mYCSuNbZJlYS3NOtwhLSyKMrafIqFXBlLoSRMgekHSjNhDsn69CnJH5P+22qXCOIcTmOyV+lTiJG+ok5KGXOUhLX+ldLAOybttVSaQK77ZUtsBQiRTBnw/5fcOFPIoB40TJ4Ug4J+EJKfuRxLN8DX0EJHN6cE2coObrHM1nIAyjJvzQ6i2Z3SJsUI9qrkHGfUn8LUBpncC1xHT7d6+KYJiWTTJsRfbsY068LVRvZyKQsOCZNNwYpcFwWqBSSDSi1k4InRYY3X0G5ma+QGN7TrsQo2CILo13U9MCG+Mz1MwFQTHcJSlIHEtLCYqqIg9NBkj+pFCPNytpJwrSpw7iZ1ugqO+VaM/k+k8FE0vVLHjxIXDSPk8ynQESudKMpBuhkYvJrEaL8JQtQetkyeLId5L5tJhbBI6XrcIvoB/SMk2m17VGKZeLPNoGWgk8UEeJhLIbVVDD6Wyfyg11P+Wb8GR4nXuiF5E+7h32/gaczcIe+rb/EZvqWZkS3ZUyUuM4W/u4cWkrf4ossTPahPX7em8fPEYdXW+pnbciPWUhj0KppGvfHwx36kVtjDGU4cF35Da1Mzyce+3HE1NpdRJqnqvvyDdMIcSxNV55iUm+RvxMAIf9yIkj/Fz5FEtQfusqf1FKiiNt2QN6+P5yPx5CMYce8CQmUOtsmivi+mtNURDV8mpYRfN+FAvW4Yr1OwGvS6T8m/p/hxMDZ0uUzwYrYVJeObnaeQ5n8I+kVJ+k7hr53FQm4hpbS50R32406YHd6Hz2Z9OJ+R+5z4tH/9L77qEIH4HmnkPW1id3HR5J8SOW7NlCA71ra8/iozi6AUe5fREfM388I3t5Ar2KScrOGouQH4+DsbBCTqi1wpP4pKbXXdHGiMQNfmADxlRcCFO8S8nbXYdeTQOl3Foq2DhzdXzUSz1Vi+yWK83hhzwiRtzKVCY/YnchHHaeNo7HETJboSHqnge6zaLTTW3z0hJCHRKOhS1CCldGdgITPdtBMQlfiS0G3JcXzzrPQV74/KikoSX27LVn5b6gKF8jc4Qa6v55mHQfWuCgTBWZuS3Lk/ll64Q0WjHyhDH1yw9B3vpp2AVewiAA0W0tJKM1fIc2kh0jqDXlO7WdSkIRtwujeNE1wMvvvlugxfAAZ35BFEQcd/C2nAD4/qdWUBihRrM/qEFDyE+qs6lyyeFLOpAqUZkupSqHnAl3ix3ZNAkpS375aqmWYpG8j46YnDcyjeOyV9Wo03PQRoqMLxXTExqfzUKg4LyD5uktQIjTfn6YmDRIPs++GwaLRuca4jsyVRr2BoGSeg4FD+TzSM80T5cstidaK6Oh2CEorJdJ9PyEgBTHgoQK9XnGgZKivgS0XvDRwHQmFC/wU9ETWPzGInWis/3DTA/jcFpC80iZwADSzixF8HIUEIIovTwGMwqZLfJvk0FlahFCFSSFAmM4I0pgZYW0CXqM0QGlXAUpVmr6JrXtEQq4tKPUw1R8JkHjGwScV7Ns+lonimQ/awCQB0mcWyYppNa5WZLRh8GRYCZu0n0d04uGuyO5plQSfvaKdUAo2vTQBjcg0x6C0IgOg1MMhKInz9jQBJYkyZYwCKCq1eaArD0J4RiFOMTqT87eqgAQ3/7xu/lhglmaiilmqlMKK653lYMrTERzZDRUA1qh3KFY0L7ekEnENSu9mAJR6pmApmYJSEQszVGPgChmYH8bcwagHeMKSGtSXq3xiKRzwQ3iGCZCnG8SgPJcB684EBFeD869gETDaij3rqwmoXJu0V8hqiinPEN+fapEkOzUNn1KVQal3Cj4lbVCSaVosBy5c6JBLXNlO/0T61lilnsCNn2HTqS2R149QfnGuRYadNQ1Q8qVG8Bw5BAWI3Gw73YEKvg1ptZcpOMG7X6sbaJiSpbR7UK6gW0lHty/R4waQK1eqtE8J+vWPLF0UnkFbeKY17OD4gU36ALykBRZK4QGQrKQIzxuDch7ZYJIhFB3MI0JfAwe6bNJ5EigNNJwGPOsQlLyYUcVP6CREjvBWBlNUoWhXWhYzxPtdRyb0tUG5nt0Pg3LxhBFUznyzpf9BgORcnedKA5R4DBXQzXpV9If2iwClR21AiQc4xoESDFyH2tSYQwAj/zIf8P+TnORnUxDp1WTdrg5h5TSpKFTXRFeCcmzLRsObF8ctpKjWlppONx5Cf0pQjl14Q2qUbXSjL1osebqwlOQO6FNU7Ts0VVrGO7O0mvBlkGwaN0jTkS+sgH2AmcCzACQeOjEwCAmzgOt1pNy/jQkYGs+Oe7aULKXdKMgzoKjpLygie2vCMkrbKN3kU4VsoQ789T6IXn2bYwFKnsjFjAGlAhoaluXB68nAOEAj1/NsCDEwASZxX+NU1lJ/w8AyccyNihpatYrERCUnDP3v2KCcM1cP573YdFpjyNEdCUhkwQynyPJ2FGhWpH1rSlu4WUwRbEZjuM/ZhtOcCYbP6UF80Q1gbRUU7VVLUgCr4zumVigc90oQE5mfVpoJ+75vUCZzO5ikC+33E/zrFgm5A+h9HEjxbSgH0N87UzT9/iG5neJ5H7O4h4a4iG5o35NNdRN1EoKKBUNBraJPlySD4zpFnKHOc21uwsAQEL+MDqIqVsaKhoRWmF2Ny5WtqY77/wQWJWQCs2KUUb6CsXGskdIqz+0WkdJyUvCemh33HwKzQoaYtzUQE551plVSrbKFFmDIt1OiBhgHoGSTkDvBIiF3M+QyukirecwiA+FLkSweAUpCN5+0HEgmSLlxRRMWCrY/jyxK3f4g2mB0o3YMylxAuo0kjvk5kum7otUQaSWmfErs8xJLUPIhWPNCCWiLIbw2jay/oJxQHFg6/GP9BJalrVEpLoGE6oJl0cZvSya6rpI/pPlsTkEphrpkooWV8rFgTADqkkhxDUpxlhKc+2hoI9+grebY5qkJa0qqDOQb+pb2wBOON7WU+EuV+JUSpU6gxWXAcYyg9HJCUBoC0dEmHMu1Fo5L+V1eETbaw8i3F6XFmCraNAeDhwCOwwMqC6RxDwJwP4Q0lEJGqEvuNbWUuMMYEqtdWErzLEHpiAhQEs93l4UluBFAt+hAV2ZZ8Judhye63XIEvlEBDqW0CMFcg5JihKhN0AhdITXG1tFXG3H+QZaFEfZ1RHVRiwqvcx9wzA8jQDcpKA2wAKXJNqAE4FpNUFJO3yQn/ypTixbSP2pr3KQ+HanbH+AdPIInGpJghWUJxUJ0DhvpXdPgOqAukV9UryRpH9AQj1vO4+drjH7TLMDgTsgILyWUFjA1aNAEX3Hc3SmCko2ldE8GLCVbn9JRIaD0dZqYwaIVUvh0gKlpUl2pNewPAkveExxUNUSE5VmEBHjQET4jYBhDcS9HUKmYQhwNbpUsJXHvr8NLLCQ0WX9iCUovhzyTAN0WBvxAiTPKdWumxT0n/P+ZFKdvNpbSRIvpzceOQWmuy5AA0OFbDM7bIFXeLTkyFsS9/FTzXtCve0gNjKTLbJy1EXXVG4iJbgkFTl5H8UkHyCairqffMSiJBvmlg+RYoey9DUMrhJPv96oERVDgfSGz2zdYLRpIMWR9iB2xJ4hgS+xNVVmOo+P60N97SSL+3t2AJkbo0vthK6pB8rLdNpbSpAxYSnMsI7qPibGU7rfw5dxLYS6cMbMv6UJfSfqALvQAQZ3qTb/lIUbdqRaiLqZ4X7cnPMyYBHlUTVjqIo7jnWs5O+bXVPTxcAQpE3CSOvBLlpbSIFcZ+xSb8jeLIocrBBWw7J+DuvOBBelWtTeMCu4c05nurSAoTbSYOrkGJWcR3ZLOLG4mOaBhVvUl+JIOomVPV6H5vpS4F5aW0UDTgVuZHGzCZJggJEA77sNwarMnsHSajA48o30XxTPVKvKXbOOvAoNcLufUsIEiD0wCivuyDkqOHd3Oct+QBjiwS0T2DcTkPDbMIDcofSIpkz+paHBxRJ0OS5MlA1B6wULRPnIUEFcAkv6VrkGJIrGTgpJLCVylnMigVKEKuXdnYPr2iCuWACkAud7SqnatH6a6ItridtXLuk0zKdU1Mx0CIee0PtcwIXexJUd3XRInt6QUpr65OFASnWhEwql1kAGqlnNjQGlKBSvk3p2BkIBHXFtKfAXNJgE3I5toi1FhjXYZ+EZUZOBpk0CJ6wwzULhFltVM2jgEJb6a+HYKoDR8OwClgSmBUv9KrL6lYCnZTt+iknz3ARdMcwWl0VFpBYcG5SzjrSE8SGmCFBKGnZECHa4HvD+tHYJSybC0jzhmZYxP6foEXFeRZa8iyis1EtX/o34LfxNZ+T+IAaVKxillwVJyCUpC/+os2D4CBRmjlc6oSq3J5wrTn6CcnxmI4hphJZoLAE53BmXeFD+sukUKQIXA0UGjBtwiy2KUWQGlXSNA6YrmuKIiPeNZMaA0Les+pWYASrtTKfqgipS3SS2lO7RK90BGfB9aJePcRWsjXqivoMZNcqMjNXh5mjMoxU3fzrRQtAYK0LufWCpnib1K+P8oTIOXXZ/JZAYtOsyg79PhO487+xUdL//2AZL7CWim09SsS0xIQCVBaUIGQMl5SAD12TcMdMUHipnpvA2FgG48pNgLmSW1+0xo+xmgOzPhf+L/D9BvHyKywVk0MzvFqia9WP4OypHgQ6iq7VMUJr7FEWUmvthVKkvC0fRtzwyAUlicklDgLgZ5dZF1x7K2VYm6ZHwzBSW+/14IuNtYYOL5x2ddT+JoRmojgIFbU52CMnHbYFo1ejooJ4baViiNKoFsGzQmwGCNDXl/Co7uZapKwBK96wcG55XTB1rqUG1Y5Djp/rYYoTONHN0VAqVfWIDSR9UGJTq2a0yaya0W/eB9GJxrFW3rUmeidChZXqxE2FYbU1a7TVDmgP6tJV8w366Ss5gTxCkhwVoWQOkdQSesSMNIklXOo+cPcpX/pmtFW6boVDJ4cnwGQGmOY1CSGSd9w6yCYS5YAmIMmkJSsCkm+a0MVrC/zdA/0iBlvJdcgRJZSi59Si0IYExB6e0IUCohkZxFsu/MNJQNRzVH/DuVTDP5RQamb65BSbRFO1G70VAHVwNve9ExIBWsy9XLjHM2SbJRrHTA3LjEYt47LYZW1Xb6tmcGLKW3NSylg8Ffp0uFK467wJTATpNhsAt73+ckpH1pLqCUaUtJer4HLAew6Y77fQnSX4ZAXyuavqwRRILVWjFNKziiNJhqQb97TwwoLdoeQSkBBw92XM7rfZoJR3cEM6i4l25QGnuwA5K8+yoY0T0uA5bS3BTocMXznZSgaMDYpMwdEmd3K1phC2iVrYVWf4MXdbgIlqQUjDEiu1vBg6RFXStVzShYJM82hDHjZXD6Zrv6FgdKooFPtQgNELFj2ygIsxTSljIfeVFFdUxFBG4Eq00UX7zIBphyUHJXYknivHojATDxFJi2IdVMVLz1RaxuAvdxGq3IBxBEO1sLO+SoWlp+Fi9iC53oNGFVRBC2yVJSFMi7xsTZDS/q4hhQWpIBUHLu6FZc438TFqJ8jcn5YW0ZwxHOi2AulcAIo+8HmQJTlRJyx2UgzWSu5fStm2YhhossUpN8qcrxdQKIDZ5vV8KKhbCg9KVkYDyI4BZnJaHPwleU+l1HS5lXE6lTW83SSu2DcumVJwM7TiAOkodFBI0VDIjHUrWUgm+KICYOCQhpp56GtbXCKuTWk1k9lMnxFAvVntq0HXFDcXKvYWR2b5AU11c8x1YoqVSbYVC6qzk6uuk9H61TYok+P52gtDv60hZQJeUB5Nvk6Sx70NSsPfHTX0pt+F5MbKK4lymhzu8gnmMmrES1T4r9MllS44hp7me0wjaeIj5fpIoWxnFKcC9LYuhirUBJp+aaISgV2TnftACl5argyYhOZc0aEMEUupXYGepp6v6pwW/xWT5RxZSl6OjekUCJb9/XLdvN9t8lULFJOwkLdv6CBqg1JBsV7zEqUNqH48dGAVMnTcoDDxLqfEedQcfJPTQkb8q2cEBaoFSwBKUVmqCE8/h5CZkDdNrSN2xvD0bXXpqVf5NaSv13MFDqbvhezwUr2U9ILeTHJX8bXEeuH1mUH8CGGsPH7OKwbGCFqW/qdOOslLuFLJejhfJqM7aUlLlvGiyXr0pOxMABS2QiFkp4/5vjSkzv4NO3R13xKWksyV8D1/Ic6YlnWRm6icXE7usmuWR3R5he+RnLLN8aNTIktZRS8CkVDFc9jEFJUVDgbehgfoayvXm+4gEGoLSjTd9mu2Ke1ASmm6QFiqr3cXj2YTIojVCsuFUbkMRLuywmNsm2mklafEqpW0oK5eZOx2cqQGOs03G2QXWWjobTjMkVDJ4cm4HgSVtQ6mV6D/DcVwBvUdUGMZg9cbmyyfMACx8S/ftVUmpcVRqmQVdSyBjzZDFNn1KEgreAAot+hdvQl/yFTwHFcDGjq2+jLfncXYLSw66oSwwDl0+gGYKr6ZytdfRJZCUh3rABpWlgOECFlNuTRvh1umyT0jM8Z9HI6/nydwZAaWlcSIAO7xXbD6aVs0Dy9/kVACP+LCMhYrdo2EmnVdDRPSoD1UweTiMkQPP5OzCZr2hHP2UwEr7cNyFdpjYuxuZEJr+RKHBtPOum1UzENWYyaW+TSxVQUCFNIbwogevWuwYl4VOSTFQ/5F7E9OGtuOBJndB+iAkbLxWv9KRFB99BkQc8Dw/I7KMiBzToKFOlaYWv2YY2oHSHqa5wS8lx8OTDiudV6gu02zadxQPN63OdOR18oL7Dvu6ruP3J2vz34BtutGJkY2FnIArcW6jAo6oyq6fg6Q1tVOkYGf03EJdON5Oab44spQ2Oq5nYRnQvTQJKqnZk+85Mbqf78WM4mT1Vp5CO8RUhHi+yjxeAlWeTUyeAYoahT0m8uxNtp29VLts9x5LkrZuLe4AMi50owv8JRV/3Q/p4I+BUYIFsZf6R+67x/WndvyoBj/52IJMhFBq+HBxlSVZnVtDIeK4ABVtqA+iEMwiJ1xLN7VqyhLisp2nNBpJ6ChR8xUVIgHQ/3KeyRbreV0J/q6f749PUNfS3BdqJioYcR0Tw1pecu69RbT2rSrektHxBYRT3bUAHKyZgCRDnGM7vjd7HRpINNMWup/dVj23K/wY+FhNQ+regHBz6VaAoXXM9XAtlHenKW44GsCL40D6H590Ez70R7msd6fJaWhBxxo8lDyJBOYr/qqCc+L0moSP7PeqT53CSwsS8ShEUuDwZ85CgnNtyJc3NZxN521sENu8SET4HsNeZPBuUqRRuJaK3I4X5FsYHbvmCd6f0CCEiXaIOpD1JHf1vD1dgBPfRhkrd7A3Xw+vWSffIj9+9piZ9Ajay5Hgl5LOCcl7T3ZSK8BaxDwpA/xOVVn8+KHN830Q84Z1kPitXFKo8Fo3eGUp7yrmrk0S8v9aWzAS7SeffSzq3fJ06upZLnqFWoCcdSPDZ94J7aEvSyjVZXxgbAD1vD9b2l1M/n0cDEu/jfyBZQSutSyiJl/sUL+F+LxFbaEOD9Hcc6lRZBpl5YAAAAABJRU5ErkJggg==" alt="Shelfie" width="97" height="24"></h1>
   <span class="spacer"></span>
   <span class="store" id="hdr-store"></span>
   <button class="sync-ind" id="sync-ind" hidden></button>
@@ -458,7 +460,7 @@ nav.tabs button.active svg.i { animation: tabPop .5s var(--spring); }
 <script>
 "use strict";
 /* ============================================================
-   Shelf Scan Beta 4: voice notes
+   Shelfie (formerly Shelf Scan): voice notes
    Snap a shelf, say what you need. Speech is turned into text and then into a short
    list by small language models that run on the phone itself.
    Everything stays on this phone except the shared product list (data/shared.json in the GitHub repo).
@@ -2556,7 +2558,7 @@ async function restoreSelected() {
   let data;
   try { const { text } = await readRepoFile(`data/${it.file}`, await bkToken()); data = JSON.parse(text); } catch (e) { return toast("Couldn't read that backup"); }
   const okProd = p => p && typeof p.id === "string" && typeof p.brand === "string" && typeof (p.flavor ?? "") === "string" && p.id.length < 200 && p.brand.length < 120;
-  if (!data || !Array.isArray(data.products) || data.products.length > 5000 || !data.products.every(okProd)) return toast("That isn't a usable Shelf Scan backup");
+  if (!data || !Array.isArray(data.products) || data.products.length > 5000 || !data.products.every(okProd)) return toast("That isn't a usable Shelfie backup");
   const snap = snapshot(), prev = state, next = JSON.parse(snap);
   next.products = data.products.map(p => ({ ...p }));
   next.deleted = { products: (data.deleted && data.deleted.products) || {} };
@@ -3901,7 +3903,7 @@ function editVariation(v, { prefill = "" } = {}) {
   };
 }
 // The running count of releases since the project began (every pushed update that is not a phone's automatic sync). Add one with each push.
-const REVISION = 60;
+const REVISION = 61;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -3976,7 +3978,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan 1.0.1 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 1.1.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#team-key").onchange = e => teamSetKey(e.target.value);
@@ -4149,7 +4151,7 @@ function showUpdateReady() {
   const d = el(`<div class="dialog update-dialog" id="update-ready">
     <div class="update-icon">${icon("refresh")}</div>
     <h3>Update available</h3>
-    <p>A new version of Shelf Scan is ready. Reload to start using it. Your notes and settings stay as they are.</p>
+    <p>A new version of Shelfie is ready. Reload to start using it. Your notes and settings stay as they are.</p>
     <div class="btns"><button class="btn quiet" data-a="later">Later</button><button class="btn primary" data-a="reload">Reload now</button></div></div>`);
   const close = openLayer(d, { center: true, onClose: () => (updatePromptOpen = false) });
   d.querySelector('[data-a="reload"]').onclick = () => location.reload();

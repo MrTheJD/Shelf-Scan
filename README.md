@@ -1,4 +1,4 @@
-# Shelf Scan
+# Shelfie
 
 iPhone web app for Coca-Cola merchandisers at Walmart. Snap a photo of an aisle or display, say what you need, and a
 speech model that runs on the phone turns the recording into a short pull list for the back room.
