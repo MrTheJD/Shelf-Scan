@@ -2771,17 +2771,11 @@ function renderMore() {
       <input class="field" id="team-name" autocomplete="off" placeholder="e.g. James" value="${esc(state.team.name)}">
       <div class="set-row" style="margin-top:10px"><span class="status-dot ${ts.dot}" id="team-status-dot"></span><span class="grow small" id="team-status-text">${esc(ts.text)}</span></div>
       ${on ? `<div class="set-row"><span class="status-dot ${s.dot}"></span><span class="grow small">Product list: ${esc(s.text)}</span></div>` : ""}
-      ${T.priv === false && teamKey() ? `<div class="banner warn" style="margin:8px 0">${icon("warn")}<span class="grow">The repo ${esc(teamRepo())} is public, so anyone who knows where to look can see shared notes and photos. Point this at a private repo under Advanced.</span></div>` : ""}
-      <div class="stack" style="margin-top:10px"><button class="btn block" id="btn-team-test">${icon("refresh")}Test connection</button></div>
-      <details class="owner"><summary>Advanced</summary>
-        <div class="stack" style="margin-top:10px">
-          <button class="btn block" id="btn-sync">${icon("refresh")}Replace products from GitHub</button>
-          ${on ? `<button class="btn block" id="btn-upload-now">${icon("upload")}Send product changes now</button>` : ""}
-        </div>
-        <p class="hint" style="margin-top:12px">Where team data is stored (owner/repo). Leave empty to use ${esc(GITHUB.owner)}/${esc(GITHUB.repo)}. The access token must be allowed to write to it.</p>
-        <input class="field" id="team-repo" autocomplete="off" autocapitalize="off" placeholder="${esc(GITHUB.owner)}/${esc(GITHUB.repo)}" value="${esc(state.team.repo)}">
-        ${on ? `<div class="stack" style="margin-top:12px"><button class="btn block quiet" id="btn-disable">Disconnect this phone</button></div>` : ""}
-      </details>
+      ${T.priv === false && teamKey() ? `<div class="banner warn" style="margin:8px 0">${icon("warn")}<span class="grow">The repo ${esc(teamRepo())} is public, so anyone who knows where to look can see shared notes and photos. Ask the owner to move team data to a private repo.</span></div>` : ""}
+      <div class="stack" style="margin-top:10px">
+        <button class="btn block" id="btn-team-test">${icon("refresh")}Test connection</button>
+        ${on ? `<button class="btn block quiet" id="btn-disable">Disconnect</button>` : ""}
+      </div>
     </div>
     <div class="card">
       <h3>This phone</h3>
@@ -2816,7 +2810,6 @@ function renderMore() {
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
   v.querySelector("#team-key").onchange = e => teamSetKey(e.target.value);
   v.querySelector("#team-name").onchange = e => { state.team.name = e.target.value.trim(); save(); teamSoon(300); };
-  v.querySelector("#team-repo").onchange = e => { state.team.repo = e.target.value.trim(); T.privFor = ""; T.etag = ""; T.khFor = ""; save(); teamSoon(300); };
   v.querySelector("#btn-team-test").onclick = teamTest;
   v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
   v.querySelectorAll("[data-dl]").forEach(b => (b.onclick = () => downloadModels([b.dataset.dl])));
@@ -2826,9 +2819,7 @@ function renderMore() {
   };
   v.querySelector("#btn-export").onclick = exportBackup;
   v.querySelector("#btn-restore").onclick = () => restoreBackupText(v.querySelector("#backup-text").value);
-  v.querySelector("#btn-sync").onclick = syncFromGitHub;
   const en = v.querySelector("#btn-enable"); if (en) en.onclick = enableUploads;
-  const up = v.querySelector("#btn-upload-now"); if (up) up.onclick = () => { state.sync.error = ""; uploadChanges(); renderMore(); };
   const dis = v.querySelector("#btn-disable"); if (dis) dis.onclick = async () => {
     if (!(await confirmDialog("Disconnect this phone from the team network? Your notes and products stay on this phone, but nothing is shared until you connect again.", { ok: "Disconnect" }))) return;
     setPass(""); cachedToken = null; renderAll();
