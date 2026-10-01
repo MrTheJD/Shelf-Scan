@@ -411,11 +411,55 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 .mprog i { display: block; height: 100%; width: 0; background: var(--red); transition: width .3s ease; }
 
 .item.need .sub, .note-item .sub { white-space: normal; overflow: visible; }
+
+/* Beta 5: status dots, reasons, photo check */
+.sdot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; background: #E5322D; transition: background-color .6s ease; }
+.sdot.yellow { background: #F2B01E; }
+.sdot.green { background: #2EAA4E; }
+.why { font-size: 12px; font-weight: 650; color: var(--warn); margin-top: 1px; }
+.viewer-stage, .zoom-stage { touch-action: none; }
+.viewer-stage img, .zoom-stage img { transform-origin: center; will-change: transform; user-select: none; -webkit-user-drag: none; }
+.zoom-stage { position: relative; height: 32dvh; background: #000; border-radius: 14px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.zoom-stage img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.zoom-stage.empty-photo::after { content: "No photo"; color: #aaa; font-size: 13px; position: absolute; }
+.zoom-hint { position: absolute; left: 10px; bottom: 8px; font-size: 11px; color: rgba(255,255,255,.7); pointer-events: none; }
+.check-sheet > * + * { margin-top: 10px; }
+.note-item.focus { background: var(--warn-soft); }
+.note-items .item { cursor: pointer; }.check-sheet .viewer-dots:empty { display: none; }
+
+/* Beta 5.1: aisle / display */
+.shutters { display: flex; gap: 28px; justify-content: center; }
+.shutter-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.shutter-col b { font-size: 13px; font-weight: 750; letter-spacing: .02em; }
+.shutter-big.display { border-color: #1B1B1B; }
+.shutter-big.display span { background: #1B1B1B; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .shutter-big.display { border-color: #F5F3F1; } :root:not([data-theme="light"]) .shutter-big.display span { background: #F5F3F1; } }
+:root[data-theme="dark"] .shutter-big.display { border-color: #F5F3F1; }
+:root[data-theme="dark"] .shutter-big.display span { background: #F5F3F1; }
+.kcount { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--red); color: var(--on-red); font-size: 11px; font-weight: 800; line-height: 18px; }
+#note-seg .kcount { background: var(--chip); color: var(--muted); }
+#view-needed > .seg, #view-notes > .seg { margin-top: 10px; }
+.pill.kind.aisle { background: var(--chip); color: var(--text); }
+.pill.kind.display { background: #1B1B1B; color: #fff; }
+
+/* Beta 5.1: capture mode switch. The whole page changes color so the mode is obvious. */
+.cap-seg { margin-bottom: 0; }
+.cap-band { text-align: center; font-size: 12px; font-weight: 800; letter-spacing: .24em; padding: 6px 0; border-radius: 10px; background: var(--red); color: var(--on-red); transition: background-color .35s ease; }
+#view-capture.mode-display .cap-band { background: #1B1B1B; color: #fff; }
+#view-capture.mode-display .camera { border-color: #1B1B1B; box-shadow: 0 0 0 3px #1B1B1B; }
+#view-capture.mode-aisle .camera { border-color: var(--red); box-shadow: 0 0 0 3px var(--red); }
+#view-capture.mode-display .shutter-big { border-color: #1B1B1B; }
+#view-capture.mode-display .shutter-big span { background: #1B1B1B; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #view-capture.mode-display .cap-band { background: #F5F3F1; color: #111; } :root:not([data-theme="light"]) #view-capture.mode-display .camera { border-color: #F5F3F1; box-shadow: 0 0 0 3px #F5F3F1; } :root:not([data-theme="light"]) #view-capture.mode-display .shutter-big { border-color: #F5F3F1; } :root:not([data-theme="light"]) #view-capture.mode-display .shutter-big span { background: #F5F3F1; } }
+:root[data-theme="dark"] #view-capture.mode-display .cap-band { background: #F5F3F1; color: #111; }
+:root[data-theme="dark"] #view-capture.mode-display .camera { border-color: #F5F3F1; box-shadow: 0 0 0 3px #F5F3F1; }
+:root[data-theme="dark"] #view-capture.mode-display .shutter-big { border-color: #F5F3F1; }
+:root[data-theme="dark"] #view-capture.mode-display .shutter-big span { background: #F5F3F1; }
 </style>
 </head>
 <body>
 <header class="top">
-  <h1>Shelf Scan</h1><span class="tagline">BETA 4</span>
+  <h1>Shelf Scan</h1><span class="tagline">BETA 5.1</span>
   <span class="spacer"></span>
   <span class="store" id="hdr-store"></span>
   <button class="sync-ind" id="sync-ind" hidden></button>
@@ -424,6 +468,11 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 <main>
   <!-- CAPTURE -->
   <section class="view active" id="view-capture">
+    <div class="seg cap-seg" id="cap-seg">
+      <button data-k="aisle" class="active">Aisle</button>
+      <button data-k="display">Display</button>
+    </div>
+    <div class="cap-band" id="cap-band"></div>
     <div class="camera" id="camera">
       <video id="cam-video" playsinline muted autoplay hidden></video>
       <div class="cam-wait" id="cam-starting" hidden>Starting the camera…</div>
@@ -436,7 +485,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
     </div>
     <div class="cap-bar">
       <button class="shutter-big" id="btn-shutter" aria-label="Take a photo, then say what you need"><span></span></button>
-      <p class="cap-hint">Snap the shelf, then say what you need.</p>
+      <p class="cap-hint" id="shutter-label">Snap the aisle, then say what you need.</p>
     </div>
     <div id="model-banner" hidden></div>
     <p class="queue-line" id="queue-line" hidden></p>
@@ -758,7 +807,7 @@ function canonicalize(products) {
 // ---------- State ----------
 let state;
 // note.status: "queued" (voice clip waiting to be transcribed) → "heard" (has text, waiting to be read by the
-// language model) → "reading" → "done". Also "empty" (nothing said) and "error".
+// quick read) → "done". A done note also has rev: "pending" (waiting for the model to review it), "done" or "failed". Also "empty" (nothing said) and "error".
 function freshState() {
   return {
     version: 4,
@@ -766,9 +815,9 @@ function freshState() {
     products: buildSeedProducts(),
     deleted: { products: {} },              // tombstones: id -> time deleted
     outbox: { products: {} },               // changed since last upload
-    notes: [],                              // newest first: { id, at, photos:[id], audio:id|null, secs, text, status, items:[{pid, phrase, qty, conf, why, done}], err }
+    notes: [],                              // newest first: { id, at, photos:[id], audio:id|null, secs, text, status, rev, edited, items:[{pid, phrase, qty, why, rev, done}], err }
     recents: [],
-    settings: { beep: true, camOK: false, models: { asr: false, fast: false } },   // models: which downloads finished
+    settings: { beep: true, camOK: false, smart: true, needKind: "aisle", captureKind: "aisle", models: { asr: false, fast: false } },   // models: which downloads finished
     sync: { lastPull: 0, lastPush: 0, error: "" },
   };
 }
@@ -793,7 +842,11 @@ function migrate() {
   // Work that was interrupted (app closed, phone ran low on memory) goes back in the queue.
   for (const n of state.notes) {
     n.items = n.items || []; n.photos = n.photos || [];
+    if (n.kind !== "display") n.kind = "aisle";   // notes from before aisle/display were separate
     if (n.status === "reading") n.status = "heard";
+    if (n.status === "done" && !n.rev) n.rev = "done";
+    // Beta 4 items: conf "ok"/"check" -> dot green/yellow
+    for (const it of n.items) if (it.conf) { it.rev = it.conf === "ok" ? "ok" : "warn"; delete it.conf; }
   }
   // New starter products added to the app show up for existing users.
   const have = new Set(state.products.map(p => p.id));
@@ -825,7 +878,7 @@ function dropProduct(id) {
   state.products = state.products.filter(p => p.id !== id);
   state.deleted.products[id] = Date.now();
   state.outbox.products[id] = 1;
-  for (const n of state.notes) for (const it of n.items) if (it.pid === id) { it.pid = null; it.conf = "check"; it.why = "no match"; }
+  for (const n of state.notes) for (const it of n.items) if (it.pid === id) { it.pid = null; it.rev = "warn"; it.why = "no match"; }
   scheduleUpload();
 }
 const shareable = p => { const { _st, ...rest } = p; return rest; };
@@ -1309,14 +1362,15 @@ function resolveBrand(text) {
   let best = null, bestD = 99;
   for (const [k, v] of idx) { const d = lev(n, k); if (d < bestD) { bestD = d; best = v; } }
   // A small typo (about 1 letter in 5) is fine; a wholly different word (Gatorade vs Dasani) is not.
-  return bestD <= Math.max(1, Math.floor(n.length / 5)) ? best : null;
+  // Short words must match exactly (otherwise "bare" becomes Barq's).
+  return bestD <= (n.length < 6 ? 0 : Math.max(1, Math.floor(n.length / 5))) ? best : null;
 }
 
 const ONES = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19 };
 const TENS = { twenty: 20, thirty: 30, forty: 40, fifty: 50 };
 // "twenty four" -> "24", "sixteen point nine" -> "16.9", "eighteen and a half" -> "18.5"
 function speechToDigits(text) {
-  const t = sNorm(text).replace(/\b(\d+)\s+point\s+(\d)\b/g, "$1.$2").split(" ");
+  const t = sNorm(text).replace(/\.+(?=\s|$)/g, "").replace(/\b(\d+)\s+point\s+(\d)\b/g, "$1.$2").split(" ");   // periods ending a word are punctuation
   const out = [];
   for (let i = 0; i < t.length; i++) {
     const w = t[i];
@@ -1347,17 +1401,18 @@ const pSizeKey = p => { const m = (p.size || "").match(/^(\d+(?:\.\d+)?)(oz|L)/)
 const pPackKey = p => (p.pack === "Single" ? "single" : String(p.pack || "").toLowerCase());
 
 // Longest brand names win ("diet coke" is not also "coke"); a separate "coke" later in the note still counts.
-function detectBrands(tokens) {
-  const idx = brandIndex(), found = new Set(), taken = new Array(tokens.length).fill(false);
+// Returns where each brand was said: [{ start, end, brand }] in speaking order (end is exclusive).
+function brandSpans(tokens) {
+  const idx = brandIndex(), spans = [], taken = new Array(tokens.length).fill(false);
   for (let n = 3; n >= 1; n--) for (let i = 0; i + n <= tokens.length; i++) {
     if (taken.slice(i, i + n).some(Boolean)) continue;
     const g = tokens.slice(i, i + n).join(" ");
     const b = idx.has(g) ? idx.get(g) : (g.length >= 4 ? resolveBrand(g) : null);
-    if (b) { found.add(b); for (let k = i; k < i + n; k++) taken[k] = true; }
+    if (b) { spans.push({ start: i, end: i + n, brand: b }); for (let k = i; k < i + n; k++) taken[k] = true; }
   }
-  return found;
+  return spans.sort((x, y) => x.start - y.start);
 }
-// Scored candidates for a phrase, best first.
+const detectBrands = tokens => new Set(brandSpans(tokens).map(s => s.brand));// Scored candidates for a phrase, best first.
 function rankPhrase(phrase) {
   const s = speechToDigits(phrase), tokens = s.split(" ");
   let n = s; for (const [re, to] of FLAVOR_SYN) n = n.replace(re, to);
@@ -1385,20 +1440,26 @@ function rankPhrase(phrase) {
   }
   return out.sort((a, b) => b.sc - a.sc);
 }
-// A product phrase ("diet coke 12 pack") -> { p, conf, why } or null when no brand we carry is named.
-// conf is "check" when the top two candidates are too close to call, so the person can confirm with one tap.
+// A product phrase ("diet coke 12 pack") -> { p, clear, why } or null when no brand we carry is named.
+// clear is false when the top two candidates are too close to call, or the best one matched too few words.
 function resolvePhrase(phrase) {
   const r = rankPhrase(phrase);
   if (!r.length) return null;
   const top = r[0], next = r.find(x => x.p.id !== top.p.id);
   const gap = next ? top.sc - next.sc : 9;
-  return { p: top.p, conf: gap >= 1 && top.sc >= 2 ? "ok" : "check", why: gap < 1 ? "close call" : "" };
+  return { p: top.p, clear: gap >= 1 && top.sc >= 2, why: gap < 1 ? "close call" : top.sc < 2 ? "weak match" : "" };
 }
 // Is this product's pack/size number the same as the quantity the model reported? ("12 pack" heard as 12 needed)
 function qtyLooksLikePack(phrase, qty, p) {
   if (qty == null || !p) return false;
   const nums = [...speechToDigits(phrase).matchAll(/\d+(?:\.\d+)?/g)].map(m => parseFloat(m[0]));
   return nums.filter(v => v === qty).length === 1 && (qty === parseInt(p.pack, 10) || parseFloat(p.size) === qty);
+}
+// One list item. `why` says what is still missing or uncertain ("" when complete and clear).
+// rev is the review status behind the colored dot: "" = quick read only (red), "ok" = verified (green), "warn" = reviewed but still unsure (yellow).
+function buildItem(phrase, qty, r) {
+  const why = !r ? "no match" : !r.clear ? r.why : qty == null ? "how many?" : "";
+  return { pid: r ? r.p.id : null, phrase: phrase.trim(), qty, why, rev: "", done: false };
 }
 // Model answer for one note -> note items.
 function itemsFromModel(list) {
@@ -1409,18 +1470,71 @@ function itemsFromModel(list) {
     if (!(qty > 0 && qty < 1000)) qty = null;
     const r = resolvePhrase(it.product);
     if (r && qtyLooksLikePack(it.product, qty, r.p)) qty = null;
-    items.push({ pid: r ? r.p.id : null, phrase: it.product.trim(), qty, conf: r && r.conf === "ok" && qty != null ? "ok" : "check", why: !r ? "no match" : r.conf !== "ok" ? r.why : qty == null ? "how many?" : "", done: false });
+    items.push(buildItem(it.product, qty, r));
   }
   return items;
 }
 
-// ---------- On-device voice models and the note queue ----------
+// ---------- Quick read (no language model) ----------
+// Splits a note at each brand said, finds the quantity nearest each one, and matches each piece to a product.
+// Instant, so a note has a usable list the moment it is heard; the language model reviews it later.
+const UNIT_WORDS = new Set(["oz", "ounce", "ounces", "l", "liter", "liters", "litre", "litres", "leader", "leaders", "litter", "litters", "ml", "pack", "packs", "pk", "ct", "count", "fl"]);
+const LEAD_FILLER = new Set(["of", "the", "a", "an", "more", "need", "needs", "like", "about", "maybe", "case", "cases", "we", "i", "just", "some"]);
+function quickItems(text) {
+  const toks = speechToDigits(text).split(" ");
+  const spans = brandSpans(toks);
+  if (!spans.length) return [];
+  // Quantities: whole numbers not describing a size or pack ("12 pack", "2 liter", "20 ounce"), and "a couple".
+  const nums = [];
+  toks.forEach((t, i) => {
+    if (/^\d+$/.test(t) && +t > 0 && +t < 200 && !UNIT_WORDS.has(toks[i + 1] || "") && toks[i - 1] !== "point") nums.push({ i, v: +t });
+    else if (t === "couple" || t === "pair") nums.push({ i, v: 2 });
+    else if (t === "dozen") { const prev = nums[nums.length - 1]; if (prev && prev.i === i - 1) prev.v *= 12; else nums.push({ i, v: 12 }); }
+  });
+  const mine = spans.map(() => []);
+  for (const n of nums) {
+    // A number just before a brand (only filler words between) belongs to that brand; otherwise to the brand before it.
+    const next = spans.findIndex(sp => sp.start > n.i);
+    let owner;
+    if (next >= 0 && toks.slice(n.i + 1, spans[next].start).every(w => LEAD_FILLER.has(w))) owner = next;
+    else owner = next > 0 ? next - 1 : next >= 0 ? next : spans.length - 1;
+    mine[owner].push({ ...n, lead: owner === next, strong: owner === next && toks.slice(n.i + 1, spans[next].start).includes("of") });
+  }
+  return spans.map((sp, k) => {
+    const from = k === 0 ? 0 : sp.start, to = k + 1 < spans.length ? spans[k + 1].start : toks.length;
+    // "four of the Sprite" is explicit; otherwise a number after the brand beats one just before it ("aisle nine. Sprite ... eight"). If they changed their mind, the last one wins.
+    const strong = mine[k].filter(x => x.strong), trail = mine[k].filter(x => !x.lead), pool = strong.length ? strong : trail.length ? trail : mine[k];
+    const qty = pool.length ? pool[pool.length - 1].v : null;
+    const r = resolvePhrase(toks.slice(from, to).join(" "));
+    return buildItem(toks.slice(sp.start, to).join(" "), qty, r);
+  });
+}
+
+// ---------- Review: compare the language model's reading with the quick read ----------
+// Pairs items by product (then by brand), keeps your crossed-off items as they are, and sets each item's dot:
+// green when the model verified it (product clear, quantity present), yellow when something is still missing.
+function mergeReview(oldItems, modelItems) {
+  const kept = oldItems.filter(it => it.done), open = oldItems.filter(it => !it.done);
+  const brandOf = it => { const p = it.pid && productById(it.pid); return p ? p.brand : null; };
+  const used = new Set(), out = [];
+  const take = (m, pred) => { const i = open.findIndex((q, k) => !used.has(k) && pred(q)); if (i >= 0) used.add(i); return i >= 0 ? open[i] : null; };
+  for (const m of modelItems) {
+    const q = (m.pid && take(m, q => q.pid === m.pid)) || (m.pid && take(m, q => brandOf(q) && brandOf(q) === brandOf(m))) || null;
+    const qty = m.qty != null ? m.qty : q ? q.qty : null;
+    const pid = m.pid || (q && q.pid) || null;
+    const why = !pid ? "no match" : (!m.pid || (m.why && m.why !== "how many?" && m.why !== "no match")) ? (m.why || "model unsure") : qty == null ? "how many?" : "";
+    out.push({ pid, phrase: m.phrase, qty, why, rev: why ? "warn" : "ok", done: false });
+  }
+  // Quick-read items the model didn't mention: it couldn't confirm them.
+  open.forEach((q, k) => { if (!used.has(k)) out.push({ ...q, why: q.why || "not confirmed", rev: "warn" }); });
+  return [...kept, ...out];
+}// ---------- On-device voice models and the note queue ----------
 // A note goes: queued (voice clip waiting) → heard (text waiting for the language model) → reading → done.
 // The queue runs in the background (oldest note first, listening before reading) so you can keep snapping
 // shelves, or walk to the back room, while the phone works through it.
 const MODEL_INFO = {
-  asr: { name: "Speech to text", detail: "Whisper Base", size: "about 80 MB" },
-  fast: { name: "Language", detail: "Qwen 2.5 0.5B", size: "about 0.8 GB" },
+  asr: { name: "Speech to text (required)", detail: "Whisper Base", size: "about 80 MB" },
+  fast: { name: "Smart reading (optional)", detail: "Qwen 2.5 0.5B", size: "about 0.8 GB" },
 };
 const MODEL_CACHE_HINT = { asr: "whisper-base.en", fast: "Qwen2.5-0.5B-Instruct" };
 const ai = {
@@ -1431,7 +1545,8 @@ const ai = {
 const haveModel = key => !!state.settings.models[key];
 // The language model in use (Qwen 0.5B: Llama 1B was 1.7 GB, too much memory for an iPhone 13).
 function activeLLM() { return haveModel("fast") ? "fast" : null; }
-const voiceReady = () => haveModel("asr") && !!activeLLM();
+const voiceReady = () => haveModel("asr");   // the quick read needs only the speech model
+const smartOn = () => state.settings.smart !== false && !!activeLLM();
 
 function getWorker() {
   if (ai.worker) return ai.worker;
@@ -1521,15 +1636,24 @@ async function verifyModels() {
 }
 
 // ---- The queue ----
+// A note goes: queued (voice clip waiting) -> heard (text) -> done (quick read items on the list, dots red).
+// Then, when the smart-reading model is ready, it reviews each note in the background and turns the dots
+// green (verified) or yellow (still missing or unsure). Listening and the quick read always come first.
 const nextNote = status => [...state.notes].reverse().find(n => n.status === status);
-function pendingNotes() { return state.notes.filter(n => n.status === "queued" || n.status === "heard" || n.status === "reading"); }
-// What's holding the queue, for display.
+const reviewQueue = () => state.notes.filter(n => n.status === "done" && n.rev === "pending" && !n.edited);
+// Notes with doubtful items are reviewed first, then the rest, oldest first.
+function nextReview() {
+  const q = reviewQueue().reverse();
+  return q.find(n => n.items.some(it => !it.done && it.why)) || q[0] || null;
+}
+function pendingNotes() { return state.notes.filter(n => n.status === "queued" || n.status === "heard"); }
+// What's happening, for display.
 function queueState() {
-  const left = pendingNotes();
-  if (!left.length) return { busy: false, text: "" };
-  const needAsr = left.some(n => n.status === "queued"), needLLM = left.some(n => n.status === "heard" || n.status === "reading");
-  if ((needAsr && !haveModel("asr")) || (needLLM && !activeLLM() && !needAsr)) return { busy: false, blocked: true, text: `${left.length} note${left.length === 1 ? "" : "s"} waiting. Download the voice models in More.` };
-  return { busy: true, text: `Reading ${left.length} note${left.length === 1 ? "" : "s"}…` };
+  const left = pendingNotes(), rv = smartOn() ? reviewQueue().length : 0;
+  if (left.length && !haveModel("asr")) return { busy: false, blocked: true, text: `${left.length} note${left.length === 1 ? "" : "s"} saved. Download the speech model in More to read ${left.length === 1 ? "it" : "them"}.` };
+  if (left.length) return { busy: true, text: `Listening to ${left.length} note${left.length === 1 ? "" : "s"}…` };
+  if (rv) return { busy: true, text: ai.llmWarm ? `Reviewing ${rv} note${rv === 1 ? "" : "s"}…` : "Smart reading is warming up…" };
+  return { busy: false, text: "" };
 }
 async function holdScreenOn() {
   try { if (navigator.wakeLock && !document.hidden && !ai.wake) { ai.wake = await navigator.wakeLock.request("screen"); ai.wake.addEventListener("release", () => (ai.wake = null)); } } catch (e) {}
@@ -1542,10 +1666,12 @@ async function pump() {
   ai.pumping = true; holdScreenOn(); renderQueueStatus();
   try {
     for (;;) {
-      let n = nextNote("queued");
+      let n = nextNote("heard");              // a heard note becomes list items at once
+      if (n) { quickRead(n); continue; }
+      n = nextNote("queued");
       if (n && haveModel("asr")) { await listenTo(n); continue; }
-      n = nextNote("heard");
-      if (n && activeLLM()) { await readNote(n); continue; }
+      n = smartOn() ? nextReview() : null;
+      if (n) { await reviewNote(n); continue; }
       break;
     }
   } finally { ai.pumping = false; releaseScreen(); renderAll(); }
@@ -1568,26 +1694,58 @@ function cleanTranscript(t) {
   t = String(t || "").replace(/\[[^\]]*\]|\([^)]*\)|\*[^*]*\*/g, " ").replace(/\s+/g, " ").trim();
   return /[a-z0-9]/i.test(t) ? t : "";
 }
-async function readNote(n) {
-  const key = activeLLM();
-  n.status = "reading"; save(); renderAll();
-  try {
-    if (!ai.ready[key]) { await workerCall({ type: "load", key }, 180000); ai.ready[key] = true; }
-    const r = await workerCall({ type: "extract", key, text: n.text }, 120000);
-    if (!r.items) throw new Error("Couldn't make sense of this note.");
-    n.items = itemsFromModel(r.items);
-    n.status = "done"; n.err = "";
-  } catch (e) { n.status = "error"; n.err = e.message || "Couldn't read this note"; n.retry = "heard"; }
+// The instant read: items on the list the moment a note is heard (dots start red).
+function quickRead(n) {
+  try { n.items = quickItems(n.text); } catch (e) { n.items = []; }
+  n.status = "done"; n.err = ""; n.edited = false; n.rev = "pending";
   save(); renderAll();
+}
+// Smart review: the model re-reads the words and its answer is compared with the quick read.
+async function reviewNote(n) {
+  const key = activeLLM();
+  ai.reviewing = n.id; renderAll();
+  try {
+    await warmLLM();
+    const r = await workerCall({ type: "extract", key, text: n.text }, 120000);
+    if (n.edited) { n.rev = "done"; }
+    else if (!r.items) { n.rev = "failed"; n.items.forEach(it => { if (!it.done && !it.rev) { it.rev = "warn"; it.why = it.why || "couldn't be verified"; } }); }
+    else { n.items = mergeReview(n.items, itemsFromModel(r.items)); n.rev = "done"; }
+  } catch (e) { n.rev = "failed"; }
+  ai.reviewing = null;
+  save(); renderAll();
+}
+// Load the language model once; a crash while loading (low memory) switches smart reading off next time.
+let llmLoading = null;
+function warmLLM() {
+  const key = activeLLM();
+  if (!key || ai.ready[key]) return Promise.resolve();
+  if (llmLoading) return llmLoading;
+  try { localStorage.setItem("shelfscan.b5.loading", "1"); } catch (e) {}
+  llmLoading = workerCall({ type: "load", key }, 240000).then(() => {
+    ai.ready[key] = true; ai.llmWarm = true;
+    try { localStorage.removeItem("shelfscan.b5.loading"); } catch (e) {}
+    llmLoading = null; renderAll();
+  }, e => { try { localStorage.removeItem("shelfscan.b5.loading"); } catch (x) {} llmLoading = null; throw e; });
+  return llmLoading;
+}
+// At startup: get the models ready in the background so the first note isn't waiting on them.
+function warmUp() {
+  let crashed = false;
+  try { crashed = localStorage.getItem("shelfscan.b5.loading") === "1"; localStorage.removeItem("shelfscan.b5.loading"); } catch (e) {}
+  if (crashed && state.settings.smart !== false) {
+    state.settings.smart = false; save();
+    setTimeout(() => toast("Smart reading stopped the app last time, so it's off. You can turn it back on in More."), 1500);
+  }
+  if (haveModel("asr")) workerCall({ type: "load", key: "asr" }, 0).then(() => (ai.ready.asr = true), () => {});
+  if (smartOn()) warmLLM().then(() => pump(), () => {});
 }
 // Put a note back in line: to be listened to again, or read again.
 function requeue(n) {
-  n.err = "";
+  n.err = ""; n.edited = false;
   n.status = n.audio && !n.text ? "queued" : "heard";
   save(); renderAll(); pump();
 }
 function renderQueueStatus() { if (view === "needed" || view === "notes" || view === "capture") renderAll(); }
-
 // ============================================================
 // Shared data on GitHub
 // ============================================================
@@ -1672,7 +1830,7 @@ function applyShared(remote, { overwrite = false } = {}) {
     }
   }
   // Notes that mention a product that no longer exists keep their words but ask for a new product.
-  for (const n of state.notes) for (const it of n.items) if (it.pid && !productById(it.pid)) { it.pid = null; it.conf = "check"; it.why = "no match"; }
+  for (const n of state.notes) for (const it of n.items) if (it.pid && !productById(it.pid)) { it.pid = null; it.rev = "warn"; it.why = "no match"; }
   state.products.forEach(p => (p._st = undefined));
   canonicalize(state.products);
 }
@@ -1963,7 +2121,7 @@ async function grabPhoto() {
   if (have > want) { cw = Math.round(vh * want); sx = Math.round((vw - cw) / 2); } else { ch = Math.round(vw / want); sy = Math.round((vh - ch) / 2); }
   return frameToBlob(v, vw, vh, sx, sy, cw, ch);
 }
-async function onShutter(forcePhone) {
+async function onShutter(forcePhone, kind = "aisle") {
   if (recorder) return;
   let blob = null;
   if (cam.stream && !forcePhone) {
@@ -1976,7 +2134,7 @@ async function onShutter(forcePhone) {
   beep(true);
   const photoId = newId("p");
   try { await putPhoto(photoId, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
-  startRecording({ photos: [photoId] });
+  startRecording({ photos: [photoId], kind });
 }
 function box_flash() { const b = $("#camera"); b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); setTimeout(() => b.classList.remove("flash"), 400); }
 
@@ -2009,7 +2167,7 @@ function resampleTo16k(chunks, inRate) {
 async function startRecording(base) {
   if (recorder) return;
   const sheet = el(`<div class="sheet rec-sheet"><div class="handle"></div>
-    <h2>What do you need here?</h2>
+    <h2>What do you need ${base.kind === "display" ? "on this display" : base.note && base.note.kind === "display" ? "on this display" : "here"}?</h2>
     <p class="hint center" id="rec-hint">Say the product and how many, like â€œthree Diet Coke twelve packsâ€.</p>
     <div class="rec-meter"><i id="rec-level"></i></div>
     <div class="rec-time" id="rec-time">0:00</div>
@@ -2087,16 +2245,16 @@ async function startRecording(base) {
   };
 }
 // Create a new note, or (base.note) replace what an existing note heard.
-async function saveNote({ photos, note, audioRec, secs, text, status }) {
+async function saveNote({ photos, note, audioRec, secs, text, status, kind }) {
   let audioId = null;
   if (audioRec) { audioId = newId("a"); try { await putAudio(audioId, audioRec); } catch (e) { toast("Couldn't save the recording. Phone storage may be full."); } }
   if (note) {
     const old = note.audio;
-    note.audio = audioId; note.secs = secs; note.text = text; note.status = status; note.err = ""; note.items = [];
+    note.audio = audioId; note.secs = secs; note.text = text; note.status = status; note.err = ""; note.items = []; note.rev = undefined; note.edited = false;
     if (old) delAudio(old).catch(() => {});
     save(); renderAll(); return note;
   }
-  const n = { id: newId("n"), at: Date.now(), photos: photos || [], audio: audioId, secs, text, status, items: [], err: "" };
+  const n = { id: newId("n"), at: Date.now(), kind: kind === "display" ? "display" : "aisle", photos: photos || [], audio: audioId, secs, text, status, items: [], err: "" };
   state.notes.unshift(n);
   save(); renderAll();
   lastNoteId = n.id;
@@ -2135,7 +2293,7 @@ function openViewer(ids, start = 0) {
     v.querySelector(".viewer-dots").innerHTML = ids.length > 1 ? ids.map((_, k) => `<button class="dot${k === i ? " on" : ""}" data-k="${k}" aria-label="Photo ${k + 1}"></button>`).join("") : "";
   };
   v.querySelector(".viewer-dots").onclick = e => { const b = e.target.closest("[data-k]"); if (b) { i = +b.dataset.k; show(); } };
-  v.querySelector(".viewer-stage").onclick = () => { if (ids.length > 1) { i = (i + 1) % ids.length; show(); } };
+  zoomStage(v.querySelector("img"), v.querySelector(".viewer-stage"));
   show();
 }
 
@@ -2165,7 +2323,7 @@ function showView(v) {
 }
 function renderAll() {
   $("#hdr-store").textContent = state.storeName ? "Store " + state.storeName : "";
-  const rows = neededRows(), open = rows.filter(r => !r.done).length;
+  const open = KINDS.reduce((t, k) => t + neededRows(k).filter(r => !r.done).length, 0);
   const badge = $("#need-badge");
   if (open && String(open) !== badge.textContent) bump(badge);
   badge.hidden = !open; badge.textContent = open;
@@ -2187,7 +2345,15 @@ function renderCapture() {
   $("#cam-starting").hidden = !cam.starting;
   $("#cam-error").textContent = cam.error;
   $("#btn-cam-stop").hidden = !on;
-  $("#btn-shutter").disabled = cam.starting;
+  document.querySelectorAll(".shutter-big").forEach(b => (b.disabled = cam.starting));
+  const ck = captureKind();
+  document.querySelectorAll("#cap-seg button").forEach(b => b.classList.toggle("active", b.dataset.k === ck));
+  syncIndicator($("#cap-seg"), false);
+  const sec = $("#view-capture");
+  sec.classList.toggle("mode-display", ck === "display"); sec.classList.toggle("mode-aisle", ck === "aisle");
+  $("#cap-band").textContent = ck === "display" ? "DISPLAY" : "AISLE";
+  $("#shutter-label").textContent = ck === "display" ? "Snap the display, then say what you need." : "Snap the aisle, then say what you need.";
+  $("#btn-shutter").setAttribute("aria-label", `Take a ${ck} photo, then say what you need`);
   const q = queueState();
   const vb = $("#model-banner");
   if (!voiceReady()) {
@@ -2200,7 +2366,7 @@ function renderCapture() {
   card.hidden = !last;
   if (last) {
     card.innerHTML = `<button class="shelf-thumb" data-photo-wrap><img data-photo="${esc(last.photos[0] || "")}" alt=""></button>
-      <div class="grow"><div class="label">Last note · ${timeOf(last.at)}</div><div class="last-text">${esc(noteSummary(last))}</div></div>${icon("jump")}`;
+      <div class="grow"><div class="label">Last note · ${KIND_LABEL[noteKind(last)]} · ${timeOf(last.at)}</div><div class="last-text">${esc(noteSummary(last))}</div></div>${icon("jump")}`;
     card.onclick = () => jumpToNote(last.id);
     hydratePhotos(card);
   }
@@ -2220,15 +2386,24 @@ function noteSummary(n) {
 }
 
 // ---------- Needed (the short list) ----------
-function neededRows() {
+// Aisle and display needs are kept completely apart: separate rows, separate groups.
+const KINDS = ["aisle", "display"];
+const noteKind = n => (n.kind === "display" ? "display" : "aisle");
+const KIND_LABEL = { aisle: "Aisle", display: "Display" };
+const captureKind = () => (state.settings.captureKind === "display" ? "display" : "aisle");
+const curKind = () => (state.settings.needKind === "display" ? "display" : "aisle");
+let notesFilter = "all";
+function neededRows(kind = null) {
   const map = new Map();
-  for (const n of state.notes) n.items.forEach((it, idx) => {
+  for (const n of state.notes) if (!kind || noteKind(n) === kind) n.items.forEach((it, idx) => {
     const p = itemProduct(it);
     const key = p ? p.id : "?" + sNorm(it.phrase);
     let r = map.get(key);
-    if (!r) map.set(key, r = { key, p, phrase: it.phrase, qty: 0, unknown: false, check: false, done: true, src: [] });
+    if (!r) map.set(key, r = { key, p, phrase: it.phrase, qty: 0, unknown: false, why: "", dot: "green", done: true, src: [] });
     if (it.qty == null) r.unknown = true; else r.qty += it.qty;
-    if (it.conf === "check" || !p) r.check = true;
+    if (!r.why && (it.why || !p)) r.why = it.why || "no match";
+    const d = dotOf(it);
+    if (d === "red" || (d === "yellow" && r.dot === "green")) r.dot = d;
     if (!it.done) r.done = false;
     r.src.push({ n, idx, it });
   });
@@ -2237,16 +2412,18 @@ function neededRows() {
 function qtyLabel(r) { return r.unknown ? (r.qty ? `${r.qty}+` : "?") : String(r.qty); }
 function renderNeeded() {
   const v = $("#view-needed");
-  const rows = neededRows(), q = queueState();
+  const kind = curKind(), rows = neededRows(kind), q = queueState();
   const open = rows.filter(r => !r.done).length;
-  let html = `<div class="list-head"><h2>Needed</h2><span class="muted small">${rows.length ? `${open} to go` : ""}</span><span class="grow"></span></div>`;
+  const cnt = k => neededRows(k).filter(r => !r.done).length;
+  let html = `<div class="list-head"><h2>Needed</h2><span class="muted small">${rows.length ? `${open} to go` : ""}</span><span class="grow"></span></div>
+    <div class="seg" id="kind-seg">${KINDS.map(k => `<button data-k="${k}" class="${k === kind ? "active" : ""}">${KIND_LABEL[k]}${cnt(k) ? ` <span class="kcount">${cnt(k)}</span>` : ""}</button>`).join("")}</div>`;
   if (q.text) html += `<div class="banner ${q.busy ? "busy" : ""}"><span class="spin"></span><span class="grow">${esc(q.text)}</span></div>`;
   if (!rows.length) {
-    html += `<div class="empty">${icon("list")}<h3>Nothing needed yet</h3><p>Snap a shelf and say what's missing. It lands here.</p></div>`;
-    v.innerHTML = html; return;
+    html += `<div class="empty">${icon("list")}<h3>Nothing needed ${kind === "display" ? "on displays" : "in aisles"} yet</h3><p>Snap a ${kind === "display" ? "display" : "shelf"} and say what's missing. It lands here.</p></div>`;
+    v.innerHTML = html; wireKindSeg(v); v.onclick = null; return;
   }
-  const check = rows.filter(r => r.check && !r.done);
-  if (check.length) html += `<div class="banner warn">${icon("warn")}<span class="grow">${check.length} ${check.length === 1 ? "item needs" : "items need"} a quick look. Tap a row marked “check”.</span></div>`;
+  const look = rows.filter(r => r.dot === "yellow" && !r.done);
+  if (look.length) html += `<div class="banner warn">${icon("warn")}<span class="grow">${look.length} ${look.length === 1 ? "item needs" : "items need"} a look. Tap a yellow row to check it against the photo.</span></div>`;
   // Group by product group, unmatched first.
   const groups = new Map();
   for (const r of rows) { const g = r.p ? r.p.category : "Not matched to a product"; (groups.get(g) || groups.set(g, []).get(g)).push(r); }
@@ -2255,15 +2432,21 @@ function renderNeeded() {
     html += `<div class="group-h">${esc(g)}</div><div class="list">` + groups.get(g).map(r => needRow(r)).join("") + `</div>`;
   }
   html += `<button class="btn block quiet" id="btn-clear-all" style="margin-top:22px">Clear the whole list</button>`;
-  v.innerHTML = html;
+  v.innerHTML = html; wireKindSeg(v);
   v.onclick = e => {
     const row = e.target.closest(".need[data-k]"); if (!row) { if (e.target.closest("#btn-clear-all")) clearAllNotes(); return; }
     const r = rows.find(x => x.key === row.dataset.k); if (!r) return;
     const a = e.target.closest("[data-a]")?.dataset.a;
     if (a === "toggle") { const to = !r.done; r.src.forEach(s => (s.it.done = to)); save(); renderAll(); }
     else if (a === "jump" && r.src.length === 1) jumpToNote(r.src[0].n.id, r.src[0].idx);
+    else if (r.src.length === 1) openCheck(r.src[0].n, r.src[0].idx);
     else openSources(r.key);
   };
+}
+function wireKindSeg(v) {
+  const seg = v.querySelector("#kind-seg"); if (!seg) return;
+  seg.querySelectorAll("button").forEach(b => (b.onclick = () => { if (state.settings.needKind === b.dataset.k) return; state.settings.needKind = b.dataset.k; save(); renderNeeded(); }));
+  syncIndicator(seg, false);
 }
 function needRow(r) {
   const name = r.p ? pName(r.p) : `“${r.phrase}”`, sub = r.p ? pSub(r.p) : "No matching product. Tap to pick one.";
@@ -2271,7 +2454,7 @@ function needRow(r) {
   return `<div class="item need tap${r.done ? " done" : ""}" data-k="${esc(r.key)}">
     <button class="check${r.done ? " on" : ""}" data-a="toggle" aria-label="Cross off">${icon("check")}</button>
     ${r.p ? thumbHtml(r.p) : `<div class="thumb">?</div>`}
-    <div class="grow"><div class="name">${esc(name)}</div><div class="sub">${esc(sub)}${r.check && !r.done ? ` <span class="pill warn">CHECK</span>` : ""}${r.src.length > 1 ? ` <span class="pill">${r.src.length} notes</span>` : ""}</div></div>
+    <div class="grow"><div class="name"><i class="sdot ${r.dot}" title="${dotTitle(r.dot)}"></i>${esc(name)}</div><div class="sub">${esc(sub)}${r.src.length > 1 ? ` <span class="pill">${r.src.length} notes</span>` : ""}</div>${r.dot === "yellow" && r.why && !r.done ? `<div class="why">${esc(r.why)}</div>` : ""}</div>
     <button class="qty-tap" data-a="qty" aria-label="Quantity"><b>${qtyLabel(r)}</b><span>${unit}</span></button>
     <button class="jump-btn" data-a="jump" aria-label="Go to the note this came from">${icon("jump")}</button></div>`;
 }
@@ -2282,7 +2465,7 @@ function openSources(key) {
     <button class="btn block quiet" data-a="close">Done</button></div>`);
   const close = openLayer(s, { onClose: () => renderAll() });
   const draw = () => {
-    const r = neededRows().find(x => x.key === key);
+    const r = neededRows(curKind()).find(x => x.key === key);
     if (!r) { close(); return; }
     s.querySelector("h2").textContent = r.p ? pName(r.p) : `“${r.phrase}”`;
     s.querySelector("#src-sub").textContent = r.p ? pSub(r.p) : "No matching product yet";
@@ -2297,7 +2480,7 @@ function openSources(key) {
       row.querySelectorAll("[data-d]").forEach(b => (b.onclick = () => setQ(Math.max(1, (x.it.qty || 0) + +b.dataset.d))));
       inp.onchange = () => setQ(inp.value.trim() === "" ? null : Math.max(1, parseInt(inp.value, 10) || 1));
       row.querySelector('[data-a="jump"]').onclick = () => { close(); jumpToNote(x.n.id, x.idx); };
-      row.querySelector('[data-a="photo"]').onclick = () => x.n.photos.length && openViewer(x.n.photos);
+      row.querySelector('[data-a="photo"]').onclick = () => { close(); openCheck(x.n, x.idx); };
       box.appendChild(row);
     });
     hydratePhotos(box);
@@ -2305,18 +2488,17 @@ function openSources(key) {
   draw();
   s.querySelector('[data-a="close"]').onclick = close;
   s.querySelector('[data-a="change"]').onclick = async () => {
-    const r = neededRows().find(x => x.key === key); if (!r) return;
+    const r = neededRows(curKind()).find(x => x.key === key); if (!r) return;
     const pid = await pickProduct({ title: "Which product is this?", initialQuery: r.p ? "" : r.phrase });
     if (!pid) return;
     const snap = snapshot();
-    r.src.forEach(x => { x.it.pid = pid; x.it.conf = x.it.qty != null ? "ok" : "check"; x.it.why = x.it.qty != null ? "" : "how many?"; });
+    r.src.forEach(x => { x.it.pid = pid; touchItem(x.n, x.it); });
     save(); key = pid; draw(); renderAll(); toast("Product changed", snap);
   };
 }
 function setItemQty(n, idx, qty) {
   const it = n.items[idx]; if (!it) return;
-  it.qty = qty;
-  if (it.pid && qty != null) { it.conf = "ok"; it.why = ""; } else { it.conf = "check"; it.why = "how many?"; }
+  it.qty = qty; touchItem(n, it);
   save(); renderAll();
 }
 function clearAllNotes() {
@@ -2330,30 +2512,35 @@ function clearAllNotes() {
 
 // ---------- Notes ----------
 function noteStatusPill(n) {
-  const m = { queued: ["Waiting", ""], heard: ["Heard", ""], reading: ["Reading", ""], done: ["Read", "ok"], error: ["Problem", "warn"], empty: ["Nothing heard", "warn"] }[n.status] || ["", ""];
+  const m = { queued: ["Waiting", ""], heard: ["Heard", ""], done: n.rev === "pending" ? [ai.reviewing === n.id ? "Reviewing…" : "Quick read", ""] : n.rev === "failed" ? ["Not verified", "warn"] : ["Reviewed", "ok"], error: ["Problem", "warn"], empty: ["Nothing heard", "warn"] }[n.status] || ["", ""];
   return `<span class="pill ${m[1]}">${m[0]}</span>`;
 }
 function renderNotes() {
   const v = $("#view-notes");
   if (!state.notes.length) { v.innerHTML = `<div class="list-head"><h2>Notes</h2></div><div class="empty">${icon("note")}<h3>No notes yet</h3><p>Each note is a shelf photo with what you said about it.</p></div>`; return; }
-  v.innerHTML = `<div class="list-head"><h2>Notes</h2><span class="muted small">${state.notes.length}</span></div><div id="note-list" class="stack">${state.notes.map(noteCard).join("")}</div>`;
+  const shown = state.notes.filter(n => notesFilter === "all" || noteKind(n) === notesFilter);
+  const fc = k => state.notes.filter(n => noteKind(n) === k).length;
+  v.innerHTML = `<div class="list-head"><h2>Notes</h2><span class="muted small">${shown.length}</span></div>
+    <div class="seg" id="note-seg">${[["all", "All", state.notes.length], ["aisle", "Aisle", fc("aisle")], ["display", "Display", fc("display")]].map(([k, l, c]) => `<button data-k="${k}" class="${k === notesFilter ? "active" : ""}">${l} <span class="kcount">${c}</span></button>`).join("")}</div>
+    <div id="note-list" class="stack">${shown.map(noteCard).join("") || `<div class="empty"><p>No ${notesFilter} notes yet.</p></div>`}</div>`;
+  v.querySelectorAll("#note-seg button").forEach(b => (b.onclick = () => { notesFilter = b.dataset.k; renderNotes(); }));
+  syncIndicator(v.querySelector("#note-seg"), false);
   hydratePhotos(v);
   v.querySelector("#note-list").onclick = onNotesClick;
 }
 function noteCard(n) {
   const body = (() => {
     if (n.status === "queued") return `<p class="hint">${haveModel("asr") ? "Waiting its turn to be listened to…" : "Saved. It will be read once the voice models are downloaded (More tab)."}</p>`;
-    if (n.status === "reading") return `<div class="transcript" data-a="edit">“${esc(n.text)}”</div><p class="hint"><span class="spin"></span> Reading…</p>`;
     if (n.status === "error") return `${n.text ? `<div class="transcript" data-a="edit">“${esc(n.text)}”</div>` : ""}<div class="banner warn">${icon("warn")}<span class="grow">${esc(n.err || "Something went wrong")}</span><button class="btn sm" data-a="retry">Try again</button></div>`;
     if (n.status === "empty") return `<div class="banner warn">${icon("warn")}<span class="grow">Nothing was heard.</span></div><div class="row" style="margin-top:8px"><button class="btn sm grow" data-a="rerecord">${icon("mic")}Record again</button><button class="btn sm grow" data-a="edit">${icon("note")}Type it</button></div>`;
     const t = n.text ? `<div class="transcript" data-a="edit">“${esc(n.text)}”</div>` : "";
-    if (n.status === "heard") return `${t}<p class="hint">${activeLLM() ? "Waiting its turn to be read…" : "Heard. The language model isn't downloaded yet (More tab)."}</p>${addItemBtn()}`;
+    if (n.status === "heard") return `${t}<p class="hint">Matching products…</p>${addItemBtn()}`;
     return `${t}<div class="note-items">${n.items.map((it, i) => noteItem(it, i)).join("") || `<p class="hint">No product found in this note.</p>`}</div>${addItemBtn()}`;
   })();
   return `<div class="card note" id="note-${esc(n.id)}" data-id="${esc(n.id)}">
     <div class="row note-top">
       <button class="note-photo" data-a="photo" data-photo-wrap aria-label="View photo"><img data-photo="${esc(n.photos[0] || "")}" alt="">${n.photos.length > 1 ? `<span class="count">${n.photos.length}</span>` : ""}</button>
-      <div class="grow"><div class="small muted">${timeOf(n.at)}${n.secs ? ` · ${Math.round(n.secs)}s` : ""}</div>${noteStatusPill(n)}</div>
+      <div class="grow"><div class="small muted">${timeOf(n.at)}${n.secs ? ` · ${Math.round(n.secs)}s` : ""}</div><span class="pill kind ${noteKind(n)}">${KIND_LABEL[noteKind(n)]}</span> ${noteStatusPill(n)}</div>
       ${n.audio ? `<button class="btn sm quiet icon-btn" data-a="play" aria-label="Play recording">${icon("play")}</button>` : ""}
       <button class="more-btn" data-a="menu" aria-label="More">${icon("dots")}</button>
     </div>${body}</div>`;
@@ -2362,7 +2549,7 @@ const addItemBtn = () => `<button class="btn sm quiet" data-a="additem" style="m
 function noteItem(it, i) {
   const p = itemProduct(it);
   return `<div class="note-item item tap${it.done ? " done" : ""}" data-i="${i}">${p ? thumbHtml(p) : `<div class="thumb">?</div>`}
-    <div class="grow"><div class="name">${esc(p ? pName(p) : `“${it.phrase}”`)}</div><div class="sub">${esc(p ? pSub(p) : "No matching product")}${it.conf === "check" ? ` <span class="pill warn">CHECK${it.why ? ": " + esc(it.why) : ""}</span>` : ""}</div></div>
+    <div class="grow"><div class="name"><i class="sdot ${dotOf(it)}" title="${dotTitle(dotOf(it))}"></i>${esc(p ? pName(p) : `“${it.phrase}”`)}</div><div class="sub">${esc(p ? pSub(p) : "No matching product")}</div>${it.rev === "warn" && it.why ? `<div class="why">${esc(it.why)}</div>` : ""}</div>
     <div class="qty-tap" aria-label="Quantity"><b>${it.qty ?? "?"}</b></div></div>`;
 }
 async function onNotesClick(e) {
@@ -2381,8 +2568,10 @@ async function onNotesClick(e) {
     const pick = await menu("Note", [
       { label: "Edit what was heard", value: "edit" }, ...(n.audio ? [{ label: "Play recording", value: "play" }] : []),
       { label: "Record again", value: "rerecord" }, { label: "Add another photo", value: "photo" },
+      { label: noteKind(n) === "aisle" ? "Move to Display" : "Move to Aisle", value: "kind" },
       ...(n.text ? [{ label: "Read again", value: "retry" }] : []), { label: "Delete note", value: "delete", danger: true }]);
     if (pick === "edit") editText(n); else if (pick === "play") playNote(n); else if (pick === "rerecord") startRecording({ note: n });
+    else if (pick === "kind") { n.kind = noteKind(n) === "aisle" ? "display" : "aisle"; save(); renderAll(); toast(`Moved to ${KIND_LABEL[n.kind]}`); }
     else if (pick === "photo") addPhoto(n); else if (pick === "retry") { n.status = "heard"; save(); renderAll(); pump(); }
     else if (pick === "delete") deleteNote(n);
   }
@@ -2405,19 +2594,21 @@ function deleteNote(n) {
 async function addItem(n) {
   const pid = await pickProduct({ title: "Add which product?" }); if (!pid) return;
   const q = await qtyDialog(pName(productById(pid)), 1); if (q === undefined) return;
-  n.items.push({ pid, phrase: pName(productById(pid)), qty: q, conf: q != null ? "ok" : "check", why: q != null ? "" : "how many?", done: false });
-  if (n.status !== "done") n.status = "done";
+  const it = { pid, phrase: pName(productById(pid)), qty: q, why: "", rev: "", done: false };
+  n.items.push(it); touchItem(n, it);
+  if (n.status !== "done") { n.status = "done"; n.rev = "done"; }
   save(); renderAll();
 }
 async function itemMenu(n, i) {
   const it = n.items[i]; if (!it) return;
   const pick = await menu(itemProduct(it) ? pName(itemProduct(it)) : `“${it.phrase}”`, [
-    { label: "Change product", value: "p" }, { label: "Change quantity", value: "q" }, { label: it.done ? "Mark as still needed" : "Cross off", value: "d" },
+    ...(it.pid && it.qty != null ? [{ label: "Looks right", value: "ok" }] : []), { label: "Change product", value: "p" }, { label: "Change quantity", value: "q" }, { label: it.done ? "Mark as still needed" : "Cross off", value: "d" },
     { label: "Remove from this note", value: "x", danger: true }]);
   const snap = snapshot();
-  if (pick === "p") { const pid = await pickProduct({ title: "Which product?", initialQuery: itemProduct(it) ? "" : it.phrase }); if (pid) { it.pid = pid; it.conf = it.qty != null ? "ok" : "check"; it.why = it.qty != null ? "" : "how many?"; save(); renderAll(); } }
+  if (pick === "p") { const pid = await pickProduct({ title: "Which product?", initialQuery: itemProduct(it) ? "" : it.phrase }); if (pid) { it.pid = pid; touchItem(n, it); save(); renderAll(); } }
   else if (pick === "q") { const q = await qtyDialog(itemProduct(it) ? pName(itemProduct(it)) : it.phrase, it.qty || 1); if (q !== undefined) setItemQty(n, i, q); }
   else if (pick === "d") { it.done = !it.done; save(); renderAll(); }
+  else if (pick === "ok") { touchItem(n, it, true); save(); renderAll(); }
   else if (pick === "x") { n.items.splice(i, 1); save(); renderAll(); toast("Item removed", snap); }
 }
 // A number stepper. Resolves the number, or undefined when cancelled.
@@ -2437,6 +2628,7 @@ function qtyDialog(title, value = 1) {
 }
 // Jump from a list row to the note (and item) it came from.
 function jumpToNote(id, idx) {
+  notesFilter = "all";
   showView("notes");
   setTimeout(() => {
     const c = document.getElementById("note-" + id); if (!c) return;
@@ -2449,6 +2641,71 @@ function jumpToNote(id, idx) {
   }, 80);
 }
 
+
+// ---------- Status dots ----------
+// red = quick read only; yellow = reviewed but something is missing or unsure; green = verified (or you confirmed it).
+const dotOf = it => (it.rev === "ok" ? "green" : it.rev === "warn" ? "yellow" : "red");
+const dotTitle = d => ({ red: "Not reviewed yet", yellow: "Reviewed, but check it", green: "Verified" })[d];
+// You changed an item by hand: it's now yours. The model won't touch this note again.
+function touchItem(n, it, confirmed = false) {
+  n.edited = true;
+  it.why = !it.pid ? "no match" : it.qty == null ? "how many?" : "";
+  it.rev = it.why ? "warn" : "ok";
+}
+
+// ---------- Check an item against its photo ----------
+// The photo (pinch to zoom) with what was said under it, and this note's items to confirm or fix.
+function openCheck(n, idx) {
+  let photoIdx = 0, focus = idx;
+  const s = el(`<div class="sheet check-sheet"><div class="handle"></div><div class="row"><h2 class="grow">Check against the photo</h2><button class="btn sm quiet" data-a="close">Done</button></div>
+    <div class="zoom-stage" id="ck-stage"><img alt=""><span class="zoom-hint">Pinch to zoom</span></div><div class="viewer-dots" id="ck-dots" style="padding:0"></div>
+    <div class="transcript" id="ck-text"></div>
+    <div class="row" id="ck-actions"></div><div id="ck-items" class="note-items"></div></div>`);
+  const close = openLayer(s, { onClose: () => renderAll() });
+  const img = s.querySelector("img");
+  zoomStage(img, s.querySelector("#ck-stage"));
+  const showPhoto = async () => {
+    const id = n.photos[photoIdx];
+    img.src = id ? (await photoURL(id)) || "" : "";
+    s.querySelector("#ck-stage").classList.toggle("empty-photo", !id);
+    s.querySelector("#ck-dots").innerHTML = n.photos.length > 1 ? n.photos.map((_, k) => `<button class="dot${k === photoIdx ? " on" : ""}" data-k="${k}" aria-label="Photo ${k + 1}"></button>`).join("") : "";
+  };
+  s.querySelector("#ck-dots").onclick = e => { const b = e.target.closest("[data-k]"); if (b) { photoIdx = +b.dataset.k; showPhoto(); } };
+  const draw = () => {
+    s.querySelector("#ck-text").textContent = n.text ? `“${n.text}”` : "(no words: typed or no recording)";
+    const box = s.querySelector("#ck-items");
+    box.innerHTML = n.items.map((it, i) => noteItem(it, i)).join("") || `<p class="hint" style="padding:10px">No items in this note.</p>`;
+    box.querySelectorAll(".note-item").forEach(r => { if (+r.dataset.i === focus) r.classList.add("focus"); r.onclick = () => { focus = +r.dataset.i; draw(); }; });
+    const it = n.items[focus], acts = s.querySelector("#ck-actions");
+    acts.innerHTML = it ? `<button class="btn sm grow" data-a="ok" ${it.pid && it.qty != null ? "" : "disabled"}>${icon("check")}Looks right</button><button class="btn sm grow quiet" data-a="more">Fix…</button>` : "";
+    const okb = acts.querySelector('[data-a="ok"]'); if (okb) okb.onclick = () => { touchItem(n, it, true); save(); draw(); renderAll(); };
+    const mb = acts.querySelector('[data-a="more"]'); if (mb) mb.onclick = async () => { await itemMenu(n, focus); draw(); };
+  };
+  s.querySelector('[data-a="close"]').onclick = close;
+  showPhoto(); draw();
+}
+// Pinch to zoom, drag to pan, double-tap to toggle.
+function zoomStage(img, stage) {
+  let scale = 1, tx = 0, ty = 0, startDist = 0, startScale = 1, last = null, lastTap = 0;
+  const pts = new Map();
+  const apply = () => { img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`; };
+  const reset = () => { scale = 1; tx = ty = 0; apply(); };
+  stage.addEventListener("pointerdown", e => {
+    stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 2) { const [a, b] = [...pts.values()]; startDist = Math.hypot(a.x - b.x, a.y - b.y) || 1; startScale = scale; }
+    const now = Date.now(); if (pts.size === 1 && now - lastTap < 300) { scale > 1 ? reset() : ((scale = 2.5), apply()); } lastTap = now;
+    last = { x: e.clientX, y: e.clientY };
+  });
+  stage.addEventListener("pointermove", e => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 2) { const [a, b] = [...pts.values()]; scale = Math.max(1, Math.min(6, startScale * Math.hypot(a.x - b.x, a.y - b.y) / startDist)); apply(); }
+    else if (pts.size === 1 && scale > 1) { tx += e.clientX - last.x; ty += e.clientY - last.y; apply(); }
+    last = { x: e.clientX, y: e.clientY };
+  });
+  const up = e => { pts.delete(e.pointerId); if (scale <= 1.02) reset(); last = null; };
+  stage.addEventListener("pointerup", up); stage.addEventListener("pointercancel", up);
+}
 // Products
 let prodQuery = "", prodCat = "";
 function renderProducts() {
@@ -2491,32 +2748,29 @@ function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
   const dot = have ? "ok" : busy ? "warn" : "";
   return `<div class="set-row"><span class="status-dot ${dot}"></span><div class="grow"><b>${esc(i.name)}</b><br><span class="hint">${esc(i.detail)} · ${esc(i.size)}</span></div>
-    <span class="small muted">${have ? "Ready" : busy ? "Downloading" : "Not downloaded"}</span></div>`;
+    ${have ? `<span class="small muted">Ready</span>` : busy ? `<span class="small muted">Downloading</span>` : `<button class="btn sm primary" data-dl="${key}" ${ai.dl.key ? "disabled" : ""}>${icon("download")}Download</button>`}</div>`;
 }
 function renderMore() {
   const v = $("#view-more");
   const s = syncStatus();
   const on = uploadsEnabled();
-  const llm = "fast";
-  const need = ["asr", llm].filter(k => !haveModel(k));
   const anyModel = ["asr", "fast"].some(haveModel);
   const dl = ai.dl.key;
-  const dev = ai.device[activeLLM() || ""] || "";
+  const dev = ai.device.fast || "";
   v.innerHTML = `
     <div class="list-head"><h2>More</h2></div>
     <div class="card">
-      <h3>Voice models</h3>
-      <p class="hint">Listening and reading run on this phone, so they work with no signal. They download once (use Wi-Fi), then stay on the phone.</p>
-      ${modelRow("asr")}${modelRow(llm)}
+      <h3>Voice</h3>
+      <p class="hint">Listening and reading run on this phone, so they work with no signal. Models download once (use Wi-Fi), then stay on the phone.</p>
+      ${modelRow("asr")}
+      <p class="hint" style="margin:-4px 0 6px 21px">Turns your recording into words and gives you a list right away.</p>
+      ${modelRow("fast")}
+      <p class="hint" style="margin:-4px 0 6px 21px">Double-checks each note in the background and turns its dot green or yellow. Best on a newer iPhone (iOS 26).</p>
+      ${haveModel("fast") ? `<div class="set-row"><label class="grow" for="smart"><b>Use smart reading</b><br><span class="hint">${ai.llmWarm ? `Ready. Running on the phone's ${dev === "webgpu" ? "graphics chip" : "processor"}.` : "Warms up in the background when the app opens."}</span></label><input type="checkbox" id="smart" ${state.settings.smart !== false ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>` : ""}
       ${dl ? `<div class="mprog" data-mprog><i></i></div><p class="hint" data-mprog-label style="margin-top:6px">Starting…</p>` : ""}
       ${ai.dl.error ? `<div class="banner warn" style="margin-top:8px">${icon("warn")}<span class="grow">${esc(ai.dl.error)}</span></div>` : ""}
-      <div class="stack" style="margin-top:10px">
-        ${need.length ? `<button class="btn primary block" id="btn-dl" ${dl ? "disabled" : ""}>${icon("download")}${dl ? "Downloading…" : ai.dl.error ? "Try again" : `Download ${need.length === 2 ? "voice models" : "missing model"}`}</button>` : ""}
-        ${anyModel && !dl ? `<button class="btn block quiet" id="btn-del-models">Delete downloaded models</button>` : ""}
-      </div>
-      <p class="hint" style="margin-top:8px">${dev ? `Reading runs on the phone's ${dev === "webgpu" ? "graphics chip" : "processor"}.` : ""}${ai.probe ? ` ${ai.probe.webgpu ? "Graphics acceleration is available." : ""}` : ""}</p>
-    </div>
-    <div class="card">
+      ${anyModel && !dl ? `<div class="stack" style="margin-top:10px"><button class="btn block quiet" id="btn-del-models">Delete downloaded models</button></div>` : ""}
+    </div>    <div class="card">
       <h3>Shared data</h3>
       <p class="hint">The product list is shared with everyone who uses Shelf Scan. Your notes and photos stay on this phone.</p>
       <div class="set-row"><span class="status-dot ${s.dot}"></span><span class="grow small">${esc(s.text)}</span></div>
@@ -2555,12 +2809,13 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 4 (voice notes) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan Beta 5.1 (voice notes) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
   v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
-  const dlb = v.querySelector("#btn-dl"); if (dlb) dlb.onclick = () => downloadModels(need);
+  v.querySelectorAll("[data-dl]").forEach(b => (b.onclick = () => downloadModels([b.dataset.dl])));
+  const sm = v.querySelector("#smart"); if (sm) sm.onchange = e => { state.settings.smart = e.target.checked; save(); renderAll(); if (e.target.checked) { warmUp(); pump(); } };
   const del = v.querySelector("#btn-del-models"); if (del) del.onclick = async () => {
     if (!(await confirmDialog("Delete the downloaded voice models? Notes already read keep their lists. New notes wait until you download them again.", { ok: "Delete", danger: true }))) return;
     await deleteModels(); toast("Models deleted");
@@ -2674,12 +2929,14 @@ load();
 document.querySelectorAll("#tabs button").forEach(b => (b.onclick = () => showView(b.dataset.view)));
 $("#btn-cam-start").onclick = startCamera;
 $("#btn-cam-stop").onclick = () => { state.settings.camOK = false; save(); stopCamera(); };
-$("#btn-shutter").onclick = () => onShutter(false);
-$("#btn-phonecam").onclick = () => onShutter(true);
+document.querySelectorAll("#cap-seg button").forEach(b => (b.onclick = () => { state.settings.captureKind = b.dataset.k; save(); renderCapture(); }));
+$("#btn-shutter").onclick = () => onShutter(false, captureKind());
+$("#btn-phonecam").onclick = () => onShutter(true, captureKind());
 $("#btn-type").onclick = async () => {
-  const text = await textPrompt("Type what you need");
+  const kind = captureKind();
+  const text = await textPrompt(`Type what you need (${kind === "display" ? "display" : "aisle"})`);
   if (text == null || !text) return;
-  await saveNote({ photos: [], audioRec: null, secs: 0, text, status: "heard" });
+  await saveNote({ photos: [], audioRec: null, secs: 0, text, status: "heard", kind });
   pump();
 };
 $("#sync-ind").onclick = () => showView("more");
@@ -2688,7 +2945,7 @@ save();
 syncAllIndicators(false);
 setTimeout(sweepMedia, 3000);   // tidy photos and recordings left over from deleted notes
 if (state.settings.camOK) startCamera();
-verifyModels().then(pump);      // anything still waiting from last time gets picked up
+verifyModels().then(() => { warmUp(); pump(); });   // get the models ready, and pick up anything still waiting from last time
 
 // Pull everyone's latest product list on open, then upload anything waiting.
 if (navigator.onLine) pullShared().catch(() => {}).finally(() => scheduleUpload(1000));

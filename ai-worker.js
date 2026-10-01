@@ -18,8 +18,12 @@ async function webgpuOK() {
   try { return !!(self.navigator && navigator.gpu && (await navigator.gpu.requestAdapter())); } catch (e) { return false; }
 }
 
-async function load(key, { gpu = true } = {}) {
-  if (loaded[key]) return loaded[key];
+const loading = {};   // key -> promise, so a warm-up and a request never load the same model twice
+function load(key, opts) {
+  if (loaded[key]) return Promise.resolve(loaded[key]);
+  return loading[key] || (loading[key] = loadModel(key, opts).finally(() => delete loading[key]));
+}
+async function loadModel(key, { gpu = true } = {}) {
   const m = MODELS[key];
   const track = {};
   const progress_callback = p => {
