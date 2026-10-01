@@ -356,8 +356,10 @@ nav.tabs button.active svg.i { animation: tabPop .5s var(--spring); }
 /* Shutter haptic: an invisible switch laid over the shutter (see feel.js) */
 .shutter-wrap { position: relative; width: 80px; height: 80px; border-radius: 50%; }
 .shutter-wrap:active .shutter-big:not(:disabled) { transform: scale(.9); transition-duration: .1s; }
-.hap { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; z-index: 3; cursor: pointer; }
-.no-shutter-haptic .hap, .hap:disabled { pointer-events: none; }
+.hap { position: absolute; inset: 0; z-index: 3; border-radius: inherit; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.hap input { position: absolute; width: 1px; height: 1px; visibility: hidden; }
+.no-shutter-haptic .shutter-wrap .hap, .shutter-wrap .hap.off { pointer-events: none; }
+.try-wrap { position: relative; border-radius: 12px; }
 #toast { touch-action: none; }
 </style>
 </head>
@@ -395,7 +397,7 @@ nav.tabs button.active svg.i { animation: tabPop .5s var(--spring); }
       </div>
       <div class="deck-row">
         <button class="deck-side left" id="last-note" aria-label="Open the last note" style="visibility:hidden"></button>
-        <div class="shutter-wrap"><button class="shutter-big" id="btn-shutter" aria-label="Take a photo, then say what you need"><span></span></button><input class="hap" type="checkbox" switch tabindex="-1" aria-hidden="true"></div>
+        <div class="shutter-wrap"><button class="shutter-big" id="btn-shutter" aria-label="Take a photo, then say what you need"><span></span></button></div>
         <button class="deck-side right" id="btn-open-needed" aria-label="Open the Needed list"><span data-icon="list"></span><span class="badge" id="deck-badge" hidden></span></button>
       </div>
       <p class="cap-hint" id="shutter-label">Snap the aisle, then say what you need.</p>
@@ -430,7 +432,7 @@ nav.tabs button.active svg.i { animation: tabPop .5s var(--spring); }
       </div>
       <div class="deck-row">
         <button class="deck-side left" id="ba-last" aria-label="Open the last photo" style="visibility:hidden"></button>
-        <div class="shutter-wrap"><button class="shutter-big" id="ba-shutter" aria-label="Take a photo"><span></span></button><input class="hap" type="checkbox" switch tabindex="-1" aria-hidden="true"></div>
+        <div class="shutter-wrap"><button class="shutter-big" id="ba-shutter" aria-label="Take a photo"><span></span></button></div>
         <button class="deck-side right" id="ba-gallery" aria-label="Open the gallery"><span data-icon="image"></span><span class="badge" id="ba-count" hidden></span></button>
       </div>
       <p class="cap-hint" id="ba-hint"></p>
@@ -2325,8 +2327,8 @@ function attachSheetDrag(sheet, close) {
 // ---------- How the app feels: shutter haptic, tap ripples, small pulses, swipe-away notices ----------
 // Haptics: Android buzzes with navigator.vibrate. iPhones don't have that. Safari (iOS 17.4 and later) gives a tiny haptic tick when
 // the person themselves toggles an <input type="checkbox" switch>; since iOS 26.5 a switch toggled by script no longer does. So the
-// shutter has an invisible switch laid over it: the finger lands on the switch (a real touch, so the phone gives its tick), and the
-// tap is then passed on to the shutter button. Two choices, both on by default and remembered: settings.hapticShutter (the shutter blip) and settings.hapticTaps (the light taps everywhere else).
+// shutter has a transparent label laid over it with a hidden switch inside: the finger lands on the label (a real tap), the label hands it to
+// the switch, which gives the tick, and the tap is then passed on to the shutter button. Two choices, both on by default and remembered: settings.hapticShutter (the shutter blip) and settings.hapticTaps (the light taps everywhere else).
 const hapticShutterOn = () => state.settings.hapticShutter !== false;
 const hapticTapsOn = () => state.settings.hapticTaps !== false;
 // Older iPhones (17.4 to 26.4) also tick when script clicks a hidden switch from inside a tap, so the other controls give a light tap there.
@@ -2349,19 +2351,30 @@ function haptic(kind = "tick") {
   if (kind !== "shutter") hapticTick();
 }
 const HAPTIC_SEL = ".seg button, nav.tabs button, .slot, .cam-lens button, .cam-sound, .menu-list button, .check, .deck-side, .pbtn";
-document.addEventListener("click", e => { if (e.isTrusted && e.target.closest && e.target.closest(HAPTIC_SEL)) haptic("tick"); }, true);// Pass a tap on the invisible switch to the button under it, and keep the switch in step with the button (disabled together) and the setting.
+document.addEventListener("click", e => { if (e.isTrusted && e.target.closest && e.target.closest(HAPTIC_SEL)) haptic("tick"); }, true);// A transparent label laid over an element, with a hidden switch inside it. The finger lands on the label, the phone turns that real tap
+// into a trusted click on the label, the label hands it to the switch, and the switch gives its tick. (The switch itself is never under the
+// finger, and a script can't do this part: since iOS 26.5 only a tap the person really made counts.) `onTap` runs for each tap.
+function attachHapticOverlay(target, onTap) {
+  if (!target || target.querySelector(":scope > .hap")) return;
+  const label = document.createElement("label"), input = document.createElement("input");
+  label.className = "hap"; label.setAttribute("aria-hidden", "true");
+  input.type = "checkbox"; input.setAttribute("switch", ""); input.tabIndex = -1;
+  input.addEventListener("click", e => e.stopPropagation());   // the label's own click is the tap; the switch's click is just the hand-off
+  label.addEventListener("click", e => { if (e.target === label && onTap) onTap(); });
+  label.appendChild(input); target.appendChild(label);
+}
 function wireHaptics() {
-  document.querySelectorAll(".shutter-wrap").forEach(w => {
-    const b = w.querySelector(".shutter-big"), h = w.querySelector(".hap");
-    if (b && h) h.addEventListener("click", () => b.click());
-  });
+  document.querySelectorAll(".shutter-wrap").forEach(w => { const b = w.querySelector(".shutter-big"); attachHapticOverlay(w, () => b.click()); });
   syncHaptics();
 }
+// The overlay switches off with the shutter button (while it is disabled) and with the setting.
 function syncHaptics() {
   document.body.classList.toggle("no-shutter-haptic", !hapticShutterOn());
-  document.querySelectorAll(".shutter-wrap").forEach(w => { const b = w.querySelector(".shutter-big"), h = w.querySelector(".hap"); if (b && h) h.disabled = b.disabled; });
+  document.querySelectorAll(".shutter-wrap").forEach(w => {
+    const b = w.querySelector(".shutter-big"), h = w.querySelector(".hap"); if (!b || !h) return;
+    h.classList.toggle("off", b.disabled); h.querySelector("input").disabled = b.disabled;
+  });
 }
-
 // A soft circle spreads from the finger on every button (a tap indicator). The buttons listed get position/overflow from the CSS.
 const RIPPLE_SEL = ".btn, .fab, .menu-list button, .slot, .deck-side, .seg button, .cam-lens button, .cam-sound, .cam-stop, .pbtn, .check, nav.tabs button";
 document.addEventListener("pointerdown", e => {
@@ -3888,7 +3901,7 @@ function editVariation(v, { prefill = "" } = {}) {
   };
 }
 // The running count of releases since the project began (every pushed update that is not a phone's automatic sync). Add one with each push.
-const REVISION = 59;
+const REVISION = 60;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -3918,6 +3931,8 @@ function renderMore() {
     <div class="card">
       <h3>Feedback</h3>
       <div class="set-row"><label class="grow" for="haptic-shutter">Shutter feedback<br><span class="hint">A tiny blip when you press the shutter. Needs an iPhone with iOS 17.4 or later.</span></label><input type="checkbox" id="haptic-shutter" ${hapticShutterOn() ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
+      <div class="try-wrap" id="haptic-try" style="margin-top:8px"><button type="button" class="btn block">Try the shutter blip</button></div>
+      <p class="hint" style="margin-top:6px">No tap felt? Check Settings > Sounds &amp; Haptics &gt; System Haptics on your iPhone.</p>
       <div class="set-row"><label class="grow" for="haptic-taps">Button feedback<br><span class="hint">A light tap on buttons, tabs and switches. iPhones on iOS 26.5 or later don't allow this one, so it only works on older ones.</span></label><input type="checkbox" id="haptic-taps" ${hapticTapsOn() ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
     </div>
     <div class="card">
@@ -3967,6 +3982,7 @@ function renderMore() {
   v.querySelector("#team-key").onchange = e => teamSetKey(e.target.value);
   v.querySelector("#team-name").onchange = e => { state.team.name = e.target.value.trim(); save(); teamSoon(300); };
   v.querySelector("#btn-team-test").onclick = teamTest;
+  attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
   v.querySelector("#haptic-shutter").onchange = e => { state.settings.hapticShutter = e.target.checked; save(); syncHaptics(); };
   v.querySelector("#haptic-taps").onchange = e => { state.settings.hapticTaps = e.target.checked; save(); };
   v.querySelector("#word-timing").onchange = e => { state.settings.wordTiming = e.target.checked; save(); };
