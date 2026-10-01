@@ -459,7 +459,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 </head>
 <body>
 <header class="top">
-  <h1>Shelf Scan</h1><span class="tagline">BETA 5.2</span>
+  <h1>Shelf Scan</h1><span class="tagline">BETA 5.1.1</span>
   <span class="spacer"></span>
   <span class="store" id="hdr-store"></span>
   <button class="sync-ind" id="sync-ind" hidden></button>
@@ -807,7 +807,7 @@ function canonicalize(products) {
 // ---------- State ----------
 let state;
 // note.status: "queued" (voice clip waiting to be transcribed) → "heard" (has text, waiting to be read by the
-// quick read) → "done". A done note also has rev: "pending" (waiting for the model to review it), "done" or "failed". Also "empty" (nothing said) and "error".
+// quick read) → "done". Also "empty" (nothing said) and "error".
 function freshState() {
   return {
     version: 4,
@@ -815,9 +815,9 @@ function freshState() {
     products: buildSeedProducts(),
     deleted: { products: {} },              // tombstones: id -> time deleted
     outbox: { products: {} },               // changed since last upload
-    notes: [],                              // newest first: { id, at, photos:[id], audio:id|null, secs, text, status, rev, edited, items:[{pid, phrase, qty, why, rev, done}], err }
+    notes: [],                              // newest first: { id, at, photos:[id], audio:id|null, secs, text, status, edited, items:[{pid, phrase, qty, why, rev, done}], err }
     recents: [],
-    settings: { beep: true, camOK: false, smart: true, needKind: "aisle", captureKind: "aisle", models: { asr: false, fast: false } },   // models: which downloads finished
+    settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", models: { asr: false } },   // models: which downloads finished
     sync: { lastPull: 0, lastPush: 0, error: "" },
   };
 }
@@ -832,8 +832,8 @@ function load() {
 function migrate() {
   const f = freshState();
   for (const k of ["deleted", "outbox", "sync", "settings"]) state[k] = Object.assign(f[k], state[k] || {});
-  state.settings.models = Object.assign({ asr: false, fast: false }, state.settings.models || {});
-  if (state.settings.smartV !== 2) { state.settings.models.fast = false; state.settings.smartV = 2; }   // smart reading changed engines in Beta 5.2
+  state.settings.models = { asr: !!(state.settings.models && state.settings.models.asr) };
+  delete state.settings.smart; delete state.settings.smartV; delete state.settings.smartId;   // smart reading was removed in Beta 5.1.1
   state.deleted = { products: state.deleted.products || {} };
   state.outbox = { products: state.outbox.products || {} };
   delete state.tags; delete state.config;   // left over from the scanning app
@@ -845,9 +845,9 @@ function migrate() {
     n.items = n.items || []; n.photos = n.photos || [];
     if (n.kind !== "display") n.kind = "aisle";   // notes from before aisle/display were separate
     if (n.status === "reading") n.status = "heard";
-    if (n.status === "done" && !n.rev) n.rev = "done";
-    // Beta 4 items: conf "ok"/"check" -> dot green/yellow
-    for (const it of n.items) if (it.conf) { it.rev = it.conf === "ok" ? "ok" : "warn"; delete it.conf; }
+    // Every item's dot comes from what's missing or unsure about it (older notes carried review states that no longer exist).
+    for (const it of n.items) { delete it.conf; it.rev = itemRev(it); }
+    delete n.rev;
   }
   // New starter products added to the app show up for existing users.
   const have = new Set(state.products.map(p => p.id));
@@ -1450,35 +1450,17 @@ function resolvePhrase(phrase) {
   const gap = next ? top.sc - next.sc : 9;
   return { p: top.p, clear: gap >= 1 && top.sc >= 2, why: gap < 1 ? "close call" : top.sc < 2 ? "weak match" : "" };
 }
-// Is this product's pack/size number the same as the quantity the model reported? ("12 pack" heard as 12 needed)
-function qtyLooksLikePack(phrase, qty, p) {
-  if (qty == null || !p) return false;
-  const nums = [...speechToDigits(phrase).matchAll(/\d+(?:\.\d+)?/g)].map(m => parseFloat(m[0]));
-  return nums.filter(v => v === qty).length === 1 && (qty === parseInt(p.pack, 10) || parseFloat(p.size) === qty);
-}
-// One list item. `why` says what is still missing or uncertain ("" when complete and clear).
-// rev is the review status behind the colored dot: "" = quick read only (red), "ok" = verified (green), "warn" = reviewed but still unsure (yellow).
+// One list item. `why` says what is missing or uncertain ("" when complete and clear).
+// rev is the status behind the colored dot: "ok" = green (clear and complete), "warn" = yellow (unsure: a close call or weak match),
+// "miss" = red (missing something: no product recognized, or no quantity).
+const itemRev = it => (!it.why ? "ok" : it.why === "no match" || it.why === "how many?" ? "miss" : "warn");
 function buildItem(phrase, qty, r) {
   const why = !r ? "no match" : !r.clear ? r.why : qty == null ? "how many?" : "";
-  return { pid: r ? r.p.id : null, phrase: phrase.trim(), qty, why, rev: "", done: false };
+  return { pid: r ? r.p.id : null, phrase: phrase.trim(), qty, why, rev: itemRev({ why }), done: false };
 }
-// Model answer for one note -> note items.
-function itemsFromModel(list) {
-  const items = [];
-  for (const it of list) {
-    if (!it || typeof it !== "object" || typeof it.product !== "string" || !it.product.trim()) continue;
-    let qty = it.qty == null || it.qty === "" ? null : Math.round(Number(it.qty));
-    if (!(qty > 0 && qty < 1000)) qty = null;
-    const r = resolvePhrase(it.product);
-    if (r && qtyLooksLikePack(it.product, qty, r.p)) qty = null;
-    items.push(buildItem(it.product, qty, r));
-  }
-  return items;
-}
-
 // ---------- Quick read (no language model) ----------
 // Splits a note at each brand said, finds the quantity nearest each one, and matches each piece to a product.
-// Instant, so a note has a usable list the moment it is heard; the language model reviews it later.
+// Instant, so a note has a usable list the moment it is heard.
 const UNIT_WORDS = new Set(["oz", "ounce", "ounces", "l", "liter", "liters", "litre", "litres", "leader", "leaders", "litter", "litters", "ml", "pack", "packs", "pk", "ct", "count", "fl"]);
 const LEAD_FILLER = new Set(["of", "the", "a", "an", "more", "need", "needs", "like", "about", "maybe", "case", "cases", "we", "i", "just", "some"]);
 function quickItems(text) {
@@ -1511,36 +1493,11 @@ function quickItems(text) {
   });
 }
 
-// ---------- Review: compare the language model's reading with the quick read ----------
-// The model is only a second opinion, and a small one (on its own it got 36 of 49 test notes right, the quick read 44),
-// so it can confirm an item but never overrule the quick read:
-// - same product and quantity, and the quick read had no doubts: green (verified);
-// - the model supplies a quantity the quick read lacked, for a clear product: green;
-// - anything else (a close call it can't settle, a different product or number, an item only one of them heard): yellow, with the reason.
-// Crossed-off items are left as they are.
-function mergeReview(oldItems, modelItems) {
-  const kept = oldItems.filter(it => it.done), open = oldItems.filter(it => !it.done);
-  const used = new Set(), out = [];
-  const take = pred => { const i = open.findIndex((q, k) => !used.has(k) && pred(q)); if (i >= 0) used.add(i); return i >= 0 ? open[i] : null; };
-  const item = (q, why, qty = q.qty) => ({ pid: q.pid, phrase: q.phrase, qty, why, rev: why ? "warn" : "ok", done: false });
-  for (const m of modelItems) {
-    const q = (m.pid && take(q => q.pid === m.pid)) || (m.pid && take(q => q.pid && productById(q.pid) && m.pid && productById(m.pid) && productById(q.pid).brand === productById(m.pid).brand)) || null;
-    if (!q) { out.push({ pid: m.pid, phrase: m.phrase, qty: m.qty, why: m.pid ? "only heard on review" : "no match", rev: "warn", done: false }); continue; }
-    if (q.pid !== m.pid) { out.push(item(q, "model read it differently")); continue; }
-    if (q.qty != null && m.qty != null && q.qty !== m.qty) { out.push(item(q, `quantity unsure (${q.qty} or ${m.qty}?)`)); continue; }
-    if (q.why === "close call" || q.why === "weak match") { out.push(item(q, q.why)); continue; }   // a small model can't settle that
-    const qty = q.qty != null ? q.qty : m.qty;
-    out.push(item(q, qty == null ? "how many?" : "", qty));
-  }
-  open.forEach((q, k) => { if (!used.has(k)) out.push(item(q, q.why || "not confirmed")); });
-  return [...kept, ...out];
-}// ---------- On-device voice models and the note queue ----------
-// A note goes: queued (voice clip waiting) → heard (text waiting for the language model) → reading → done.
-// The queue runs in the background (oldest note first, listening before reading) so you can keep snapping
-// shelves, or walk to the back room, while the phone works through it.
+// ---------- On-device speech model and the note queue ----------
+// A note goes: queued (voice clip waiting) → heard (words) → done (items on the list from the quick read).
+// The queue runs in the background so you can keep snapping shelves, or walk to the back room, while the phone works.
 const MODEL_INFO = {
-  asr: { name: "Speech to text (required)", detail: "Whisper Base", size: "about 80 MB" },
-  fast: { name: "Smart reading (optional)", detail: "Qwen 2.5 0.5B · needs iOS 26 or newer", size: "about 300 MB" },
+  asr: { name: "Speech to text", detail: "Whisper Base", size: "about 80 MB" },
 };
 const MODEL_CACHE_HINT = { asr: "whisper-base.en" };
 const ai = {
@@ -1549,10 +1506,7 @@ const ai = {
   pumping: false, pending: new Map(), seq: 0, wake: null,
 };
 const haveModel = key => !!state.settings.models[key];
-// Smart reading is available only where WebGPU exists and passed its accuracy check (see smart.js).
-function activeLLM() { return haveModel("fast") && smart.supported && !smart.bad ? "fast" : null; }
-const voiceReady = () => haveModel("asr");   // the quick read needs only the speech model
-const smartOn = () => state.settings.smart !== false && !!activeLLM();
+const voiceReady = () => haveModel("asr");
 
 function getWorker() {
   if (ai.worker) return ai.worker;
@@ -1560,12 +1514,12 @@ function getWorker() {
   w.onmessage = e => {
     const m = e.data;
     if (m.type === "progress") { ai.dl.loaded = m.loaded; ai.dl.total = m.total; updateModelProgress(); return; }
-    if (m.type === "probe") { ai.probe = m; if (view === "more") renderMore(); return; }
+    if (m.type === "probe") { ai.probe = m; return; }
     const p = ai.pending.get(m.id != null ? m.id : "load:" + m.key);
     if (!p) return;
     if (m.type === "error") { ai.pending.delete(m.id != null ? m.id : "load:" + m.key); p.reject(new Error(m.message)); }
     else if (m.type === "ready") { ai.device[m.key] = m.device; ai.pending.delete("load:" + m.key); p.resolve(m); }
-    else if (m.type === "text" || m.type === "items") { ai.pending.delete(m.id); p.resolve(m); }
+    else if (m.type === "text") { ai.pending.delete(m.id); p.resolve(m); }
   };
   w.onerror = e => failAllPending(new Error(e.message || "The voice worker stopped"));
   ai.worker = w;
@@ -1599,12 +1553,11 @@ async function downloadModels(keys) {
       if (haveModel(key)) continue;
       ai.dl = { key, loaded: 0, total: 0, error: "" };
       if (view === "more") renderMore();
-      if (key === "fast") await smartEngine(p => { ai.dl.pct = Math.round((p.progress || 0) * 100); ai.dl.text = p.text || ""; updateModelProgress(); });
-      else await workerCall({ type: "load", key });     // no timeout: it's a big download
-      state.settings.models[key] = true; if (key === "fast") state.settings.smartId = smart.modelId; save();
+      await workerCall({ type: "load", key });     // no timeout: it's a download
+      state.settings.models[key] = true; save();
     }
     ai.dl = { key: null, loaded: 0, total: 0, error: "" };
-    toast("Voice models ready");
+    toast("Speech model ready");
   } catch (e) {
     ai.dl = { key: null, loaded: 0, total: 0, error: e.message || "Download failed" };
     failAllPending(e);
@@ -1614,10 +1567,9 @@ async function downloadModels(keys) {
 function updateModelProgress() {
   const bar = document.querySelector("[data-mprog]");
   if (!bar || !ai.dl.key) return;
-  const t = ai.dl.total, pct = ai.dl.key === "fast" ? (ai.dl.pct || 0) : t ? Math.min(100, Math.round(ai.dl.loaded / t * 100)) : 0;
+  const t = ai.dl.total, pct = t ? Math.min(100, Math.round(ai.dl.loaded / t * 100)) : 0;
   bar.querySelector("i").style.width = pct + "%";
   const lab = document.querySelector("[data-mprog-label]");
-  if (ai.dl.key === "fast") { if (lab) lab.textContent = `${MODEL_INFO.fast.name}: ${pct}%${ai.dl.text ? " · " + ai.dl.text.replace(/^.*?(\d+MB fetched)/, "$1").slice(0, 60) : ""}`; return; }
   if (lab) lab.textContent = t ? `${MODEL_INFO[ai.dl.key].name}: ${(ai.dl.loaded / 1e6).toFixed(0)} of ${(t / 1e6).toFixed(0)} MB` : `${MODEL_INFO[ai.dl.key].name}: starting…`;
 }
 async function deleteModels() {
@@ -1626,45 +1578,34 @@ async function deleteModels() {
     const c = await caches.open("transformers-cache");
     for (const req of await c.keys()) await c.delete(req);
   } catch (e) { /* nothing cached */ }
-  await smartDelete();
-  state.settings.models = { asr: false, fast: false };
+  state.settings.models = { asr: false };
   ai.ready = {}; save(); renderAll();
 }
 // If the phone cleared the downloaded files (low storage), forget that they were downloaded so nothing re-downloads in the background.
+// Also frees the space of the smart-reading models from earlier betas (it was removed: it crashed iPhone Safari).
 async function verifyModels() {
   try {
     if (!("caches" in self)) return;
+    for (const name of await caches.keys()) if (name.startsWith("webllm")) await caches.delete(name);
     const c = await caches.open("transformers-cache");
+    for (const req of await c.keys()) if (req.url.includes("Qwen2.5-0.5B-Instruct")) await c.delete(req);
     const urls = (await c.keys()).map(r => r.url);
     let changed = false;
     for (const key of Object.keys(MODEL_CACHE_HINT)) {
       if (state.settings.models[key] && !urls.some(u => u.includes(MODEL_CACHE_HINT[key]))) { state.settings.models[key] = false; changed = true; }
     }
-    // The first smart-reading model (a 786 MB file that crashed iPhone Safari) is no longer used: free its space.
-    for (const req of await c.keys()) if (req.url.includes("Qwen2.5-0.5B-Instruct")) await c.delete(req);
-    if (state.settings.models.fast && !(await smartHasModel())) { state.settings.models.fast = false; changed = true; }
     if (changed) { save(); renderAll(); }
   } catch (e) { /* ignore */ }
 }
 
 // ---- The queue ----
-// A note goes: queued (voice clip waiting) -> heard (text) -> done (quick read items on the list, dots red).
-// Then, when the smart-reading model is ready, it reviews each note in the background and turns the dots
-// green (verified) or yellow (still missing or unsure). Listening and the quick read always come first.
 const nextNote = status => [...state.notes].reverse().find(n => n.status === status);
-const reviewQueue = () => state.notes.filter(n => n.status === "done" && n.rev === "pending" && !n.edited);
-// Notes with doubtful items are reviewed first, then the rest, oldest first.
-function nextReview() {
-  const q = reviewQueue().reverse();
-  return q.find(n => n.items.some(it => !it.done && it.why)) || q[0] || null;
-}
 function pendingNotes() { return state.notes.filter(n => n.status === "queued" || n.status === "heard"); }
 // What's happening, for display.
 function queueState() {
-  const left = pendingNotes(), rv = smartOn() ? reviewQueue().length : 0;   // reviews wait on the model, not on you
+  const left = pendingNotes();
   if (left.length && !haveModel("asr")) return { busy: false, blocked: true, text: `${left.length} note${left.length === 1 ? "" : "s"} saved. Download the speech model in More to read ${left.length === 1 ? "it" : "them"}.` };
   if (left.length) return { busy: true, text: `Listening to ${left.length} note${left.length === 1 ? "" : "s"}…` };
-  if (rv) return { busy: true, text: ai.llmWarm ? `Reviewing ${rv} note${rv === 1 ? "" : "s"}…` : "Smart reading is warming up…" };
   return { busy: false, text: "" };
 }
 async function holdScreenOn() {
@@ -1675,7 +1616,6 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden && ai
 
 async function pump() {
   if (ai.pumping) return;
-  if (!smartOn()) finalizeUnreviewed();
   ai.pumping = true; holdScreenOn(); renderQueueStatus();
   try {
     for (;;) {
@@ -1683,8 +1623,6 @@ async function pump() {
       if (n) { quickRead(n); continue; }
       n = nextNote("queued");
       if (n && haveModel("asr")) { await listenTo(n); continue; }
-      n = smartOn() ? nextReview() : null;
-      if (n) { await reviewNote(n); continue; }
       break;
     }
   } finally { ai.pumping = false; releaseScreen(); renderAll(); }
@@ -1707,57 +1645,18 @@ function cleanTranscript(t) {
   t = String(t || "").replace(/\[[^\]]*\]|\([^)]*\)|\*[^*]*\*/g, " ").replace(/\s+/g, " ").trim();
   return /[a-z0-9]/i.test(t) ? t : "";
 }
-// The instant read: items on the list the moment a note is heard (dots start red).
+// The instant read: items on the list the moment a note is heard.
+// Green = clear and complete. Yellow = unsure (close call, weak match). Red = missing something (no quantity, no product).
 function quickRead(n) {
   try { n.items = quickItems(n.text); } catch (e) { n.items = []; }
   n.status = "done"; n.err = ""; n.edited = false;
-  if (smartOn()) n.rev = "pending";
-  else { n.rev = "done"; settleItems(n); }   // no model to wait for: the quick read's own flags decide the dots
+  settleItems(n);
   save(); renderAll();
 }
-// Without smart reading an item is green when it's clear and complete, yellow when something is missing or unsure.
-function settleItems(n) { for (const it of n.items) if (!it.done && !it.rev) it.rev = it.why ? "warn" : "ok"; }
-function finalizeUnreviewed() {
-  let any = false;
-  for (const n of state.notes) if (n.status === "done" && n.rev === "pending") { n.rev = "done"; settleItems(n); any = true; }
-  if (any) { save(); renderAll(); }
-}
-// Smart review: the model re-reads the words and its answer is compared with the quick read.
-async function reviewNote(n) {
-  const key = activeLLM();
-  ai.reviewing = n.id; renderAll();
-  try {
-    await warmLLM();
-    const items = await Promise.race([smartExtract(n.text), new Promise((_, rej) => setTimeout(() => rej(new Error("Took too long")), 120000))]);
-    if (n.edited) { n.rev = "done"; }
-    else if (!items) { n.rev = "failed"; n.items.forEach(it => { if (!it.done && !it.rev) { it.rev = "warn"; it.why = it.why || "couldn't be verified"; } }); }
-    else { n.items = mergeReview(n.items, itemsFromModel(items)); n.rev = "done"; }
-  } catch (e) { n.rev = "failed"; }
-  ai.reviewing = null;
-  save(); renderAll();
-}
-// Load the language model once; a crash while loading (low memory) switches smart reading off next time.
-let llmLoading = null;
-function warmLLM() {
-  if (!activeLLM() || smart.engine) return Promise.resolve();
-  if (llmLoading) return llmLoading;
-  try { localStorage.setItem("shelfscan.b5.loading", "1"); } catch (e) {}
-  llmLoading = smartEngine().then(() => {
-    try { localStorage.removeItem("shelfscan.b5.loading"); } catch (e) {}
-    llmLoading = null; renderAll();
-  }, e => { try { localStorage.removeItem("shelfscan.b5.loading"); } catch (x) {} llmLoading = null; renderAll(); throw e; });
-  return llmLoading;
-}
-// At startup: get the models ready in the background so the first note isn't waiting on them.
+function settleItems(n) { for (const it of n.items) if (!it.done) it.rev = itemRev(it); }
+// At startup: get the speech model ready in the background so the first note isn't waiting on it.
 function warmUp() {
-  let crashed = false;
-  try { crashed = localStorage.getItem("shelfscan.b5.loading") === "1"; localStorage.removeItem("shelfscan.b5.loading"); } catch (e) {}
-  if (crashed && state.settings.smart !== false) {
-    state.settings.smart = false; save();
-    setTimeout(() => toast("Smart reading stopped the app last time, so it's off. You can turn it back on in More."), 1500);
-  }
   if (haveModel("asr")) workerCall({ type: "load", key: "asr" }, 0).then(() => (ai.ready.asr = true), () => {});
-  if (smartOn()) warmLLM().then(() => pump(), e => { if (smart.bad) toast(e.message); finalizeUnreviewed(); });
 }
 // Put a note back in line: to be listened to again, or read again.
 function requeue(n) {
@@ -1766,83 +1665,6 @@ function requeue(n) {
   save(); renderAll(); pump();
 }
 function renderQueueStatus() { if (view === "needed" || view === "notes" || view === "capture") renderAll(); }
-// ---------- Smart reading (language model on the graphics chip, via WebLLM) ----------
-// Optional and iOS 26+ only (needs WebGPU). The model is fetched and loaded piece by piece, which keeps
-// memory low enough for an iPhone 13. It double-checks the quick read; it never has to be there for the app to work.
-const WEBLLM_URL = "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.79/+esm";
-const smart = { lib: null, engine: null, loading: null, supported: null, f16: false, modelId: "", bad: false };
-
-// Is there a graphics chip we can use? Also picks the model build to match it.
-async function detectSmart() {
-  try {
-    const ad = navigator.gpu ? await navigator.gpu.requestAdapter() : null;
-    smart.supported = !!ad; smart.f16 = !!ad && ad.features.has("shader-f16");
-  } catch (e) { smart.supported = false; }
-  smart.modelId = smart.f16 ? "Qwen2.5-0.5B-Instruct-q4f16_1-MLC" : "Qwen2.5-0.5B-Instruct-q4f32_1-MLC";
-  if (view === "more") renderMore();
-  return smart.supported;
-}
-const smartLib = async () => smart.lib || (smart.lib = await import(WEBLLM_URL));
-
-const SMART_SYSTEM = `A store merchandiser left a short voice note about one empty or low shelf spot. List each product they need restocked, and how many.
-Reply with JSON only: {"items":[{"product":"","qty":null}]}
-- product: the brand, flavor, size and pack the speaker said, in their own words (for example "diet coke 12 pack" or "sprite 2 liter").
-- qty: how many they need, as a number. A pack size like "twelve pack" is NOT the quantity. Use null if they give no amount. If they change their mind, use the last number. A couple is 2.
-- If no product is named, reply {"items":[]}.`;
-const SMART_SHOTS = [
-  ["Need like three Barq's root beer twelve packs, shelf is bare.", { items: [{ product: "barq's root beer 12 pack", qty: 3 }] }],
-  ["Sprite Zero twenty ounce, four, and Powerade orange twenty ounce, six of those.", { items: [{ product: "sprite zero 20 ounce", qty: 4 }, { product: "powerade orange 20 ounce", qty: 6 }] }],
-  ["Um, the Fanta pineapple two liter, I'd say maybe five, no, six.", { items: [{ product: "fanta pineapple 2 liter", qty: 6 }] }],
-  ["We're out of the Fresca grapefruit cans.", { items: [{ product: "fresca grapefruit cans", qty: null }] }],
-  ["Nothing here but dust, honestly.", { items: [] }],
-];
-const SMART_SCHEMA = JSON.stringify({
-  type: "object",
-  properties: { items: { type: "array", items: { type: "object", properties: { product: { type: "string" }, qty: { anyOf: [{ type: "integer" }, { type: "null" }] } }, required: ["product", "qty"] } } },
-  required: ["items"],
-});
-const smartMessages = note => [
-  { role: "system", content: SMART_SYSTEM },
-  ...SMART_SHOTS.flatMap(([u, a]) => [{ role: "user", content: u }, { role: "assistant", content: JSON.stringify(a) }]),
-  { role: "user", content: note },
-];
-
-// The engine: downloads on first use (progress reported), then loads from the phone's cache.
-function smartEngine(onProgress) {
-  if (smart.engine) return Promise.resolve(smart.engine);
-  if (smart.loading) return smart.loading;
-  smart.loading = (async () => {
-    const lib = await smartLib();
-    const engine = await lib.CreateWebWorkerMLCEngine(new Worker("llm-worker.js", { type: "module" }), smart.modelId,
-      { initProgressCallback: p => onProgress && onProgress(p) });
-    // Some graphics chips quietly give wrong answers with small models: check with a known phrase before trusting it.
-    const t = await smartAsk(engine, "Four of the Sprite two liters please.");
-    const it = t && t[0];
-    if (!(t && t.length === 1 && /sprite/i.test(String(it.product)) && Number(it.qty) === 4)) {
-      smart.bad = true; try { await engine.unload(); } catch (e) {}
-      throw new Error("This phone's graphics chip didn't pass the accuracy check, so smart reading is off.");
-    }
-    smart.engine = engine; ai.device.fast = "webgpu"; ai.llmWarm = true;
-    return engine;
-  })().finally(() => { smart.loading = null; });
-  return smart.loading;
-}
-async function smartAsk(engine, text) {
-  const r = await engine.chat.completions.create({
-    messages: smartMessages(text), temperature: 0, max_tokens: 160,
-    response_format: { type: "json_object", schema: SMART_SCHEMA },
-  });
-  try { const j = JSON.parse(r.choices[0].message.content); return Array.isArray(j.items) ? j.items : null; } catch (e) { return null; }
-}
-async function smartExtract(text) { return smartAsk(await smartEngine(), text); }
-async function smartHasModel() {
-  try { return await (await smartLib()).hasModelInCache(smart.modelId); } catch (e) { return false; }
-}
-async function smartDelete() {
-  try { if (smart.engine) { await smart.engine.unload(); } } catch (e) {}
-  smart.engine = null; ai.llmWarm = false;
-  try { await (await smartLib()).deleteModelAllInfoInCache(smart.modelId); } catch (e) {}
-}
 // ============================================================
 // Shared data on GitHub
 // ============================================================
@@ -2500,7 +2322,7 @@ function neededRows(kind = null) {
     if (it.qty == null) r.unknown = true; else r.qty += it.qty;
     if (!r.why && (it.why || !p)) r.why = it.why || "no match";
     const d = dotOf(it);
-    if (d === "red" || (d === "yellow" && r.dot === "green")) r.dot = d;
+    if (d === "red" || (d === "yellow" && r.dot === "green")) r.dot = d;   // a row shows its worst item
     if (!it.done) r.done = false;
     r.src.push({ n, idx, it });
   });
@@ -2519,8 +2341,8 @@ function renderNeeded() {
     html += `<div class="empty">${icon("list")}<h3>Nothing needed ${kind === "display" ? "on displays" : "in aisles"} yet</h3><p>Snap a ${kind === "display" ? "display" : "shelf"} and say what's missing. It lands here.</p></div>`;
     v.innerHTML = html; wireKindSeg(v); v.onclick = null; return;
   }
-  const look = rows.filter(r => r.dot === "yellow" && !r.done);
-  if (look.length) html += `<div class="banner warn">${icon("warn")}<span class="grow">${look.length} ${look.length === 1 ? "item needs" : "items need"} a look. Tap a yellow row to check it against the photo.</span></div>`;
+  const look = rows.filter(r => r.dot !== "green" && !r.done);
+  if (look.length) html += `<div class="banner warn">${icon("warn")}<span class="grow">${look.length} ${look.length === 1 ? "item needs" : "items need"} a look. Tap a yellow or red row to check it against the photo.</span></div>`;
   // Group by product group, unmatched first.
   const groups = new Map();
   for (const r of rows) { const g = r.p ? r.p.category : "Not matched to a product"; (groups.get(g) || groups.set(g, []).get(g)).push(r); }
@@ -2551,7 +2373,7 @@ function needRow(r) {
   return `<div class="item need tap${r.done ? " done" : ""}" data-k="${esc(r.key)}">
     <button class="check${r.done ? " on" : ""}" data-a="toggle" aria-label="Cross off">${icon("check")}</button>
     ${r.p ? thumbHtml(r.p) : `<div class="thumb">?</div>`}
-    <div class="grow"><div class="name"><i class="sdot ${r.dot}" title="${dotTitle(r.dot)}"></i>${esc(name)}</div><div class="sub">${esc(sub)}${r.src.length > 1 ? ` <span class="pill">${r.src.length} notes</span>` : ""}</div>${r.dot === "yellow" && r.why && !r.done ? `<div class="why">${esc(r.why)}</div>` : ""}</div>
+    <div class="grow"><div class="name"><i class="sdot ${r.dot}" title="${dotTitle(r.dot)}"></i>${esc(name)}</div><div class="sub">${esc(sub)}${r.src.length > 1 ? ` <span class="pill">${r.src.length} notes</span>` : ""}</div>${r.dot !== "green" && r.why && !r.done ? `<div class="why">${esc(r.why)}</div>` : ""}</div>
     <button class="qty-tap" data-a="qty" aria-label="Quantity"><b>${qtyLabel(r)}</b><span>${unit}</span></button>
     <button class="jump-btn" data-a="jump" aria-label="Go to the note this came from">${icon("jump")}</button></div>`;
 }
@@ -2609,7 +2431,7 @@ function clearAllNotes() {
 
 // ---------- Notes ----------
 function noteStatusPill(n) {
-  const m = { queued: ["Waiting", ""], heard: ["Heard", ""], done: n.rev === "pending" ? [ai.reviewing === n.id ? "Reviewing…" : "Quick read", ""] : n.rev === "failed" ? ["Not verified", "warn"] : ["Reviewed", "ok"], error: ["Problem", "warn"], empty: ["Nothing heard", "warn"] }[n.status] || ["", ""];
+  const m = { queued: ["Waiting", ""], heard: ["Heard", ""], done: ["Read", "ok"], error: ["Problem", "warn"], empty: ["Nothing heard", "warn"] }[n.status] || ["", ""];
   return `<span class="pill ${m[1]}">${m[0]}</span>`;
 }
 function renderNotes() {
@@ -2646,7 +2468,7 @@ const addItemBtn = () => `<button class="btn sm quiet" data-a="additem" style="m
 function noteItem(it, i) {
   const p = itemProduct(it);
   return `<div class="note-item item tap${it.done ? " done" : ""}" data-i="${i}">${p ? thumbHtml(p) : `<div class="thumb">?</div>`}
-    <div class="grow"><div class="name"><i class="sdot ${dotOf(it)}" title="${dotTitle(dotOf(it))}"></i>${esc(p ? pName(p) : `“${it.phrase}”`)}</div><div class="sub">${esc(p ? pSub(p) : "No matching product")}</div>${it.rev === "warn" && it.why ? `<div class="why">${esc(it.why)}</div>` : ""}</div>
+    <div class="grow"><div class="name"><i class="sdot ${dotOf(it)}" title="${dotTitle(dotOf(it))}"></i>${esc(p ? pName(p) : `“${it.phrase}”`)}</div><div class="sub">${esc(p ? pSub(p) : "No matching product")}</div>${it.why ? `<div class="why">${esc(it.why)}</div>` : ""}</div>
     <div class="qty-tap" aria-label="Quantity"><b>${it.qty ?? "?"}</b></div></div>`;
 }
 async function onNotesClick(e) {
@@ -2740,14 +2562,14 @@ function jumpToNote(id, idx) {
 
 
 // ---------- Status dots ----------
-// red = quick read only; yellow = reviewed but something is missing or unsure; green = verified (or you confirmed it).
+// green = clear and complete (or you confirmed it); yellow = unsure (a close call); red = missing something (no quantity or product).
 const dotOf = it => (it.rev === "ok" ? "green" : it.rev === "warn" ? "yellow" : "red");
-const dotTitle = d => ({ red: "Not reviewed yet", yellow: "Reviewed, but check it", green: "Verified" })[d];
+const dotTitle = d => ({ red: "Missing something", yellow: "Unsure, check it", green: "Clear and complete" })[d];
 // You changed an item by hand: it's now yours. The model won't touch this note again.
 function touchItem(n, it, confirmed = false) {
   n.edited = true;
   it.why = !it.pid ? "no match" : it.qty == null ? "how many?" : "";
-  it.rev = it.why ? "warn" : "ok";
+  it.rev = itemRev(it);
 }
 
 // ---------- Check an item against its photo ----------
@@ -2845,29 +2667,25 @@ function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
   const dot = have ? "ok" : busy ? "warn" : "";
   return `<div class="set-row"><span class="status-dot ${dot}"></span><div class="grow"><b>${esc(i.name)}</b><br><span class="hint">${esc(i.detail)} · ${esc(i.size)}</span></div>
-    ${key === "fast" && smart.supported === false ? `<span class="small muted">Not on this phone</span>` : key === "fast" && smart.bad ? `<span class="small muted">Failed check</span>` : have ? `<span class="small muted">Ready</span>` : busy ? `<span class="small muted">Downloading</span>` : `<button class="btn sm primary" data-dl="${key}" ${ai.dl.key ? "disabled" : ""}>${icon("download")}Download</button>`}</div>`;
+    ${have ? `<span class="small muted">Ready</span>` : busy ? `<span class="small muted">Downloading</span>` : `<button class="btn sm primary" data-dl="${key}" ${ai.dl.key ? "disabled" : ""}>${icon("download")}Download</button>`}</div>`;
 }
 function renderMore() {
   const v = $("#view-more");
   const s = syncStatus();
   const on = uploadsEnabled();
-  const anyModel = ["asr", "fast"].some(haveModel);
   const dl = ai.dl.key;
-  const dev = ai.device.fast || "";
   v.innerHTML = `
     <div class="list-head"><h2>More</h2></div>
     <div class="card">
       <h3>Voice</h3>
-      <p class="hint">Listening and reading run on this phone, so they work with no signal. Models download once (use Wi-Fi), then stay on the phone.</p>
+      <p class="hint">Listening runs on this phone, so it works with no signal. The speech model downloads once (use Wi-Fi), then stays on the phone.</p>
       ${modelRow("asr")}
       <p class="hint" style="margin:-4px 0 6px 21px">Turns your recording into words and gives you a list right away.</p>
-      ${modelRow("fast")}
-      <p class="hint" style="margin:-4px 0 6px 21px">${smart.supported === false ? "Needs iOS 26 or newer. Your list still works without it: items are green when clear and complete, yellow when something is missing or unsure." : "Double-checks each note in the background and turns its dot green or yellow. Needs iOS 26 or newer."}</p>
-      ${haveModel("fast") ? `<div class="set-row"><label class="grow" for="smart"><b>Use smart reading</b><br><span class="hint">${ai.llmWarm ? `Ready. Running on the phone's ${dev === "webgpu" ? "graphics chip" : "processor"}.` : "Warms up in the background when the app opens."}</span></label><input type="checkbox" id="smart" ${state.settings.smart !== false ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>` : ""}
       ${dl ? `<div class="mprog" data-mprog><i></i></div><p class="hint" data-mprog-label style="margin-top:6px">Starting…</p>` : ""}
       ${ai.dl.error ? `<div class="banner warn" style="margin-top:8px">${icon("warn")}<span class="grow">${esc(ai.dl.error)}</span></div>` : ""}
-      ${anyModel && !dl ? `<div class="stack" style="margin-top:10px"><button class="btn block quiet" id="btn-del-models">Delete downloaded models</button></div>` : ""}
-    </div>    <div class="card">
+      ${haveModel("asr") && !dl ? `<div class="stack" style="margin-top:10px"><button class="btn block quiet" id="btn-del-models">Delete the speech model</button></div>` : ""}
+    </div>
+    <div class="card">
       <h3>Shared data</h3>
       <p class="hint">The product list is shared with everyone who uses Shelf Scan. Your notes and photos stay on this phone.</p>
       <div class="set-row"><span class="status-dot ${s.dot}"></span><span class="grow small">${esc(s.text)}</span></div>
@@ -2906,16 +2724,15 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 5.2 (voice notes) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan Beta 5.1.1 (voice notes) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
   v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
   v.querySelectorAll("[data-dl]").forEach(b => (b.onclick = () => downloadModels([b.dataset.dl])));
-  const sm = v.querySelector("#smart"); if (sm) sm.onchange = e => { state.settings.smart = e.target.checked; save(); renderAll(); if (e.target.checked) { warmUp(); pump(); } };
   const del = v.querySelector("#btn-del-models"); if (del) del.onclick = async () => {
-    if (!(await confirmDialog("Delete the downloaded voice models? Notes already read keep their lists. New notes wait until you download them again.", { ok: "Delete", danger: true }))) return;
-    await deleteModels(); toast("Models deleted");
+    if (!(await confirmDialog("Delete the speech model? Notes already read keep their lists. New notes wait until you download it again.", { ok: "Delete", danger: true }))) return;
+    await deleteModels(); toast("Speech model deleted");
   };
   v.querySelector("#btn-export").onclick = exportBackup;
   v.querySelector("#btn-restore").onclick = () => restoreBackupText(v.querySelector("#backup-text").value);
@@ -3042,7 +2859,7 @@ save();
 syncAllIndicators(false);
 setTimeout(sweepMedia, 3000);   // tidy photos and recordings left over from deleted notes
 if (state.settings.camOK) startCamera();
-detectSmart().then(() => verifyModels()).then(() => { warmUp(); pump(); });   // get the models ready, and pick up anything still waiting from last time
+verifyModels().then(() => { warmUp(); pump(); });   // get the models ready, and pick up anything still waiting from last time
 
 // Pull everyone's latest product list on open, then upload anything waiting.
 if (navigator.onLine) pullShared().catch(() => {}).finally(() => scheduleUpload(1000));
