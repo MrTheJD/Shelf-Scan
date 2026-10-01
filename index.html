@@ -172,10 +172,14 @@ body.kb-open .dock { display: none; }
 
 /* ---------- Capture: a viewfinder with the controls under the thumb ---------- */
 #view-capture { padding: 0; }
+#view-ba { padding: 0; }
 #view-capture.active { display: flex; flex-direction: column; gap: 12px; height: calc(100dvh - 44px - var(--safe-t) - var(--tab-h) - var(--safe-b)); min-height: 440px; padding: 12px 16px 12px; }
+#view-ba.active { display: flex; flex-direction: column; gap: 12px; height: calc(100dvh - 44px - var(--safe-t) - var(--tab-h) - var(--safe-b)); min-height: 440px; padding: 12px 16px 12px; }
 #view-capture > * + * { margin-top: 0; }
+#view-ba > * + * { margin-top: 0; }
 .camera { position: relative; flex: 1 1 auto; min-height: 220px; border-radius: 24px; overflow: hidden; background: #000; border: 3px solid var(--red); transition: border-color .3s ease; }
 #view-capture.mode-display .camera { border-color: var(--ink); }
+#view-ba.mode-display .camera { border-color: var(--ink); }
 .camera video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; animation: fade .4s ease both; }
 .camera.flash::after { content: ""; position: absolute; inset: 0; z-index: 6; background: #fff; animation: fadeOut .35s ease forwards; pointer-events: none; }
 .cam-off, .cam-wait { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; color: #D9D6D3; }
@@ -185,6 +189,7 @@ body.kb-open .dock { display: none; }
 .cam-off .btn.quiet { background: rgba(255, 255, 255, .14); color: #fff; }
 .cam-chip { position: absolute; top: 12px; left: 12px; z-index: 3; padding: 6px 12px; border-radius: 999px; background: var(--red); color: var(--on-red); font-size: 11px; font-weight: 800; letter-spacing: .16em; transition: background-color .3s ease; }
 #view-capture.mode-display .cam-chip { background: var(--ink); color: var(--on-ink); }
+#view-ba.mode-display .cam-chip { background: var(--ink); color: var(--on-ink); }
 .cam-stop { position: absolute; top: 8px; right: 8px; z-index: 3; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, .5); color: #fff; display: flex; align-items: center; justify-content: center; }
 .cam-stop svg.i { width: 18px; height: 18px; }
 .queue-line { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 3; margin: 0; padding: 7px 14px; border-radius: 999px; background: rgba(0, 0, 0, .62); color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; display: flex; align-items: center; gap: 8px; max-width: calc(100% - 24px); }
@@ -201,7 +206,9 @@ body.kb-open .dock { display: none; }
 .shutter-big:active { transform: scale(.9); transition-duration: .1s; }
 .shutter-big:disabled { opacity: .4; }
 #view-capture.mode-display .shutter-big { border-color: var(--ink); }
+#view-ba.mode-display .shutter-big { border-color: var(--ink); }
 #view-capture.mode-display .shutter-big span { background: var(--ink); }
+#view-ba.mode-display .shutter-big span { background: var(--ink); }
 .cap-hint { margin: 0; text-align: center; font-size: 13px; color: var(--muted); }
 #model-banner { flex: none; }
 
@@ -275,7 +282,9 @@ details.owner summary::-webkit-details-marker { display: none; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 
 body[data-view="capture"] main { padding: 0; max-width: none; }
+body[data-view="ba"] main { padding: 0; max-width: none; }
 body[data-view="capture"] #view-capture.active { max-width: 640px; margin: 0 auto; }
+body[data-view="ba"] #view-ba.active { max-width: 640px; margin: 0 auto; }
 .item.compact { min-height: 52px; padding-top: 8px; padding-bottom: 8px; }
 
 .by-tag{display:inline-flex;align-items:center;font-size:12px;font-weight:700;line-height:1;padding:4px 8px;border-radius:999px;background:var(--ink,#1d1d1f);color:#fff;white-space:nowrap}
@@ -292,6 +301,18 @@ body[data-view="capture"] #view-capture.active { max-width: 640px; margin: 0 aut
 .pbar { display: flex; align-items: center; gap: 12px; }
 .pbar input[type=range] { flex: 1; min-width: 0; accent-color: var(--red); height: 32px; }
 .ptime { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---------- Before/After ---------- */
+.slots { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; flex: none; }
+.slot { min-width: 0; min-height: 46px; padding: 3px 2px; border: 0; border-radius: 12px; background: var(--chip); color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; transition: background-color .2s ease, color .2s ease; }
+.slot b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.slot small { height: 11px; font-size: 10px; font-weight: 700; line-height: 11px; opacity: .8; }
+.slot.active { background: var(--ink); color: var(--on-ink); }
+.shot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.shot { position: relative; aspect-ratio: 1; border: 0; padding: 0; border-radius: 12px; overflow: hidden; background: var(--chip); }
+.shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.shot span { position: absolute; left: 4px; bottom: 4px; padding: 2px 7px; border-radius: 999px; background: rgba(0, 0, 0, .62); color: #fff; font-size: 11px; font-weight: 650; }
+.shot-sheet .zoom-stage { aspect-ratio: auto; }
 </style>
 </head>
 <body data-view="capture">
@@ -333,13 +354,47 @@ body[data-view="capture"] #view-capture.active { max-width: 640px; margin: 0 aut
     </div>
   </section>
 
+  <!-- BEFORE/AFTER: the same viewfinder, photo only. Each shot is filed by the two switches. -->
+  <section class="view mode-aisle" id="view-ba">
+    <div class="slots" id="ba-slots"></div>
+    <div class="camera" id="ba-camera">
+      <video id="ba-video" playsinline muted autoplay hidden></video>
+      <div class="cam-wait" id="ba-starting" hidden>Starting the camera…</div>
+      <div class="cam-off" id="ba-off">
+        <span data-icon="camera"></span>
+        <button class="btn primary" id="ba-cam-start">Start camera</button>
+        <p id="ba-error"></p>
+        <button class="btn quiet" id="ba-phonecam" hidden><span data-icon="image"></span>Use phone camera instead</button>
+      </div>
+      <span class="cam-chip" id="ba-band">BEFORE · AISLE</span>
+      <button class="cam-stop" id="ba-cam-stop" aria-label="Turn the camera off" hidden><span data-icon="x"></span></button>
+    </div>
+    <div class="deck">
+      <div class="seg cap-seg" id="ba-when-seg">
+        <button data-w="before" class="active">Before</button>
+        <button data-w="after">After</button>
+      </div>
+      <div class="seg cap-seg" id="ba-kind-seg">
+        <button data-k="aisle" class="active">Aisle</button>
+        <button data-k="display">Display</button>
+      </div>
+      <div class="deck-row">
+        <button class="deck-side left" id="ba-last" aria-label="Open the last photo" style="visibility:hidden"></button>
+        <button class="shutter-big" id="ba-shutter" aria-label="Take a photo"><span></span></button>
+        <button class="deck-side right" id="ba-gallery" aria-label="Open the gallery"><span data-icon="image"></span><span class="badge" id="ba-count" hidden></span></button>
+      </div>
+      <p class="cap-hint" id="ba-hint"></p>
+    </div>
+  </section>
+
   <section class="view" id="view-needed"></section>
   <section class="view" id="view-products"></section>
   <section class="view" id="view-more"></section>
 </main>
 
 <nav class="tabs" id="tabs">
-  <button data-view="capture" class="active"><span data-icon="camera"></span>Capture</button>
+  <button data-view="capture" class="active"><span data-icon="camera"></span>Stocking</button>
+  <button data-view="ba"><span data-icon="image"></span>Before/After</button>
   <button data-view="needed"><span data-icon="list"></span>Needed<span class="badge" id="need-badge" hidden></span></button>
   <button data-view="products"><span data-icon="grid"></span>Products</button>
   <button data-view="more"><span data-icon="sliders"></span>More</button>
@@ -690,7 +745,9 @@ function freshState() {
     outbox: { products: {} },               // changed since last upload
     notes: [],                              // newest first: { id, at, photos:[id], audio:id|null, secs, text, status, parts:[{vk, s, e}] (brand + flavor found in the text), flag, ticks:{pid: true}, err }
     recents: [],
-    settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", wordTiming: false, asrId: "tiny", models: { asr: false } },   // models: which downloads finished
+    stores: ["", "", "", "", "", ""],        // the six store slots on the Before/After tab: the store number in each
+    shots: [],                              // Before/After photos: { id, at, slot:0-5, when:"before"|"after", kind:"aisle"|"display", photo }
+    settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", baWhen: "before", baKind: "aisle", baSlot: 0, wordTiming: false, asrId: "tiny", models: { asr: false } },   // models: which downloads finished
     sync: { lastPull: 0, lastPush: 0, error: "" },
     team: { key: "", name: "", repo: "", hidden: {}, tick: {}, seen: {}, rt: {} },   // Beta 6: shared Needed list (see team.js)
   };
@@ -716,6 +773,10 @@ function migrate() {
   state.team = Object.assign(f.team, state.team || {});
   for (const k of ["hidden", "tick", "seen", "rt"]) state.team[k] = state.team[k] || {};
   state.recents = state.recents || [];
+  state.shots = (Array.isArray(state.shots) ? state.shots : []).filter(s => s && s.photo);
+  state.stores = Array.from({ length: 6 }, (_, i) => String((Array.isArray(state.stores) && state.stores[i]) || ""));
+  if (!state.stores.some(Boolean) && state.storeName) state.stores[0] = String(state.storeName);   // the store already set in More becomes the first slot
+  for (const s of state.shots) { if (s.when !== "after") s.when = "before"; if (s.kind !== "display") s.kind = "aisle"; if (!(s.slot >= 0 && s.slot < 6)) s.slot = 0; }
   state.notes = Array.isArray(state.notes) ? state.notes : [];
   for (const p of state.products) if (p.updated === undefined) p.updated = 0;
   // Work that was interrupted (app closed, phone ran low on memory) goes back in the queue.
@@ -970,7 +1031,7 @@ function hydratePhotos(root) {
 // Remove photos and clips no note points to (runs after deletes once the undo window has passed).
 async function sweepMedia() {
   try {
-    const keepP = new Set(state.notes.flatMap(n => n.photos || [])), keepA = new Set(state.notes.map(n => n.audio).filter(Boolean));
+    const keepP = new Set([...state.notes.flatMap(n => n.photos || []), ...(state.shots || []).map(s => s.photo)]), keepA = new Set(state.notes.map(n => n.audio).filter(Boolean));
     keepA.add("_recovery");   // a recording in progress (see capture.js)
     const rec = await getAudio("_recovery").catch(() => null); if (rec && rec.photos) rec.photos.forEach(p => keepP.add(p));
     const ps = await mediaTx("photos", "readonly", s => s.getAllKeys()), as = await mediaTx("audio", "readonly", s => s.getAllKeys());
@@ -1845,7 +1906,7 @@ async function pump() {
     }
   } finally {
     ai.pumping = false; ai.stopBatch = false; releaseScreen();
-    if (cam.hold) { cam.hold = false; if (view === "capture") wakeCamera(); }
+    if (cam.hold) { cam.hold = false; if (isCamView()) wakeCamera(); }
     renderAll();
   }
 }
@@ -2407,7 +2468,7 @@ async function startCamera() {
     cam.stream = stream;
     cam.audioTrack = stream.getAudioTracks()[0] || null;
     if (cam.audioTrack) cam.audioTrack.enabled = false;   // only listening while recording
-    const v = $("#cam-video"); v.srcObject = stream; await v.play().catch(() => {});
+    for (const id of ["#cam-video", "#ba-video"]) { const v = $(id); v.srcObject = stream; await v.play().catch(() => {}); }
     state.settings.camOK = true; save();
   } catch (e) {
     cam.error = e && e.name === "NotAllowedError" ? "Camera access is blocked. Allow it in Settings, or use the phone camera instead." : "Couldn't start the camera.";
@@ -2418,23 +2479,23 @@ function stopCamera() {
   clearTimeout(cam.sleepTimer);
   if (cam.stream) cam.stream.getTracks().forEach(t => t.stop());
   cam.stream = null; cam.audioTrack = null;
-  const v = $("#cam-video"); if (v) v.srcObject = null;
+  for (const id of ["#cam-video", "#ba-video"]) { const v = $(id); if (v) v.srcObject = null; }
   renderCapture();
 }
-// Leaving the Capture tab keeps the camera warm for a minute so coming back is instant.
+// Leaving the camera tabs keeps the camera warm for a minute so coming back is instant.
 function sleepCameraSoon() { clearTimeout(cam.sleepTimer); if (cam.stream) cam.sleepTimer = setTimeout(stopCamera, 60000); }
 function wakeCamera() { clearTimeout(cam.sleepTimer); if (!cam.stream && state.settings.camOK) startCamera(); }
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) { if (cam.stream && !recorder) stopCamera(); }
-  else if (view === "capture") wakeCamera();
+  else if (isCamView()) wakeCamera();
 });
 
 // Crop the live video to the shape of the viewfinder (what you see is what's saved).
-async function grabPhoto() {
-  const v = $("#cam-video"), box = $("#camera");
+async function grabPhoto(vid = "#cam-video", boxId = "#camera") {
+  const v = $(vid), box = $(boxId);
   const vw = v.videoWidth, vh = v.videoHeight;
   if (!vw || !vh) return null;
-  const want = box.clientWidth / box.clientHeight, have = vw / vh;
+  const have = vw / vh, want = box.clientWidth && box.clientHeight ? box.clientWidth / box.clientHeight : have;   // an unmeasured box (page not showing) keeps the whole frame
   let cw = vw, ch = vh, sx = 0, sy = 0;
   if (have > want) { cw = Math.round(vh * want); sx = Math.round((vw - cw) / 2); } else { ch = Math.round(vw / want); sy = Math.round((vh - ch) / 2); }
   return frameToBlob(v, vw, vh, sx, sy, cw, ch);
@@ -2454,7 +2515,7 @@ async function onShutter(forcePhone, kind = "aisle") {
   try { await putPhoto(photoId, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
   startRecording({ photos: [photoId], kind });
 }
-function box_flash() { const b = $("#camera"); b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); setTimeout(() => b.classList.remove("flash"), 400); }
+function box_flash(id = "#camera") { const b = $(id); b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); setTimeout(() => b.classList.remove("flash"), 400); }
 
 // ---- Recording ----
 let recorder = null;
@@ -2750,13 +2811,14 @@ function wirePlayerBar(root, n) {
 }
 // ---------- Views ----------
 let view = "capture";
+const isCamView = () => view === "capture" || view === "ba";   // the two tabs with a viewfinder
 function showView(v) {
   view = v;
   document.body.dataset.view = v;
   document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.id === "view-" + v));
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.view === v));
   syncIndicator($("#tabs"));
-  if (v !== "capture") { if (deferVoice() && queuedCount()) { stopCamera(); pump(); } else sleepCameraSoon(); } else wakeCamera();   // Base listens while the camera is off
+  if (!isCamView()) { if (deferVoice() && queuedCount()) { stopCamera(); pump(); } else sleepCameraSoon(); } else wakeCamera();   // Base listens while the camera is off
   renderAll();
   window.scrollTo(0, 0);
 }
@@ -2768,6 +2830,7 @@ function renderAll() {
   badge.hidden = !open; badge.textContent = open;
   renderSyncIndicator();
   if (view === "capture") renderCapture();
+  if (view === "ba") renderBA();
   if (view === "needed") renderNeeded();
   if (view === "products") renderProducts();
   if (view === "more") renderMore();
@@ -2832,6 +2895,7 @@ function renderCapture() {
   line.hidden = !q.text;
   $("#queue-text").textContent = q.text;
   line.classList.toggle("busy", !!q.busy);
+  renderBA();
 }
 function noteSummary(n) {
   if (n.status === "queued") return haveModel("asr") ? "Waiting to listen…" : "Saved. It will be read once the speech model is downloaded.";
@@ -3017,6 +3081,216 @@ function zoomStage(img, stage) {
   const up = e => { pts.delete(e.pointerId); if (scale <= 1.02) reset(); last = null; };
   stage.addEventListener("pointerup", up); stage.addEventListener("pointercancel", up);
 }
+// ---------- Before / After photos ----------
+// A photo-only twin of the Stocking tab: same camera, no voice. Six store slots sit across the top, so a shift's photos from up to
+// six stores can be kept apart and reviewed until the end of the shift. Two switches (Before | After, Aisle | Display) decide where
+// each shot is filed inside the open store. Photos stay on this phone.
+const SLOTS = 6;
+const baWhen = () => (state.settings.baWhen === "after" ? "after" : "before");
+const baKind = () => (state.settings.baKind === "display" ? "display" : "aisle");
+const baSlot = () => { const n = +state.settings.baSlot; return n >= 0 && n < SLOTS ? n : 0; };
+const storeOf = i => String((state.stores || [])[i] || "").trim();
+const slotCount = i => state.shots.filter(s => s.slot === i).length;
+const WHEN_LABEL = { before: "Before", after: "After" };
+let lastShotId = null;
+
+// The six store buttons: the store number (or + when the slot is empty) and how many photos it holds.
+function slotsHTML(active) {
+  return Array.from({ length: SLOTS }, (_, i) => {
+    const st = storeOf(i), n = slotCount(i);
+    return `<button class="slot${i === active ? " active" : ""}" data-slot="${i}" aria-label="${st ? `Store ${esc(st)}` : `Empty store slot ${i + 1}`}${n ? `, ${n} photo${n === 1 ? "" : "s"}` : ""}"><b>${st ? esc(st) : "+"}</b><small>${n || ""}</small></button>`;
+  }).join("");
+}
+
+function renderBA() {
+  const on = !!cam.stream, w = baWhen(), k = baKind(), slot = baSlot(), st = storeOf(slot);
+  $("#ba-off").hidden = on || cam.starting;
+  $("#ba-video").hidden = !on;
+  $("#ba-starting").hidden = !cam.starting;
+  $("#ba-error").textContent = cam.error;
+  $("#ba-phonecam").hidden = !cam.error;
+  $("#ba-cam-stop").hidden = !on;
+  $("#ba-shutter").disabled = cam.starting;
+  $("#ba-slots").innerHTML = slotsHTML(slot);
+  document.querySelectorAll("#ba-when-seg button").forEach(b => b.classList.toggle("active", b.dataset.w === w));
+  document.querySelectorAll("#ba-kind-seg button").forEach(b => b.classList.toggle("active", b.dataset.k === k));
+  if (view === "ba") { syncIndicator($("#ba-when-seg"), false); syncIndicator($("#ba-kind-seg"), false); }
+  const sec = $("#view-ba");
+  sec.classList.toggle("mode-display", k === "display"); sec.classList.toggle("mode-aisle", k === "aisle");
+  $("#ba-band").textContent = `${st ? `#${st} · ` : ""}${WHEN_LABEL[w].toUpperCase()} · ${KIND_LABEL[k].toUpperCase()}`;
+  $("#ba-hint").textContent = st ? `Photo only. Filing to store#${st} · ${WHEN_LABEL[w]} · ${KIND_LABEL[k]}.` : "Tap a store slot above to set its store number.";
+  $("#ba-shutter").setAttribute("aria-label", `Take the ${w} photo of the ${k}`);
+  const mine = state.shots.filter(s => s.slot === slot), last = mine.find(s => s.id === lastShotId) || mine[0], lb = $("#ba-last");
+  lb.style.visibility = last ? "visible" : "hidden";
+  if (last && lb.dataset.shot !== last.photo) { lb.dataset.shot = last.photo; lb.innerHTML = `<img data-photo="${esc(last.photo)}" alt="">`; hydratePhotos(lb); }
+  const c = $("#ba-count"); c.hidden = !mine.length; c.textContent = mine.length;
+  if (view === "ba" && cam.stream) { const v = $("#ba-video"); if (v.paused) v.play().catch(() => {}); }
+}
+
+// Asks which store a slot is (the saved number is filled in, so changing it is quick) and remembers the answer.
+function askStore(slot) {
+  return new Promise(resolve => {
+    const d = el(`<div class="dialog"><p><b>Which store is this?</b></p>
+      <input class="field" inputmode="numeric" autocomplete="off" placeholder="Store number, like 1234" aria-label="Store number">
+      <div class="btns" style="margin-top:14px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="ok">Continue</button></div></div>`);
+    const inp = d.querySelector("input"); inp.value = storeOf(slot);
+    const clean = v => String(v).trim().replace(/^store\s*#?\s*/i, "").replace(/^#\s*/, "");
+    let done = false;
+    const close = openLayer(d, { center: true, sticky: true, onClose: () => { if (!done) resolve(null); } });
+    const go = () => {
+      const v = clean(inp.value); if (!v) { inp.focus(); return; }
+      done = true; state.stores[slot] = v; if (slot === baSlot()) state.storeName = v;
+      save(); renderAll(); close(); resolve(v);
+    };
+    d.querySelector('[data-a="c"]').onclick = () => { done = true; close(); resolve(null); };
+    d.querySelector('[data-a="ok"]').onclick = go;
+    inp.onkeydown = e => { if (e.key === "Enter") go(); };
+    setTimeout(() => { inp.focus(); inp.select(); }, 50);
+  });
+}
+// Tapping a slot opens it (asking for the store number if it is empty); tapping the open slot again changes its number.
+async function pickSlot(i) {
+  if (i === baSlot() && storeOf(i)) { await askStore(i); return; }
+  state.settings.baSlot = i; lastShotId = null;
+  if (storeOf(i)) state.storeName = storeOf(i);
+  save(); renderAll();
+  if (!storeOf(i)) await askStore(i);
+}
+
+async function onShutterBA(forcePhone) {
+  const slot = baSlot();
+  if (!storeOf(slot) && (await askStore(slot)) == null) return;
+  let blob = null;
+  if (cam.stream && !forcePhone) { blob = await grabPhoto("#ba-video", "#ba-camera"); box_flash("#ba-camera"); }
+  else blob = await cameraPhoto();
+  if (!blob) return;
+  beep(true);
+  const shot = { id: newId("s"), at: Date.now(), slot, when: baWhen(), kind: baKind(), photo: newId("p") };
+  try { await putPhoto(shot.photo, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
+  state.shots.unshift(shot); lastShotId = shot.id; save(); renderAll();
+  toast(`Saved to store#${storeOf(slot)} · ${WHEN_LABEL[shot.when]} · ${KIND_LABEL[shot.kind]}`);
+}
+
+function wireBA() {
+  $("#ba-cam-start").onclick = startCamera;
+  $("#ba-cam-stop").onclick = () => { state.settings.camOK = false; save(); stopCamera(); };
+  $("#ba-shutter").onclick = () => onShutterBA(false);
+  $("#ba-phonecam").onclick = () => onShutterBA(true);
+  $("#ba-slots").onclick = e => { const b = e.target.closest("[data-slot]"); if (b) pickSlot(+b.dataset.slot); };
+  document.querySelectorAll("#ba-when-seg button").forEach(b => (b.onclick = () => { state.settings.baWhen = b.dataset.w; save(); renderBA(); }));
+  document.querySelectorAll("#ba-kind-seg button").forEach(b => (b.onclick = () => { state.settings.baKind = b.dataset.k; save(); renderBA(); }));
+  $("#ba-gallery").onclick = () => openGallery();
+  $("#ba-last").onclick = () => { const s = state.shots.find(x => x.id === lastShotId && x.slot === baSlot()) || state.shots.find(x => x.slot === baSlot()); if (s) openShot(s); };
+}
+
+// ---- Gallery: one store at a time, sorted by Aisle / Display and then Before / After ----
+function openGallery(startKind = baKind(), startSlot = baSlot()) {
+  let kind = startKind, slot = startSlot;
+  const s = el(`<div class="sheet gallery-sheet"><div class="handle"></div><h2>Before/After photos</h2>
+    <div class="slots" id="gal-slots"></div>
+    <div class="row" id="gal-share"></div>
+    <div class="seg" id="gal-seg">${KINDS.map(k => `<button data-k="${k}">${KIND_LABEL[k]} <span class="kcount" data-c="${k}"></span></button>`).join("")}</div>
+    <div id="gal-body"></div><button class="btn primary block" data-a="close">Done</button></div>`);
+  const close = openLayer(s, { onClose: () => renderAll() });
+  const mine = () => state.shots.filter(x => x.slot === slot);
+  const draw = () => {
+    s.querySelector("#gal-slots").innerHTML = slotsHTML(slot);
+    s.querySelectorAll("#gal-seg button").forEach(b => { b.classList.toggle("active", b.dataset.k === kind); b.querySelector(".kcount").textContent = mine().filter(x => x.kind === b.dataset.k).length || ""; });
+    syncIndicator(s.querySelector("#gal-seg"), false);
+    s.querySelector("#gal-share").innerHTML = ["before", "after"].map(w => { const n = mine().filter(x => x.when === w).length; return `<button class="btn sm primary grow" data-share="${w}"${n ? "" : " disabled"}>${icon("upload")}Text all ${WHEN_LABEL[w]} (${n})</button>`; }).join("");
+    let html = "";
+    for (const w of ["before", "after"]) {
+      const list = mine().filter(x => x.kind === kind && x.when === w);
+      html += `<div class="cluster-h">${WHEN_LABEL[w]}<span class="n">${list.length}</span></div>`;
+      html += list.length ? `<div class="shot-grid">${list.map(x => `<button class="shot" data-s="${esc(x.id)}" data-photo-wrap><img data-photo="${esc(x.photo)}" alt=""><span>${esc(timeOf(x.at))}</span></button>`).join("")}</div>`
+        : `<p class="muted small" style="margin:4px 0 0">No ${w} photos of ${kind === "display" ? "displays" : "aisles"} yet.</p>`;
+    }
+    if (mine().length) html += `<button class="btn block quiet" data-a="clear" style="margin-top:20px">Clear ${storeOf(slot) ? `store#${esc(storeOf(slot))}` : "this store"}'s photos</button>`;
+    if (state.shots.length > mine().length) html += `<button class="btn block quiet" data-a="clearall" style="margin-top:8px">Clear all stores' photos</button>`;
+    s.querySelector("#gal-body").innerHTML = html;
+    hydratePhotos(s);
+  };
+  s.querySelector("#gal-slots").onclick = e => { const b = e.target.closest("[data-slot]"); if (b) { slot = +b.dataset.slot; draw(); } };
+  s.querySelector("#gal-seg").onclick = e => { const b = e.target.closest("button[data-k]"); if (b) { kind = b.dataset.k; draw(); } };
+  s.querySelector("#gal-share").onclick = e => { const sh = e.target.closest("[data-share]"); if (sh && !sh.disabled) shareBatch(slot, sh.dataset.share); };
+  s.querySelector("#gal-body").onclick = e => {
+    const t = e.target.closest(".shot"); if (t) { const x = state.shots.find(y => y.id === t.dataset.s); if (x) openShot(x, draw); return; }
+    if (e.target.closest('[data-a="clear"]')) clearShots(slot).then(done => { if (done) draw(); });
+    if (e.target.closest('[data-a="clearall"]')) clearShots(null).then(done => { if (done) draw(); });
+  };
+  s.querySelector('[data-a="close"]').onclick = close;
+  draw();
+}
+
+// One batch = every Before photo in a store (Aisle and Display together), or every After photo. The phone's share sheet opens with
+// the photos attached and a line of text already written; pick Messages and the boss's name. Before and After go as two texts.
+async function shareBatch(slot, w) {
+  const list = state.shots.filter(x => x.slot === slot && x.when === w).sort((a, b) => a.at - b.at);
+  if (!list.length) return;
+  const store = storeOf(slot) || await askStore(slot); if (store == null) return;
+  const files = [];
+  for (const [i, x] of list.entries()) {
+    const blob = await getPhoto(x.photo).catch(() => null);
+    if (blob) files.push(new File([blob], `${WHEN_LABEL[w]}-${i + 1}-${KIND_LABEL[x.kind]}.jpg`, { type: "image/jpeg" }));
+  }
+  if (!files.length) return toast("These photos are missing");
+  const when = new Date(list[0].at).toLocaleDateString([], { month: "short", day: "numeric" });
+  const text = `store#${store} - ${WHEN_LABEL[w]} - ${when}`;
+  try {
+    if (navigator.canShare && navigator.canShare({ files, text })) { await navigator.share({ files, text }); return; }
+  } catch (e) { if (e && e.name === "AbortError") return; }
+  toast("Sharing isn't available here. Open a photo and use Save to Photos.");
+}
+// slot = a store number to clear, or null for every store.
+function clearShots(slot) {
+  const msg = slot == null ? "Remove the Before/After photos of every store from this phone? Save or send the ones you need first."
+    : `Remove the Before/After photos of ${storeOf(slot) ? `store#${esc(storeOf(slot))}` : "this store"} from this phone? Save or send them first.`;
+  return confirmDialog(msg, { ok: "Remove", danger: true }).then(ok => {
+    if (!ok) return false;
+    const snap = snapshot();
+    state.shots = slot == null ? [] : state.shots.filter(x => x.slot !== slot);
+    lastShotId = null; save(); renderAll(); scheduleSweep();
+    toast("Photos removed", snap);
+    return true;
+  });
+}
+
+// ---- One photo: zoom, save to the phone's Photos, move, delete ----
+function openShot(x, onChange) {
+  const name = () => `${KIND_LABEL[x.kind]}-${WHEN_LABEL[x.when]}-${new Date(x.at).toISOString().slice(0, 16).replace(/[-:T]/g, "")}.jpg`;
+  const s = el(`<div class="sheet check-sheet shot-sheet"><div class="handle"></div><h2></h2>
+    <div class="zoom-stage"><img alt=""><span class="zoom-hint">Pinch to zoom</span></div>
+    <div class="row"><button class="btn sm grow" data-a="save">${icon("download")}Save to Photos</button><button class="btn sm grow quiet" data-a="more">More…</button></div>
+    <button class="btn primary block" data-a="close">Done</button></div>`);
+  const close = openLayer(s, { onClose: () => { if (onChange) onChange(); renderAll(); } });
+  const head = () => { s.querySelector("h2").textContent = `${storeOf(x.slot) ? `#${storeOf(x.slot)} · ` : ""}${WHEN_LABEL[x.when]} · ${KIND_LABEL[x.kind]} · ${new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`; };
+  head();
+  const img = s.querySelector("img");
+  zoomStage(img, s.querySelector(".zoom-stage"));
+  photoURL(x.photo).then(u => { img.src = u || ""; });
+  s.querySelector('[data-a="close"]').onclick = close;
+  s.querySelector('[data-a="save"]').onclick = async () => {
+    const blob = await getPhoto(x.photo).catch(() => null); if (!blob) return toast("This photo is missing");
+    const file = new File([blob], name(), { type: "image/jpeg" });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; }
+    } catch (e) { if (e && e.name === "AbortError") return; }
+    toast("Press and hold the photo, then choose Save to Photos");
+  };
+  s.querySelector('[data-a="more"]').onclick = async () => {
+    const pick = await menu("This photo", [
+      { label: x.when === "before" ? "Move to After" : "Move to Before", value: "when" },
+      { label: x.kind === "aisle" ? "Move to Display" : "Move to Aisle", value: "kind" },
+      { label: "Delete photo", value: "delete", danger: true }]);
+    if (pick === "when") { x.when = x.when === "before" ? "after" : "before"; save(); head(); toast(`Moved to ${WHEN_LABEL[x.when]}`); }
+    else if (pick === "kind") { x.kind = x.kind === "aisle" ? "display" : "aisle"; save(); head(); toast(`Moved to ${KIND_LABEL[x.kind]}`); }
+    else if (pick === "delete") {
+      const snap = snapshot();
+      state.shots = state.shots.filter(y => y.id !== x.id); if (lastShotId === x.id) lastShotId = null;
+      save(); close(); scheduleSweep(); toast("Photo deleted", snap);
+    }
+  };
+}
 // ---------- Products: the brand + flavor combinations the list recognizes ----------
 // Size and pack don't matter here: they stay in the words you read. Edits apply to every size of a combination
 // and upload to the shared product list like before.
@@ -3180,7 +3454,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 6.3.6 (team list) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan Beta 7 (before/after) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
@@ -3305,6 +3579,7 @@ $("#btn-cam-stop").onclick = () => { state.settings.camOK = false; save(); stopC
 document.querySelectorAll("#cap-seg button").forEach(b => (b.onclick = () => { state.settings.captureKind = b.dataset.k; save(); renderCapture(); }));
 $("#btn-shutter").onclick = () => onShutter(false, captureKind());
 $("#btn-phonecam").onclick = () => onShutter(true, captureKind());
+wireBA();
 $("#sync-ind").onclick = () => showView("more");
 renderAll();
 save();
