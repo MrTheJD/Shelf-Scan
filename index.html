@@ -1368,7 +1368,7 @@ const BRAND_SPOKEN = {
   "Sprite": ["sprite", "spright", "sprites", "sprit"],
   "Simply": ["simply", "simply s"],
   "Simply Pop": ["simply pop", "simple pop", "simply pap", "simply pops"],
-  "FUZE": ["fuze", "fuse", "fews", "fuze tea", "fuse tea", "few", "few tea", "fuze s"],
+  "FUZE": ["fuze", "fuse", "fews", "fuze tea", "fuse tea", "few tea", "fuze s"],
   "AHA": ["aha", "a ha", "ah ha", "ahah", "aha sparkling", "ah ah"],
   "Dasani": ["dasani", "da sani", "dazani", "dassani", "desani", "dasanny", "da zanny", "dasanis"],
   "Core Power": ["core power", "corepower", "core powers"],
@@ -1587,7 +1587,7 @@ function readBlurbDetailed(text) {
       if (words.length && !words.every(w => named.has(w))) { flag = true; break; }   // "Coke, cherry 4": the comma split the flavor off its brand
     }
   }
-  return { parts, flag };
+  return { parts, flag, fixes };
 }
 
 // ---------- Brand-only reading (the Needed list is organized by brand; the flavor stays in the words) ----------
@@ -1595,12 +1595,76 @@ const bKey = b => sNorm(b);
 // Sub-brands and company names that sit on the same shelf as their parent are listed under it.
 const BRAND_GROUP = { "BODYARMOR LYTE": "BODYARMOR", "Core Power Elite": "Core Power", "fairlife": "Core Power", "Topo Chico Sabores": "Topo Chico" };
 // -> { parts: [{ vk: brand key, brand, s, e }], flag }. flag = "check the text": no brand was recognized, or a clause with a number names something we did not recognize.
+// ---- When no brand is recognized: the nearest-sounding one ----
+// Whisper writes "Coke Zero" as "Cocosero", "Code 0", "Hook zero", and "Fanta" as "Phantom". Every note names a brand first, so if nothing matched,
+// the first few words are tried against (1) a short list of known mishearings, (2) words that start with one, and (3) brands that sound alike.
+// The first kind is trusted; the others place the note under the guess but leave the "Check the text" tag on.
+const WEAK_BRAND = {
+  "Coca-Cola": ["coco", "cocot", "coko", "koko", "code", "cokes", "hook", "cook", "cope", "coat", "coach", "cocoa", "cokie"],
+  "Fanta": ["phantom", "phantoms", "fandom", "fantom", "fantum", "fanto", "fonda", "fonta"],
+  "Sprite": ["spright", "spry", "sprites", "spite", "spirit", "sprint"],
+  "Fresca": ["fresco", "frescos", "fresko", "frescas"],
+  "Dasani": ["dasanni", "dosani", "dasanie", "desani", "dassani"],
+  "Powerade": ["powerate", "powered", "powerades", "power ade"],
+  "Monster Energy": ["monsta", "monsters", "monstro"],
+  "Gold Peak": ["goldpeak", "gold peek", "goal peak"],
+  "Minute Maid": ["minutemaid", "minute made"],
+  "Seagram's": ["seagrams", "seagram", "sea grams"],
+  "Mello Yello": ["mellow", "mello", "yellow"],
+};
+let weakIdx = null, weakFor = -1;
+function phon(w) {
+  w = String(w).toLowerCase().replace(/[^a-z]/g, "");
+  w = w.replace(/^(kn|gn|pn|wr)/, "n").replace(/^x/, "s").replace(/^wh/, "w").replace(/ph/g, "f").replace(/ck/g, "k").replace(/c(?=[eiy])/g, "s").replace(/c/g, "k")
+    .replace(/q/g, "k").replace(/x/g, "ks").replace(/z/g, "s").replace(/dg/g, "j").replace(/gh/g, "").replace(/h(?![aeiou])/g, "").replace(/(.)\1+/g, "$1");
+  return w ? w[0] + w.slice(1).replace(/[aeiouywh]/g, "") : "";
+}
+function weakIndex() {
+  if (weakIdx && weakFor === state.products.length) return weakIdx;
+  weakFor = state.products.length; weakIdx = { exact: new Map(), phon: [] };
+  for (const [b, list] of Object.entries(WEAK_BRAND)) for (const w of list) weakIdx.exact.set(w.replace(/\s+/g, ""), b);
+  for (const [k, b] of brandIndex()) if (!k.includes(" ") && k.length >= 4) weakIdx.phon.push([phon(k), b]);
+  return weakIdx;
+}
+function weakSpans(toks) {
+  const wi = weakIndex();
+  for (let i = 0; i < Math.min(toks.length, 6); i++) {
+    const t = toks[i].t;
+    if (t.length < 3 || /^\d+$/.test(t) || ONES[t] != null || TENS[t] != null || FILLER_WORDS.has(t) || UNIT_WORDS.has(t)) continue;
+    if (wi.exact.has(t)) return [{ start: i, end: i + 1, brand: wi.exact.get(t), weak: "known" }];
+    for (const [k, b] of wi.exact) if (k.length >= 4 && t.startsWith(k) && t.length <= k.length + 5) return [{ start: i, end: i + 1, brand: b, weak: "prefix", rest: t.slice(k.length) }];
+    if (t.length >= 4) {
+      const c = phon(t); let best = null, bd = 9;
+      for (const [pc, b] of wi.phon) { const d = pc === c ? 0 : lev(pc, c); if (d < bd) { bd = d; best = b; } else if (d === bd && best !== b) best = null; }
+      if (best && c.length >= 3 && bd <= (c.length >= 5 ? 1 : 0)) return [{ start: i, end: i + 1, brand: best, weak: "sound" }];
+    }
+  }
+  return [];
+}
+// How people normally say a brand (anything else that matched it is a mishearing, and the note's text gets corrected).
+const SAYS_OK = new Set(["coke", "cokeclassic", "classiccoke", "regularcoke", "doctorpepper", "dietdoctorpepper", "mrpibb", "misterpibb", "pibb", "pibbxtra", "mellowyellow", "mello", "monster", "monsterenergy"]);
+const ZERO_MIS = new Set(["sero", "cero", "zeero", "zeroo", "sera", "zera"]);
+const squash = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
+function applyFixes(text, fixes) {
+  let out = text; for (const f of [...fixes].sort((a, b) => b.s - a.s)) out = out.slice(0, f.s) + f.to + out.slice(f.e);
+  return out;
+}
 function readBlurb(text) {
   text = String(text || "");
-  const toks = tokenize(text), spans = brandSpans(toks.map(x => x.t)), parts = [];
+  const toks = tokenize(text); let spans = brandSpans(toks.map(x => x.t)), unsure = false;
+  const parts = [], fixes = [];
+  // "Powerade Power Water Strawberry Kiwi": a second mention of the same brand right after the first is part of the flavor, not another brand.
+  spans = spans.filter((sp, k) => !(k && spans[k - 1].brand === sp.brand && sp.start - spans[k - 1].end <= 1));
+  if (!spans.length) { spans = weakSpans(toks); if (spans.length && spans[0].weak !== "known") unsure = true; }
   spans.forEach((sp, k) => {
     // "Gold Peak tea with Simply lemonade": the Simply is an ingredient, not another product.
     if (sp.brand === "Simply" && k && spans[k - 1].brand === "Gold Peak" && sp.start && toks[sp.start - 1].t === "with") return;
+    // A brand that was heard wrong is rewritten in the note ("Phantom Orange" becomes "Fanta Orange").
+    const spoken = text.slice(toks[sp.start].s, toks[sp.end - 1].e), sq = squash(spoken);
+    if (sq !== squash(sp.brand) && !SAYS_OK.has(sq)) {
+      const rest = sp.rest ? (ZERO_MIS.has(sp.rest) ? " Zero" : " " + sp.rest) : "";
+      fixes.push({ s: toks[sp.start].s, e: toks[sp.end - 1].e, to: sp.brand + rest });
+    }
     let brand = sp.brand, first = sp.start;
     // "Diet Cherry Coke": the diet is not next to the coke, but it is still Diet Coke.
     if (brand === "Coca-Cola") for (let d = 1; d <= 2; d++) { const q = sp.start - d; if (q >= 0 && toks[q].t === "diet" && !spans.some(o => o !== sp && q >= o.start && q < o.end)) { brand = "Diet Coke"; first = q; break; } }
@@ -1609,7 +1673,7 @@ function readBlurb(text) {
     brand = BRAND_GROUP[brand] || brand;
     parts.push({ vk: bKey(brand), brand, s, e: s + seg.length });
   });
-  let flag = !parts.length;
+  let flag = !parts.length || unsure;
   if (!flag) {
     for (const clause of text.split(/,|;|\band\b|\bplus\b/i)) {
       const cs = text.indexOf(clause), ce = cs + clause.length;
@@ -1619,7 +1683,7 @@ function readBlurb(text) {
       if (words.length) { flag = true; break; }
     }
   }
-  return { parts, flag };
+  return { parts, flag, fixes };
 }
 // ---------- On-device speech model and the note queue ----------
 // A note goes: queued (voice clip waiting) → heard (words) → done (items on the list from the quick read).
@@ -1833,7 +1897,12 @@ function cleanTranscript(t) {
 // The instant read: a heard note goes on the list at once. The matcher only works out where it belongs.
 function quickRead(n) {
   step("read");
-  try { const r = readBlurb(n.text); n.parts = r.parts; n.flag = r.flag; } catch (e) { n.parts = []; n.flag = true; }
+  try {
+    let r = readBlurb(n.text);
+    // Fix a brand that was heard wrong in the note itself. The original wording is kept so the note can still show what was heard.
+    if (r.fixes && r.fixes.length) { const fixed = applyFixes(n.text, r.fixes), flag = r.flag; n.heard = n.heard || n.text; n.text = fixed; r = readBlurb(fixed); r.flag = r.flag || flag; n._al = null; }
+    n.parts = r.parts; n.flag = r.flag;
+  } catch (e) { n.parts = []; n.flag = true; }
   n.ticks = {}; delete n.items;
   n.status = "done"; n.err = "";
   save(); renderAll();
@@ -2525,7 +2594,7 @@ async function saveNote({ photos, note, audioRec, secs, text, status, kind }) {
   if (audioRec) { audioId = newId("a"); try { await putAudio(audioId, audioRec); } catch (e) { toast("Couldn't save the recording. Phone storage may be full."); } }
   if (note) {
     const old = note.audio;
-    note.audio = audioId; note.secs = secs; note.words = null; note._al = null; note.text = text; note.status = status; note.err = ""; note.parts = []; note.flag = false; note.ticks = {};
+    note.audio = audioId; note.secs = secs; note.words = null; note._al = null; note.heard = null; note.text = text; note.status = status; note.err = ""; note.parts = []; note.flag = false; note.ticks = {};
     if (old) delAudio(old).catch(() => {});
     save(); renderAll(); return note;
   }
@@ -2872,7 +2941,7 @@ function openCheck(n, focusPid) {
   let photoIdx = 0;
   const s = el(`<div class="sheet check-sheet"><div class="handle"></div><h2>Check against the photo</h2>
     <div class="zoom-stage" id="ck-stage"><img alt=""><span class="zoom-hint">Pinch to zoom</span></div><div class="viewer-dots" id="ck-dots" style="padding:0"></div>
-    <div class="transcript" id="ck-text"></div>${n.audio ? playerBarHTML(n) : ""}<div class="chips-row" id="ck-chips"></div>
+    <div class="transcript" id="ck-text"></div><div class="hint" id="ck-heard"></div>${n.audio ? playerBarHTML(n) : ""}<div class="chips-row" id="ck-chips"></div>
     <div class="row" id="ck-actions"></div><button class="btn primary block" data-a="close">Done</button></div>`);
   const close = openLayer(s, { onClose: () => { playerStop(); renderAll(); } });
   wirePlayerBar(s, n);
@@ -2887,6 +2956,7 @@ function openCheck(n, focusPid) {
   };
   s.querySelector("#ck-dots").onclick = e => { const b = e.target.closest("[data-k]"); if (b) { photoIdx = +b.dataset.k; showPhoto(); } };
   const draw = () => {
+    s.querySelector("#ck-heard").innerHTML = n.heard && n.heard !== n.text ? `Heard as “${esc(n.heard)}”` : "";
     s.querySelector("#ck-text").innerHTML = n.text ? `“${noteTextHTML(n, focusPid && focusPid !== "?" ? focusPid : null)}”` : "(no words: typed or no recording)";
     s.querySelector("#ck-chips").innerHTML = `<span class="pill kind ${noteKind(n)}">${KIND_LABEL[noteKind(n)]}</span>${teamTags(n)}${chipsFor(n, null)}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}`;
     s.querySelector("#ck-actions").innerHTML = `<button class="btn sm grow" data-a="edit">${icon("note")}Edit text</button><button class="btn sm grow quiet" data-a="more">More…</button>`;
@@ -2912,7 +2982,7 @@ function openCheck(n, focusPid) {
 async function editText(n) {
   const t = await textPrompt("What was said", n.text || "");
   if (t == null) return;
-  n.text = t; n.parts = []; n.flag = false; n.ticks = {}; n.err = ""; n.status = t ? "heard" : "empty"; save(); renderAll(); await pump();
+  n.text = t; n.heard = null; n.parts = []; n.flag = false; n.ticks = {}; n.err = ""; n.status = t ? "heard" : "empty"; save(); renderAll(); await pump();
 }
 async function addPhoto(n) {
   if (n.photos.length >= 6) return toast("That's the most photos for one note");
@@ -3107,7 +3177,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 6.3.3 (team list) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan Beta 6.3.4 (team list) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
