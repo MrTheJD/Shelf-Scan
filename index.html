@@ -455,11 +455,27 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 :root[data-theme="dark"] #view-capture.mode-display .camera { border-color: #F5F3F1; box-shadow: 0 0 0 3px #F5F3F1; }
 :root[data-theme="dark"] #view-capture.mode-display .shutter-big { border-color: #F5F3F1; }
 :root[data-theme="dark"] #view-capture.mode-display .shutter-big span { background: #F5F3F1; }
+
+/* Beta 5.1.2: blurb rows, clusters, chips */
+.cluster-h { font-size: 15px; font-weight: 800; margin: 14px 4px 6px; letter-spacing: -.01em; }
+.cluster-h span { font-weight: 600; font-size: 13px; color: var(--muted); }
+.cluster-h:first-of-type { margin-top: 4px; }
+.group-h + .cluster-h { margin-top: 2px; }
+.blurb { font-size: 15.5px; line-height: 1.35; }
+.blurb .hl { font-weight: 800; background: color-mix(in srgb, var(--red) 12%, transparent); border-radius: 4px; padding: 0 2px; }
+.item.done .blurb { text-decoration: line-through; text-decoration-thickness: 2px; color: var(--muted); }
+.item.need > svg.i { color: var(--faint); }
+.chips-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.chip-sm { font-size: 11.5px; font-weight: 650; padding: 3px 8px; border-radius: 999px; background: var(--chip); color: var(--muted); }
+.flag-tag { font-size: 11.5px; font-weight: 750; padding: 3px 8px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); }
+.cap-seg { margin-top: 2px; }
+#view-capture > .cap-seg + .cap-bar { margin-top: 12px; }
+.cam-off .btn.quiet { margin-top: 2px; }
 </style>
 </head>
 <body>
 <header class="top">
-  <h1>Shelf Scan</h1><span class="tagline">BETA 5.1.1</span>
+  <h1>Shelf Scan</h1><span class="tagline">BETA 5.1.2</span>
   <span class="spacer"></span>
   <span class="store" id="hdr-store"></span>
   <button class="sync-ind" id="sync-ind" hidden></button>
@@ -468,10 +484,6 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 <main>
   <!-- CAPTURE -->
   <section class="view active" id="view-capture">
-    <div class="seg cap-seg" id="cap-seg">
-      <button data-k="aisle" class="active">Aisle</button>
-      <button data-k="display">Display</button>
-    </div>
     <div class="cap-band" id="cap-band"></div>
     <div class="camera" id="camera">
       <video id="cam-video" playsinline muted autoplay hidden></video>
@@ -480,8 +492,13 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
         <span data-icon="camera"></span>
         <button class="btn primary" id="btn-cam-start">Start camera</button>
         <p id="cam-error"></p>
+        <button class="btn quiet" id="btn-phonecam" hidden><span data-icon="image"></span>Use phone camera instead</button>
       </div>
       <button class="cam-stop" id="btn-cam-stop" aria-label="Turn the camera off" hidden><span data-icon="x"></span></button>
+    </div>
+    <div class="seg cap-seg" id="cap-seg">
+      <button data-k="aisle" class="active">Aisle</button>
+      <button data-k="display">Display</button>
     </div>
     <div class="cap-bar">
       <button class="shutter-big" id="btn-shutter" aria-label="Take a photo, then say what you need"><span></span></button>
@@ -489,15 +506,10 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
     </div>
     <div id="model-banner" hidden></div>
     <p class="queue-line" id="queue-line" hidden></p>
-    <div class="cap-links">
-      <button class="btn quiet" id="btn-type"><span data-icon="note"></span>Type a note</button>
-      <button class="btn quiet" id="btn-phonecam"><span data-icon="image"></span>Phone camera</button>
-    </div>
     <div class="card last" id="last-note" hidden></div>
   </section>
 
   <section class="view" id="view-needed"></section>
-  <section class="view" id="view-notes"></section>
   <section class="view" id="view-products"></section>
   <section class="view" id="view-more"></section>
 </main>
@@ -505,7 +517,6 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 <nav class="tabs" id="tabs">
   <button data-view="capture" class="active"><span data-icon="camera"></span>Capture</button>
   <button data-view="needed"><span data-icon="list"></span>Needed<span class="badge" id="need-badge" hidden></span></button>
-  <button data-view="notes"><span data-icon="note"></span>Notes</button>
   <button data-view="products"><span data-icon="grid"></span>Products</button>
   <button data-view="more"><span data-icon="sliders"></span>More</button>
 </nav>
@@ -815,7 +826,7 @@ function freshState() {
     products: buildSeedProducts(),
     deleted: { products: {} },              // tombstones: id -> time deleted
     outbox: { products: {} },               // changed since last upload
-    notes: [],                              // newest first: { id, at, photos:[id], audio:id|null, secs, text, status, edited, items:[{pid, phrase, qty, why, rev, done}], err }
+    notes: [],                              // newest first: { id, at, photos:[id], audio:id|null, secs, text, status, parts:[{pid, s, e}] (products found in the text), flag, ticks:{pid: true}, err }
     recents: [],
     settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", models: { asr: false } },   // models: which downloads finished
     sync: { lastPull: 0, lastPush: 0, error: "" },
@@ -842,12 +853,13 @@ function migrate() {
   for (const p of state.products) if (p.updated === undefined) p.updated = 0;
   // Work that was interrupted (app closed, phone ran low on memory) goes back in the queue.
   for (const n of state.notes) {
-    n.items = n.items || []; n.photos = n.photos || [];
+    n.photos = n.photos || [];
     if (n.kind !== "display") n.kind = "aisle";   // notes from before aisle/display were separate
     if (n.status === "reading") n.status = "heard";
-    // Every item's dot comes from what's missing or unsure about it (older notes carried review states that no longer exist).
-    for (const it of n.items) { delete it.conf; it.rev = itemRev(it); }
-    delete n.rev;
+    // Beta 5.1.2: a note is its words plus the products the matcher found in them (no quantities or dots).
+    delete n.items; delete n.rev; delete n.edited;
+    n.ticks = n.ticks || {};
+    if (n.status === "done" && n.text && !n.parts) { try { const r = readBlurb(n.text); n.parts = r.parts; n.flag = r.flag; } catch (e) { n.parts = []; n.flag = true; } }
   }
   // New starter products added to the app show up for existing users.
   const have = new Set(state.products.map(p => p.id));
@@ -879,7 +891,6 @@ function dropProduct(id) {
   state.products = state.products.filter(p => p.id !== id);
   state.deleted.products[id] = Date.now();
   state.outbox.products[id] = 1;
-  for (const n of state.notes) for (const it of n.items) if (it.pid === id) { it.pid = null; it.rev = "warn"; it.why = "no match"; }
   scheduleUpload();
 }
 const shareable = p => { const { _st, ...rest } = p; return rest; };
@@ -1189,55 +1200,6 @@ function allCategories() { return [...new Set(state.products.map(p => p.category
 function searchBox(placeholder) {
   return `<div class="search-wrap">${icon("search")}<input class="field" type="search" placeholder="${esc(placeholder)}" autocomplete="off" autocorrect="off" spellcheck="false"></div>`;
 }
-function pickProduct({ title = "Pick a product", initialQuery = "" } = {}) {
-  return new Promise(resolve => {
-    const s = el(`<div class="sheet"><div class="handle"></div><h2></h2>${searchBox("Try “zero 12pk” or “sprite 2l”")}
-      <div class="chips"></div><div class="results"></div></div>`);
-    s.querySelector("h2").textContent = title;
-    let done = false, cat = "";
-    const close = openLayer(s, { onClose: () => { if (!done) resolve(null); } });
-    const input = s.querySelector("input");
-    input.value = initialQuery;
-    const chips = s.querySelector(".chips");
-    const renderChips = () => {
-      chips.innerHTML = "";
-      for (const c of ["", ...allCategories()]) {
-        const b = el(`<button class="chip${c === cat ? " active" : ""}"></button>`);
-        b.textContent = c || "All";
-        b.onclick = () => { cat = c; renderChips(); renderResults(); };
-        chips.appendChild(b);
-      }
-    };
-    const results = s.querySelector(".results");
-    const choose = pid => { done = true; bumpRecent(pid); save(); close(); resolve(pid); };
-    const renderResults = () => {
-      const q = input.value.trim();
-      results.innerHTML = "";
-      if (!q && !cat && state.recents.length) {
-        const rec = state.recents.map(productById).filter(p => p && !p.retired);
-        if (rec.length) {
-          results.appendChild(el(`<div class="group-h">Recent</div>`));
-          results.appendChild(listOf(rec, choose));
-        }
-        results.appendChild(el(`<div class="group-h">All products</div>`));
-      }
-      const items = searchProducts(q, { category: cat });
-      const shown = items.slice(0, 150);
-      if (shown.length) results.appendChild(listOf(shown, choose));
-      if (items.length > shown.length) results.appendChild(el(`<p class="hint center" style="padding:10px">${items.length - shown.length} more. Keep typing to narrow it down.</p>`));
-      if (!items.length) results.appendChild(el(`<div class="empty"><p>No match for “${esc(q)}”</p></div>`));
-      const add = el(`<button class="btn block" style="margin-top:12px">${icon("plus")}Add new product${q ? ` “${esc(q)}”` : ""}</button>`);
-      add.onclick = async () => {
-        const pid = await editProduct(null, { prefillName: q });
-        if (pid) choose(pid);
-      };
-      results.appendChild(add);
-    };
-    input.addEventListener("input", debounce(renderResults, 60));
-    renderChips(); renderResults();
-    setTimeout(() => input.focus(), 50);
-  });
-}
 // Builds the whole list in one parse, with a single tap handler (much faster than 200 separate rows).
 function listOf(products, onTap, extra) {
   const wrap = el(`<div class="list">${products.map(p =>
@@ -1450,50 +1412,51 @@ function resolvePhrase(phrase) {
   const gap = next ? top.sc - next.sc : 9;
   return { p: top.p, clear: gap >= 1 && top.sc >= 2, why: gap < 1 ? "close call" : top.sc < 2 ? "weak match" : "" };
 }
-// One list item. `why` says what is missing or uncertain ("" when complete and clear).
-// rev is the status behind the colored dot: "ok" = green (clear and complete), "warn" = yellow (unsure: a close call or weak match),
-// "miss" = red (missing something: no product recognized, or no quantity).
-const itemRev = it => (!it.why ? "ok" : it.why === "no match" || it.why === "how many?" ? "miss" : "warn");
-function buildItem(phrase, qty, r) {
-  const why = !r ? "no match" : !r.clear ? r.why : qty == null ? "how many?" : "";
-  return { pid: r ? r.p.id : null, phrase: phrase.trim(), qty, why, rev: itemRev({ why }), done: false };
-}
-// ---------- Quick read (no language model) ----------
-// Splits a note at each brand said, finds the quantity nearest each one, and matches each piece to a product.
-// Instant, so a note has a usable list the moment it is heard.
+// ---------- Reading a blurb (organizing only) ----------
+// Works out which products a blurb mentions so blurbs about the same product can sit together on the list.
+// It never changes the words: the list shows exactly what was said.
 const UNIT_WORDS = new Set(["oz", "ounce", "ounces", "l", "liter", "liters", "litre", "litres", "leader", "leaders", "litter", "litters", "ml", "pack", "packs", "pk", "ct", "count", "fl"]);
-const LEAD_FILLER = new Set(["of", "the", "a", "an", "more", "need", "needs", "like", "about", "maybe", "case", "cases", "we", "i", "just", "some"]);
-function quickItems(text) {
-  const toks = speechToDigits(text).split(" ");
-  const spans = brandSpans(toks);
-  if (!spans.length) return [];
-  // Quantities: whole numbers not describing a size or pack ("12 pack", "2 liter", "20 ounce"), and "a couple".
-  const nums = [];
-  toks.forEach((t, i) => {
-    if (/^\d+$/.test(t) && +t > 0 && +t < 200 && !UNIT_WORDS.has(toks[i + 1] || "") && toks[i - 1] !== "point") nums.push({ i, v: +t });
-    else if (t === "couple" || t === "pair") nums.push({ i, v: 2 });
-    else if (t === "dozen") { const prev = nums[nums.length - 1]; if (prev && prev.i === i - 1) prev.v *= 12; else nums.push({ i, v: 12 }); }
-  });
-  const mine = spans.map(() => []);
-  for (const n of nums) {
-    // A number just before a brand (only filler words between) belongs to that brand; otherwise to the brand before it.
-    const next = spans.findIndex(sp => sp.start > n.i);
-    let owner;
-    if (next >= 0 && toks.slice(n.i + 1, spans[next].start).every(w => LEAD_FILLER.has(w))) owner = next;
-    else owner = next > 0 ? next - 1 : next >= 0 ? next : spans.length - 1;
-    mine[owner].push({ ...n, lead: owner === next, strong: owner === next && toks.slice(n.i + 1, spans[next].start).includes("of") });
+const FILLER_WORDS = new Set(["of", "the", "a", "an", "and", "or", "more", "need", "needs", "needed", "like", "about", "maybe", "case", "cases", "we", "i", "just", "some", "them", "those", "these", "that", "this", "each", "too", "please", "it", "is", "are", "to", "get", "got", "bottle", "bottles", "can", "cans", "single", "singles", "also", "plus", "out", "empty", "bare", "low", "shelf", "here", "there", "yeah", "okay", "um", "uh", "so", "then", "for", "with", "in", "on", "at", "no", "not", "any", "one", "ones", "back", "check", "extra", "full", "all", "make", "actually", "sorry", "wait", "mean", "think", "guess", "ill", "thats", "lets", "see", "say", "will", "would", "could", "should", "have", "has", "had", "be", "been", "was", "were", "my", "your", "their", "they", "you", "what", "when", "where", "which", "who", "how", "why", "now", "still", "again", "only", "even", "really", "very", "much", "many", "lot", "lots", "flat", "flats", "tray", "trays", "pallet", "pallets", "box", "boxes", "going", "gonna", "let", "know", "idea", "goes"]);
+const TRAIL_NEXT = new RegExp("[\\s,;.]*\\b(?:and|plus|also)\\b(?:[\\s,;.]+(?:a|an|of|the|couple|pair|dozen|\\d+|" + [...Object.keys(ONES), ...Object.keys(TENS)].join("|") + "))*[\\s,;.]*$", "i");
+// Lowercase letter/number words with their positions in the original text. Apostrophes join (barq's -> barqs); anything else splits.
+function tokenize(text) {
+  const out = []; let cur = null;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i], lc = c.toLowerCase();
+    if (/[a-z0-9]/.test(lc)) { if (!cur) cur = { t: "", s: i, e: i }; cur.t += lc; cur.e = i + 1; }
+    else if ((c === "'" || c === "’" || c === "`") && cur) { /* joins */ }
+    else if (cur) { out.push(cur); cur = null; }
   }
-  return spans.map((sp, k) => {
-    const from = k === 0 ? 0 : sp.start, to = k + 1 < spans.length ? spans[k + 1].start : toks.length;
-    // "four of the Sprite" is explicit; otherwise a number after the brand beats one just before it ("aisle nine. Sprite ... eight"). If they changed their mind, the last one wins.
-    const strong = mine[k].filter(x => x.strong), trail = mine[k].filter(x => !x.lead), pool = strong.length ? strong : trail.length ? trail : mine[k];
-    const qty = pool.length ? pool[pool.length - 1].v : null;
-    const r = resolvePhrase(toks.slice(from, to).join(" "));
-    return buildItem(toks.slice(sp.start, to).join(" "), qty, r);
-  });
+  if (cur) out.push(cur);
+  return out;
 }
-
-// ---------- On-device speech model and the note queue ----------
+// -> { parts: [{ pid, s, e }], flag }. Each part is one product and the stretch of the text about it.
+// flag = "check the text": nothing was recognized, or a clause with a number mentions something we didn't recognize.
+function readBlurb(text) {
+  text = String(text || "");
+  const toks = tokenize(text), spans = brandSpans(toks.map(x => x.t));
+  const parts = [];
+  spans.forEach((sp, k) => {
+    const from = k === 0 ? 0 : toks[sp.start].s, to = k + 1 < spans.length ? toks[spans[k + 1].start].s : text.length;
+    const r = resolvePhrase(text.slice(from, to));
+    if (!r) return;
+    // The part about this product ends before "and two ..." (that quantity belongs to the next product).
+    const s = toks[sp.start].s, seg = text.slice(s, to).replace(TRAIL_NEXT, "").replace(/[\s,;.]+$/, "");
+    parts.push({ pid: r.p.id, s, e: s + seg.length });
+  });
+  let flag = !parts.length;
+  if (!flag) {
+    // A clause with a number and unfamiliar words but no brand ("two of the cherry ones") might be a product we missed.
+    for (const clause of text.split(/,|;|\band\b|\bplus\b/i)) {
+      const cs = text.indexOf(clause), ce = cs + clause.length;
+      if (spans.some(sp => toks[sp.start].s >= cs && toks[sp.start].s < ce)) continue;
+      if (!/\d/.test(speechToDigits(clause))) continue;
+      const words = tokenize(clause).map(x => x.t).filter(w => w.length > 2 && !/^\d+$/.test(w) && !ONES[w] && !TENS[w] && !UNIT_WORDS.has(w) && !FILLER_WORDS.has(w) && w !== "dozen" && w !== "couple");
+      if (words.length) { flag = true; break; }
+    }
+  }
+  return { parts, flag };
+}// ---------- On-device speech model and the note queue ----------
 // A note goes: queued (voice clip waiting) → heard (words) → done (items on the list from the quick read).
 // The queue runs in the background so you can keep snapping shelves, or walk to the back room, while the phone works.
 const MODEL_INFO = {
@@ -1645,26 +1608,24 @@ function cleanTranscript(t) {
   t = String(t || "").replace(/\[[^\]]*\]|\([^)]*\)|\*[^*]*\*/g, " ").replace(/\s+/g, " ").trim();
   return /[a-z0-9]/i.test(t) ? t : "";
 }
-// The instant read: items on the list the moment a note is heard.
-// Green = clear and complete. Yellow = unsure (close call, weak match). Red = missing something (no quantity, no product).
+// The instant read: a heard note goes on the list at once. The matcher only works out where it belongs.
 function quickRead(n) {
-  try { n.items = quickItems(n.text); } catch (e) { n.items = []; }
-  n.status = "done"; n.err = ""; n.edited = false;
-  settleItems(n);
+  try { const r = readBlurb(n.text); n.parts = r.parts; n.flag = r.flag; } catch (e) { n.parts = []; n.flag = true; }
+  n.ticks = {}; delete n.items;
+  n.status = "done"; n.err = "";
   save(); renderAll();
 }
-function settleItems(n) { for (const it of n.items) if (!it.done) it.rev = itemRev(it); }
 // At startup: get the speech model ready in the background so the first note isn't waiting on it.
 function warmUp() {
   if (haveModel("asr")) workerCall({ type: "load", key: "asr" }, 0).then(() => (ai.ready.asr = true), () => {});
 }
 // Put a note back in line: to be listened to again, or read again.
 function requeue(n) {
-  n.err = ""; n.edited = false;
+  n.err = "";
   n.status = n.audio && !n.text ? "queued" : "heard";
   save(); renderAll(); pump();
 }
-function renderQueueStatus() { if (view === "needed" || view === "notes" || view === "capture") renderAll(); }
+function renderQueueStatus() { if (view === "needed" || view === "capture") renderAll(); }
 // ============================================================
 // Shared data on GitHub
 // ============================================================
@@ -1748,8 +1709,6 @@ function applyShared(remote, { overwrite = false } = {}) {
       state.deleted.products[id] = ts; delete state.outbox.products[id];
     }
   }
-  // Notes that mention a product that no longer exists keep their words but ask for a new product.
-  for (const n of state.notes) for (const it of n.items) if (it.pid && !productById(it.pid)) { it.pid = null; it.rev = "warn"; it.why = "no match"; }
   state.products.forEach(p => (p._st = undefined));
   canonicalize(state.products);
 }
@@ -2169,11 +2128,11 @@ async function saveNote({ photos, note, audioRec, secs, text, status, kind }) {
   if (audioRec) { audioId = newId("a"); try { await putAudio(audioId, audioRec); } catch (e) { toast("Couldn't save the recording. Phone storage may be full."); } }
   if (note) {
     const old = note.audio;
-    note.audio = audioId; note.secs = secs; note.text = text; note.status = status; note.err = ""; note.items = []; note.rev = undefined; note.edited = false;
+    note.audio = audioId; note.secs = secs; note.text = text; note.status = status; note.err = ""; note.parts = []; note.flag = false; note.ticks = {};
     if (old) delAudio(old).catch(() => {});
     save(); renderAll(); return note;
   }
-  const n = { id: newId("n"), at: Date.now(), kind: kind === "display" ? "display" : "aisle", photos: photos || [], audio: audioId, secs, text, status, items: [], err: "" };
+  const n = { id: newId("n"), at: Date.now(), kind: kind === "display" ? "display" : "aisle", photos: photos || [], audio: audioId, secs, text, status, parts: [], flag: false, ticks: {}, err: "" };
   state.notes.unshift(n);
   save(); renderAll();
   lastNoteId = n.id;
@@ -2196,24 +2155,6 @@ function textPrompt(title, value = "", { ok = "Save" } = {}) {
     d.querySelector('[data-a="ok"]').onclick = () => { done = true; close(); resolve(ta.value.trim()); };
     setTimeout(() => ta.focus(), 50);
   });
-}
-
-// Full-screen photo viewer with previous/next.
-function openViewer(ids, start = 0) {
-  let i = start;
-  const v = el(`<div class="viewer"><div class="viewer-top"><button class="viewer-x" aria-label="Close">${icon("x")}</button><span class="small grow" id="vw-count"></span></div>
-    <div class="viewer-stage"><img alt=""></div><div class="viewer-dots"></div></div>`);
-  const close = openLayer(v, { sticky: true });
-  v.closest(".overlay").classList.add("viewer-overlay");
-  v.querySelector(".viewer-x").onclick = close;
-  const show = async () => {
-    const img = v.querySelector("img"); img.src = (await photoURL(ids[i])) || "";
-    v.querySelector("#vw-count").textContent = ids.length > 1 ? `Photo ${i + 1} of ${ids.length}` : "";
-    v.querySelector(".viewer-dots").innerHTML = ids.length > 1 ? ids.map((_, k) => `<button class="dot${k === i ? " on" : ""}" data-k="${k}" aria-label="Photo ${k + 1}"></button>`).join("") : "";
-  };
-  v.querySelector(".viewer-dots").onclick = e => { const b = e.target.closest("[data-k]"); if (b) { i = +b.dataset.k; show(); } };
-  zoomStage(v.querySelector("img"), v.querySelector(".viewer-stage"));
-  show();
 }
 
 // Play back a note's recording.
@@ -2242,19 +2183,17 @@ function showView(v) {
 }
 function renderAll() {
   $("#hdr-store").textContent = state.storeName ? "Store " + state.storeName : "";
-  const open = KINDS.reduce((t, k) => t + neededRows(k).filter(r => !r.done).length, 0);
+  const open = KINDS.reduce((t, k) => t + openCount(k), 0);
   const badge = $("#need-badge");
   if (open && String(open) !== badge.textContent) bump(badge);
   badge.hidden = !open; badge.textContent = open;
   renderSyncIndicator();
   if (view === "capture") renderCapture();
   if (view === "needed") renderNeeded();
-  if (view === "notes") renderNotes();
   if (view === "products") renderProducts();
   if (view === "more") renderMore();
 }
 const timeOf = ts => new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-const itemProduct = it => (it.pid ? productById(it.pid) : null) || null;
 
 // ---------- Capture ----------
 function renderCapture() {
@@ -2263,8 +2202,9 @@ function renderCapture() {
   $("#cam-video").hidden = !on;
   $("#cam-starting").hidden = !cam.starting;
   $("#cam-error").textContent = cam.error;
+  $("#btn-phonecam").hidden = !cam.error;   // the fallback only shows when the live camera isn't working
   $("#btn-cam-stop").hidden = !on;
-  document.querySelectorAll(".shutter-big").forEach(b => (b.disabled = cam.starting));
+  $("#btn-shutter").disabled = cam.starting;
   const ck = captureKind();
   document.querySelectorAll("#cap-seg button").forEach(b => b.classList.toggle("active", b.dataset.k === ck));
   syncIndicator($("#cap-seg"), false);
@@ -2286,7 +2226,7 @@ function renderCapture() {
   if (last) {
     card.innerHTML = `<button class="shelf-thumb" data-photo-wrap><img data-photo="${esc(last.photos[0] || "")}" alt=""></button>
       <div class="grow"><div class="label">Last note · ${KIND_LABEL[noteKind(last)]} · ${timeOf(last.at)}</div><div class="last-text">${esc(noteSummary(last))}</div></div>${icon("jump")}`;
-    card.onclick = () => jumpToNote(last.id);
+    card.onclick = () => { showView("needed"); setTimeout(() => openCheck(last), 60); };
     hydratePhotos(card);
   }
   const line = $("#queue-line");
@@ -2295,130 +2235,95 @@ function renderCapture() {
   line.classList.toggle("busy", !!q.busy);
 }
 function noteSummary(n) {
-  if (n.status === "queued") return haveModel("asr") ? "Waiting to listen…" : "Saved. It will be read once the voice models are downloaded.";
-  if (n.status === "heard") return n.text ? `“${n.text}”` : "Waiting to read…";
-  if (n.status === "reading") return "Reading…";
+  if (n.status === "queued") return haveModel("asr") ? "Waiting to listen…" : "Saved. It will be read once the speech model is downloaded.";
   if (n.status === "error") return n.err || "Couldn't read this note";
   if (n.status === "empty") return "Nothing was heard";
-  const k = n.items.length;
-  return k ? n.items.map(it => { const p = itemProduct(it); return `${it.qty != null ? it.qty + " × " : ""}${p ? pName(p) : it.phrase}`; }).join(", ") : "No product found";
+  return n.text ? `“${n.text}”` : "Waiting to read…";
 }
 
-// ---------- Needed (the short list) ----------
-// Aisle and display needs are kept completely apart: separate rows, separate groups.
+// ---------- Needed ----------
+// Each blurb is a row, word for word. The matcher only decides where it sits: a blurb shows up under every
+// product it mentions (so working through the back room one product at a time, nothing is missed), with a tick
+// of its own for each product. Aisle and display needs never mix.
 const KINDS = ["aisle", "display"];
 const noteKind = n => (n.kind === "display" ? "display" : "aisle");
 const KIND_LABEL = { aisle: "Aisle", display: "Display" };
 const captureKind = () => (state.settings.captureKind === "display" ? "display" : "aisle");
 const curKind = () => (state.settings.needKind === "display" ? "display" : "aisle");
-let notesFilter = "all";
-function neededRows(kind = null) {
-  const map = new Map();
-  for (const n of state.notes) if (!kind || noteKind(n) === kind) n.items.forEach((it, idx) => {
-    const p = itemProduct(it);
-    const key = p ? p.id : "?" + sNorm(it.phrase);
-    let r = map.get(key);
-    if (!r) map.set(key, r = { key, p, phrase: it.phrase, qty: 0, unknown: false, why: "", dot: "green", done: true, src: [] });
-    if (it.qty == null) r.unknown = true; else r.qty += it.qty;
-    if (!r.why && (it.why || !p)) r.why = it.why || "no match";
-    const d = dotOf(it);
-    if (d === "red" || (d === "yellow" && r.dot === "green")) r.dot = d;   // a row shows its worst item
-    if (!it.done) r.done = false;
-    r.src.push({ n, idx, it });
-  });
-  return [...map.values()];
+const CHECK_GROUP = "Check the text";
+// The products a blurb is listed under: one appearance per distinct product, or a single "?" one when none were recognized.
+function appearances(n) {
+  const pids = [...new Set((n.parts || []).map(p => p.pid).filter(pid => productById(pid)))];
+  return pids.length ? pids.map(pid => ({ key: pid, pid })) : [{ key: "?", pid: null }];
 }
-function qtyLabel(r) { return r.unknown ? (r.qty ? `${r.qty}+` : "?") : String(r.qty); }
-function renderNeeded() {
-  const v = $("#view-needed");
-  const kind = curKind(), rows = neededRows(kind), q = queueState();
-  const open = rows.filter(r => !r.done).length;
-  const cnt = k => neededRows(k).filter(r => !r.done).length;
-  let html = `<div class="list-head"><h2>Needed</h2><span class="muted small">${rows.length ? `${open} to go` : ""}</span><span class="grow"></span></div>
-    <div class="seg" id="kind-seg">${KINDS.map(k => `<button data-k="${k}" class="${k === kind ? "active" : ""}">${KIND_LABEL[k]}${cnt(k) ? ` <span class="kcount">${cnt(k)}</span>` : ""}</button>`).join("")}</div>`;
-  if (q.text) html += `<div class="banner ${q.busy ? "busy" : ""}"><span class="spin"></span><span class="grow">${esc(q.text)}</span></div>`;
-  if (!rows.length) {
-    html += `<div class="empty">${icon("list")}<h3>Nothing needed ${kind === "display" ? "on displays" : "in aisles"} yet</h3><p>Snap a ${kind === "display" ? "display" : "shelf"} and say what's missing. It lands here.</p></div>`;
-    v.innerHTML = html; wireKindSeg(v); v.onclick = null; return;
+const noteDone = n => appearances(n).every(a => (n.ticks || {})[a.key]);
+const listed = kind => state.notes.filter(n => noteKind(n) === kind && n.status === "done" && n.text);
+const openCount = kind => listed(kind).filter(n => !noteDone(n)).length;
+function neededGroups(kind) {
+  const cats = new Map();
+  for (const n of listed(kind)) for (const a of appearances(n)) {
+    const p = a.pid && productById(a.pid), cat = p ? p.category : CHECK_GROUP;
+    const cl = cats.get(cat) || cats.set(cat, new Map()).get(cat);
+    (cl.get(a.key) || cl.set(a.key, []).get(a.key)).push({ n, a });
   }
-  const look = rows.filter(r => r.dot !== "green" && !r.done);
-  if (look.length) html += `<div class="banner warn">${icon("warn")}<span class="grow">${look.length} ${look.length === 1 ? "item needs" : "items need"} a look. Tap a yellow or red row to check it against the photo.</span></div>`;
-  // Group by product group, unmatched first.
-  const groups = new Map();
-  for (const r of rows) { const g = r.p ? r.p.category : "Not matched to a product"; (groups.get(g) || groups.set(g, []).get(g)).push(r); }
-  const order = [...groups.keys()].sort((a, b) => (a.startsWith("Not matched") ? -1 : b.startsWith("Not matched") ? 1 : catSort(a, b)));
-  for (const g of order) {
-    html += `<div class="group-h">${esc(g)}</div><div class="list">` + groups.get(g).map(r => needRow(r)).join("") + `</div>`;
-  }
-  html += `<button class="btn block quiet" id="btn-clear-all" style="margin-top:22px">Clear the whole list</button>`;
-  v.innerHTML = html; wireKindSeg(v);
-  v.onclick = e => {
-    const row = e.target.closest(".need[data-k]"); if (!row) { if (e.target.closest("#btn-clear-all")) clearAllNotes(); return; }
-    const r = rows.find(x => x.key === row.dataset.k); if (!r) return;
-    const a = e.target.closest("[data-a]")?.dataset.a;
-    if (a === "toggle") { const to = !r.done; r.src.forEach(s => (s.it.done = to)); save(); renderAll(); }
-    else if (a === "jump" && r.src.length === 1) jumpToNote(r.src[0].n.id, r.src[0].idx);
-    else if (r.src.length === 1) openCheck(r.src[0].n, r.src[0].idx);
-    else openSources(r.key);
-  };
+  const order = [...cats.keys()].sort((x, y) => (x === CHECK_GROUP ? -1 : y === CHECK_GROUP ? 1 : catSort(x, y)));
+  return order.map(cat => ({
+    cat,
+    clusters: [...cats.get(cat).entries()].map(([key, rows]) => ({ key, p: key === "?" ? null : productById(key), rows: rows.sort((r1, r2) => r1.n.at - r2.n.at) }))
+      .sort((c1, c2) => (c1.p ? pName(c1.p) : "").localeCompare(c2.p ? pName(c2.p) : "") || (c1.p ? pSub(c1.p) : "").localeCompare(c2.p ? pSub(c2.p) : "")),
+  }));
 }
 function wireKindSeg(v) {
   const seg = v.querySelector("#kind-seg"); if (!seg) return;
   seg.querySelectorAll("button").forEach(b => (b.onclick = () => { if (state.settings.needKind === b.dataset.k) return; state.settings.needKind = b.dataset.k; save(); renderNeeded(); }));
   syncIndicator(seg, false);
 }
-function needRow(r) {
-  const name = r.p ? pName(r.p) : `“${r.phrase}”`, sub = r.p ? pSub(r.p) : "No matching product. Tap to pick one.";
-  const unit = r.p ? esc(r.p.unit || "pack") : "";
-  return `<div class="item need tap${r.done ? " done" : ""}" data-k="${esc(r.key)}">
-    <button class="check${r.done ? " on" : ""}" data-a="toggle" aria-label="Cross off">${icon("check")}</button>
-    ${r.p ? thumbHtml(r.p) : `<div class="thumb">?</div>`}
-    <div class="grow"><div class="name"><i class="sdot ${r.dot}" title="${dotTitle(r.dot)}"></i>${esc(name)}</div><div class="sub">${esc(sub)}${r.src.length > 1 ? ` <span class="pill">${r.src.length} notes</span>` : ""}</div>${r.dot !== "green" && r.why && !r.done ? `<div class="why">${esc(r.why)}</div>` : ""}</div>
-    <button class="qty-tap" data-a="qty" aria-label="Quantity"><b>${qtyLabel(r)}</b><span>${unit}</span></button>
-    <button class="jump-btn" data-a="jump" aria-label="Go to the note this came from">${icon("jump")}</button></div>`;
-}
-// The notes behind one row of the list: change the product, the quantities, or go to a note.
-function openSources(key) {
-  const s = el(`<div class="sheet"><div class="handle"></div><h2></h2><p class="hint" id="src-sub"></p><div id="src-list" class="stack"></div>
-    <button class="btn block" data-a="change">${icon("search")}Change product</button>
-    <button class="btn block quiet" data-a="close">Done</button></div>`);
-  const close = openLayer(s, { onClose: () => renderAll() });
-  const draw = () => {
-    const r = neededRows(curKind()).find(x => x.key === key);
-    if (!r) { close(); return; }
-    s.querySelector("h2").textContent = r.p ? pName(r.p) : `“${r.phrase}”`;
-    s.querySelector("#src-sub").textContent = r.p ? pSub(r.p) : "No matching product yet";
-    const box = s.querySelector("#src-list"); box.innerHTML = "";
-    r.src.forEach((x, i) => {
-      const row = el(`<div class="card src-row"><div class="row"><button class="shelf-thumb" data-a="photo" data-photo-wrap><img data-photo="${esc(x.n.photos[0] || "")}" alt=""></button>
-        <div class="grow"><div class="small muted">${timeOf(x.n.at)}</div><div class="src-text">${esc(x.n.text ? `“${x.n.text}”` : "(typed / no words)")}</div></div></div>
-        <div class="row" style="margin-top:10px"><div class="qty grow"><button data-d="-1" aria-label="Fewer">−</button><input inputmode="numeric" value="${x.it.qty ?? ""}" placeholder="?" aria-label="Quantity"><button data-d="1" aria-label="More">+</button></div>
-        <button class="btn sm" data-a="jump">${icon("jump")}Go to note</button></div></div>`);
-      const inp = row.querySelector("input");
-      const setQ = q => { setItemQty(x.n, x.idx, q); draw(); };
-      row.querySelectorAll("[data-d]").forEach(b => (b.onclick = () => setQ(Math.max(1, (x.it.qty || 0) + +b.dataset.d))));
-      inp.onchange = () => setQ(inp.value.trim() === "" ? null : Math.max(1, parseInt(inp.value, 10) || 1));
-      row.querySelector('[data-a="jump"]').onclick = () => { close(); jumpToNote(x.n.id, x.idx); };
-      row.querySelector('[data-a="photo"]').onclick = () => { close(); openCheck(x.n, x.idx); };
-      box.appendChild(row);
-    });
-    hydratePhotos(box);
-  };
-  draw();
-  s.querySelector('[data-a="close"]').onclick = close;
-  s.querySelector('[data-a="change"]').onclick = async () => {
-    const r = neededRows(curKind()).find(x => x.key === key); if (!r) return;
-    const pid = await pickProduct({ title: "Which product is this?", initialQuery: r.p ? "" : r.phrase });
-    if (!pid) return;
-    const snap = snapshot();
-    r.src.forEach(x => { x.it.pid = pid; touchItem(x.n, x.it); });
-    save(); key = pid; draw(); renderAll(); toast("Product changed", snap);
+function renderNeeded() {
+  const v = $("#view-needed");
+  const kind = curKind(), q = queueState();
+  const notes = listed(kind), open = notes.filter(n => !noteDone(n)).length;
+  let html = `<div class="list-head"><h2>Needed</h2><span class="muted small">${notes.length ? `${open} to go` : ""}</span><span class="grow"></span></div>
+    <div class="seg" id="kind-seg">${KINDS.map(k => `<button data-k="${k}" class="${k === kind ? "active" : ""}">${KIND_LABEL[k]}${openCount(k) ? ` <span class="kcount">${openCount(k)}</span>` : ""}</button>`).join("")}</div>`;
+  if (q.text) html += `<div class="banner ${q.busy ? "busy" : ""}"><span class="spin"></span><span class="grow">${esc(q.text)}</span></div>`;
+  if (!notes.length) {
+    html += `<div class="empty">${icon("list")}<h3>Nothing needed ${kind === "display" ? "on displays" : "in aisles"} yet</h3><p>Snap a ${kind === "display" ? "display" : "shelf"} and say what's missing. It lands here.</p></div>`;
+    v.innerHTML = html; wireKindSeg(v); v.onclick = null; return;
+  }
+  for (const g of neededGroups(kind)) {
+    html += `<div class="group-h">${esc(g.cat)}</div>`;
+    for (const c of g.clusters) {
+      if (c.p) html += `<div class="cluster-h">${esc(pName(c.p))} <span>${esc(pSub(c.p))}</span></div>`;
+      html += `<div class="list">${c.rows.map(r => needRow(r.n, r.a)).join("")}</div>`;
+    }
+  }
+  html += `<button class="btn block quiet" id="btn-clear-all" style="margin-top:22px">Clear the whole list</button>`;
+  v.innerHTML = html; wireKindSeg(v);
+  hydratePhotos(v);
+  v.onclick = e => {
+    if (e.target.closest("#btn-clear-all")) return clearAllNotes();
+    const row = e.target.closest(".need[data-n]"); if (!row) return;
+    const n = state.notes.find(x => x.id === row.dataset.n); if (!n) return;
+    if (e.target.closest('[data-a="toggle"]')) { n.ticks = n.ticks || {}; n.ticks[row.dataset.k] = !n.ticks[row.dataset.k]; save(); renderAll(); }
+    else openCheck(n, row.dataset.k);
   };
 }
-function setItemQty(n, idx, qty) {
-  const it = n.items[idx]; if (!it) return;
-  it.qty = qty; touchItem(n, it);
-  save(); renderAll();
+// The blurb with the part about this product in bold.
+function markText(n, pid) {
+  const t = n.text || "";
+  const ranges = (n.parts || []).filter(p => p.pid === pid).map(p => [p.s, p.e]).sort((a, b) => a[0] - b[0]);
+  let html = "", i = 0;
+  for (const [s, e] of ranges) { if (s < i) continue; html += esc(t.slice(i, s)) + `<b class="hl">${esc(t.slice(s, e))}</b>`; i = e; }
+  return html + esc(t.slice(i));
+}
+const chipsFor = (n, exceptPid) => [...new Set((n.parts || []).map(p => p.pid))].filter(pid => pid !== exceptPid && productById(pid))
+  .map(pid => `<span class="chip-sm">${esc(pName(productById(pid)))}</span>`).join("");
+function needRow(n, a) {
+  const done = !!(n.ticks || {})[a.key], chips = chipsFor(n, a.pid);
+  return `<div class="item need tap${done ? " done" : ""}" data-n="${esc(n.id)}" data-k="${esc(a.key)}">
+    <button class="check${done ? " on" : ""}" data-a="toggle" aria-label="Mark as pulled">${icon("check")}</button>
+    <div class="shelf-thumb" data-photo-wrap><img data-photo="${esc(n.photos[0] || "")}" alt=""></div>
+    <div class="grow"><div class="blurb">${markText(n, a.pid)}</div>${chips || n.flag ? `<div class="chips-row">${chips}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}</div>` : ""}</div>
+    ${icon("jump")}</div>`;
 }
 function clearAllNotes() {
   confirmDialog("Clear the whole list? This removes every note and photo.", { ok: "Clear list", danger: true }).then(ok => {
@@ -2429,157 +2334,13 @@ function clearAllNotes() {
   });
 }
 
-// ---------- Notes ----------
-function noteStatusPill(n) {
-  const m = { queued: ["Waiting", ""], heard: ["Heard", ""], done: ["Read", "ok"], error: ["Problem", "warn"], empty: ["Nothing heard", "warn"] }[n.status] || ["", ""];
-  return `<span class="pill ${m[1]}">${m[0]}</span>`;
-}
-function renderNotes() {
-  const v = $("#view-notes");
-  if (!state.notes.length) { v.innerHTML = `<div class="list-head"><h2>Notes</h2></div><div class="empty">${icon("note")}<h3>No notes yet</h3><p>Each note is a shelf photo with what you said about it.</p></div>`; return; }
-  const shown = state.notes.filter(n => notesFilter === "all" || noteKind(n) === notesFilter);
-  const fc = k => state.notes.filter(n => noteKind(n) === k).length;
-  v.innerHTML = `<div class="list-head"><h2>Notes</h2><span class="muted small">${shown.length}</span></div>
-    <div class="seg" id="note-seg">${[["all", "All", state.notes.length], ["aisle", "Aisle", fc("aisle")], ["display", "Display", fc("display")]].map(([k, l, c]) => `<button data-k="${k}" class="${k === notesFilter ? "active" : ""}">${l} <span class="kcount">${c}</span></button>`).join("")}</div>
-    <div id="note-list" class="stack">${shown.map(noteCard).join("") || `<div class="empty"><p>No ${notesFilter} notes yet.</p></div>`}</div>`;
-  v.querySelectorAll("#note-seg button").forEach(b => (b.onclick = () => { notesFilter = b.dataset.k; renderNotes(); }));
-  syncIndicator(v.querySelector("#note-seg"), false);
-  hydratePhotos(v);
-  v.querySelector("#note-list").onclick = onNotesClick;
-}
-function noteCard(n) {
-  const body = (() => {
-    if (n.status === "queued") return `<p class="hint">${haveModel("asr") ? "Waiting its turn to be listened to…" : "Saved. It will be read once the voice models are downloaded (More tab)."}</p>`;
-    if (n.status === "error") return `${n.text ? `<div class="transcript" data-a="edit">“${esc(n.text)}”</div>` : ""}<div class="banner warn">${icon("warn")}<span class="grow">${esc(n.err || "Something went wrong")}</span><button class="btn sm" data-a="retry">Try again</button></div>`;
-    if (n.status === "empty") return `<div class="banner warn">${icon("warn")}<span class="grow">Nothing was heard.</span></div><div class="row" style="margin-top:8px"><button class="btn sm grow" data-a="rerecord">${icon("mic")}Record again</button><button class="btn sm grow" data-a="edit">${icon("note")}Type it</button></div>`;
-    const t = n.text ? `<div class="transcript" data-a="edit">“${esc(n.text)}”</div>` : "";
-    if (n.status === "heard") return `${t}<p class="hint">Matching products…</p>${addItemBtn()}`;
-    return `${t}<div class="note-items">${n.items.map((it, i) => noteItem(it, i)).join("") || `<p class="hint">No product found in this note.</p>`}</div>${addItemBtn()}`;
-  })();
-  return `<div class="card note" id="note-${esc(n.id)}" data-id="${esc(n.id)}">
-    <div class="row note-top">
-      <button class="note-photo" data-a="photo" data-photo-wrap aria-label="View photo"><img data-photo="${esc(n.photos[0] || "")}" alt="">${n.photos.length > 1 ? `<span class="count">${n.photos.length}</span>` : ""}</button>
-      <div class="grow"><div class="small muted">${timeOf(n.at)}${n.secs ? ` · ${Math.round(n.secs)}s` : ""}</div><span class="pill kind ${noteKind(n)}">${KIND_LABEL[noteKind(n)]}</span> ${noteStatusPill(n)}</div>
-      ${n.audio ? `<button class="btn sm quiet icon-btn" data-a="play" aria-label="Play recording">${icon("play")}</button>` : ""}
-      <button class="more-btn" data-a="menu" aria-label="More">${icon("dots")}</button>
-    </div>${body}</div>`;
-}
-const addItemBtn = () => `<button class="btn sm quiet" data-a="additem" style="margin-top:8px">${icon("plus")}Add item</button>`;
-function noteItem(it, i) {
-  const p = itemProduct(it);
-  return `<div class="note-item item tap${it.done ? " done" : ""}" data-i="${i}">${p ? thumbHtml(p) : `<div class="thumb">?</div>`}
-    <div class="grow"><div class="name"><i class="sdot ${dotOf(it)}" title="${dotTitle(dotOf(it))}"></i>${esc(p ? pName(p) : `“${it.phrase}”`)}</div><div class="sub">${esc(p ? pSub(p) : "No matching product")}</div>${it.why ? `<div class="why">${esc(it.why)}</div>` : ""}</div>
-    <div class="qty-tap" aria-label="Quantity"><b>${it.qty ?? "?"}</b></div></div>`;
-}
-async function onNotesClick(e) {
-  const card = e.target.closest(".note"); if (!card) return;
-  const n = state.notes.find(x => x.id === card.dataset.id); if (!n) return;
-  const a = e.target.closest("[data-a]")?.dataset.a;
-  const itemRow = e.target.closest(".note-item");
-  if (itemRow) return itemMenu(n, +itemRow.dataset.i);
-  if (a === "photo") return n.photos.length ? openViewer(n.photos) : addPhoto(n);
-  if (a === "play") return playNote(n);
-  if (a === "edit") return editText(n);
-  if (a === "retry") return requeue(n);
-  if (a === "rerecord") return startRecording({ note: n });
-  if (a === "additem") return addItem(n);
-  if (a === "menu") {
-    const pick = await menu("Note", [
-      { label: "Edit what was heard", value: "edit" }, ...(n.audio ? [{ label: "Play recording", value: "play" }] : []),
-      { label: "Record again", value: "rerecord" }, { label: "Add another photo", value: "photo" },
-      { label: noteKind(n) === "aisle" ? "Move to Display" : "Move to Aisle", value: "kind" },
-      ...(n.text ? [{ label: "Read again", value: "retry" }] : []), { label: "Delete note", value: "delete", danger: true }]);
-    if (pick === "edit") editText(n); else if (pick === "play") playNote(n); else if (pick === "rerecord") startRecording({ note: n });
-    else if (pick === "kind") { n.kind = noteKind(n) === "aisle" ? "display" : "aisle"; save(); renderAll(); toast(`Moved to ${KIND_LABEL[n.kind]}`); }
-    else if (pick === "photo") addPhoto(n); else if (pick === "retry") { n.status = "heard"; save(); renderAll(); pump(); }
-    else if (pick === "delete") deleteNote(n);
-  }
-}
-async function editText(n) {
-  const t = await textPrompt("What was said", n.text || "");
-  if (t == null) return;
-  n.text = t; n.items = []; n.err = ""; n.status = t ? "heard" : "empty"; save(); renderAll(); pump();
-}
-async function addPhoto(n) {
-  if (n.photos.length >= 6) return toast("That's the most photos for one note");
-  const blob = await cameraPhoto(); if (!blob) return;
-  const id = newId("p"); await putPhoto(id, blob); n.photos.push(id); save(); renderAll();
-}
-function deleteNote(n) {
-  const snap = snapshot();
-  state.notes = state.notes.filter(x => x.id !== n.id); save(); renderAll(); scheduleSweep();
-  toast("Note deleted", snap);
-}
-async function addItem(n) {
-  const pid = await pickProduct({ title: "Add which product?" }); if (!pid) return;
-  const q = await qtyDialog(pName(productById(pid)), 1); if (q === undefined) return;
-  const it = { pid, phrase: pName(productById(pid)), qty: q, why: "", rev: "", done: false };
-  n.items.push(it); touchItem(n, it);
-  if (n.status !== "done") { n.status = "done"; n.rev = "done"; }
-  save(); renderAll();
-}
-async function itemMenu(n, i) {
-  const it = n.items[i]; if (!it) return;
-  const pick = await menu(itemProduct(it) ? pName(itemProduct(it)) : `“${it.phrase}”`, [
-    ...(it.pid && it.qty != null ? [{ label: "Looks right", value: "ok" }] : []), { label: "Change product", value: "p" }, { label: "Change quantity", value: "q" }, { label: it.done ? "Mark as still needed" : "Cross off", value: "d" },
-    { label: "Remove from this note", value: "x", danger: true }]);
-  const snap = snapshot();
-  if (pick === "p") { const pid = await pickProduct({ title: "Which product?", initialQuery: itemProduct(it) ? "" : it.phrase }); if (pid) { it.pid = pid; touchItem(n, it); save(); renderAll(); } }
-  else if (pick === "q") { const q = await qtyDialog(itemProduct(it) ? pName(itemProduct(it)) : it.phrase, it.qty || 1); if (q !== undefined) setItemQty(n, i, q); }
-  else if (pick === "d") { it.done = !it.done; save(); renderAll(); }
-  else if (pick === "ok") { touchItem(n, it, true); save(); renderAll(); }
-  else if (pick === "x") { n.items.splice(i, 1); save(); renderAll(); toast("Item removed", snap); }
-}
-// A number stepper. Resolves the number, or undefined when cancelled.
-function qtyDialog(title, value = 1) {
-  return new Promise(resolve => {
-    const d = el(`<div class="dialog"><p><b></b><br><span class="hint">How many do you need?</span></p>
-      <div class="qty"><button data-d="-1" aria-label="Fewer">−</button><input inputmode="numeric" aria-label="Quantity"><button data-d="1" aria-label="More">+</button></div>
-      <div class="btns" style="margin-top:16px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="ok">Save</button></div></div>`);
-    d.querySelector("b").textContent = title;
-    const inp = d.querySelector("input"); inp.value = value;
-    let done = false;
-    const close = openLayer(d, { center: true, sticky: true, onClose: () => { if (!done) resolve(undefined); } });
-    d.querySelectorAll("[data-d]").forEach(b => (b.onclick = () => (inp.value = Math.max(1, (parseInt(inp.value, 10) || 0) + +b.dataset.d))));
-    d.querySelector('[data-a="c"]').onclick = () => { done = true; close(); resolve(undefined); };
-    d.querySelector('[data-a="ok"]').onclick = () => { done = true; close(); resolve(inp.value.trim() ? Math.max(1, parseInt(inp.value, 10) || 1) : null); };
-  });
-}
-// Jump from a list row to the note (and item) it came from.
-function jumpToNote(id, idx) {
-  notesFilter = "all";
-  showView("notes");
-  setTimeout(() => {
-    const c = document.getElementById("note-" + id); if (!c) return;
-    const top = c.getBoundingClientRect().top + window.scrollY - 80;
-    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
-    c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash");
-    const it = idx != null && c.querySelector(`.note-item[data-i="${idx}"]`);
-    if (it) { it.classList.remove("flash"); void it.offsetWidth; it.classList.add("flash"); }
-    setTimeout(() => { c.classList.remove("flash"); it && it.classList.remove("flash"); }, 2200);
-  }, 80);
-}
-
-
-// ---------- Status dots ----------
-// green = clear and complete (or you confirmed it); yellow = unsure (a close call); red = missing something (no quantity or product).
-const dotOf = it => (it.rev === "ok" ? "green" : it.rev === "warn" ? "yellow" : "red");
-const dotTitle = d => ({ red: "Missing something", yellow: "Unsure, check it", green: "Clear and complete" })[d];
-// You changed an item by hand: it's now yours. The model won't touch this note again.
-function touchItem(n, it, confirmed = false) {
-  n.edited = true;
-  it.why = !it.pid ? "no match" : it.qty == null ? "how many?" : "";
-  it.rev = itemRev(it);
-}
-
-// ---------- Check an item against its photo ----------
-// The photo (pinch to zoom) with what was said under it, and this note's items to confirm or fix.
-function openCheck(n, idx) {
-  let photoIdx = 0, focus = idx;
+// ---------- A note: photo, words, and everything you can do with it ----------
+function openCheck(n, focusPid) {
+  let photoIdx = 0;
   const s = el(`<div class="sheet check-sheet"><div class="handle"></div><div class="row"><h2 class="grow">Check against the photo</h2><button class="btn sm quiet" data-a="close">Done</button></div>
     <div class="zoom-stage" id="ck-stage"><img alt=""><span class="zoom-hint">Pinch to zoom</span></div><div class="viewer-dots" id="ck-dots" style="padding:0"></div>
-    <div class="transcript" id="ck-text"></div>
-    <div class="row" id="ck-actions"></div><div id="ck-items" class="note-items"></div></div>`);
+    <div class="transcript" id="ck-text"></div><div class="chips-row" id="ck-chips"></div>
+    <div class="row" id="ck-actions"></div></div>`);
   const close = openLayer(s, { onClose: () => renderAll() });
   const img = s.querySelector("img");
   zoomStage(img, s.querySelector("#ck-stage"));
@@ -2591,18 +2352,41 @@ function openCheck(n, idx) {
   };
   s.querySelector("#ck-dots").onclick = e => { const b = e.target.closest("[data-k]"); if (b) { photoIdx = +b.dataset.k; showPhoto(); } };
   const draw = () => {
-    s.querySelector("#ck-text").textContent = n.text ? `“${n.text}”` : "(no words: typed or no recording)";
-    const box = s.querySelector("#ck-items");
-    box.innerHTML = n.items.map((it, i) => noteItem(it, i)).join("") || `<p class="hint" style="padding:10px">No items in this note.</p>`;
-    box.querySelectorAll(".note-item").forEach(r => { if (+r.dataset.i === focus) r.classList.add("focus"); r.onclick = () => { focus = +r.dataset.i; draw(); }; });
-    const it = n.items[focus], acts = s.querySelector("#ck-actions");
-    acts.innerHTML = it ? `<button class="btn sm grow" data-a="ok" ${it.pid && it.qty != null ? "" : "disabled"}>${icon("check")}Looks right</button><button class="btn sm grow quiet" data-a="more">Fix…</button>` : "";
-    const okb = acts.querySelector('[data-a="ok"]'); if (okb) okb.onclick = () => { touchItem(n, it, true); save(); draw(); renderAll(); };
-    const mb = acts.querySelector('[data-a="more"]'); if (mb) mb.onclick = async () => { await itemMenu(n, focus); draw(); };
+    s.querySelector("#ck-text").innerHTML = n.text ? `“${markText(n, focusPid && focusPid !== "?" ? focusPid : null)}”` : "(no words: typed or no recording)";
+    s.querySelector("#ck-chips").innerHTML = `<span class="pill kind ${noteKind(n)}">${KIND_LABEL[noteKind(n)]}</span>${chipsFor(n, null)}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}`;
+    s.querySelector("#ck-actions").innerHTML = `<button class="btn sm grow" data-a="edit">${icon("note")}Edit text</button>${n.audio ? `<button class="btn sm grow quiet" data-a="play">${icon("play")}Play</button>` : ""}<button class="btn sm grow quiet" data-a="more">More…</button>`;
+    const a = s.querySelector("#ck-actions");
+    a.querySelector('[data-a="edit"]').onclick = async () => { await editText(n); draw(); };
+    const pb = a.querySelector('[data-a="play"]'); if (pb) pb.onclick = () => playNote(n);
+    a.querySelector('[data-a="more"]').onclick = async () => {
+      const pick = await menu("This note", [
+        { label: "Record again", value: "rerecord" }, { label: "Add another photo", value: "photo" },
+        { label: noteKind(n) === "aisle" ? "Move to Display" : "Move to Aisle", value: "kind" }, { label: "Delete note", value: "delete", danger: true }]);
+      if (pick === "rerecord") { close(); startRecording({ note: n }); }
+      else if (pick === "photo") { await addPhoto(n); showPhoto(); }
+      else if (pick === "kind") { n.kind = noteKind(n) === "aisle" ? "display" : "aisle"; save(); renderAll(); toast(`Moved to ${KIND_LABEL[n.kind]}`); draw(); }
+      else if (pick === "delete") { close(); deleteNote(n); }
+    };
   };
   s.querySelector('[data-a="close"]').onclick = close;
   showPhoto(); draw();
 }
+async function editText(n) {
+  const t = await textPrompt("What was said", n.text || "");
+  if (t == null) return;
+  n.text = t; n.parts = []; n.flag = false; n.ticks = {}; n.err = ""; n.status = t ? "heard" : "empty"; save(); renderAll(); await pump();
+}
+async function addPhoto(n) {
+  if (n.photos.length >= 6) return toast("That's the most photos for one note");
+  const blob = await cameraPhoto(); if (!blob) return;
+  const id = newId("p"); await putPhoto(id, blob); n.photos.push(id); save(); renderAll();
+}
+function deleteNote(n) {
+  const snap = snapshot();
+  state.notes = state.notes.filter(x => x.id !== n.id); save(); renderAll(); scheduleSweep();
+  toast("Note deleted", snap);
+}
+
 // Pinch to zoom, drag to pan, double-tap to toggle.
 function zoomStage(img, stage) {
   let scale = 1, tx = 0, ty = 0, startDist = 0, startScale = 1, last = null, lastTap = 0;
@@ -2724,7 +2508,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 5.1.1 (voice notes) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan Beta 5.1.2 (voice notes) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
@@ -2846,13 +2630,6 @@ $("#btn-cam-stop").onclick = () => { state.settings.camOK = false; save(); stopC
 document.querySelectorAll("#cap-seg button").forEach(b => (b.onclick = () => { state.settings.captureKind = b.dataset.k; save(); renderCapture(); }));
 $("#btn-shutter").onclick = () => onShutter(false, captureKind());
 $("#btn-phonecam").onclick = () => onShutter(true, captureKind());
-$("#btn-type").onclick = async () => {
-  const kind = captureKind();
-  const text = await textPrompt(`Type what you need (${kind === "display" ? "display" : "aisle"})`);
-  if (text == null || !text) return;
-  await saveNote({ photos: [], audioRec: null, secs: 0, text, status: "heard", kind });
-  pump();
-};
 $("#sync-ind").onclick = () => showView("more");
 renderAll();
 save();
