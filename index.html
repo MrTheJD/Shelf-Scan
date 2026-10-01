@@ -277,6 +277,9 @@ details.owner summary::-webkit-details-marker { display: none; }
 body[data-view="capture"] main { padding: 0; max-width: none; }
 body[data-view="capture"] #view-capture.active { max-width: 640px; margin: 0 auto; }
 .item.compact { min-height: 52px; padding-top: 8px; padding-bottom: 8px; }
+
+.by-tag{display:inline-flex;align-items:center;font-size:12px;font-weight:700;line-height:1;padding:4px 8px;border-radius:999px;background:var(--ink,#1d1d1f);color:#fff;white-space:nowrap}
+.pend-tag{display:inline-flex;align-items:center;font-size:12px;font-weight:600;line-height:1;padding:4px 8px;border-radius:999px;border:1px dashed currentColor;opacity:.6;white-space:nowrap}
 </style>
 </head>
 <body data-view="capture">
@@ -670,6 +673,7 @@ function freshState() {
     recents: [],
     settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", models: { asr: false } },   // models: which downloads finished
     sync: { lastPull: 0, lastPush: 0, error: "" },
+    team: { key: "", name: "", repo: "", hidden: {}, tick: {}, seen: {}, rt: {} },   // Beta 6: shared Needed list (see team.js)
   };
 }
 function load() {
@@ -688,6 +692,8 @@ function migrate() {
   state.deleted = { products: state.deleted.products || {} };
   state.outbox = { products: state.outbox.products || {} };
   delete state.tags; delete state.config;   // left over from the scanning app
+  state.team = Object.assign(f.team, state.team || {});
+  for (const k of ["hidden", "tick", "seen", "rt"]) state.team[k] = state.team[k] || {};
   state.recents = state.recents || [];
   state.notes = Array.isArray(state.notes) ? state.notes : [];
   for (const p of state.products) if (p.updated === undefined) p.updated = 0;
@@ -715,8 +721,10 @@ function migrate() {
   state.version = 4;
 }
 function save() {
+  const touched = typeof teamTrack === "function" && teamTrack();   // notes or ticks changed: tell the team soon
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
   catch (e) { toast("Couldn't save. Phone storage is full or blocked."); }
+  if (touched) teamSoon();
 }
 function snapshot() { return JSON.stringify(state); }
 
@@ -1758,7 +1766,7 @@ async function writeRepoFile(path, text, sha, token, message) {
     body: JSON.stringify({ message, content: b64encode(text), branch: GITHUB.branch, ...(sha ? { sha } : {}) }),
   });
   if (r.status === 409 || r.status === 422) { const e = new Error("conflict"); e.conflict = true; throw e; }
-  if (r.status === 401 || r.status === 403) { const e = new Error("GitHub rejected the upload key"); e.auth = true; throw e; }
+  if (r.status === 401 || r.status === 403) { const e = new Error("GitHub rejected the saved key"); e.auth = true; throw e; }
   if (!r.ok) throw new Error(`GitHub said ${r.status}`);
   return (await r.json()).content.sha;
 }
@@ -1805,7 +1813,7 @@ async function pullShared({ overwrite = false, quiet = true } = {}) {
   if (!quiet) toast(overwrite ? "Replaced with the shared data" : "Up to date");
 }
 
-// ---------- Upload key (encrypted with the team password) ----------
+// ---------- Database key (unlocks the saved GitHub access token) ----------
 const KDF_ITER = 250000;
 async function deriveAesKey(password, salt, iter) {
   const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
@@ -1838,7 +1846,7 @@ async function getToken() {
   if (!pass) throw new Error("Uploads are off");
   const blob = await loadKeyBlob();
   try { cachedToken = await decryptToken(blob, pass); }
-  catch (e) { const err = new Error("The upload password no longer works. Enable uploads again."); err.auth = true; throw err; }
+  catch (e) { const err = new Error("The database key no longer works. Connect again."); err.auth = true; throw err; }
   return cachedToken;
 }
 async function checkToken(token) {
@@ -1926,6 +1934,256 @@ function renderSyncIndicator() {
   b.setAttribute("aria-label", s.text);
 }
 
+// ============================================================
+// Team sync (Beta 6): phones that use the same team key share one Needed list through the GitHub repo.
+// ============================================================
+// Everything lives in one folder (sync/). Each phone only ever writes its own files, so nothing can conflict:
+//   <keyhash>_<phone>_<note>.json   the note (words, Aisle/Display, photo names)
+//   <keyhash>_<phone>_<photo>.jpg   a photo (already shrunk to ~150 KB)
+//   <keyhash>_<phone>_ticks.json    this phone's ticks (the newest tick on a product wins, whoever made it)
+// Other phones' files are read, never changed. A phone deletes its own files when the note goes (or after 7 days).
+const TEAM_DIR = "sync", TEAM_POLL_MS = 5000, TEAM_MAX_AGE = 7 * 24 * 3600 * 1000;
+const devId = (() => {
+  const make = () => "d" + Math.random().toString(36).slice(2, 8);
+  try { let d = localStorage.getItem("shelfscan.dev"); if (!d) { d = make(); localStorage.setItem("shelfscan.dev", d); } return d; } catch (e) { return make(); }
+})();
+const T = { kh: "", khFor: "", list: new Map(), listCount: 0, listed: false, etag: "", busy: false, again: false, ticksDirty: false, last: 0, error: "", offline: false, miss: false, devices: new Set([devId]), timer: null, priv: null, privFor: "" };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const isMine = n => !n.dev;
+const teamKey = () => ((state.team && state.team.key) || "").trim().toLowerCase().replace(/\s+/g, " ");
+const teamOn = () => !!teamKey() && uploadsEnabled();
+const myName = () => (state.team.name || "").trim() || `Phone ${devId.slice(-3).toUpperCase()}`;
+const teamRepo = () => (state.team.repo || "").trim() || `${GITHUB.owner}/${GITHUB.repo}`;
+const teamShares = n => isMine(n) && n.status === "done" && !!n.text && Date.now() - n.at < TEAM_MAX_AGE;
+const teamPending = n => !!teamKey() && teamShares(n) && (n.mod || 0) > (n.pushed || 0);
+async function keyHash() {
+  const k = teamKey(); if (T.khFor === k) return T.kh;
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("shelfscan|" + k));
+  T.kh = [...new Uint8Array(buf)].slice(0, 5).map(b => b.toString(16).padStart(2, "0")).join(""); T.khFor = k;
+  T.list = new Map(); T.etag = ""; T.listed = false; return T.kh;
+}
+const blobToB64 = b => new Promise(res => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(",")[1]); fr.readAsDataURL(b); });
+
+// ---- GitHub calls ----
+async function gh(path, { method = "GET", body, accept, etag } = {}) {
+  const token = await getToken();
+  const headers = { Accept: accept || "application/vnd.github+json", Authorization: `Bearer ${token}` };
+  if (body) headers["Content-Type"] = "application/json";
+  if (etag) headers["If-None-Match"] = etag;
+  return fetch(`https://api.github.com/repos/${teamRepo()}${path ? "/" + path : ""}`, { method, headers, body: body ? JSON.stringify(body) : undefined, cache: "no-store" });
+}
+function httpErr(r) {
+  if (r.status === 401) { const e = new Error("GitHub didn't accept the saved key. Connect again."); e.auth = true; return e; }
+  if (r.status === 403 || r.status === 429) return new Error("GitHub is limiting requests. Pausing a moment.");
+  if (r.status === 404) return new Error("Can't find that repo, or the key can't see it.");
+  return new Error(`GitHub said ${r.status}`);
+}
+async function teamList() {
+  const r = await gh(`contents/${TEAM_DIR}?ref=${GITHUB.branch}`, { etag: T.etag });
+  if (r.status === 304) return false;
+  if (r.status === 404) { T.list = new Map(); T.listCount = 0; T.etag = ""; T.listed = true; return true; }
+  if (!r.ok) throw httpErr(r);
+  const arr = await r.json();
+  T.etag = r.headers.get("ETag") || "";
+  T.list = new Map(arr.filter(f => f.type === "file").map(f => [f.name, f.sha])); T.listCount = arr.length; T.listed = true;
+  return true;
+}
+async function teamReadJSON(name) {
+  const r = await gh(`contents/${TEAM_DIR}/${name}?ref=${GITHUB.branch}`);
+  if (r.status === 404) return null;
+  if (!r.ok) throw httpErr(r);
+  const j = await r.json();
+  try { return JSON.parse(b64decode(j.content)); } catch (e) { return null; }
+}
+async function teamPut(name, b64, message) {
+  for (let a = 0; a < 3; a++) {
+    const sha = T.list.get(name);
+    const r = await gh(`contents/${TEAM_DIR}/${name}`, { method: "PUT", body: { message, content: b64, branch: GITHUB.branch, ...(sha ? { sha } : {}) } });
+    if (r.ok) { const j = await r.json(); T.list.set(name, j.content.sha); return; }
+    if (r.status === 409) { await sleep(400 + Math.random() * 700); continue; }   // the other phone committed at the same moment
+    if (r.status === 422) { if (name.endsWith(".jpg")) { if (!T.list.has(name)) T.list.set(name, "?"); return; } T.etag = ""; throw new Error("Sync hiccup. Retrying."); }
+    throw httpErr(r);
+  }
+  throw new Error("GitHub was busy. Retrying.");
+}
+async function teamDel(name, sha) {
+  for (let a = 0; a < 3; a++) {
+    const r = await gh(`contents/${TEAM_DIR}/${name}`, { method: "DELETE", body: { message: "Shelf Scan: remove", sha, branch: GITHUB.branch } });
+    if (r.ok || r.status === 404 || r.status === 422) { T.list.delete(name); if (r.status === 422) T.etag = ""; return; }
+    if (r.status === 409) { await sleep(400 + Math.random() * 700); continue; }
+    throw httpErr(r);
+  }
+}
+
+// ---- noticing changes (called from save) ----
+// An own note counts as changed when its words, kind, photos, status or author name change; a tick when its value flips.
+function teamTrack() {
+  if (!teamKey() || !state.team) return false;
+  const now = Date.now(), tk = state.team.tick; let touched = false;
+  for (const n of state.notes) {
+    if (isMine(n)) {
+      const sig = JSON.stringify([n.text, n.kind, n.photos, n.status, myName()]);
+      if (n._sig !== sig) { n._sig = sig; n.mod = now; touched = true; }
+    }
+    const dev = n.dev || devId, keys = new Set([...Object.keys(n.ticks || {}), ...(n.parts || []).map(p => p.vk), "?"]);
+    for (const vk of keys) {
+      const k = `${dev}/${n.id}/${vk}`, cur = !!(n.ticks || {})[vk], e = tk[k];
+      if ((e ? e.v : false) !== cur) { tk[k] = { v: cur, t: now, by: devId }; T.ticksDirty = true; touched = true; }
+    }
+  }
+  return touched;
+}
+function teamSoon(ms = 1500) { clearTimeout(T.timer); T.timer = setTimeout(teamCycle, ms); }
+
+// ---- bringing in other phones' work ----
+function applyTheirNote(dev, kh, j) {
+  if (!j || !j.id || !j.text || state.team.hidden[j.id]) return false;
+  if (Date.now() - (j.at || 0) > TEAM_MAX_AGE) return false;
+  let n = state.notes.find(x => x.id === j.id), isNew = false;
+  if (!n) { n = { id: j.id, at: j.at, photos: [], audio: null, secs: 0, status: "done", ticks: {}, err: "", dev, team: kh }; state.notes.push(n); isNew = true; }
+  else if (!n.dev) return false;   // never overwrite one of my own notes
+  if (!isNew && n.mod === j.mod) return false;
+  let r; try { r = readBlurb(j.text); } catch (e) { r = { parts: [], flag: true }; }
+  Object.assign(n, { text: j.text, kind: j.kind === "display" ? "display" : "aisle", photos: j.photos || [], mod: j.mod, by: j.by || "", parts: r.parts, flag: r.flag, at: j.at });
+  return true;
+}
+// For every product on every note the newest tick wins, whichever phone made it.
+function teamMergeTicks() {
+  const tk = state.team.tick, eff = { ...tk };
+  for (const dev in state.team.rt) for (const [k, e] of Object.entries(state.team.rt[dev])) { const c = eff[k]; if (!c || e.t > c.t) eff[k] = e; }
+  for (const n of state.notes) {
+    const pre = `${n.dev || devId}/${n.id}/`;
+    for (const k in eff) if (k.startsWith(pre)) { const vk = k.slice(pre.length), e = eff[k]; n.ticks = n.ticks || {}; if (!!n.ticks[vk] !== e.v) n.ticks[vk] = e.v; if (e !== tk[k]) tk[k] = { v: e.v, t: e.t, by: e.by }; }
+  }
+}
+async function teamPull(kh) {
+  let touched = false; T.miss = false; T.devices = new Set([devId]);
+  const pre = kh + "_", theirs = [];
+  for (const name of T.list.keys()) {
+    if (!name.startsWith(pre)) continue;
+    const rest = name.slice(pre.length), i = rest.indexOf("_"); if (i < 0) continue;
+    const dev = rest.slice(0, i); T.devices.add(dev);
+    if (dev !== devId) theirs.push({ name, dev, what: rest.slice(i + 1) });
+  }
+  for (const f of theirs) {
+    if (!f.what.endsWith(".json")) continue;
+    const sha = T.list.get(f.name); if (state.team.seen[f.name] === sha) continue;
+    const j = await teamReadJSON(f.name); if (!j) continue;
+    if (f.what === "ticks.json") { state.team.rt[f.dev] = j.t || {}; touched = true; }
+    else if (applyTheirNote(f.dev, kh, j)) touched = true;
+    state.team.seen[f.name] = sha;
+  }
+  // Their notes that are gone (deleted or expired), or that belong to another team key, leave this phone too.
+  if (T.listCount < 1000) {
+    const have = new Set(theirs.map(f => f.name)), before = state.notes.length;
+    state.notes = state.notes.filter(n => isMine(n) || (n.team === kh && have.has(`${kh}_${n.dev}_${n.id}.json`) && Date.now() - n.at < TEAM_MAX_AGE));
+    if (state.notes.length !== before) touched = true;
+  }
+  for (const n of state.notes) if (n.dev) for (const pid of n.photos || []) {
+    if (await getPhoto(pid).catch(() => null)) continue;
+    const nm = `${kh}_${n.dev}_${pid}.jpg`;
+    if (!T.list.has(nm)) { T.miss = true; continue; }
+    const r = await gh(`contents/${TEAM_DIR}/${nm}?ref=${GITHUB.branch}`, { accept: "application/vnd.github.raw" });
+    if (r.ok) { await putPhoto(pid, new Blob([await r.arrayBuffer()], { type: "image/jpeg" })); touched = true; } else T.miss = true;
+  }
+  if (touched) { state.notes.sort((a, b) => b.at - a.at); teamMergeTicks(); }
+  return touched;
+}
+
+// ---- sending this phone's work ----
+async function teamPush(kh) {
+  const mine = state.notes.filter(teamShares), my = `${kh}_${devId}_`;
+  for (const n of mine) {
+    if ((n.mod || 0) <= (n.pushed || 0)) continue;
+    const mod = n.mod;
+    for (const pid of n.photos || []) {
+      const nm = `${my}${pid}.jpg`; if (T.list.has(nm)) continue;
+      const b = await getPhoto(pid).catch(() => null); if (!b) continue;
+      await teamPut(nm, await blobToB64(b), "Shelf Scan: photo");
+    }
+    await teamPut(`${my}${n.id}.json`, b64encode(JSON.stringify({ id: n.id, at: n.at, mod, kind: noteKind(n), text: n.text, photos: n.photos || [], by: myName() })), "Shelf Scan: note");
+    n.pushed = mod; save();
+  }
+  // Ticks: only this phone's own entries, for notes that still exist.
+  const tk = state.team.tick, alive = new Set(state.notes.map(n => `${n.dev || devId}/${n.id}/`));
+  for (const k of Object.keys(tk)) { const i = k.indexOf("/", k.indexOf("/") + 1); if (!alive.has(k.slice(0, i + 1))) delete tk[k]; }
+  if (T.ticksDirty) {
+    const t = {}; for (const k in tk) if (tk[k].by === devId) t[k] = tk[k];
+    await teamPut(`${my}ticks.json`, b64encode(JSON.stringify({ t })), "Shelf Scan: ticks");
+    T.ticksDirty = false;
+  }
+  // Clean up: my files for notes that are gone, cleared, expired or whose photo was removed.
+  if (T.listed && T.listCount < 1000) {
+    const keep = new Set([`${my}ticks.json`, ...mine.map(n => `${my}${n.id}.json`), ...mine.flatMap(n => (n.photos || []).map(p => `${my}${p}.jpg`))]);
+    for (const [name, sha] of [...T.list]) if (name.startsWith(my) && !keep.has(name)) await teamDel(name, sha);
+  }
+}
+
+async function teamCycle() {
+  if (!teamOn()) { teamStatusRender(); return; }
+  if (!navigator.onLine) { T.offline = true; teamStatusRender(); return; }
+  if (T.busy) { T.again = true; return; }
+  T.busy = true; T.offline = false;
+  try {
+    const kh = await keyHash();
+    if (T.privFor !== teamRepo()) { const r = await gh(""); if (r.ok) { T.priv = !!(await r.json()).private; T.privFor = teamRepo(); } else throw httpErr(r); }
+    const changed = await teamList();
+    const touched = (changed || T.miss) ? await teamPull(kh) : false;
+    await teamPush(kh);
+    T.error = ""; T.last = Date.now();
+    if (touched) { save(); renderAll(); }
+  } catch (e) { T.error = e.message || String(e); if (e.auth) cachedToken = null; }
+  finally { T.busy = false; teamStatusRender(); if (T.again) { T.again = false; teamSoon(300); } }
+}
+
+// ---- what the screens show ----
+const teamWaiting = () => state.notes.filter(teamPending).length + (T.ticksDirty ? 1 : 0);
+function teamStatus() {
+  const w = teamWaiting();
+  if (!teamKey()) return { dot: "", text: "Off. Enter a team key to share your list." };
+  if (!uploadsEnabled()) return { dot: "warn", text: "Connect above first. The database key unlocks the connection." };
+  if (T.offline || !navigator.onLine) return { dot: "warn", text: w ? `${w} waiting for signal` : "No signal. Your list is safe on this phone." };
+  if (T.error) return { dot: "bad", text: T.error };
+  if (!T.last) return { dot: "warn", text: "Connecting…" };
+  const n = T.devices.size;
+  return { dot: w ? "warn" : "ok", text: `${w ? `Sending ${w}…` : "Live"} · ${n} phone${n === 1 ? "" : "s"} on this key · checked ${ago(T.last)}` };
+}
+function teamStatusRender() {
+  const s = teamStatus(), t = document.getElementById("team-status-text"), d = document.getElementById("team-status-dot");
+  if (t) t.textContent = s.text;
+  if (d) d.className = "status-dot " + s.dot;
+}
+setInterval(teamStatusRender, 3000);
+function teamTags(n) {
+  let h = "";
+  if (n.dev && n.by) h += `<span class="by-tag">${esc(n.by)}</span>`;
+  if (teamPending(n)) h += `<span class="pend-tag">Not synced yet</span>`;
+  return h;
+}
+function teamSetKey(k) {
+  k = k.trim();
+  if (k.toLowerCase() === (state.team.key || "").toLowerCase()) { state.team.key = k; save(); return; }
+  state.team.key = k; state.team.seen = {}; state.team.rt = {};
+  state.notes = state.notes.filter(isMine);
+  for (const n of state.notes) { n.pushed = 0; n._sig = ""; }
+  T.list = new Map(); T.etag = ""; T.khFor = ""; T.listed = false; T.last = 0; T.ticksDirty = true;
+  save(); renderAll(); if (teamKey()) teamSoon(300);
+}
+async function teamTest() {
+  if (!uploadsEnabled()) return toast("Connect first");
+  if (!teamKey()) return toast("Enter a team key first");
+  try {
+    const r = await gh("");
+    if (!r.ok) throw httpErr(r);
+    const j = await r.json();
+    if (j.permissions && !j.permissions.push) throw new Error("That key can read this repo but not write to it.");
+    T.priv = !!j.private; T.privFor = teamRepo(); T.etag = "";
+    await teamCycle();
+    if (T.error) throw new Error(T.error);
+    toast(`Connected. ${T.devices.size} phone${T.devices.size === 1 ? "" : "s"} on this key.`);
+    if (view === "more") renderMore();
+  } catch (e) { toast(e.message || "Couldn't connect"); }
+}
 // ---------- Camera, microphone and making a note ----------
 const MAX_NOTE_SECS = 30;     // Whisper reads 30 seconds at a time
 const cam = { stream: null, starting: false, sleepTimer: null, audioTrack: null, error: "" };
@@ -2295,13 +2553,14 @@ function needRow(n, a) {
   return `<div class="item need tap${done ? " done" : ""}${n.flag ? " flagged" : ""}" data-n="${esc(n.id)}" data-k="${esc(a.key)}">
     <button class="check${done ? " on" : ""}" data-a="toggle" aria-label="Mark as pulled">${icon("check")}</button>
     <div class="shelf-thumb" data-photo-wrap>${n.photos[0] ? `<img data-photo="${esc(n.photos[0])}" alt="">` : icon("note")}</div>
-    <div class="grow"><div class="blurb">${markText(n, a.vk)}</div>${chips || n.flag ? `<div class="chips-row">${chips}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}</div>` : ""}</div>
+    <div class="grow"><div class="blurb">${markText(n, a.vk)}</div>${chips || n.flag || teamTags(n) ? `<div class="chips-row">${teamTags(n)}${chips}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}</div>` : ""}</div>
     ${icon("jump")}</div>`;
 }
 function clearAllNotes() {
-  confirmDialog("Clear the whole list? This removes every note and photo.", { ok: "Clear list", danger: true }).then(ok => {
+  confirmDialog("Clear the whole list? This removes every note and photo from this phone. If you share a list, your own notes leave it too.", { ok: "Clear list", danger: true }).then(ok => {
     if (!ok) return;
     const snap = snapshot();
+    for (const n of state.notes) if (n.dev) state.team.hidden[n.id] = Date.now();   // the other phone's notes just leave this phone's view
     state.notes = []; lastNoteId = null; save(); renderAll(); scheduleSweep();
     toast("List cleared", snap);
   });
@@ -2326,7 +2585,7 @@ function openCheck(n, focusPid) {
   s.querySelector("#ck-dots").onclick = e => { const b = e.target.closest("[data-k]"); if (b) { photoIdx = +b.dataset.k; showPhoto(); } };
   const draw = () => {
     s.querySelector("#ck-text").innerHTML = n.text ? `“${markText(n, focusPid && focusPid !== "?" ? focusPid : null)}”` : "(no words: typed or no recording)";
-    s.querySelector("#ck-chips").innerHTML = `<span class="pill kind ${noteKind(n)}">${KIND_LABEL[noteKind(n)]}</span>${chipsFor(n, null)}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}`;
+    s.querySelector("#ck-chips").innerHTML = `<span class="pill kind ${noteKind(n)}">${KIND_LABEL[noteKind(n)]}</span>${teamTags(n)}${chipsFor(n, null)}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}`;
     s.querySelector("#ck-actions").innerHTML = `<button class="btn sm grow" data-a="edit">${icon("note")}Edit text</button>${n.audio ? `<button class="btn sm grow quiet" data-a="play">${icon("play")}Play</button>` : ""}<button class="btn sm grow quiet" data-a="more">More…</button>`;
     const a = s.querySelector("#ck-actions");
     a.querySelector('[data-a="edit"]').onclick = async () => { await editText(n); draw(); };
@@ -2340,6 +2599,10 @@ function openCheck(n, focusPid) {
       else if (pick === "kind") { n.kind = noteKind(n) === "aisle" ? "display" : "aisle"; save(); renderAll(); toast(`Moved to ${KIND_LABEL[n.kind]}`); draw(); }
       else if (pick === "delete") { close(); deleteNote(n); }
     };
+    if (n.dev) {   // another phone's note: you can tick it and read it, but only they can change it
+      a.innerHTML = `<button class="btn sm grow quiet" data-a="hide">Hide from my list</button>`;
+      a.querySelector('[data-a="hide"]').onclick = () => { state.team.hidden[n.id] = Date.now(); state.notes = state.notes.filter(x => x.id !== n.id); save(); close(); renderAll(); toast("Hidden from this phone"); };
+    }
   };
   s.querySelector('[data-a="close"]').onclick = close;
   showPhoto(); draw();
@@ -2485,7 +2748,7 @@ function renderMore() {
   const v = $("#view-more");
   const s = syncStatus();
   const on = uploadsEnabled();
-  const dl = ai.dl.key;
+  const dl = ai.dl.key, ts = teamStatus();
   v.innerHTML = `
     <div class="list-head"><h2>More</h2></div>
     <div class="card">
@@ -2498,16 +2761,27 @@ function renderMore() {
       ${haveModel("asr") && !dl ? `<div class="stack" style="margin-top:10px"><button class="btn block quiet" id="btn-del-models">Delete the speech model</button></div>` : ""}
     </div>
     <div class="card">
-      <h3>Shared data</h3>
-      <p class="hint">The product list is shared with everyone who uses Shelf Scan. Your notes and photos stay on this phone.</p>
-      <div class="set-row"><span class="status-dot ${s.dot}"></span><span class="grow small">${esc(s.text)}</span></div>
-      <div class="set-row"><span class="grow small muted">Last updated from GitHub: ${ago(state.sync.lastPull)}</span></div>
-      <div class="stack">
-        ${on ? `<button class="btn block" id="btn-upload-now">${icon("upload")}Upload now</button>`
-             : `<button class="btn block" id="btn-enable">${icon("upload")}Enable uploads</button>`}
-        <button class="btn block" id="btn-sync">${icon("refresh")}Sync from GitHub</button>
-        ${on ? `<button class="btn block quiet" id="btn-disable">Turn off uploads on this phone</button>` : ""}
-      </div>
+      <h3>Team network</h3>
+      <p class="hint">Connect to share the product list and a live Needed list with your team, photos and ticks included. It goes through the GitHub repo and nothing else. Everything else stays on this phone.</p>
+      <div class="set-row"><span class="status-dot ${on ? "ok" : ""}"></span><span class="grow"><b>${on ? "Connected" : "Not connected"}</b><br><span class="hint">${on ? "This phone can send and receive team data." : "Enter the database key once to connect this phone."}</span></span>
+        ${on ? "" : `<button class="btn sm primary" id="btn-enable">Connect</button>`}</div>
+      <label class="f" for="team-key">Team key</label>
+      <input class="field" id="team-key" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="A word or number you both type" value="${esc(state.team.key)}">
+      <label class="f" for="team-name">Your name (shown on your notes)</label>
+      <input class="field" id="team-name" autocomplete="off" placeholder="e.g. James" value="${esc(state.team.name)}">
+      <div class="set-row" style="margin-top:10px"><span class="status-dot ${ts.dot}" id="team-status-dot"></span><span class="grow small" id="team-status-text">${esc(ts.text)}</span></div>
+      ${on ? `<div class="set-row"><span class="status-dot ${s.dot}"></span><span class="grow small">Product list: ${esc(s.text)}</span></div>` : ""}
+      ${T.priv === false && teamKey() ? `<div class="banner warn" style="margin:8px 0">${icon("warn")}<span class="grow">The repo ${esc(teamRepo())} is public, so anyone who knows where to look can see shared notes and photos. Point this at a private repo under Advanced.</span></div>` : ""}
+      <div class="stack" style="margin-top:10px"><button class="btn block" id="btn-team-test">${icon("refresh")}Test connection</button></div>
+      <details class="owner"><summary>Advanced</summary>
+        <div class="stack" style="margin-top:10px">
+          <button class="btn block" id="btn-sync">${icon("refresh")}Replace products from GitHub</button>
+          ${on ? `<button class="btn block" id="btn-upload-now">${icon("upload")}Send product changes now</button>` : ""}
+        </div>
+        <p class="hint" style="margin-top:12px">Where team data is stored (owner/repo). Leave empty to use ${esc(GITHUB.owner)}/${esc(GITHUB.repo)}. The access token must be allowed to write to it.</p>
+        <input class="field" id="team-repo" autocomplete="off" autocapitalize="off" placeholder="${esc(GITHUB.owner)}/${esc(GITHUB.repo)}" value="${esc(state.team.repo)}">
+        ${on ? `<div class="stack" style="margin-top:12px"><button class="btn block quiet" id="btn-disable">Disconnect this phone</button></div>` : ""}
+      </details>
     </div>
     <div class="card">
       <h3>This phone</h3>
@@ -2525,21 +2799,25 @@ function renderMore() {
       </div>
     </div>
     <div class="card">
-      <details class="owner"><summary>Owner setup: upload key</summary>
-        <p class="hint" style="margin-top:10px">Only needed once, by the repo owner. Paste a GitHub key that can write to ${esc(GITHUB.owner)}/${esc(GITHUB.repo)} and choose the team password. The key is encrypted on this phone before it's saved.</p>
-        <label class="f" for="own-token">GitHub key</label><input class="field" id="own-token" type="password" autocomplete="off" placeholder="github_pat_…">
-        <label class="f" for="own-pass">Team password</label><input class="field" id="own-pass" type="text" autocomplete="off" autocapitalize="off" placeholder="At least 6 characters">
-        <button class="btn primary block" id="btn-own-save" style="margin-top:12px">Save key and enable uploads</button>
+      <details class="owner"><summary>Owner setup: database key</summary>
+        <p class="hint" style="margin-top:10px">Only needed once, by the repo owner. Paste a GitHub access token that can write to ${esc(GITHUB.owner)}/${esc(GITHUB.repo)} and choose the database key. The token is encrypted on this phone before it's saved.</p>
+        <label class="f" for="own-token">GitHub access token</label><input class="field" id="own-token" type="password" autocomplete="off" placeholder="github_pat_…">
+        <label class="f" for="own-pass">Database key</label><input class="field" id="own-pass" type="text" autocomplete="off" autocapitalize="off" placeholder="At least 6 characters">
+        <button class="btn primary block" id="btn-own-save" style="margin-top:12px">Save and connect</button>
       </details>
     </div>
     <div class="card">
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 5.1.5 (voice notes) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan Beta 6 (team list) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
+  v.querySelector("#team-key").onchange = e => teamSetKey(e.target.value);
+  v.querySelector("#team-name").onchange = e => { state.team.name = e.target.value.trim(); save(); teamSoon(300); };
+  v.querySelector("#team-repo").onchange = e => { state.team.repo = e.target.value.trim(); T.privFor = ""; T.etag = ""; T.khFor = ""; save(); teamSoon(300); };
+  v.querySelector("#btn-team-test").onclick = teamTest;
   v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
   v.querySelectorAll("[data-dl]").forEach(b => (b.onclick = () => downloadModels([b.dataset.dl])));
   const del = v.querySelector("#btn-del-models"); if (del) del.onclick = async () => {
@@ -2552,22 +2830,22 @@ function renderMore() {
   const en = v.querySelector("#btn-enable"); if (en) en.onclick = enableUploads;
   const up = v.querySelector("#btn-upload-now"); if (up) up.onclick = () => { state.sync.error = ""; uploadChanges(); renderMore(); };
   const dis = v.querySelector("#btn-disable"); if (dis) dis.onclick = async () => {
-    if (!(await confirmDialog("Turn off uploads on this phone? Your changes will stay on this phone only.", { ok: "Turn off" }))) return;
+    if (!(await confirmDialog("Disconnect this phone from the team network? Your notes and products stay on this phone, but nothing is shared until you connect again.", { ok: "Disconnect" }))) return;
     setPass(""); cachedToken = null; renderAll();
   };
   v.querySelector("#btn-own-save").onclick = ownerSetup;
   v.querySelector("#btn-reset").onclick = async () => {
     const n = pendingCount();
     if (!(await confirmDialog(`Erase everything on this phone (notes, photos and settings) and start fresh from the shared product list?${n ? `<br><br><b>${n} change${n === 1 ? " hasn't" : "s haven't"} uploaded</b> and will be lost.` : ""}`, { ok: "Erase", danger: true }))) return;
-    const keep = state.sync, models = state.settings.models;
-    state = freshState(); state.sync = keep; state.settings.models = models; save(); renderAll(); scheduleSweep();
+    const keep = state.sync, models = state.settings.models, team = { key: state.team.key, name: state.team.name, repo: state.team.repo };
+    state = freshState(); state.sync = keep; state.settings.models = models; Object.assign(state.team, team); save(); renderAll(); scheduleSweep();
     pullShared({ overwrite: true, quiet: false }).catch(e => toast(e.message));
   };
 }
-function passwordDialog(title, note, okLabel = "Enable") {
+function passwordDialog(title, note, okLabel = "Connect") {
   return new Promise(resolve => {
     const d = el(`<div class="dialog"><p><b>${esc(title)}</b><br><span class="hint">${esc(note)}</span></p>
-      <input class="field" type="text" id="pw-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Password">
+      <input class="field" type="text" id="pw-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Database key">
       <p class="hint" id="pw-err" style="color:var(--red);margin:8px 0 0"></p>
       <div class="btns" style="margin-top:14px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="ok">${esc(okLabel)}</button></div></div>`);
     let done = false;
@@ -2589,11 +2867,11 @@ function passwordDialog(title, note, okLabel = "Enable") {
   });
 }
 async function enableUploads() {
-  const p = passwordDialog("Enable uploads", "Enter the team password. You'll only need it once on this phone.");
+  const p = passwordDialog("Connect this phone", "Enter the database key. You'll only need it once on this phone.");
   passwordDialog.current.check(async pw => {
     const blob = await loadKeyBlob();
     let token;
-    try { token = await decryptToken(blob, pw); } catch (e) { throw new Error("That password isn't right."); }
+    try { token = await decryptToken(blob, pw); } catch (e) { throw new Error("That database key isn't right."); }
     await checkToken(token);
     cachedToken = token;
   });
@@ -2601,13 +2879,13 @@ async function enableUploads() {
   if (!pw) return;
   setPass(pw); state.sync.error = "";
   save(); renderAll();
-  toast("Uploads enabled. Changes now upload automatically.");
+  toast("Connected. Changes now share automatically.");
   scheduleUpload(300);
 }
 async function ownerSetup() {
   const token = $("#own-token").value.trim(), pw = $("#own-pass").value;
-  if (!token) return toast("Paste the GitHub key first");
-  if (pw.length < 6) return toast("Use a password of at least 6 characters");
+  if (!token) return toast("Paste the GitHub access token first");
+  if (pw.length < 6) return toast("Use a database key of at least 6 characters");
   const btn = $("#btn-own-save");
   btn.disabled = true; btn.textContent = "Saving…";
   try {
@@ -2617,11 +2895,11 @@ async function ownerSetup() {
     await writeRepoFile(GITHUB.keyPath, JSON.stringify(blob, null, 1), sha, token, "Shelf Scan: set upload key");
     setPass(pw); cachedToken = token; state.sync.error = "";
     save(); renderAll();
-    toast("Upload key saved. Uploads are on.");
+    toast("Saved. This phone is connected.");
     scheduleUpload(300);
   } catch (e) {
     toast(e.message || "Couldn't save the key");
-    btn.disabled = false; btn.textContent = "Save key and enable uploads";
+    btn.disabled = false; btn.textContent = "Save and connect";
   }
 }
 async function syncFromGitHub() {
@@ -2669,6 +2947,12 @@ verifyModels().then(() => { warmUp(); pump(); });   // get the models ready, and
 
 // Pull everyone's latest product list on open, then upload anything waiting.
 if (navigator.onLine) pullShared().catch(() => {}).finally(() => scheduleUpload(1000));
+
+// Team list: look for new notes every few seconds while the app is open.
+setInterval(() => { if (!document.hidden) teamCycle(); }, TEAM_POLL_MS);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) teamCycle(); });
+window.addEventListener("online", () => teamCycle());
+setTimeout(teamCycle, 1500);
 
 // Updates: check for a new version whenever the app comes back to the foreground (home-screen apps on iPhone
 // stay loaded for days), and offer a one-tap reload once it's installed.
