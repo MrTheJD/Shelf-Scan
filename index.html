@@ -392,74 +392,140 @@ details.owner summary { cursor: pointer; font-weight: 650; color: var(--muted); 
 details.owner summary::-webkit-details-marker { display: none; }
 code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
 .foot { text-align: center; color: var(--faint); font-size: 12px; margin: 20px 0 8px; }
+
+/* ---------- Beta 4: voice notes ---------- */
+.camera { aspect-ratio: auto; width: 100%; height: 40dvh; }
+.camera video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; animation: fade .45s ease both; }
+.camera .cam-off, .camera .cam-wait { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px; color: var(--on-cam); text-align: center; }
+.camera .cam-wait { font-size: 14px; }
+.camera .cam-off p { margin: 0; font-size: 13px; max-width: 30ch; }
+.camera .cam-off .btn.quiet { background: rgba(255,255,255,.14); color: #fff; }
+#view-capture > * + * { margin-top: 10px; }
+.cap-bar { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.shutter-big { width: 82px; height: 82px; border-radius: 50%; border: 4px solid var(--red); background: var(--surface); padding: 5px; transition: transform .45s var(--spring); }
+.shutter-big span { display: block; width: 100%; height: 100%; border-radius: 50%; background: var(--red); }
+.shutter-big:active { transform: scale(.9); transition-duration: .1s; }
+.shutter-big:disabled { opacity: .4; }
+.cap-hint { font-size: 13px; color: var(--muted); text-align: center; margin: 0; }
+.cap-links { display: flex; gap: 8px; }
+.cap-links .btn { flex: 1; }
+.queue-line { font-size: 13px; color: var(--muted); text-align: center; margin: 0; }
+.queue-line.busy::before, .spin { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; border: 2px solid var(--line); border-top-color: var(--red); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.card.last, #last-note { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.last-text { font-size: 14px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+#last-note svg.i { color: var(--faint); }
+.banner.warn { background: var(--warn-soft); }
+.banner.busy { background: var(--chip); }
+.banner svg.i { color: var(--warn); }
+
+/* Recorder sheet */
+.rec-sheet { text-align: center; }
+.rec-sheet h2 { text-align: center; }
+.rec-meter { height: 12px; border-radius: 6px; background: var(--chip); overflow: hidden; margin: 14px 4px 0; }
+.rec-meter i { display: block; height: 100%; width: 100%; background: var(--red); transform: scaleX(0); transform-origin: left; transition: transform .08s linear; }
+.rec-time { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.rec-done { padding: 16px; font-size: 18px; }
+.rec-alt .btn { font-size: 14px; }
+
+/* Needed list */
+.need .check { margin-right: 0; }
+.jump-btn { border: 0; background: var(--chip); color: var(--muted); width: 40px; height: 44px; border-radius: 12px; flex: none; display: flex; align-items: center; justify-content: center; padding: 0; transition: transform .5s var(--spring), background-color .2s ease; }
+.jump-btn:active { transform: scale(.92); transition-duration: .12s; }
+.item.need { padding-right: 10px; }
+.item.done .jump-btn { opacity: .5; }
+.pill.warn { white-space: nowrap; }
+.src-row { padding: 12px; }
+.src-text { font-size: 14px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.src-row .qty button { width: 44px; height: 44px; font-size: 22px; }
+.src-row .qty input { width: 64px; font-size: 22px; padding: 6px; }
+
+/* Notes */
+.note-photo { position: relative; width: 84px; height: 84px; flex: none; border: 0; padding: 0; border-radius: 14px; overflow: hidden; background: var(--chip); }
+.note-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.note-photo.missing::after, .shelf-thumb.missing::after { content: "No photo"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--muted); }
+.note-photo .count { position: absolute; right: 4px; bottom: 4px; min-width: 18px; height: 18px; border-radius: 9px; background: rgba(0,0,0,.65); color: #fff; font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; }
+.card.note { padding: 12px; transition: box-shadow .3s ease, background-color .4s ease; }
+.card.note > * + * { margin-top: 10px; }
+.transcript { font-size: 15px; line-height: 1.35; color: var(--text); background: var(--surface-2); border-radius: 12px; padding: 10px 12px; cursor: text; }
+.note-items { border-radius: 12px; overflow: hidden; background: var(--surface-2); }
+.note-items .item { min-height: 56px; }
+.note-items .item + .item::before { left: 66px; }
+.note-item .qty-tap { pointer-events: none; }
+@keyframes flashNote { 0% { box-shadow: 0 0 0 3px var(--red); } 70% { box-shadow: 0 0 0 3px var(--red); } 100% { box-shadow: var(--shadow); } }
+@keyframes flashItem { 0%, 70% { background: var(--warn-soft); } 100% { background: transparent; } }
+.card.note.flash { animation: flashNote 2.2s ease both; }
+.note-item.flash { animation: flashItem 2.2s ease both; }
+
+/* More: model download */
+.mprog { height: 10px; border-radius: 5px; background: var(--chip); overflow: hidden; margin-top: 12px; }
+.mprog i { display: block; height: 100%; width: 0; background: var(--red); transition: width .3s ease; }
+
+.item.need .sub, .note-item .sub { white-space: normal; overflow: visible; }
 </style>
 </head>
 <body>
 <header class="top">
-  <h1>Shelf Scan</h1><span class="tagline">BETA 3.1</span>
+  <h1>Shelf Scan</h1><span class="tagline">BETA 4</span>
   <span class="spacer"></span>
   <span class="store" id="hdr-store"></span>
   <button class="sync-ind" id="sync-ind" hidden></button>
 </header>
 
 <main>
-  <!-- SCAN -->
-  <section class="view active" id="view-scan">
-    <div class="seg" id="mode-seg">
-      <button data-mode="count" class="active">Count</button>
-      <button data-mode="setup">Link tags</button>
-    </div>
-    <p class="hint" id="mode-help"></p>
+  <!-- CAPTURE -->
+  <section class="view active" id="view-capture">
     <div class="camera" id="camera">
-      <div id="reader"></div>
+      <video id="cam-video" playsinline muted autoplay hidden></video>
+      <div class="cam-wait" id="cam-starting" hidden>Starting the camera…</div>
       <div class="cam-off" id="cam-off">
         <span data-icon="camera"></span>
         <button class="btn primary" id="btn-cam-start">Start camera</button>
         <p id="cam-error"></p>
       </div>
-      <div class="viewfinder" id="viewfinder" hidden></div>
-      <div class="zoom-pill" id="zoom-pill">1×</div>
-      <button class="cam-stop" id="btn-cam-stop" aria-label="Stop camera" hidden><span data-icon="x"></span></button>
+      <button class="cam-stop" id="btn-cam-stop" aria-label="Turn the camera off" hidden><span data-icon="x"></span></button>
     </div>
-    <div id="pending-banner"></div>
-    <div class="actions" id="actions">
-      <label class="btn photo-btn" for="photo-input"><span data-icon="image"></span><span id="photo-label">Photo</span></label>
-      <button class="btn" id="btn-pick-manual"><span data-icon="search"></span>Search</button>
-      <button class="btn" id="btn-enter-code"><span data-icon="hash"></span>Enter code</button>
+    <div class="cap-bar">
+      <button class="shutter-big" id="btn-shutter" aria-label="Take a photo, then say what you need"><span></span></button>
+      <p class="cap-hint">Snap the shelf, then say what you need.</p>
     </div>
-    <input type="file" id="photo-input" accept="image/*" capture="environment" hidden>
-    <p class="hint center" id="photo-status" hidden></p>
-    <div class="card last" id="last-scan"></div>
-    <div id="photo-reader" hidden></div>
+    <div id="model-banner" hidden></div>
+    <p class="queue-line" id="queue-line" hidden></p>
+    <div class="cap-links">
+      <button class="btn quiet" id="btn-type"><span data-icon="note"></span>Type a note</button>
+      <button class="btn quiet" id="btn-phonecam"><span data-icon="image"></span>Phone camera</button>
+    </div>
+    <div class="card last" id="last-note" hidden></div>
   </section>
 
-  <section class="view" id="view-list"></section>
+  <section class="view" id="view-needed"></section>
+  <section class="view" id="view-notes"></section>
   <section class="view" id="view-products"></section>
-  <section class="view" id="view-tags"></section>
   <section class="view" id="view-more"></section>
 </main>
 
 <nav class="tabs" id="tabs">
-  <button data-view="scan" class="active"><span data-icon="scan"></span>Scan</button>
-  <button data-view="list"><span data-icon="list"></span>List<span class="badge" id="list-badge" hidden></span></button>
+  <button data-view="capture" class="active"><span data-icon="camera"></span>Capture</button>
+  <button data-view="needed"><span data-icon="list"></span>Needed<span class="badge" id="need-badge" hidden></span></button>
+  <button data-view="notes"><span data-icon="note"></span>Notes</button>
   <button data-view="products"><span data-icon="grid"></span>Products</button>
-  <button data-view="tags"><span data-icon="tag"></span>Tags</button>
   <button data-view="more"><span data-icon="sliders"></span>More</button>
 </nav>
 
 <div id="toast"><span id="toast-msg"></span><button id="toast-undo">UNDO</button></div>
 <div id="layer"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script><script>
+<script>
 "use strict";
 /* ============================================================
-   Shelf Scan — beta
-   Single-file app. Data lives in localStorage on this device and is
-   shared with everyone through data/shared.json in the GitHub repo.
+   Shelf Scan Beta 4: voice notes
+   Snap a shelf, say what you need. Speech is turned into text and then into a short
+   list by small language models that run on the phone itself.
+   Everything stays on this phone except the shared product list (data/shared.json in the GitHub repo).
    ============================================================ */
 
-const STORAGE_KEY = "shelfscan.v1";
-const PASS_KEY = "shelfscan.uploadPass";   // kept outside state so backups never carry it
+const STORAGE_KEY = "shelfscan.b4";
+const PASS_KEY = "shelfscan.b4.uploadPass";   // kept outside state so backups never carry it
 const STALE_DAYS = 45;
 const GITHUB = { owner: "MrTheJD", repo: "Shelf-Scan", branch: "main", dataPath: "data/shared.json", keyPath: "data/key.json" };
 const UPLOAD_DELAY_MS = 4000;
@@ -483,6 +549,12 @@ const ICONS = {
   upload: "M16 16l-4-4-4 4M12 12v9M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3",
   cloudoff: "M22.61 16.95A5 5 0 0 0 18 10h-1.26a8 8 0 0 0-7.05-6M5 5a8 8 0 0 0 4 15h9a5 5 0 0 0 1.7-.3M1 1l22 22",
   refresh: "M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5",
+  mic: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8",
+  play: "M6 4l14 8-14 8z",
+  note: "M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8M8 17h5",
+  jump: "M15 10l5 5-5 5M4 4v7a4 4 0 0 0 4 4h12",
+  download: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3",
+  warn: "M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01",
   box: "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96L12 12.01l8.73-5.05M12 22.08V12",
 };
 function icon(name, cls = "") {
@@ -886,18 +958,21 @@ function canonicalize(products) {
 
 // ---------- State ----------
 let state;
+// note.status: "queued" (voice clip waiting to be transcribed) → "heard" (has text, waiting to be read by the
+// language model) → "reading" → "done". Also "empty" (nothing said) and "error".
 function freshState() {
   return {
-    version: 2,
+    version: 4,
     storeName: "",
     products: buildSeedProducts(),
-    tags: {},                               // { key: { productId, created, lastSeen, updated } }; key = code, or "store:<n>|<code>" in per-store mode
-    config: { perStoreTags: false, updated: 0 },   // shared team settings (synced)
-    deleted: { products: {}, tags: {} },    // tombstones: id/code -> time deleted
+    // Dormant: shelf-tag data from the scanning app. Kept only so shared data round-trips untouched.
+    tags: {},
+    config: { perStoreTags: false, updated: 0 },
+    deleted: { products: {}, tags: {} },    // tombstones: id -> time deleted
     outbox: { products: {}, tags: {} },     // changed since last upload
-    list: null,                             // { started, items: [{productId, qty, status: "need"|"done", addedAt}] }
+    notes: [],                              // newest first: { id, at, photos:[id], audio:id|null, secs, text, status, items:[{pid, phrase, qty, conf, why, done}], err }
     recents: [],
-    settings: { beep: true, camOK: false },
+    settings: { beep: true, camOK: false, models: { asr: false, fast: false } },   // models: which downloads finished
     sync: { lastPull: 0, lastPush: 0, error: "" },
   };
 }
@@ -912,54 +987,24 @@ function load() {
 function migrate() {
   const f = freshState();
   for (const k of ["deleted", "outbox", "sync", "settings", "config"]) state[k] = Object.assign(f[k], state[k] || {});
+  state.settings.models = Object.assign({ asr: false, fast: false }, state.settings.models || {});
   state.deleted.products = state.deleted.products || {}; state.deleted.tags = state.deleted.tags || {};
   state.outbox.products = state.outbox.products || {}; state.outbox.tags = state.outbox.tags || {};
   state.recents = state.recents || [];
   state.tags = state.tags || {};
-  // v1 kept tags per store ({ "store-1": { code: {...} } }); every store uses the same codes now.
-  for (const k of Object.keys(state.tags)) {
-    const v = state.tags[k];
-    if (v && typeof v === "object" && !("productId" in v)) {
-      for (const code in v) state.tags[code] = { updated: 0, ...v[code] };
-      delete state.tags[k];
-    }
-  }
-  for (const code in state.tags) if (state.tags[code].updated === undefined) state.tags[code].updated = 0;
-  for (const p of state.products) if (p.updated === undefined) p.updated = 0;
-  delete state.history; delete state.storeId;
-  // Older builds had pulled/short/out/stocked; now an item is either needed or crossed off.
-  if (state.list) {
-    delete state.list.storeId;
-    for (const i of state.list.items) i.status = ["done", "pulled", "stocked"].includes(i.status) ? "done" : "need";
-    mergeListDuplicates();
-  }
-  // Coming from the alpha: queue everything set up so far so it gets shared once uploads are on.
-  if (state.version !== 2) {
-    const now = Date.now();
-    for (const code in state.tags) { state.tags[code].updated = now; state.outbox.tags[code] = 1; }
-    for (const p of state.products) if (p.custom || p.barcodes.length || p.img || p.retired) { p.updated = now; state.outbox.products[p.id] = 1; }
+  state.notes = Array.isArray(state.notes) ? state.notes : [];
+  for (const p of state.products) { if (p.updated === undefined) p.updated = 0; if (!Array.isArray(p.barcodes)) p.barcodes = []; }
+  // Work that was interrupted (app closed, phone ran low on memory) goes back in the queue.
+  for (const n of state.notes) {
+    n.items = n.items || []; n.photos = n.photos || [];
+    if (n.status === "reading") n.status = "heard";
   }
   // New starter products added to the app show up for existing users.
   const have = new Set(state.products.map(p => p.id));
   for (const p of buildSeedProducts()) if (!have.has(p.id) && !state.deleted.products[p.id]) state.products.push(p);
   canonicalize(state.products);
-  addSeedBarcodes();
-  // Discontinued starter products get hidden, unless someone has already linked them to something.
-  for (const id of DISCONTINUED) {
-    const p = productById(id);
-    if (p && !p.retired && !p.updated && !p.barcodes.length && !tagForProduct(id)) p.retired = true;
-  }
-  state.version = 2;
-}
-// Known barcodes bundled with the app: add any the phone doesn't have (never taking one from another product).
-// Runs on load and after every sync, since a product arriving from shared data replaces the local copy.
-function addSeedBarcodes() {
-  const owner = new Map();
-  for (const p of state.products) for (const b of p.barcodes) owner.set(b, p.id);
-  for (const [id, codes] of Object.entries(SEED_BARCODES)) {
-    const p = productById(id); if (!p) continue;
-    for (const c of codes) if (!owner.has(c)) { p.barcodes.push(c); owner.set(c, id); }
-  }
+  for (const id of DISCONTINUED) { const p = productById(id); if (p && !p.retired && !p.updated) p.retired = true; }
+  state.version = 4;
 }
 function save() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
@@ -1062,7 +1107,7 @@ function dropProduct(id) {
   state.deleted.products[id] = Date.now();
   state.outbox.products[id] = 1;
   for (const c in state.tags) if (state.tags[c].productId === id) dropTag(c);
-  if (state.list) state.list.items = state.list.items.filter(i => i.productId !== id);
+  for (const n of state.notes) for (const it of n.items) if (it.pid === id) { it.pid = null; it.conf = "check"; it.why = "no match"; }
   scheduleUpload();
 }
 const shareable = p => { const { _st, ...rest } = p; return rest; };
@@ -1273,10 +1318,10 @@ function beep(ok = true) {
 
 // ---------- Modal layer ----------
 let modalDepth = 0;
-function openLayer(node, { center = false, onClose } = {}) {
+function openLayer(node, { center = false, onClose, sticky = false } = {}) {
   const ov = el(`<div class="overlay${center ? " center" : ""}"></div>`);
   ov.appendChild(node);
-  ov.addEventListener("click", e => { if (e.target === ov) close(); });
+  ov.addEventListener("click", e => { if (e.target === ov && !sticky) close(); });
   $("#layer").appendChild(ov);
   modalDepth++;
   ov.querySelectorAll(".seg").forEach(c => syncIndicator(c, false));
@@ -1448,68 +1493,400 @@ function listOf(products, onTap, extra) {
   return wrap;
 }
 
-// ---------- Binding logic (strict 1:1 for shelf tags) ----------
-async function bindTag(code, pid, { confirm = true } = {}) {
-  const p = productById(pid);
-  const key = tagKeyFor(code);
-  const existing = state.tags[key];
-  const oldCodeForProduct = tagForProduct(pid);
-  if (existing && existing.productId === pid) { existing.lastSeen = Date.now(); save(); return true; }
-  const warnings = [];
-  if (existing) {
-    const other = productById(existing.productId);
-    warnings.push(`This tag is linked to <b>${esc(other ? pFull(other) : "a deleted product")}</b>. That product will be left with no tag.`);
-  }
-  if (oldCodeForProduct) warnings.push(`<b>${esc(pName(p))}</b> already has a different tag. The old tag will be unlinked.`);
-  if (confirm) {
-    const ok = await confirmDialog(`Link this shelf tag to<br><b>${esc(pFull(p))}</b>?${warnings.length ? "<br><br>" + warnings.join("<br><br>") : ""}`,
-      { ok: warnings.length ? "Replace" : "Link" });
-    if (!ok) return false;
-  }
-  const snap = snapshot();
-  if (oldCodeForProduct) dropTag(oldCodeForProduct);
-  state.tags[key] = { productId: pid, created: Date.now(), lastSeen: Date.now(), updated: 0 };
-  markTag(key);
-  save(); renderAll();
-  toast(`Linked: ${pName(p)} ${p.pack}`, snap);
-  return true;
+// ---------- Photos and voice clips ----------
+// Stored in IndexedDB (localStorage is only ~5 MB). They stay on this phone and are deleted when their note goes.
+const mediaDB = (() => {
+  let p = null;
+  return () => p || (p = new Promise((res, rej) => {
+    const r = indexedDB.open("shelfscan-b4", 1);
+    r.onupgradeneeded = () => { r.result.createObjectStore("photos"); r.result.createObjectStore("audio"); };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => { p = null; rej(r.error); };
+  }));
+})();
+async function mediaTx(store, mode, fn) {
+  const db = await mediaDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, mode), req = fn(tx.objectStore(store));
+    tx.oncomplete = () => res(req && req.result);
+    tx.onerror = tx.onabort = () => rej(tx.error);
+  });
 }
-async function addBarcodeToProduct(code, pid) {
-  const other = productByBarcode(code);
-  const p = productById(pid);
-  if (other && other.id === pid) return true;
-  if (other) {
-    const ok = await confirmDialog(`This barcode is on <b>${esc(pFull(other))}</b>. Move it to <b>${esc(pFull(p))}</b>?`, { ok: "Move" });
-    if (!ok) return false;
-    other.barcodes = other.barcodes.filter(b => b !== code);
-    markProduct(other.id);
-  }
-  p.barcodes.push(code);
-  markProduct(p.id);
-  save();
-  if (!p.img) fetchOffImage(p, code);
-  return true;
+const photoURLs = new Map();
+const putPhoto = (id, blob) => mediaTx("photos", "readwrite", s => s.put(blob, id));
+const getPhoto = id => mediaTx("photos", "readonly", s => s.get(id));
+const delPhoto = id => { const u = photoURLs.get(id); if (u) { URL.revokeObjectURL(u); photoURLs.delete(id); } return mediaTx("photos", "readwrite", s => s.delete(id)); };
+const putAudio = (id, rec) => mediaTx("audio", "readwrite", s => s.put(rec, id));
+const getAudio = id => mediaTx("audio", "readonly", s => s.get(id));
+const delAudio = id => mediaTx("audio", "readwrite", s => s.delete(id));
+const newId = prefix => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+async function photoURL(id) {
+  if (photoURLs.has(id)) return photoURLs.get(id);
+  const blob = await getPhoto(id).catch(() => null);
+  if (!blob) return null;
+  const u = URL.createObjectURL(blob); photoURLs.set(id, u); return u;
+}
+// Fill <img data-photo="id"> placeholders after a render.
+function hydratePhotos(root) {
+  root.querySelectorAll("img[data-photo]").forEach(async img => {
+    const u = await photoURL(img.dataset.photo);
+    if (u) img.src = u; else img.closest("[data-photo-wrap]")?.classList.add("missing");
+  });
+}
+// Remove photos and clips no note points to (runs after deletes once the undo window has passed).
+async function sweepMedia() {
+  try {
+    const keepP = new Set(state.notes.flatMap(n => n.photos || [])), keepA = new Set(state.notes.map(n => n.audio).filter(Boolean));
+    const ps = await mediaTx("photos", "readonly", s => s.getAllKeys()), as = await mediaTx("audio", "readonly", s => s.getAllKeys());
+    for (const k of ps) if (!keepP.has(k)) await delPhoto(k);
+    for (const k of as) if (!keepA.has(k)) await delAudio(k);
+  } catch (e) { /* storage unavailable */ }
+}
+function scheduleSweep() { clearTimeout(scheduleSweep.t); scheduleSweep.t = setTimeout(sweepMedia, 10000); }
+
+// Resize an image or video frame to at most 1280px on the long side and encode it as JPEG (~150 KB).
+function frameToBlob(source, sw, sh, sx = 0, sy = 0, cw = sw, ch = sh) {
+  const k = Math.min(1, 1280 / Math.max(cw, ch));
+  const c = document.createElement("canvas"); c.width = Math.round(cw * k); c.height = Math.round(ch * k);
+  c.getContext("2d").drawImage(source, sx, sy, cw, ch, 0, 0, c.width, c.height);
+  return new Promise(r => c.toBlob(r, "image/jpeg", 0.72));
+}
+async function fileToBlob(file) {
+  const bmp = await createImageBitmap(file);
+  const b = await frameToBlob(bmp, bmp.width, bmp.height); bmp.close && bmp.close(); return b;
+}
+// The iPhone camera app, for extra photos (and as a fallback when the live camera isn't available).
+function cameraPhoto() {
+  return new Promise(resolve => {
+    const inp = el(`<input type="file" accept="image/*" capture="environment" hidden>`);
+    inp.onchange = async () => { const f = inp.files && inp.files[0]; inp.remove(); resolve(f ? await fileToBlob(f) : null); };
+    document.body.appendChild(inp); inp.click();
+  });
 }
 
-// ---------- Open Food Facts ----------
-async function offLookup(code) {
+// ---------- Turning what was said into catalog products ----------
+// The language model splits a note into items ("diet coke 12 pack" x 3); this code finds the closest real product.
+// Ported from the benchmark lab (.claude/lab/bench), where this combination read 36 to 42 of 49 test notes fully right.
+const sNorm = s => String(s ?? "").toLowerCase().replace(/[’'`]/g, "").replace(/[^a-z0-9. ]+/g, " ").replace(/\s+/g, " ").trim();
+function lev(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+// Spoken / misheard forms of each brand → catalog brand.
+const BRAND_ALIASES = {
+  "coke": "Coca-Cola", "coca cola": "Coca-Cola", "cocacola": "Coca-Cola", "coke classic": "Coca-Cola",
+  "diet coke": "Diet Coke", "diet cola": "Diet Coke",
+  "mellow yellow": "Mello Yello", "mello yello": "Mello Yello", "mello": "Mello Yello",
+  "mr pibb": "Mr. Pibb", "mister pibb": "Mr. Pibb", "pibb": "Mr. Pibb", "pibb xtra": "Mr. Pibb",
+  "seagrams": "Seagram's", "sea grams": "Seagram's", "seagram": "Seagram's", "seagram s": "Seagram's",
+  "barqs": "Barq's", "barks": "Barq's", "bark s": "Barq's", "barq": "Barq's",
+  "dr pepper": "Dr Pepper", "doctor pepper": "Dr Pepper", "dr. pepper": "Dr Pepper",
+  "power aid": "Powerade", "powerade": "Powerade",
+  "body armor": "BODYARMOR", "bodyarmor": "BODYARMOR", "body armour": "BODYARMOR",
+  "vitamin water": "vitaminwater", "vitaminwater": "vitaminwater",
+  "smart water": "smartwater", "smartwater": "smartwater",
+  "topo chico": "Topo Chico", "topochico": "Topo Chico",
+  "monster": "Monster Energy", "monster energy": "Monster Energy",
+  "peace tea": "Peace Tea", "gold peak": "Gold Peak", "minute maid": "Minute Maid",
+  "hi c": "Hi-C", "hic": "Hi-C", "full throttle": "Full Throttle", "core power": "Core Power",
+};
+let brandIdx = null, brandIdxFor = -1;
+function brandIndex() {
+  if (brandIdx && brandIdxFor === state.products.length) return brandIdx;
+  brandIdx = new Map(); brandIdxFor = state.products.length;
+  for (const b of new Set(state.products.map(p => p.brand))) brandIdx.set(sNorm(b), b);
+  const have = new Set(brandIdx.values());
+  for (const [k, v] of Object.entries(BRAND_ALIASES)) if (have.has(v)) brandIdx.set(sNorm(k), v);
+  return brandIdx;
+}
+function resolveBrand(text) {
+  const n = sNorm(text), idx = brandIndex();
+  if (!n) return null;
+  if (idx.has(n)) return idx.get(n);
+  let best = null, bestD = 99;
+  for (const [k, v] of idx) { const d = lev(n, k); if (d < bestD) { bestD = d; best = v; } }
+  // A small typo (about 1 letter in 5) is fine; a wholly different word (Gatorade vs Dasani) is not.
+  return bestD <= Math.max(1, Math.floor(n.length / 5)) ? best : null;
+}
+
+const ONES = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19 };
+const TENS = { twenty: 20, thirty: 30, forty: 40, fifty: 50 };
+// "twenty four" -> "24", "sixteen point nine" -> "16.9", "eighteen and a half" -> "18.5"
+function speechToDigits(text) {
+  const t = sNorm(text).replace(/\b(\d+)\s+point\s+(\d)\b/g, "$1.$2").split(" ");
+  const out = [];
+  for (let i = 0; i < t.length; i++) {
+    const w = t[i];
+    if (TENS[w] != null) { const nx = ONES[t[i + 1]]; if (nx > 0 && nx < 10) { out.push(String(TENS[w] + nx)); i++; } else out.push(String(TENS[w])); }
+    else if (ONES[w] != null) out.push(String(ONES[w]));
+    else out.push(w);
+  }
+  return out.join(" ").replace(/\b(\d+) and a half\b/g, (_, n) => `${n}.5`).replace(/\b(\d+)\s+point\s+(\d+)\b/g, "$1.$2");
+}
+function sizeCandidates(s) {
+  const out = new Set();
+  for (const m of s.matchAll(/(\d+(?:\.\d+)?)\s*(ounces?|oz|liters?|litres?|l)\b/g)) out.add(`${parseFloat(m[1])}${/^o/.test(m[2]) ? "oz" : "l"}`);
+  if (/\bmini\b/.test(s)) out.add("7.5oz");
+  return out;
+}
+function packCandidates(s) {
+  const out = new Set();
+  for (const m of s.matchAll(/(\d+)\s*(?:packs?|pk|count|ct)\b/g)) out.add(`${parseInt(m[1], 10)}pk`);
+  // "cans" or "bottles" on their own mean singles; next to a pack count ("12 pack cans") they only name the container.
+  if (/\bsingles?\b/.test(s) || (!out.size && /\b(bottles?|cans?)\b/.test(s))) out.add("single");
+  return out;
+}
+const FLAVOR_SYN = [[/\bzero( sugar| calorie)?\b/g, "zero"], [/\bgeorgia peach\b/g, "just peachy"], [/\b(regular|classic|original|plain)\b/g, "original"],
+  [/\bgrape fruit\b/g, "grapefruit"], [/\bmellow yellow\b/g, "mello yello"]];
+const FLAVOR_STOP = new Set(["just", "the", "a", "of", "and", "with"]);
+const flavorTokens = f => { let n = sNorm(f); for (const [re, to] of FLAVOR_SYN) n = n.replace(re, to); return n.split(" ").filter(w => w && !FLAVOR_STOP.has(w)); };
+const pSizeKey = p => { const m = (p.size || "").match(/^(\d+(?:\.\d+)?)(oz|L)/); return m ? `${parseFloat(m[1])}${m[2].toLowerCase()}` : ""; };
+const pPackKey = p => (p.pack === "Single" ? "single" : String(p.pack || "").toLowerCase());
+
+// Longest brand names win ("diet coke" is not also "coke"); a separate "coke" later in the note still counts.
+function detectBrands(tokens) {
+  const idx = brandIndex(), found = new Set(), taken = new Array(tokens.length).fill(false);
+  for (let n = 3; n >= 1; n--) for (let i = 0; i + n <= tokens.length; i++) {
+    if (taken.slice(i, i + n).some(Boolean)) continue;
+    const g = tokens.slice(i, i + n).join(" ");
+    const b = idx.has(g) ? idx.get(g) : (g.length >= 4 ? resolveBrand(g) : null);
+    if (b) { found.add(b); for (let k = i; k < i + n; k++) taken[k] = true; }
+  }
+  return found;
+}
+// Scored candidates for a phrase, best first.
+function rankPhrase(phrase) {
+  const s = speechToDigits(phrase), tokens = s.split(" ");
+  let n = s; for (const [re, to] of FLAVOR_SYN) n = n.replace(re, to);
+  const tset = new Set(n.split(" "));
+  const sizes = sizeCandidates(s), packs = packCandidates(s);
+  const brands = detectBrands(tokens);
+  if (!brands.size) return [];
+  const wantCan = /\bcans?\b/.test(s), wantBottle = /\bbottles?\b/.test(s);
+  const out = [];
+  for (const b of brands) {
+    const pool = state.products.filter(p => p.brand === b && !p.retired);
+    // Did the speaker name any flavor at all for this brand? If not, the plain/original product is the answer.
+    const named = pool.some(p => flavorTokens(p.flavor).some(w => w !== "original" && tset.has(w)));
+    for (const p of pool) {
+      const ft = flavorTokens(p.flavor), fHit = ft.filter(t => tset.has(t)).length;
+      const isPlain = ft.length === 1 && ft[0] === "original";
+      const fs = isPlain ? (named ? (fHit ? 3 : 0) : 3) : ft.length ? 3 * fHit / ft.length : (named ? 0.3 : 0.9);
+      const pen = ft.length && !isPlain && fHit === 0 ? -1 : 0;   // a flavored product shouldn't win when no flavor was named
+      // Small tie-breakers: a named container (cans / bottles), and a bare bottle size ("diet coke 20 ounce") means a single bottle.
+      const isCan = /can/i.test(p.size || ""), isBottle = /bottle/i.test(p.size || "");
+      const box = (wantCan && isCan) || (wantBottle && isBottle) ? 0.5 : 0;
+      const dflt = !packs.size && isBottle && pPackKey(p) === "single" ? 1 : 0;
+      out.push({ p, sc: fs + pen + (sizes.has(pSizeKey(p)) ? 2 : 0) + (packs.has(pPackKey(p)) ? 2 : 0) + box + dflt });
+    }
+  }
+  return out.sort((a, b) => b.sc - a.sc);
+}
+// A product phrase ("diet coke 12 pack") -> { p, conf, why } or null when no brand we carry is named.
+// conf is "check" when the top two candidates are too close to call, so the person can confirm with one tap.
+function resolvePhrase(phrase) {
+  const r = rankPhrase(phrase);
+  if (!r.length) return null;
+  const top = r[0], next = r.find(x => x.p.id !== top.p.id);
+  const gap = next ? top.sc - next.sc : 9;
+  return { p: top.p, conf: gap >= 1 && top.sc >= 2 ? "ok" : "check", why: gap < 1 ? "close call" : "" };
+}
+// Is this product's pack/size number the same as the quantity the model reported? ("12 pack" heard as 12 needed)
+function qtyLooksLikePack(phrase, qty, p) {
+  if (qty == null || !p) return false;
+  const nums = [...speechToDigits(phrase).matchAll(/\d+(?:\.\d+)?/g)].map(m => parseFloat(m[0]));
+  return nums.filter(v => v === qty).length === 1 && (qty === parseInt(p.pack, 10) || parseFloat(p.size) === qty);
+}
+// Model answer for one note -> note items.
+function itemsFromModel(list) {
+  const items = [];
+  for (const it of list) {
+    if (!it || typeof it !== "object" || typeof it.product !== "string" || !it.product.trim()) continue;
+    let qty = it.qty == null || it.qty === "" ? null : Math.round(Number(it.qty));
+    if (!(qty > 0 && qty < 1000)) qty = null;
+    const r = resolvePhrase(it.product);
+    if (r && qtyLooksLikePack(it.product, qty, r.p)) qty = null;
+    items.push({ pid: r ? r.p.id : null, phrase: it.product.trim(), qty, conf: r && r.conf === "ok" && qty != null ? "ok" : "check", why: !r ? "no match" : r.conf !== "ok" ? r.why : qty == null ? "how many?" : "", done: false });
+  }
+  return items;
+}
+
+// ---------- On-device voice models and the note queue ----------
+// A note goes: queued (voice clip waiting) → heard (text waiting for the language model) → reading → done.
+// The queue runs in the background (oldest note first, listening before reading) so you can keep snapping
+// shelves, or walk to the back room, while the phone works through it.
+const MODEL_INFO = {
+  asr: { name: "Speech to text", detail: "Whisper Base", size: "about 80 MB" },
+  fast: { name: "Language", detail: "Qwen 2.5 0.5B", size: "about 0.8 GB" },
+};
+const MODEL_CACHE_HINT = { asr: "whisper-base.en", fast: "Qwen2.5-0.5B-Instruct" };
+const ai = {
+  worker: null, ready: {}, device: {}, probe: null,
+  dl: { key: null, loaded: 0, total: 0, error: "" },   // the download in progress, if any
+  pumping: false, pending: new Map(), seq: 0, wake: null,
+};
+const haveModel = key => !!state.settings.models[key];
+// The language model in use (Qwen 0.5B: Llama 1B was 1.7 GB, too much memory for an iPhone 13).
+function activeLLM() { return haveModel("fast") ? "fast" : null; }
+const voiceReady = () => haveModel("asr") && !!activeLLM();
+
+function getWorker() {
+  if (ai.worker) return ai.worker;
+  const w = new Worker("ai-worker.js", { type: "module" });
+  w.onmessage = e => {
+    const m = e.data;
+    if (m.type === "progress") { ai.dl.loaded = m.loaded; ai.dl.total = m.total; updateModelProgress(); return; }
+    if (m.type === "probe") { ai.probe = m; if (view === "more") renderMore(); return; }
+    const p = ai.pending.get(m.id != null ? m.id : "load:" + m.key);
+    if (!p) return;
+    if (m.type === "error") { ai.pending.delete(m.id != null ? m.id : "load:" + m.key); p.reject(new Error(m.message)); }
+    else if (m.type === "ready") { ai.device[m.key] = m.device; ai.pending.delete("load:" + m.key); p.resolve(m); }
+    else if (m.type === "text" || m.type === "items") { ai.pending.delete(m.id); p.resolve(m); }
+  };
+  w.onerror = e => failAllPending(new Error(e.message || "The voice worker stopped"));
+  ai.worker = w;
+  w.postMessage({ type: "probe" });
+  return w;
+}
+function failAllPending(err) {
+  for (const p of ai.pending.values()) p.reject(err);
+  ai.pending.clear();
+  if (ai.worker) { try { ai.worker.terminate(); } catch (e) {} ai.worker = null; }
+  ai.ready = {};
+}
+// Send a request to the worker and wait for its answer. A stuck job is cancelled (the worker restarts fresh).
+function workerCall(msg, timeoutMs, transfer) {
+  const w = getWorker();
+  const id = msg.type === "load" ? "load:" + msg.key : ++ai.seq;
+  return new Promise((resolve, reject) => {
+    const timer = timeoutMs ? setTimeout(() => failAllPending(new Error("Took too long. Try again.")), timeoutMs) : null;
+    ai.pending.set(id, { resolve: v => { clearTimeout(timer); resolve(v); }, reject: e => { clearTimeout(timer); reject(e); } });
+    w.postMessage({ ...msg, id }, transfer || []);
+  });
+}
+
+// ---- Downloading ----
+async function downloadModels(keys) {
+  if (ai.dl.key) return;
+  if (!navigator.onLine) return toast("No signal. Connect to Wi-Fi to download.");
+  ai.dl.error = "";
   try {
-    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=product_name,brands,quantity,image_front_small_url,image_front_url`);
-    if (r.status === 404) return null;           // null = not in the database
-    if (!r.ok) return undefined;                 // undefined = lookup failed
-    const j = await r.json();
-    if (j.status !== 1 || !j.product) return null;
-    return {
-      name: j.product.product_name || "", brand: (j.product.brands || "").split(",")[0].trim(),
-      quantity: j.product.quantity || "", img: j.product.image_front_small_url || j.product.image_front_url || "",
-    };
-  } catch (e) { return undefined; }
+    for (const key of keys) {
+      if (haveModel(key)) continue;
+      ai.dl = { key, loaded: 0, total: 0, error: "" };
+      if (view === "more") renderMore();
+      await workerCall({ type: "load", key });     // no timeout: it's a big download
+      state.settings.models[key] = true; save();
+    }
+    ai.dl = { key: null, loaded: 0, total: 0, error: "" };
+    toast("Voice models ready");
+  } catch (e) {
+    ai.dl = { key: null, loaded: 0, total: 0, error: e.message || "Download failed" };
+    failAllPending(e);
+  }
+  renderAll(); pump();
 }
-async function fetchOffImage(p, code) {
-  if (!navigator.onLine) return;
-  const info = await offLookup(code);
-  if (info && info.img && !p.img) { p.img = info.img; markProduct(p.id); save(); renderAll(); }
+function updateModelProgress() {
+  const bar = document.querySelector("[data-mprog]");
+  if (!bar || !ai.dl.key) return;
+  const t = ai.dl.total, pct = t ? Math.min(100, Math.round(ai.dl.loaded / t * 100)) : 0;
+  bar.querySelector("i").style.width = pct + "%";
+  const lab = document.querySelector("[data-mprog-label]");
+  if (lab) lab.textContent = t ? `${MODEL_INFO[ai.dl.key].name}: ${(ai.dl.loaded / 1e6).toFixed(0)} of ${(t / 1e6).toFixed(0)} MB` : `${MODEL_INFO[ai.dl.key].name}: starting…`;
 }
+async function deleteModels() {
+  failAllPending(new Error("cancelled"));
+  try {
+    const c = await caches.open("transformers-cache");
+    for (const req of await c.keys()) await c.delete(req);
+  } catch (e) { /* nothing cached */ }
+  state.settings.models = { asr: false, fast: false };
+  ai.ready = {}; save(); renderAll();
+}
+// If the phone cleared the downloaded files (low storage), forget that they were downloaded so nothing re-downloads in the background.
+async function verifyModels() {
+  try {
+    if (!("caches" in self)) return;
+    const c = await caches.open("transformers-cache");
+    const urls = (await c.keys()).map(r => r.url);
+    let changed = false;
+    for (const key of Object.keys(MODEL_CACHE_HINT)) {
+      if (state.settings.models[key] && !urls.some(u => u.includes(MODEL_CACHE_HINT[key]))) { state.settings.models[key] = false; changed = true; }
+    }
+    if (changed) { save(); renderAll(); }
+  } catch (e) { /* ignore */ }
+}
+
+// ---- The queue ----
+const nextNote = status => [...state.notes].reverse().find(n => n.status === status);
+function pendingNotes() { return state.notes.filter(n => n.status === "queued" || n.status === "heard" || n.status === "reading"); }
+// What's holding the queue, for display.
+function queueState() {
+  const left = pendingNotes();
+  if (!left.length) return { busy: false, text: "" };
+  const needAsr = left.some(n => n.status === "queued"), needLLM = left.some(n => n.status === "heard" || n.status === "reading");
+  if ((needAsr && !haveModel("asr")) || (needLLM && !activeLLM() && !needAsr)) return { busy: false, blocked: true, text: `${left.length} note${left.length === 1 ? "" : "s"} waiting. Download the voice models in More.` };
+  return { busy: true, text: `Reading ${left.length} note${left.length === 1 ? "" : "s"}…` };
+}
+async function holdScreenOn() {
+  try { if (navigator.wakeLock && !document.hidden && !ai.wake) { ai.wake = await navigator.wakeLock.request("screen"); ai.wake.addEventListener("release", () => (ai.wake = null)); } } catch (e) {}
+}
+function releaseScreen() { try { ai.wake && ai.wake.release(); } catch (e) {} ai.wake = null; }
+document.addEventListener("visibilitychange", () => { if (!document.hidden && ai.pumping) holdScreenOn(); });
+
+async function pump() {
+  if (ai.pumping) return;
+  ai.pumping = true; holdScreenOn(); renderQueueStatus();
+  try {
+    for (;;) {
+      let n = nextNote("queued");
+      if (n && haveModel("asr")) { await listenTo(n); continue; }
+      n = nextNote("heard");
+      if (n && activeLLM()) { await readNote(n); continue; }
+      break;
+    }
+  } finally { ai.pumping = false; releaseScreen(); renderAll(); }
+}
+async function listenTo(n) {
+  try {
+    const rec = n.audio ? await getAudio(n.audio) : null;
+    if (!rec) throw new Error("The recording is missing.");
+    const i16 = new Int16Array(rec.pcm), f32 = new Float32Array(i16.length);
+    for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
+    if (!ai.ready.asr) { await workerCall({ type: "load", key: "asr" }, 120000); ai.ready.asr = true; }
+    const r = await workerCall({ type: "transcribe", pcm: f32 }, 120000, [f32.buffer]);
+    n.text = cleanTranscript(r.text);
+    n.status = n.text ? "heard" : "empty"; n.err = "";
+  } catch (e) { n.status = "error"; n.err = e.message || "Couldn't listen to this"; }
+  save(); renderAll();
+}
+// Whisper writes things like [BLANK_AUDIO] or (silence) when nothing was said.
+function cleanTranscript(t) {
+  t = String(t || "").replace(/\[[^\]]*\]|\([^)]*\)|\*[^*]*\*/g, " ").replace(/\s+/g, " ").trim();
+  return /[a-z0-9]/i.test(t) ? t : "";
+}
+async function readNote(n) {
+  const key = activeLLM();
+  n.status = "reading"; save(); renderAll();
+  try {
+    if (!ai.ready[key]) { await workerCall({ type: "load", key }, 180000); ai.ready[key] = true; }
+    const r = await workerCall({ type: "extract", key, text: n.text }, 120000);
+    if (!r.items) throw new Error("Couldn't make sense of this note.");
+    n.items = itemsFromModel(r.items);
+    n.status = "done"; n.err = "";
+  } catch (e) { n.status = "error"; n.err = e.message || "Couldn't read this note"; n.retry = "heard"; }
+  save(); renderAll();
+}
+// Put a note back in line: to be listened to again, or read again.
+function requeue(n) {
+  n.err = "";
+  n.status = n.audio && !n.text ? "queued" : "heard";
+  save(); renderAll(); pump();
+}
+function renderQueueStatus() { if (view === "needed" || view === "notes" || view === "capture") renderAll(); }
 
 // ============================================================
 // Shared data on GitHub
@@ -1633,10 +2010,10 @@ function applyShared(remote, { overwrite = false } = {}) {
     if (prev && state.tags[prev].updated >= t.updated) delete state.tags[key];
     else { if (prev) delete state.tags[prev]; byProduct[slot] = key; }
   }
-  if (state.list) state.list.items = state.list.items.filter(i => productById(i.productId));
+  // Notes that mention a product that no longer exists keep their words but ask for a new product.
+  for (const n of state.notes) for (const it of n.items) if (it.pid && !productById(it.pid)) { it.pid = null; it.conf = "check"; it.why = "no match"; }
   state.products.forEach(p => (p._st = undefined));
   canonicalize(state.products);
-  addSeedBarcodes();
 }
 
 async function pullShared({ overwrite = false, quiet = true } = {}) {
@@ -1788,437 +2165,6 @@ function renderSyncIndicator() {
   b.setAttribute("aria-label", s.text);
 }
 
-// ---------- Scan handling ----------
-let mode = "count";
-let pending = null;   // { kind: "bindTag"|"rebindTag"|"setupTag", code } | { kind: "tagForProduct", pid }
-let lastScan = { code: "", at: 0 };
-let lastScanned = null;   // { kind, code }
-
-const MODE_HELP = {
-  count: "Scan a shelf tag or barcode, then enter how many you need.",
-  setup: "Scan a shelf tag, then its product barcode. Links instantly.",
-};
-function setMode(m) {
-  mode = m;
-  if (pending && pending.kind === "setupTag" && m !== "setup") pending = null;
-  document.querySelectorAll("#mode-seg button").forEach(b => b.classList.toggle("active", b.dataset.mode === m));
-  syncIndicator($("#mode-seg"));
-  $("#mode-help").textContent = m === "count" && (state.settings.afterScan || "photo") === "photo"
-    ? "Scan a shelf tag or barcode, then snap a photo of the shelf." : MODE_HELP[m];
-  renderPending();
-}
-function setPending(p) { pending = p; renderPending(); }
-function renderPending() {
-  const box = $("#pending-banner");
-  box.innerHTML = "";
-  const full = $("#actions").classList.contains("photo-first");
-  $("#photo-label").textContent = mode !== "setup" ? (full ? "Scan with photo" : "Photo")
-    : pending && pending.kind === "setupTag" ? (full ? "Photo the product barcode" : "Photo barcode") : (full ? "Photo the shelf tag" : "Photo tag");
-  if (!pending) return;
-  let msg = "";
-  if (pending.kind === "bindTag") msg = "New tag. Now scan the product's barcode.";
-  if (pending.kind === "rebindTag") msg = "Scan the correct product's barcode.";
-  if (pending.kind === "setupTag") msg = "Tag scanned. Scan the barcode or pick the product.";
-  if (pending.kind === "tagForProduct") { const p = productById(pending.pid); msg = `Scan the new shelf tag for ${p ? pName(p) + " " + p.pack : "this product"}.`; }
-  const b = el(`<div class="banner"><span class="grow"></span>${pending.kind === "setupTag" ? `<button class="btn sm primary" data-a="pick">Pick</button>` : ""}<button class="btn sm" data-a="cancel">Cancel</button></div>`);
-  b.querySelector(".grow").textContent = msg;
-  b.querySelector('[data-a="cancel"]').onclick = () => setPending(null);
-  const pick = b.querySelector('[data-a="pick"]');
-  if (pick) pick.onclick = async () => {
-    const tagCode = pending.code;
-    const pid = await pickProduct({ title: "Which product is this tag for?" });
-    if (pid) setupLink(tagCode, pid);
-  };
-  box.appendChild(b);
-}
-// Link tags mode: link immediately, no confirm (undo is in the toast), then straight back to scanning.
-async function setupLink(tagCode, pid) {
-  setPending(null);
-  await bindTag(tagCode, pid, { confirm: false });
-  beep(true);
-}
-
-function renderLastScan() {
-  const box = $("#last-scan");
-  if (!lastScanned) {
-    box.innerHTML = `<div class="grow"><div class="label">Last scan</div><div class="muted small" style="margin-top:2px">Nothing scanned yet</div></div>`;
-    return;
-  }
-  const { kind, code } = lastScanned;
-  const t = kind === "tag" && lookupTag(code);
-  const p = kind === "tag" ? (t && productById(t.rec.productId)) : productByBarcode(code);
-  box.innerHTML = `${p ? thumbHtml(p) : ""}<div class="grow"><div class="label">Last scan · ${kind === "tag" ? "Shelf tag" : "Barcode"}</div>
-    <div style="font-weight:650;margin-top:2px">${p ? esc(pName(p)) + `<div class="muted small" style="font-weight:500">${esc(pSub(p))}</div>` : "Not linked yet"}</div>
-    <div class="code">${esc(code)}</div></div>`;
-}
-
-function onDecoded(text, formatName) {
-  if (view !== "scan") return;                   // camera kept warm on other tabs: don't act on codes there
-  if (modalDepth > 0) return;                    // ignore scans while a sheet is open
-  const now = Date.now();
-  if (text === lastScan.code && now - lastScan.at < 2500) return;
-  lastScan = { code: text, at: now };
-  const twoD = /QR|DATA_?MATRIX|AZTEC|PDF_?417/.test(formatName || "");
-  handleCode(text, twoD ? "tag" : "barcode");
-}
-
-async function handleCode(raw, kind) {
-  const code = kind === "tag" ? normalizeTag(raw) : normalizeBarcode(raw);
-  lastScanned = { kind, code }; renderLastScan();
-  const card = $("#last-scan");
-  card.classList.remove("refresh"); void card.offsetWidth; card.classList.add("refresh");
-  beep(true);
-  if (kind === "tag") return handleTag(code);
-  return handleBarcode(code);
-}
-
-async function handleTag(code) {
-  if (!(await ensureStoreForTags())) return;
-  const found = lookupTag(code);
-  const known = found && found.rec;
-  if (pending && pending.kind === "tagForProduct") {
-    const pid = pending.pid; setPending(null);
-    await bindTag(code, pid);
-    return;
-  }
-  if (mode === "setup") {
-    setPending({ kind: "setupTag", code });
-    if (known) { const p = productById(known.productId); toast(`Currently: ${p ? pName(p) + " " + p.pack : "?"}`); }
-    return;
-  }
-  if (known) {
-    known.lastSeen = Date.now(); save();
-    const p = productById(known.productId);
-    if (!p) { delete state.tags[found.key]; save(); return handleTag(code); }
-    return addFromScan(p.id, { tagCode: code });
-  }
-  const choice = await menu("New shelf tag", [
-    { label: "Scan the product barcode", value: "scan" },
-    { label: "Pick from product list", value: "pick" },
-  ]);
-  if (choice === "scan") setPending({ kind: "bindTag", code });
-  if (choice === "pick") {
-    const pid = await pickProduct({ title: "Which product is this tag for?" });
-    if (pid && await bindTag(code, pid) && mode === "count") addFromScan(pid, { tagCode: code });
-  }
-}
-
-async function handleBarcode(code) {
-  let p = productByBarcode(code);
-  if (pending && (pending.kind === "bindTag" || pending.kind === "rebindTag" || pending.kind === "setupTag")) {
-    const tagCode = pending.code, wasKind = pending.kind;
-    if (wasKind === "setupTag") {
-      if (!p) {
-        // Unknown barcode: go straight to the product search, learn the barcode, link the tag.
-        const pid = await pickProduct({ title: "Which product is this barcode?" });
-        if (!pid || !(await addBarcodeToProduct(code, pid))) return;
-        p = productById(pid);
-      }
-      return setupLink(tagCode, p.id);
-    }
-    if (!p) {
-      const pid = await resolveUnknownBarcode(code, "Which product is this barcode?");
-      if (!pid) return;
-      p = productById(pid);
-    }
-    setPending(null);
-    const ok = await bindTag(tagCode, p.id);
-    if (ok && mode === "count") addFromScan(p.id, { tagCode });
-    return;
-  }
-  if (pending && pending.kind === "tagForProduct") { toast("That's a barcode. Scan the shelf tag QR."); beep(false); return; }
-  if (mode === "setup") { toast("Scan a shelf tag first, then the product"); beep(false); return; }
-  if (!p) {
-    const pid = await resolveUnknownBarcode(code);
-    if (!pid) return;
-    p = productById(pid);
-  }
-  addFromScan(p.id);
-}
-
-// Unknown barcode → look up on Open Food Facts, then pick existing or add new.
-async function resolveUnknownBarcode(code, title = "New barcode") {
-  const s = el(`<div class="sheet"><div class="handle"></div><h2></h2>
-    <p class="hint">Barcode <code>${esc(code)}</code></p>
-    <div class="card" id="off-box"><span class="hint">Looking it up…</span></div>
-    <button class="btn primary block" data-a="pick">Pick existing product</button>
-    <button class="btn block" data-a="new">Add as new product</button>
-    <button class="btn block quiet" data-a="cancel">Cancel</button></div>`);
-  s.querySelector("h2").textContent = title;
-  return new Promise(resolve => {
-    let done = false, info = null;
-    const close = openLayer(s, { onClose: () => { if (!done) resolve(null); } });
-    const box = s.querySelector("#off-box");
-    (navigator.onLine ? offLookup(code) : Promise.resolve(undefined)).then(r => {
-      info = r;
-      if (!box.isConnected) return;
-      box.innerHTML = r
-        ? `<div class="row">${r.img ? `<div class="thumb lg"><img src="${esc(r.img)}" alt=""></div>` : ""}<div class="grow">
-             <div style="font-weight:650">${esc(r.name || "(no name)")}</div>
-             <div class="hint">${esc([r.brand, r.quantity].filter(Boolean).join(" · "))}</div>
-             <div class="hint">from Open Food Facts</div></div></div>`
-        : `<span class="hint">${r === null ? "Not found online." : "Online lookup unavailable."} Pick the product or add it.</span>`;
-    });
-    const finish = async pid => {
-      if (!pid) return;
-      if (!(await addBarcodeToProduct(code, pid))) return;
-      const p = productById(pid);
-      if (info && info.img && !p.img) { p.img = info.img; markProduct(pid); save(); }
-      done = true; close(); renderAll(); resolve(pid);
-    };
-    s.querySelector('[data-a="pick"]').onclick = async () => finish(await pickProduct({ title: "Which product is this barcode?" }));
-    s.querySelector('[data-a="new"]').onclick = async () => finish(await editProduct(null, { barcode: code, off: info }));
-    s.querySelector('[data-a="cancel"]').onclick = () => { done = true; close(); resolve(null); };
-  });
-}
-
-// ---------- Product sheet (set how many are needed) ----------
-function productSheet(pid, { tagCode = null } = {}) {
-  const p = productById(pid);
-  ensureList();
-  const existing = state.list.items.find(i => i.productId === pid);
-  const s = el(`<div class="sheet"><div class="handle"></div>
-    <div class="row">${thumbHtml(p, true)}<div class="grow"><h2 style="margin:0">${esc(pName(p))}</h2>
-      <div class="muted">${esc(pSub(p))}</div><div class="hint">${esc(p.category)}</div></div></div>
-    ${existing ? `<div class="banner">Already on your list${existing.qty ? `: ${existing.qty} ${esc(p.unit)}${existing.qty === 1 ? "" : "s"}` : ""}. This adds more.</div>` : ""}
-    <label class="f">How many ${esc(p.unit)}s do you need?</label>
-    <div class="qty"><button data-a="minus" aria-label="Less">−</button><input type="number" inputmode="numeric" min="1" value="1" id="qty-input"><button data-a="plus" aria-label="More">+</button>
-      <span class="unit">${esc(p.unit)}s</span></div>
-    <button class="btn primary block" data-a="add" style="margin-top:16px;padding:14px">Add to list</button>
-    ${tagCode ? `<button class="btn block" data-a="wrong">Wrong product? Change</button>` : ""}
-    <button class="btn block quiet" data-a="cancel">Cancel</button></div>`);
-  const close = openLayer(s);
-  const input = s.querySelector("input");
-  s.querySelector('[data-a="minus"]').onclick = () => { input.value = Math.max(1, (+input.value || 1) - 1); bump(input); };
-  s.querySelector('[data-a="plus"]').onclick = () => { input.value = (+input.value || 0) + 1; bump(input); };
-  s.querySelector('[data-a="add"]').onclick = () => {
-    const n = Math.max(1, Math.floor(+input.value || 1));
-    const snap = snapshot();
-    if (existing) { existing.qty = (existing.qty || 0) + n; existing.status = "need"; bumpQtyFor = pid; }
-    else state.list.items.push({ productId: pid, qty: n, status: "need", addedAt: Date.now() });
-    bumpRecent(pid);
-    save(); close(); renderAll();
-    toast(`Added ${n} × ${pName(p)} ${p.pack}`, snap);
-  };
-  s.querySelector('[data-a="cancel"]').onclick = close;
-  if (tagCode) s.querySelector('[data-a="wrong"]').onclick = async () => {
-    close();
-    const how = await menu("Change this tag's product", [
-      { label: "Scan the correct product's barcode", value: "scan" },
-      { label: "Pick from product list", value: "pick" },
-    ]);
-    if (how === "scan") setPending({ kind: "rebindTag", code: tagCode });
-    if (how === "pick") {
-      const np = await pickProduct({ title: "Which product is this tag for?" });
-      if (np && await bindTag(tagCode, np)) addFromScan(np, { tagCode });
-    }
-  };
-}
-function ensureList() { if (!state.list) state.list = { started: Date.now(), items: [] }; }
-
-const MAX_PHOTOS = 6;   // shelf photos per list item (e.g. main aisle + endcap + a second angle)
-// One list item per product + pack: fold any duplicates together, keeping every photo and adding quantities.
-function mergeListDuplicates() {
-  if (!state.list) return;
-  const byId = new Map();
-  for (const it of state.list.items) {
-    const first = byId.get(it.productId);
-    if (!first) { byId.set(it.productId, it); continue; }
-    first.photos = [...(first.photos || []), ...(it.photos || [])].slice(-MAX_PHOTOS);
-    if (it.qty) first.qty = (first.qty || 0) + it.qty;
-    if (it.status === "need") first.status = "need";
-  }
-  state.list.items = [...byId.values()];
-}
-// After a product is identified in Count mode: snap the shelf (default) or enter a quantity (setting).
-function addFromScan(pid, opts = {}) {
-  if ((state.settings.afterScan || "photo") === "qty") return productSheet(pid, opts);
-  return shelfShot(pid, opts);
-}
-
-// ---------- Shelf photos ----------
-// Stored in IndexedDB (plenty of room; localStorage is only ~5 MB). Photos stay on this phone and are
-// deleted when their list item goes away.
-const photoDB = (() => {
-  let p = null;
-  return () => p || (p = new Promise((res, rej) => {
-    const r = indexedDB.open("shelfscan-photos", 1);
-    r.onupgradeneeded = () => r.result.createObjectStore("photos");
-    r.onsuccess = () => res(r.result);
-    r.onerror = () => { p = null; rej(r.error); };
-  }));
-})();
-async function photoTx(mode, fn) {
-  const db = await photoDB();
-  return new Promise((res, rej) => {
-    const tx = db.transaction("photos", mode), req = fn(tx.objectStore("photos"));
-    tx.oncomplete = () => res(req && req.result);
-    tx.onerror = tx.onabort = () => rej(tx.error);
-  });
-}
-const putPhoto = (id, blob) => photoTx("readwrite", s => s.put(blob, id));
-const getPhoto = id => photoTx("readonly", s => s.get(id));
-const photoKeys = () => photoTx("readonly", s => s.getAllKeys());
-const delPhoto = id => { const u = photoURLs.get(id); if (u) { URL.revokeObjectURL(u); photoURLs.delete(id); } return photoTx("readwrite", s => s.delete(id)); };
-const newPhotoId = () => `ph-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
-const photoURLs = new Map();
-async function photoURL(id) {
-  if (photoURLs.has(id)) return photoURLs.get(id);
-  const blob = await getPhoto(id).catch(() => null);
-  if (!blob) return null;
-  const u = URL.createObjectURL(blob); photoURLs.set(id, u); return u;
-}
-// Fill <img data-photo="id"> placeholders after a render.
-function hydratePhotos(root) {
-  root.querySelectorAll("img[data-photo]").forEach(async img => { const u = await photoURL(img.dataset.photo); if (u) img.src = u; else img.closest(".shelf-thumb")?.classList.add("missing"); });
-}
-// Remove photos no list item points to (after clearing/removing, once the undo window has passed).
-async function sweepPhotos() {
-  try {
-    const keep = new Set(((state.list && state.list.items) || []).flatMap(i => i.photos || []));
-    for (const k of await photoKeys()) if (!keep.has(k)) await delPhoto(k);
-  } catch (e) {}
-}
-function schedulePhotoSweep() { clearTimeout(schedulePhotoSweep.t); schedulePhotoSweep.t = setTimeout(sweepPhotos, 10000); }
-// Resize an image/video frame to at most 1280px on the long side and encode as JPEG (~150 KB).
-function frameToBlob(source, w, h) {
-  const k = Math.min(1, 1280 / Math.max(w, h));
-  const c = document.createElement("canvas"); c.width = Math.round(w * k); c.height = Math.round(h * k);
-  c.getContext("2d").drawImage(source, 0, 0, c.width, c.height);
-  return new Promise(r => c.toBlob(r, "image/jpeg", 0.72));
-}
-async function fileToBlob(file) {
-  const bmp = await createImageBitmap(file);
-  const b = await frameToBlob(bmp, bmp.width, bmp.height); bmp.close && bmp.close(); return b;
-}
-// Take a photo with the iPhone camera (used when the live camera isn't running, and for extra angles).
-function cameraPhoto() {
-  return new Promise(resolve => {
-    const inp = el(`<input type="file" accept="image/*" capture="environment" hidden>`);
-    inp.onchange = async () => { const f = inp.files && inp.files[0]; inp.remove(); resolve(f ? await fileToBlob(f) : null); };
-    document.body.appendChild(inp); inp.click();
-  });
-}
-function liveVideo() {
-  const v = cam.video || document.querySelector("#reader video");
-  return camOn && v && v.readyState >= 2 && v.videoWidth ? v : null;
-}
-
-// Shutter overlay on the live camera: "Step back and snap the shelf". No skip; Cancel adds nothing.
-let shotOpen = false;
-function shelfShot(pid, { tagCode = null } = {}) {
-  const p = productById(pid);
-  const v = liveVideo();
-  if (!v) {
-    // No live camera (photo mode, legacy fallback…): use the iPhone camera instead.
-    return cameraPhoto().then(blob => { if (blob) saveShelfPhoto(pid, blob); });
-  }
-  if (shotOpen) return;
-  shotOpen = true; modalDepth++;                      // pauses scanning while the shutter is up
-  const camBox = $("#camera");
-  const ui = el(`<div class="shot-ui">
-      <div class="shot-top"><div class="grow"><b>${esc(pName(p))}</b> <span>${esc(p.pack)}</span><div class="shot-hint">Step back and snap the shelf</div></div>
-        ${tagCode ? `<button class="shot-link" data-a="wrong">Wrong item?</button>` : ""}</div>
-      <div class="shot-bottom"><button class="shot-cancel" data-a="cancel">Cancel</button>
-        <button class="shutter" data-a="snap" aria-label="Take shelf photo"><span></span></button><span class="shot-spacer"></span></div>
-    </div>`);
-  camBox.appendChild(ui); camBox.classList.add("shooting");
-  const done = () => { ui.remove(); camBox.classList.remove("shooting"); shotOpen = false; modalDepth = Math.max(0, modalDepth - 1); lastScan = { code: "", at: Date.now() }; };
-  ui.querySelector('[data-a="cancel"]').onclick = done;
-  ui.querySelector('[data-a="snap"]').onclick = async () => {
-    const vid = liveVideo(); if (!vid) { done(); return; }
-    camBox.classList.add("flash"); setTimeout(() => camBox.classList.remove("flash"), 350);
-    beep(true);
-    const blob = await frameToBlob(vid, vid.videoWidth, vid.videoHeight);
-    done();
-    if (blob) saveShelfPhoto(pid, blob);
-  };
-  const wrong = ui.querySelector('[data-a="wrong"]');
-  if (wrong) wrong.onclick = async () => {
-    done();
-    const how = await menu("Change this tag's product", [
-      { label: "Scan the correct product's barcode", value: "scan" },
-      { label: "Pick from product list", value: "pick" },
-    ]);
-    if (how === "scan") setPending({ kind: "rebindTag", code: tagCode });
-    if (how === "pick") {
-      const np = await pickProduct({ title: "Which product is this tag for?" });
-      if (np && await bindTag(tagCode, np)) addFromScan(np, { tagCode });
-    }
-  };
-}
-// Add the product to the list with its shelf photo (scanning it again replaces the photo).
-async function saveShelfPhoto(pid, blob) {
-  const p = productById(pid);
-  const id = newPhotoId();
-  try { await putPhoto(id, blob); } catch (e) { toast("Couldn't save the photo. Phone storage may be full."); return; }
-  ensureList();
-  const snap = snapshot();
-  const it = state.list.items.find(i => i.productId === pid);
-  if (it) { it.photos = [...(it.photos || []), id].slice(-MAX_PHOTOS); it.status = "need"; }   // same product + pack: one item, all its photos
-  else state.list.items.push({ productId: pid, qty: null, status: "need", addedAt: Date.now(), photos: [id] });
-  bumpRecent(pid);
-  save(); renderAll(); schedulePhotoSweep();
-  toast(it ? `Added photo ${it.photos.length}: ${pName(p)} ${p.pack}` : `Added ${pName(p)} ${p.pack}`, snap);
-}
-// Full-screen photo viewer with pinch/double-tap zoom, plus add-angle / retake.
-async function viewPhotos(it, start = 0) {
-  const p = productById(it.productId);
-  let idx = Math.min(start, (it.photos || []).length - 1);
-  const d = el(`<div class="viewer">
-      <div class="viewer-top"><div class="grow"><b>${esc(pName(p))}</b><div class="small">${esc(pSub(p))}</div></div>
-        <button class="viewer-x" data-a="close" aria-label="Close">${icon("x")}</button></div>
-      <div class="viewer-stage"><img alt="Shelf photo"></div>
-      <div class="viewer-dots"></div>
-      <div class="viewer-actions"></div>
-    </div>`);
-  const close = openLayer(d, { center: true });
-  d.parentElement.classList.add("viewer-overlay");
-  const img = d.querySelector("img"), stage = d.querySelector(".viewer-stage");
-  let z = 1, px = 0, py = 0;
-  const apply = () => (img.style.transform = `translate(${px}px, ${py}px) scale(${z})`);
-  const show = async () => {
-    z = 1; px = py = 0; apply();
-    const ids = it.photos || [];
-    img.src = (await photoURL(ids[idx])) || "";
-    d.querySelector(".viewer-dots").innerHTML = ids.length > 1 ? ids.map((_, i) => `<button class="dot${i === idx ? " on" : ""}" data-i="${i}" aria-label="Photo ${i + 1}"></button>`).join("") : "";
-    d.querySelectorAll(".dot").forEach(b => (b.onclick = () => { idx = +b.dataset.i; show(); }));
-    const acts = d.querySelector(".viewer-actions");
-    acts.innerHTML = `${ids.length < MAX_PHOTOS ? `<button class="btn primary" data-a="add">${icon("camera")}Add another angle</button>` : ""}
-      <button class="btn" data-a="retake">Retake</button>`;
-    const add = acts.querySelector('[data-a="add"]');
-    if (add) add.onclick = async () => { const b = await cameraPhoto(); if (!b) return; const id = newPhotoId(); await putPhoto(id, b); it.photos = [...(it.photos || []), id].slice(-MAX_PHOTOS); save(); idx = it.photos.length - 1; show(); renderList(); };
-    acts.querySelector('[data-a="retake"]').onclick = async () => { const b = await cameraPhoto(); if (!b) return; const id = newPhotoId(); await putPhoto(id, b); const old = it.photos[idx]; it.photos[idx] = id; save(); delPhoto(old); show(); renderList(); };
-  };
-  d.querySelector('[data-a="close"]').onclick = close;
-  // Pinch to zoom, drag to pan when zoomed, double-tap to toggle 2.5×, swipe to change photo.
-  let t0 = null, last = 0;
-  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-  stage.addEventListener("touchstart", e => {
-    e.preventDefault();
-    if (e.touches.length === 2) t0 = { d: dist(e.touches), z };
-    else if (e.touches.length === 1) {
-      const now = Date.now();
-      if (now - last < 280) { z = z > 1 ? 1 : 2.5; px = py = 0; apply(); last = 0; t0 = null; return; }
-      last = now; t0 = { x: e.touches[0].clientX, y: e.touches[0].clientY, px, py, sx: e.touches[0].clientX };
-    }
-  }, { passive: false });
-  stage.addEventListener("touchmove", e => {
-    e.preventDefault(); if (!t0) return;
-    if (e.touches.length === 2 && t0.d) { z = Math.min(5, Math.max(1, t0.z * dist(e.touches) / t0.d)); if (z === 1) px = py = 0; apply(); }
-    else if (e.touches.length === 1 && t0.x !== undefined && z > 1) { px = t0.px + e.touches[0].clientX - t0.x; py = t0.py + e.touches[0].clientY - t0.y; apply(); }
-  }, { passive: false });
-  stage.addEventListener("touchend", e => {
-    if (t0 && t0.sx !== undefined && z === 1 && e.changedTouches[0] && (it.photos || []).length > 1) {
-      const dx = e.changedTouches[0].clientX - t0.sx;
-      if (Math.abs(dx) > 50) { idx = (idx + (dx < 0 ? 1 : -1) + it.photos.length) % it.photos.length; show(); }
-    }
-    if (e.touches.length === 0) t0 = null;
-  });
-  ["gesturestart", "gesturechange"].forEach(t => stage.addEventListener(t, e => e.preventDefault()));
-  show();
-}
-
 // ---------- Add / edit product ----------
 function editProduct(pid, { prefillName = "", barcode = "", off = null } = {}) {
   const isNew = !pid;
@@ -2250,8 +2196,6 @@ function editProduct(pid, { prefillName = "", barcode = "", off = null } = {}) {
       </div>
       <label class="f" for="ep-cat">List group</label><input class="field" id="ep-cat" data-k="category" list="dl-cats">
       <label class="f" for="ep-unit">Count by</label><input class="field" id="ep-unit" data-k="unit" list="dl-units" placeholder="pack, case, tray, bottle">
-      <label class="f">Barcodes</label><div id="ep-codes" class="small"></div>
-      <button class="btn sm quiet" data-a="lookup">${icon("search")}Look up barcode online</button>
       <datalist id="dl-brands">${[...new Set(state.products.map(x => x.brand))].map(b => `<option value="${esc(b)}">`).join("")}</datalist>
       <datalist id="dl-cats">${cats.map(c => `<option value="${esc(c)}">`).join("")}</datalist>
       <datalist id="dl-units"><option value="pack"><option value="case"><option value="tray"><option value="bottle"><option value="can"></datalist>
@@ -2273,20 +2217,12 @@ function editProduct(pid, { prefillName = "", barcode = "", off = null } = {}) {
         box.appendChild(r);
       });
     };
-    renderThumb(); renderCodes();
+    renderThumb();
     s.querySelector('input[type="file"]').onchange = async e => {
       const f = e.target.files[0]; if (!f) return;
       p.img = await shrinkImage(f, 240); renderThumb();
     };
     s.querySelector('[data-a="clearimg"]').onclick = () => { p.img = ""; renderThumb(); };
-    s.querySelector('[data-a="lookup"]').onclick = async () => {
-      if (!p.barcodes[0]) return toast("This product has no barcode yet");
-      toast("Looking up…");
-      const info = await offLookup(p.barcodes[0]);
-      if (!info) return toast(info === null ? "Not found on Open Food Facts" : "Online lookup unavailable");
-      if (info.img) { p.img = info.img; renderThumb(); }
-      toast(`Found: ${info.name || "(no name)"}${info.img ? ". Image added." : ""}`);
-    };
     s.querySelector('[data-a="save"]').onclick = async () => {
       readForm();
       if (!p.brand) return toast("Enter a brand");
@@ -2332,7 +2268,7 @@ function editProduct(pid, { prefillName = "", barcode = "", off = null } = {}) {
     };
     const delBtn = s.querySelector('[data-a="delete"]');
     if (delBtn) delBtn.onclick = async () => {
-      if (!(await confirmDialog(`Delete <b>${esc(pFull(p))}</b>? Its shelf tag will be unlinked.`, { ok: "Delete", danger: true }))) return;
+      if (!(await confirmDialog(`Delete <b>${esc(pFull(p))}</b>?`, { ok: "Delete", danger: true }))) return;
       const snap = snapshot();
       dropProduct(p.id);
       save(); done = true; close(); renderAll(); toast("Deleted", snap); resolve(null);
@@ -2356,148 +2292,539 @@ function shrinkImage(file, max) {
   });
 }
 
+// ---------- Camera, microphone and making a note ----------
+const MAX_NOTE_SECS = 30;     // Whisper reads 30 seconds at a time
+const cam = { stream: null, starting: false, sleepTimer: null, audioTrack: null, error: "" };
+
+async function startCamera() {
+  if (cam.stream || cam.starting) return;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { cam.error = "This browser can't use the camera here."; return renderCapture(); }
+  cam.starting = true; cam.error = ""; renderCapture();
+  const video = { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } };
+  try {
+    let stream;
+    // Ask for the microphone together with the camera so the phone only asks once.
+    try { stream = await navigator.mediaDevices.getUserMedia({ video, audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+    catch (e) { if (e && e.name === "NotAllowedError") throw e; stream = await navigator.mediaDevices.getUserMedia({ video }); }
+    cam.stream = stream;
+    cam.audioTrack = stream.getAudioTracks()[0] || null;
+    if (cam.audioTrack) cam.audioTrack.enabled = false;   // only listening while recording
+    const v = $("#cam-video"); v.srcObject = stream; await v.play().catch(() => {});
+    state.settings.camOK = true; save();
+  } catch (e) {
+    cam.error = e && e.name === "NotAllowedError" ? "Camera access is blocked. Allow it in Settings, or use the phone camera button below." : "Couldn't start the camera.";
+  }
+  cam.starting = false; renderCapture();
+}
+function stopCamera() {
+  clearTimeout(cam.sleepTimer);
+  if (cam.stream) cam.stream.getTracks().forEach(t => t.stop());
+  cam.stream = null; cam.audioTrack = null;
+  const v = $("#cam-video"); if (v) v.srcObject = null;
+  renderCapture();
+}
+// Leaving the Capture tab keeps the camera warm for a minute so coming back is instant.
+function sleepCameraSoon() { clearTimeout(cam.sleepTimer); if (cam.stream) cam.sleepTimer = setTimeout(stopCamera, 60000); }
+function wakeCamera() { clearTimeout(cam.sleepTimer); if (!cam.stream && state.settings.camOK) startCamera(); }
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) { if (cam.stream && !recorder) stopCamera(); }
+  else if (view === "capture") wakeCamera();
+});
+
+// Crop the live video to the shape of the viewfinder (what you see is what's saved).
+async function grabPhoto() {
+  const v = $("#cam-video"), box = $("#camera");
+  const vw = v.videoWidth, vh = v.videoHeight;
+  if (!vw || !vh) return null;
+  const want = box.clientWidth / box.clientHeight, have = vw / vh;
+  let cw = vw, ch = vh, sx = 0, sy = 0;
+  if (have > want) { cw = Math.round(vh * want); sx = Math.round((vw - cw) / 2); } else { ch = Math.round(vw / want); sy = Math.round((vh - ch) / 2); }
+  return frameToBlob(v, vw, vh, sx, sy, cw, ch);
+}
+async function onShutter(forcePhone) {
+  if (recorder) return;
+  let blob = null;
+  if (cam.stream && !forcePhone) {
+    blob = await grabPhoto();
+    box_flash();
+  } else {
+    blob = await cameraPhoto();   // no live camera: use the iPhone camera app
+  }
+  if (!blob) return;
+  beep(true);
+  const photoId = newId("p");
+  try { await putPhoto(photoId, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
+  startRecording({ photos: [photoId] });
+}
+function box_flash() { const b = $("#camera"); b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); setTimeout(() => b.classList.remove("flash"), 400); }
+
+// ---- Recording ----
+let recorder = null;
+async function micTrack() {
+  if (cam.audioTrack) return cam.audioTrack;
+  const s = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+  cam.audioTrack = s.getAudioTracks()[0]; cam.stream = cam.stream || null; cam.micOnly = s;
+  cam.audioTrack.enabled = false;
+  return cam.audioTrack;
+}
+function resampleTo16k(chunks, inRate) {
+  let total = 0; for (const c of chunks) total += c.length;
+  const x = new Float32Array(total); let o = 0; for (const c of chunks) { x.set(c, o); o += c.length; }
+  const ratio = inRate / 16000, n = Math.floor(total / ratio), out = new Int16Array(n);
+  let peak = 0;
+  const f = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const a = Math.floor(i * ratio), b = Math.min(total, Math.max(a + 1, Math.ceil((i + 1) * ratio)));
+    let s = 0; for (let k = a; k < b; k++) s += x[k];
+    f[i] = s / (b - a); const v = Math.abs(f[i]); if (v > peak) peak = v;
+  }
+  const gain = peak > 0.01 ? Math.min(0.9 / peak, 20) : 1;   // quiet recordings are brought up; silence is left alone
+  for (let i = 0; i < n; i++) out[i] = Math.max(-32768, Math.min(32767, Math.round(f[i] * gain * 32767)));
+  return { pcm: out.buffer, rate: 16000, peak };
+}
+// Recording sheet. Starts listening straight away; the person taps Done when finished.
+// `base`: what to do with the result ({photos} for a new note, or {note} to re-record an existing one).
+async function startRecording(base) {
+  if (recorder) return;
+  const sheet = el(`<div class="sheet rec-sheet"><div class="handle"></div>
+    <h2>What do you need here?</h2>
+    <p class="hint center" id="rec-hint">Say the product and how many, like â€œthree Diet Coke twelve packsâ€.</p>
+    <div class="rec-meter"><i id="rec-level"></i></div>
+    <div class="rec-time" id="rec-time">0:00</div>
+    <button class="btn primary block rec-done" data-a="done">${icon("check")}Done</button>
+    <div class="row rec-alt"><button class="btn quiet grow" data-a="type">${icon("note")}Type it instead</button><button class="btn quiet grow" data-a="cancel">${icon("x")}Discard</button></div></div>`);
+  let finished = false;
+  const r = recorder = { chunks: [], rate: 0, secs: 0, peak: 0, t0: 0, ctx: null, node: null, src: null, timer: null, closeSheet: null };
+  const cleanup = () => {
+    clearInterval(r.timer);
+    try { r.node && r.node.disconnect(); r.src && r.src.disconnect(); } catch (e) {}
+    try { r.ctx && r.ctx.close(); } catch (e) {}
+    if (cam.audioTrack) cam.audioTrack.enabled = false;
+    if (cam.micOnly) { cam.micOnly.getTracks().forEach(t => t.stop()); cam.micOnly = null; cam.audioTrack = null; }
+    recorder = null;
+  };
+  const discard = async () => {
+    if (finished) return; finished = true; cleanup(); r.closeSheet();
+    if (base.photos) for (const id of base.photos) delPhoto(id).catch(() => {});
+  };
+  r.closeSheet = openLayer(sheet, { sticky: true });
+  // Start the audio pipeline (this runs inside the tap that took the photo, which iOS requires).
+  try {
+    const track = await micTrack();
+    const AC = window.AudioContext || window.webkitAudioContext;
+    r.ctx = new AC(); if (r.ctx.state === "suspended") await r.ctx.resume();
+    r.rate = r.ctx.sampleRate;
+    r.src = r.ctx.createMediaStreamSource(new MediaStream([track]));
+    r.node = r.ctx.createScriptProcessor(4096, 1, 1);
+    const mute = r.ctx.createGain(); mute.gain.value = 0;
+    r.node.onaudioprocess = e => {
+      const d = e.inputBuffer.getChannelData(0); r.chunks.push(new Float32Array(d));
+      let s = 0; for (let i = 0; i < d.length; i += 4) s += d[i] * d[i];
+      const lvl = Math.sqrt(s / (d.length / 4)); r.peak = Math.max(r.peak, lvl);
+      const lv = sheet.querySelector("#rec-level"); if (lv) lv.style.transform = `scaleX(${Math.min(1, lvl * 7)})`;
+    };
+    r.src.connect(r.node); r.node.connect(mute); mute.connect(r.ctx.destination);
+    track.enabled = true; r.t0 = Date.now();
+    r.timer = setInterval(() => {
+      r.secs = (Date.now() - r.t0) / 1000;
+      const t = sheet.querySelector("#rec-time"); if (t) t.textContent = `${Math.floor(r.secs / 60)}:${String(Math.floor(r.secs % 60)).padStart(2, "0")}`;
+      if (r.secs > 3 && r.peak < 0.004) { const h = sheet.querySelector("#rec-hint"); if (h) h.textContent = "I can't hear anything. Is the microphone covered?"; }
+      if (r.secs >= MAX_NOTE_SECS) done();
+    }, 200);
+  } catch (e) {
+    const h = sheet.querySelector("#rec-hint");
+    h.textContent = e && e.name === "NotAllowedError" ? "The microphone is blocked. Allow it in Settings, or type the note instead." : "The microphone isn't available. You can type the note instead.";
+    sheet.querySelector('[data-a="done"]').disabled = true;
+  }
+  const done = async () => {
+    if (finished) return; finished = true;
+    const secs = r.secs, chunks = r.chunks, rate = r.rate, tooQuiet = r.peak < 0.004;
+    cleanup(); r.closeSheet();
+    if (!chunks.length || secs < 0.6 || tooQuiet) {
+      // Nothing usable was said: keep the photo, and let the person choose what to do.
+      const note = await saveNote({ ...base, audioRec: null, secs: 0, text: "", status: "empty" });
+      toast("Didn't hear anything. Open the note to record again.");
+      return note;
+    }
+    const rec = resampleTo16k(chunks, rate);
+    await saveNote({ ...base, audioRec: { pcm: rec.pcm, rate: rec.rate }, secs, text: "", status: "queued" });
+    pump();
+  };
+  sheet.querySelector('[data-a="done"]').onclick = done;
+  sheet.querySelector('[data-a="cancel"]').onclick = async () => {
+    if (base.note) { finished = true; cleanup(); r.closeSheet(); return; }
+    if (!(await confirmDialog("Discard this photo and note?", { ok: "Discard", danger: true }))) return;
+    discard();
+  };
+  sheet.querySelector('[data-a="type"]').onclick = async () => {
+    finished = true; cleanup(); r.closeSheet();
+    const text = await textPrompt("Type what you need", base.note ? base.note.text : "");
+    if (text == null) { if (base.note) return; if (base.photos) for (const id of base.photos) delPhoto(id).catch(() => {}); return; }
+    await saveNote({ ...base, audioRec: null, secs: 0, text, status: text.trim() ? "heard" : "empty" });
+    pump();
+  };
+}
+// Create a new note, or (base.note) replace what an existing note heard.
+async function saveNote({ photos, note, audioRec, secs, text, status }) {
+  let audioId = null;
+  if (audioRec) { audioId = newId("a"); try { await putAudio(audioId, audioRec); } catch (e) { toast("Couldn't save the recording. Phone storage may be full."); } }
+  if (note) {
+    const old = note.audio;
+    note.audio = audioId; note.secs = secs; note.text = text; note.status = status; note.err = ""; note.items = [];
+    if (old) delAudio(old).catch(() => {});
+    save(); renderAll(); return note;
+  }
+  const n = { id: newId("n"), at: Date.now(), photos: photos || [], audio: audioId, secs, text, status, items: [], err: "" };
+  state.notes.unshift(n);
+  save(); renderAll();
+  lastNoteId = n.id;
+  renderCapture();
+  return n;
+}
+let lastNoteId = null;
+
+// A small text box (for typed notes and fixing what was heard).
+function textPrompt(title, value = "", { ok = "Save" } = {}) {
+  return new Promise(resolve => {
+    const d = el(`<div class="dialog"><p><b></b></p>
+      <textarea class="field" rows="4" autocapitalize="sentences" placeholder="For example: three Diet Coke twelve packs"></textarea>
+      <div class="btns" style="margin-top:14px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="ok">${esc(ok)}</button></div></div>`);
+    d.querySelector("b").textContent = title;
+    const ta = d.querySelector("textarea"); ta.value = value;
+    let done = false;
+    const close = openLayer(d, { center: true, sticky: true, onClose: () => { if (!done) resolve(null); } });
+    d.querySelector('[data-a="c"]').onclick = () => { done = true; close(); resolve(null); };
+    d.querySelector('[data-a="ok"]').onclick = () => { done = true; close(); resolve(ta.value.trim()); };
+    setTimeout(() => ta.focus(), 50);
+  });
+}
+
+// Full-screen photo viewer with previous/next.
+function openViewer(ids, start = 0) {
+  let i = start;
+  const v = el(`<div class="viewer"><div class="viewer-top"><button class="viewer-x" aria-label="Close">${icon("x")}</button><span class="small grow" id="vw-count"></span></div>
+    <div class="viewer-stage"><img alt=""></div><div class="viewer-dots"></div></div>`);
+  const close = openLayer(v, { sticky: true });
+  v.closest(".overlay").classList.add("viewer-overlay");
+  v.querySelector(".viewer-x").onclick = close;
+  const show = async () => {
+    const img = v.querySelector("img"); img.src = (await photoURL(ids[i])) || "";
+    v.querySelector("#vw-count").textContent = ids.length > 1 ? `Photo ${i + 1} of ${ids.length}` : "";
+    v.querySelector(".viewer-dots").innerHTML = ids.length > 1 ? ids.map((_, k) => `<button class="dot${k === i ? " on" : ""}" data-k="${k}" aria-label="Photo ${k + 1}"></button>`).join("") : "";
+  };
+  v.querySelector(".viewer-dots").onclick = e => { const b = e.target.closest("[data-k]"); if (b) { i = +b.dataset.k; show(); } };
+  v.querySelector(".viewer-stage").onclick = () => { if (ids.length > 1) { i = (i + 1) % ids.length; show(); } };
+  show();
+}
+
+// Play back a note's recording.
+let playCtx = null;
+async function playNote(n) {
+  const rec = n.audio && await getAudio(n.audio).catch(() => null);
+  if (!rec) return toast("No recording for this note");
+  const i16 = new Int16Array(rec.pcm);
+  playCtx = playCtx || new (window.AudioContext || window.webkitAudioContext)();
+  if (playCtx.state === "suspended") await playCtx.resume();
+  const buf = playCtx.createBuffer(1, i16.length, rec.rate), ch = buf.getChannelData(0);
+  for (let i = 0; i < i16.length; i++) ch[i] = i16[i] / 32768;
+  const src = playCtx.createBufferSource(); src.buffer = buf; src.connect(playCtx.destination); src.start();
+}
+
 // ---------- Views ----------
-let view = "scan";
+let view = "capture";
 function showView(v) {
   view = v;
   document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.id === "view-" + v));
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.view === v));
   syncIndicator($("#tabs"));
-  if (v !== "scan") sleepCameraSoon(); else wakeCamera();
+  if (v !== "capture") sleepCameraSoon(); else wakeCamera();
   renderAll();
   window.scrollTo(0, 0);
 }
 function renderAll() {
   $("#hdr-store").textContent = state.storeName ? "Store " + state.storeName : "";
-  const need = state.list ? state.list.items.filter(i => i.status !== "done").length : 0;
-  const badge = $("#list-badge");
-  if (String(need) !== badge.textContent && need) { badge.textContent = need; bump(badge); }
-  badge.hidden = !need; badge.textContent = need;
+  const rows = neededRows(), open = rows.filter(r => !r.done).length;
+  const badge = $("#need-badge");
+  if (open && String(open) !== badge.textContent) bump(badge);
+  badge.hidden = !open; badge.textContent = open;
   renderSyncIndicator();
-  if (view === "scan") renderLastScan();
-  if (view === "list") renderList();
+  if (view === "capture") renderCapture();
+  if (view === "needed") renderNeeded();
+  if (view === "notes") renderNotes();
   if (view === "products") renderProducts();
-  if (view === "tags") renderTags();
   if (view === "more") renderMore();
 }
+const timeOf = ts => new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+const itemProduct = it => (it.pid ? productById(it.pid) : null) || null;
 
-// List
-let hideDone = false;
-let listSeen = null;        // items already shown, so only newly added rows animate in
-let bumpQtyFor = null;      // product whose quantity just changed
-function renderList() {
-  const v = $("#view-list");
-  v.innerHTML = "";
-  const items = state.list ? state.list.items : [];
-  const firstRender = listSeen === null;
-  const prevSeen = listSeen || new Set();
-  listSeen = new Set(items.map(i => i.productId));
-  if (!items.length) {
-    v.appendChild(el(`<div class="empty">${icon("list")}<h3>Your list is empty</h3><p>Scan a shelf tag or barcode to add what you need.</p></div>`));
-    return;
+// ---------- Capture ----------
+function renderCapture() {
+  const on = !!cam.stream;
+  $("#cam-off").hidden = on || cam.starting;
+  $("#cam-video").hidden = !on;
+  $("#cam-starting").hidden = !cam.starting;
+  $("#cam-error").textContent = cam.error;
+  $("#btn-cam-stop").hidden = !on;
+  $("#btn-shutter").disabled = cam.starting;
+  const q = queueState();
+  const vb = $("#model-banner");
+  if (!voiceReady()) {
+    vb.hidden = false;
+    vb.innerHTML = `<div class="banner">${icon("download")}<span class="grow">Voice notes need a one-time download.</span><button class="btn sm primary" data-a="go">Set up</button></div>`;
+    vb.querySelector("button").onclick = () => showView("more");
+  } else vb.hidden = true;
+  const last = state.notes.find(n => n.id === lastNoteId) || state.notes[0];
+  const card = $("#last-note");
+  card.hidden = !last;
+  if (last) {
+    card.innerHTML = `<button class="shelf-thumb" data-photo-wrap><img data-photo="${esc(last.photos[0] || "")}" alt=""></button>
+      <div class="grow"><div class="label">Last note · ${timeOf(last.at)}</div><div class="last-text">${esc(noteSummary(last))}</div></div>${icon("jump")}`;
+    card.onclick = () => jumpToNote(last.id);
+    hydratePhotos(card);
   }
-  const left = items.filter(i => i.status !== "done").length;
-  const head = el(`<div class="list-head"><h2>List</h2><span class="muted grow">${left} of ${items.length} left</span>
-    <button class="btn sm quiet">${hideDone ? "Show all" : "Hide crossed off"}</button></div>`);
-  head.querySelector("button").onclick = () => { hideDone = !hideDone; renderList(); };
-  v.appendChild(head);
-  const groups = {};
-  for (const it of items) {
-    const p = productById(it.productId); if (!p) continue;
-    if (hideDone && it.status === "done") continue;
-    (groups[p.category] = groups[p.category] || []).push({ it, p });
-  }
-  for (const cat of Object.keys(groups).sort(catSort)) {
-    v.appendChild(el(`<div class="group-h">${esc(cat)}</div>`));
-    const list = el(`<div class="list"></div>`);
-    groups[cat].sort((a, b) => pName(a.p).localeCompare(pName(b.p)));
-    for (const { it, p } of groups[cat]) {
-      const done = it.status === "done";
-      const isNew = !firstRender && !prevSeen.has(it.productId);
-      const photos = it.photos || [];
-      // Shelf photo (tap for full screen) replaces the product tile; a quantity shows only if one was entered.
-      const lead = photos.length
-        ? `<button class="shelf-thumb" data-a="photo" aria-label="View shelf photo"><img data-photo="${esc(photos[0])}" alt="">${photos.length > 1 ? `<span class="count">${photos.length}</span>` : ""}</button>`
-        : thumbHtml(p);
-      const qtyBtn = it.qty
-        ? `<button class="qty-tap" data-a="qty" aria-label="Change quantity"><b>${it.qty}</b><span>${esc(p.unit)}${it.qty === 1 ? "" : "s"}</span></button>`
-        : (photos.length ? "" : `<button class="qty-tap" data-a="qty" aria-label="Set quantity"><b>+</b><span>qty</span></button>`);
-      const r = el(`<div class="item tap${done ? " done" : ""}${isNew ? " enter" : ""}${photos.length ? " has-photo" : ""}">
-        <button class="check${done ? " on" : ""}" aria-label="Cross off">${done ? icon("check") : ""}</button>
-        ${lead}
-        <div class="grow"><div class="name">${esc(pName(p))}</div><div class="sub">${esc(pSub(p))}</div></div>
-        ${qtyBtn}
-        <button class="more-btn" data-a="more" aria-label="More">${icon("dots")}</button></div>`);
-      const qb = r.querySelector(".qty-tap b");
-      if (bumpQtyFor === it.productId && qb) { bump(qb); bumpQtyFor = null; }
-      const ph = r.querySelector('[data-a="photo"]'); if (ph) ph.onclick = () => viewPhotos(it, 0);
-      // Tapping the row crosses it off (purely a reminder). Updated in place so the check and strikethrough animate.
-      r.onclick = e => {
-        if (e.target.closest("[data-a]")) return;
-        const nowDone = it.status !== "done";
-        it.status = nowDone ? "done" : "need";
-        save();
-        r.classList.toggle("done", nowDone);
-        const chk = r.querySelector(".check");
-        chk.classList.toggle("on", nowDone);
-        chk.classList.toggle("pop", nowDone);
-        chk.innerHTML = nowDone ? icon("check") : "";
-        const leftNow = state.list.items.filter(i => i.status !== "done").length;
-        head.querySelector(".muted").textContent = `${leftNow} of ${state.list.items.length} left`;
-        $("#list-badge").hidden = !leftNow; $("#list-badge").textContent = leftNow;
-        if (hideDone && nowDone) setTimeout(() => { if (view === "list") renderList(); }, 450);
-      };
-      const qa = r.querySelector('[data-a="qty"]'); if (qa) qa.onclick = () => editQty(it, p);
-      r.querySelector('[data-a="more"]').onclick = () => listItemMenu(it, p);
-      list.appendChild(r);
-    }
-    v.appendChild(list);
-  }
-  hydratePhotos(v);
-  const clr = el(`<button class="btn block danger" style="margin-top:20px">Clear list</button>`);
-  clr.onclick = clearList;
-  v.appendChild(clr);
+  const line = $("#queue-line");
+  line.hidden = !q.text;
+  line.textContent = q.text;
+  line.classList.toggle("busy", !!q.busy);
 }
-function editQty(it, p) {
-  const snap = snapshot();
-  const s = el(`<div class="dialog"><p><b>${esc(pName(p))}</b><br><span class="muted">${esc(pSub(p))}</span></p>
-    <div class="qty" style="justify-content:center"><button data-a="m" aria-label="Less">−</button><input type="number" inputmode="numeric" value="${it.qty || 1}" id="qty-edit"><button data-a="p" aria-label="More">+</button></div>
-    <div class="btns" style="margin-top:18px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="s">Save</button></div></div>`);
-  const close = openLayer(s, { center: true });
-  const inp = s.querySelector("input");
-  s.querySelector('[data-a="m"]').onclick = () => { inp.value = Math.max(1, (+inp.value || 1) - 1); bump(inp); };
-  s.querySelector('[data-a="p"]').onclick = () => { inp.value = (+inp.value || 0) + 1; bump(inp); };
-  s.querySelector('[data-a="c"]').onclick = close;
-  s.querySelector('[data-a="s"]').onclick = () => { it.qty = Math.max(1, Math.floor(+inp.value || 1)); bumpQtyFor = it.productId; save(); close(); renderAll(); toast("Quantity updated", snap); };
+function noteSummary(n) {
+  if (n.status === "queued") return haveModel("asr") ? "Waiting to listen…" : "Saved. It will be read once the voice models are downloaded.";
+  if (n.status === "heard") return n.text ? `“${n.text}”` : "Waiting to read…";
+  if (n.status === "reading") return "Reading…";
+  if (n.status === "error") return n.err || "Couldn't read this note";
+  if (n.status === "empty") return "Nothing was heard";
+  const k = n.items.length;
+  return k ? n.items.map(it => { const p = itemProduct(it); return `${it.qty != null ? it.qty + " × " : ""}${p ? pName(p) : it.phrase}`; }).join(", ") : "No product found";
 }
-async function listItemMenu(it, p) {
-  const photos = it.photos || [];
-  const choice = await menu(`${pName(p)} — ${p.pack}`, [
-    ...(photos.length ? [{ label: "View shelf photo", value: "view" }] : []),
-    ...(photos.length && photos.length < MAX_PHOTOS ? [{ label: "Add another angle", value: "angle" }] : []),
-    ...(!photos.length ? [{ label: "Add shelf photo", value: "angle" }] : []),
-    { label: it.qty ? "Change quantity" : "Add a quantity", value: "qty" },
-    { label: "Remove from list", value: "remove", danger: true },
-  ]);
-  if (choice === "view") return viewPhotos(it, 0);
-  if (choice === "angle") {
-    const b = await cameraPhoto(); if (!b) return;
-    const id = newPhotoId(); await putPhoto(id, b);
-    it.photos = [...photos, id].slice(-MAX_PHOTOS); save(); renderAll(); toast("Photo added");
-    return;
+
+// ---------- Needed (the short list) ----------
+function neededRows() {
+  const map = new Map();
+  for (const n of state.notes) n.items.forEach((it, idx) => {
+    const p = itemProduct(it);
+    const key = p ? p.id : "?" + sNorm(it.phrase);
+    let r = map.get(key);
+    if (!r) map.set(key, r = { key, p, phrase: it.phrase, qty: 0, unknown: false, check: false, done: true, src: [] });
+    if (it.qty == null) r.unknown = true; else r.qty += it.qty;
+    if (it.conf === "check" || !p) r.check = true;
+    if (!it.done) r.done = false;
+    r.src.push({ n, idx, it });
+  });
+  return [...map.values()];
+}
+function qtyLabel(r) { return r.unknown ? (r.qty ? `${r.qty}+` : "?") : String(r.qty); }
+function renderNeeded() {
+  const v = $("#view-needed");
+  const rows = neededRows(), q = queueState();
+  const open = rows.filter(r => !r.done).length;
+  let html = `<div class="list-head"><h2>Needed</h2><span class="muted small">${rows.length ? `${open} to go` : ""}</span><span class="grow"></span></div>`;
+  if (q.text) html += `<div class="banner ${q.busy ? "busy" : ""}"><span class="spin"></span><span class="grow">${esc(q.text)}</span></div>`;
+  if (!rows.length) {
+    html += `<div class="empty">${icon("list")}<h3>Nothing needed yet</h3><p>Snap a shelf and say what's missing. It lands here.</p></div>`;
+    v.innerHTML = html; return;
   }
-  if (choice === "qty") return editQty(it, p);
-  if (choice === "remove") {
+  const check = rows.filter(r => r.check && !r.done);
+  if (check.length) html += `<div class="banner warn">${icon("warn")}<span class="grow">${check.length} ${check.length === 1 ? "item needs" : "items need"} a quick look. Tap a row marked “check”.</span></div>`;
+  // Group by product group, unmatched first.
+  const groups = new Map();
+  for (const r of rows) { const g = r.p ? r.p.category : "Not matched to a product"; (groups.get(g) || groups.set(g, []).get(g)).push(r); }
+  const order = [...groups.keys()].sort((a, b) => (a.startsWith("Not matched") ? -1 : b.startsWith("Not matched") ? 1 : catSort(a, b)));
+  for (const g of order) {
+    html += `<div class="group-h">${esc(g)}</div><div class="list">` + groups.get(g).map(r => needRow(r)).join("") + `</div>`;
+  }
+  html += `<button class="btn block quiet" id="btn-clear-all" style="margin-top:22px">Clear the whole list</button>`;
+  v.innerHTML = html;
+  v.onclick = e => {
+    const row = e.target.closest(".need[data-k]"); if (!row) { if (e.target.closest("#btn-clear-all")) clearAllNotes(); return; }
+    const r = rows.find(x => x.key === row.dataset.k); if (!r) return;
+    const a = e.target.closest("[data-a]")?.dataset.a;
+    if (a === "toggle") { const to = !r.done; r.src.forEach(s => (s.it.done = to)); save(); renderAll(); }
+    else if (a === "jump" && r.src.length === 1) jumpToNote(r.src[0].n.id, r.src[0].idx);
+    else openSources(r.key);
+  };
+}
+function needRow(r) {
+  const name = r.p ? pName(r.p) : `“${r.phrase}”`, sub = r.p ? pSub(r.p) : "No matching product. Tap to pick one.";
+  const unit = r.p ? esc(r.p.unit || "pack") : "";
+  return `<div class="item need tap${r.done ? " done" : ""}" data-k="${esc(r.key)}">
+    <button class="check${r.done ? " on" : ""}" data-a="toggle" aria-label="Cross off">${icon("check")}</button>
+    ${r.p ? thumbHtml(r.p) : `<div class="thumb">?</div>`}
+    <div class="grow"><div class="name">${esc(name)}</div><div class="sub">${esc(sub)}${r.check && !r.done ? ` <span class="pill warn">CHECK</span>` : ""}${r.src.length > 1 ? ` <span class="pill">${r.src.length} notes</span>` : ""}</div></div>
+    <button class="qty-tap" data-a="qty" aria-label="Quantity"><b>${qtyLabel(r)}</b><span>${unit}</span></button>
+    <button class="jump-btn" data-a="jump" aria-label="Go to the note this came from">${icon("jump")}</button></div>`;
+}
+// The notes behind one row of the list: change the product, the quantities, or go to a note.
+function openSources(key) {
+  const s = el(`<div class="sheet"><div class="handle"></div><h2></h2><p class="hint" id="src-sub"></p><div id="src-list" class="stack"></div>
+    <button class="btn block" data-a="change">${icon("search")}Change product</button>
+    <button class="btn block quiet" data-a="close">Done</button></div>`);
+  const close = openLayer(s, { onClose: () => renderAll() });
+  const draw = () => {
+    const r = neededRows().find(x => x.key === key);
+    if (!r) { close(); return; }
+    s.querySelector("h2").textContent = r.p ? pName(r.p) : `“${r.phrase}”`;
+    s.querySelector("#src-sub").textContent = r.p ? pSub(r.p) : "No matching product yet";
+    const box = s.querySelector("#src-list"); box.innerHTML = "";
+    r.src.forEach((x, i) => {
+      const row = el(`<div class="card src-row"><div class="row"><button class="shelf-thumb" data-a="photo" data-photo-wrap><img data-photo="${esc(x.n.photos[0] || "")}" alt=""></button>
+        <div class="grow"><div class="small muted">${timeOf(x.n.at)}</div><div class="src-text">${esc(x.n.text ? `“${x.n.text}”` : "(typed / no words)")}</div></div></div>
+        <div class="row" style="margin-top:10px"><div class="qty grow"><button data-d="-1" aria-label="Fewer">−</button><input inputmode="numeric" value="${x.it.qty ?? ""}" placeholder="?" aria-label="Quantity"><button data-d="1" aria-label="More">+</button></div>
+        <button class="btn sm" data-a="jump">${icon("jump")}Go to note</button></div></div>`);
+      const inp = row.querySelector("input");
+      const setQ = q => { setItemQty(x.n, x.idx, q); draw(); };
+      row.querySelectorAll("[data-d]").forEach(b => (b.onclick = () => setQ(Math.max(1, (x.it.qty || 0) + +b.dataset.d))));
+      inp.onchange = () => setQ(inp.value.trim() === "" ? null : Math.max(1, parseInt(inp.value, 10) || 1));
+      row.querySelector('[data-a="jump"]').onclick = () => { close(); jumpToNote(x.n.id, x.idx); };
+      row.querySelector('[data-a="photo"]').onclick = () => x.n.photos.length && openViewer(x.n.photos);
+      box.appendChild(row);
+    });
+    hydratePhotos(box);
+  };
+  draw();
+  s.querySelector('[data-a="close"]').onclick = close;
+  s.querySelector('[data-a="change"]').onclick = async () => {
+    const r = neededRows().find(x => x.key === key); if (!r) return;
+    const pid = await pickProduct({ title: "Which product is this?", initialQuery: r.p ? "" : r.phrase });
+    if (!pid) return;
     const snap = snapshot();
-    state.list.items = state.list.items.filter(x => x !== it);
-    save(); renderAll(); toast("Removed", snap); schedulePhotoSweep();
+    r.src.forEach(x => { x.it.pid = pid; x.it.conf = x.it.qty != null ? "ok" : "check"; x.it.why = x.it.qty != null ? "" : "how many?"; });
+    save(); key = pid; draw(); renderAll(); toast("Product changed", snap);
+  };
+}
+function setItemQty(n, idx, qty) {
+  const it = n.items[idx]; if (!it) return;
+  it.qty = qty;
+  if (it.pid && qty != null) { it.conf = "ok"; it.why = ""; } else { it.conf = "check"; it.why = "how many?"; }
+  save(); renderAll();
+}
+function clearAllNotes() {
+  confirmDialog("Clear the whole list? This removes every note and photo.", { ok: "Clear list", danger: true }).then(ok => {
+    if (!ok) return;
+    const snap = snapshot();
+    state.notes = []; lastNoteId = null; save(); renderAll(); scheduleSweep();
+    toast("List cleared", snap);
+  });
+}
+
+// ---------- Notes ----------
+function noteStatusPill(n) {
+  const m = { queued: ["Waiting", ""], heard: ["Heard", ""], reading: ["Reading", ""], done: ["Read", "ok"], error: ["Problem", "warn"], empty: ["Nothing heard", "warn"] }[n.status] || ["", ""];
+  return `<span class="pill ${m[1]}">${m[0]}</span>`;
+}
+function renderNotes() {
+  const v = $("#view-notes");
+  if (!state.notes.length) { v.innerHTML = `<div class="list-head"><h2>Notes</h2></div><div class="empty">${icon("note")}<h3>No notes yet</h3><p>Each note is a shelf photo with what you said about it.</p></div>`; return; }
+  v.innerHTML = `<div class="list-head"><h2>Notes</h2><span class="muted small">${state.notes.length}</span></div><div id="note-list" class="stack">${state.notes.map(noteCard).join("")}</div>`;
+  hydratePhotos(v);
+  v.querySelector("#note-list").onclick = onNotesClick;
+}
+function noteCard(n) {
+  const body = (() => {
+    if (n.status === "queued") return `<p class="hint">${haveModel("asr") ? "Waiting its turn to be listened to…" : "Saved. It will be read once the voice models are downloaded (More tab)."}</p>`;
+    if (n.status === "reading") return `<div class="transcript" data-a="edit">“${esc(n.text)}”</div><p class="hint"><span class="spin"></span> Reading…</p>`;
+    if (n.status === "error") return `${n.text ? `<div class="transcript" data-a="edit">“${esc(n.text)}”</div>` : ""}<div class="banner warn">${icon("warn")}<span class="grow">${esc(n.err || "Something went wrong")}</span><button class="btn sm" data-a="retry">Try again</button></div>`;
+    if (n.status === "empty") return `<div class="banner warn">${icon("warn")}<span class="grow">Nothing was heard.</span></div><div class="row" style="margin-top:8px"><button class="btn sm grow" data-a="rerecord">${icon("mic")}Record again</button><button class="btn sm grow" data-a="edit">${icon("note")}Type it</button></div>`;
+    const t = n.text ? `<div class="transcript" data-a="edit">“${esc(n.text)}”</div>` : "";
+    if (n.status === "heard") return `${t}<p class="hint">${activeLLM() ? "Waiting its turn to be read…" : "Heard. The language model isn't downloaded yet (More tab)."}</p>${addItemBtn()}`;
+    return `${t}<div class="note-items">${n.items.map((it, i) => noteItem(it, i)).join("") || `<p class="hint">No product found in this note.</p>`}</div>${addItemBtn()}`;
+  })();
+  return `<div class="card note" id="note-${esc(n.id)}" data-id="${esc(n.id)}">
+    <div class="row note-top">
+      <button class="note-photo" data-a="photo" data-photo-wrap aria-label="View photo"><img data-photo="${esc(n.photos[0] || "")}" alt="">${n.photos.length > 1 ? `<span class="count">${n.photos.length}</span>` : ""}</button>
+      <div class="grow"><div class="small muted">${timeOf(n.at)}${n.secs ? ` · ${Math.round(n.secs)}s` : ""}</div>${noteStatusPill(n)}</div>
+      ${n.audio ? `<button class="btn sm quiet icon-btn" data-a="play" aria-label="Play recording">${icon("play")}</button>` : ""}
+      <button class="more-btn" data-a="menu" aria-label="More">${icon("dots")}</button>
+    </div>${body}</div>`;
+}
+const addItemBtn = () => `<button class="btn sm quiet" data-a="additem" style="margin-top:8px">${icon("plus")}Add item</button>`;
+function noteItem(it, i) {
+  const p = itemProduct(it);
+  return `<div class="note-item item tap${it.done ? " done" : ""}" data-i="${i}">${p ? thumbHtml(p) : `<div class="thumb">?</div>`}
+    <div class="grow"><div class="name">${esc(p ? pName(p) : `“${it.phrase}”`)}</div><div class="sub">${esc(p ? pSub(p) : "No matching product")}${it.conf === "check" ? ` <span class="pill warn">CHECK${it.why ? ": " + esc(it.why) : ""}</span>` : ""}</div></div>
+    <div class="qty-tap" aria-label="Quantity"><b>${it.qty ?? "?"}</b></div></div>`;
+}
+async function onNotesClick(e) {
+  const card = e.target.closest(".note"); if (!card) return;
+  const n = state.notes.find(x => x.id === card.dataset.id); if (!n) return;
+  const a = e.target.closest("[data-a]")?.dataset.a;
+  const itemRow = e.target.closest(".note-item");
+  if (itemRow) return itemMenu(n, +itemRow.dataset.i);
+  if (a === "photo") return n.photos.length ? openViewer(n.photos) : addPhoto(n);
+  if (a === "play") return playNote(n);
+  if (a === "edit") return editText(n);
+  if (a === "retry") return requeue(n);
+  if (a === "rerecord") return startRecording({ note: n });
+  if (a === "additem") return addItem(n);
+  if (a === "menu") {
+    const pick = await menu("Note", [
+      { label: "Edit what was heard", value: "edit" }, ...(n.audio ? [{ label: "Play recording", value: "play" }] : []),
+      { label: "Record again", value: "rerecord" }, { label: "Add another photo", value: "photo" },
+      ...(n.text ? [{ label: "Read again", value: "retry" }] : []), { label: "Delete note", value: "delete", danger: true }]);
+    if (pick === "edit") editText(n); else if (pick === "play") playNote(n); else if (pick === "rerecord") startRecording({ note: n });
+    else if (pick === "photo") addPhoto(n); else if (pick === "retry") { n.status = "heard"; save(); renderAll(); pump(); }
+    else if (pick === "delete") deleteNote(n);
   }
 }
-async function clearList() {
-  if (!(await confirmDialog("Clear the whole list?", { ok: "Clear list", danger: true }))) return;
+async function editText(n) {
+  const t = await textPrompt("What was said", n.text || "");
+  if (t == null) return;
+  n.text = t; n.items = []; n.err = ""; n.status = t ? "heard" : "empty"; save(); renderAll(); pump();
+}
+async function addPhoto(n) {
+  if (n.photos.length >= 6) return toast("That's the most photos for one note");
+  const blob = await cameraPhoto(); if (!blob) return;
+  const id = newId("p"); await putPhoto(id, blob); n.photos.push(id); save(); renderAll();
+}
+function deleteNote(n) {
   const snap = snapshot();
-  state.list = null;
-  save(); renderAll(); toast("List cleared", snap); schedulePhotoSweep();
+  state.notes = state.notes.filter(x => x.id !== n.id); save(); renderAll(); scheduleSweep();
+  toast("Note deleted", snap);
+}
+async function addItem(n) {
+  const pid = await pickProduct({ title: "Add which product?" }); if (!pid) return;
+  const q = await qtyDialog(pName(productById(pid)), 1); if (q === undefined) return;
+  n.items.push({ pid, phrase: pName(productById(pid)), qty: q, conf: q != null ? "ok" : "check", why: q != null ? "" : "how many?", done: false });
+  if (n.status !== "done") n.status = "done";
+  save(); renderAll();
+}
+async function itemMenu(n, i) {
+  const it = n.items[i]; if (!it) return;
+  const pick = await menu(itemProduct(it) ? pName(itemProduct(it)) : `“${it.phrase}”`, [
+    { label: "Change product", value: "p" }, { label: "Change quantity", value: "q" }, { label: it.done ? "Mark as still needed" : "Cross off", value: "d" },
+    { label: "Remove from this note", value: "x", danger: true }]);
+  const snap = snapshot();
+  if (pick === "p") { const pid = await pickProduct({ title: "Which product?", initialQuery: itemProduct(it) ? "" : it.phrase }); if (pid) { it.pid = pid; it.conf = it.qty != null ? "ok" : "check"; it.why = it.qty != null ? "" : "how many?"; save(); renderAll(); } }
+  else if (pick === "q") { const q = await qtyDialog(itemProduct(it) ? pName(itemProduct(it)) : it.phrase, it.qty || 1); if (q !== undefined) setItemQty(n, i, q); }
+  else if (pick === "d") { it.done = !it.done; save(); renderAll(); }
+  else if (pick === "x") { n.items.splice(i, 1); save(); renderAll(); toast("Item removed", snap); }
+}
+// A number stepper. Resolves the number, or undefined when cancelled.
+function qtyDialog(title, value = 1) {
+  return new Promise(resolve => {
+    const d = el(`<div class="dialog"><p><b></b><br><span class="hint">How many do you need?</span></p>
+      <div class="qty"><button data-d="-1" aria-label="Fewer">−</button><input inputmode="numeric" aria-label="Quantity"><button data-d="1" aria-label="More">+</button></div>
+      <div class="btns" style="margin-top:16px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="ok">Save</button></div></div>`);
+    d.querySelector("b").textContent = title;
+    const inp = d.querySelector("input"); inp.value = value;
+    let done = false;
+    const close = openLayer(d, { center: true, sticky: true, onClose: () => { if (!done) resolve(undefined); } });
+    d.querySelectorAll("[data-d]").forEach(b => (b.onclick = () => (inp.value = Math.max(1, (parseInt(inp.value, 10) || 0) + +b.dataset.d))));
+    d.querySelector('[data-a="c"]').onclick = () => { done = true; close(); resolve(undefined); };
+    d.querySelector('[data-a="ok"]').onclick = () => { done = true; close(); resolve(inp.value.trim() ? Math.max(1, parseInt(inp.value, 10) || 1) : null); };
+  });
+}
+// Jump from a list row to the note (and item) it came from.
+function jumpToNote(id, idx) {
+  showView("notes");
+  setTimeout(() => {
+    const c = document.getElementById("note-" + id); if (!c) return;
+    const top = c.getBoundingClientRect().top + window.scrollY - 80;
+    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash");
+    const it = idx != null && c.querySelector(`.note-item[data-i="${idx}"]`);
+    if (it) { it.classList.remove("flash"); void it.offsetWidth; it.classList.add("flash"); }
+    setTimeout(() => { c.classList.remove("flash"); it && it.classList.remove("flash"); }, 2200);
+  }, 80);
 }
 
 // Products
@@ -2531,76 +2858,45 @@ function renderProductResults() {
   const box = v.querySelector("#prod-results");
   box.innerHTML = "";
   const shown = items.slice(0, 200);
-  const tagged = tagIndex();
   if (shown.length) box.appendChild(listOf(shown, pid => editProduct(pid), p =>
-    (tagged.has(p.id) ? `<span class="pill ok">TAGGED</span>` : "") + (p.custom ? ` <span class="pill">CUSTOM</span>` : "")));
+    (p.custom ? ` <span class="pill">CUSTOM</span>` : "")));
   else box.appendChild(el(`<div class="empty"><p>No products match.</p></div>`));
   if (items.length > shown.length) box.appendChild(el(`<p class="hint center" style="padding:10px">${items.length - shown.length} more. Search to narrow it down.</p>`));
 }
 
-// Tags
-let tagFilter = "all", tagQuery = "";
-function renderTags() {
-  const v = $("#view-tags");
-  if (!v.querySelector("input")) {
-    v.innerHTML = `<div class="list-head"><h2>Tags</h2></div>${searchBox("Search products")}
-      <div class="seg" id="tag-seg">
-        <button data-f="all">All</button><button data-f="tagged">Tagged</button><button data-f="none">No tag</button><button data-f="stale">Stale</button></div>
-      <p class="hint" id="tag-count"></p><div id="tag-results"></div>`;
-    v.querySelector("input").addEventListener("input", debounce(e => { tagQuery = e.target.value; renderTagResults(); }));
-    v.querySelectorAll("#tag-seg button").forEach(b => (b.onclick = () => { tagFilter = b.dataset.f; renderTagResults(); }));
-  }
-  renderTagResults();
-}
-function renderTagResults() {
-  const v = $("#view-tags");
-  v.querySelectorAll("#tag-seg button").forEach(b => b.classList.toggle("active", b.dataset.f === tagFilter));
-  syncIndicator(v.querySelector("#tag-seg"));
-  const byProduct = Object.fromEntries(tagIndex());
-  let items = searchProducts(tagQuery);
-  const isStale = t => t && daysAgo(t.lastSeen || t.created || 0) > STALE_DAYS;
-  if (tagFilter === "tagged") items = items.filter(p => byProduct[p.id]);
-  if (tagFilter === "none") items = items.filter(p => !byProduct[p.id]);
-  if (tagFilter === "stale") items = items.filter(p => isStale(byProduct[p.id]));
-  if (!tagQuery) items = [...items].sort((a, b) => catSort(a.category, b.category) || pName(a).localeCompare(pName(b)));
-  const nTagged = Object.keys(byProduct).length;
-  v.querySelector("#tag-count").textContent = `${items.length} shown · ${nTagged} tag${nTagged === 1 ? "" : "s"} linked` +
-    (perStoreTags() ? ` · store ${state.storeName || "not set"}` : "");
-  const box = v.querySelector("#tag-results");
-  box.innerHTML = "";
-  if (!items.length) { box.appendChild(el(`<div class="empty"><p>Nothing here.</p></div>`)); return; }
-  box.appendChild(listOf(items.slice(0, 200), pid => tagMenu(productById(pid), byProduct[pid]), p => {
-    const t = byProduct[p.id];
-    return `<div style="text-align:right">${t ? (t.fallback ? `<span class="pill">ALL STORES</span>` : `<span class="pill ok">TAGGED</span>`) + (isStale(t) ? ` <span class="pill warn">STALE</span>` : "") : `<span class="pill">NO TAG</span>`}</div>`;
-  }));
-}
-async function tagMenu(p, t) {
-  const own = t && !t.fallback;
-  const opts = [{ label: own ? "Scan a new tag (replace)" : perStoreTags() ? "Scan this store's shelf tag" : "Scan its shelf tag", value: "scan" }];
-  if (t) opts.push({ label: "Show tag code", value: "show" });
-  if (own) opts.push({ label: "Unlink tag", value: "unlink", danger: true });
-  const c = await menu(`${pName(p)} — ${p.pack}`, opts);
-  if (c === "scan") {
-    if (!(await ensureStoreForTags())) return;
-    setMode("count"); setPending({ kind: "tagForProduct", pid: p.id }); showView("scan"); startCamera();
-  }
-  if (c === "show") confirmDialog(`<code style="word-break:break-all">${esc(t.code)}</code><br><br><span class="hint">Linked ${fmtDate(t.created)}${t.lastSeen ? " · last scanned here " + fmtDate(t.lastSeen) : ""}</span>`, { ok: "OK", cancel: "Close" });
-  if (c === "unlink") {
-    const snap = snapshot();
-    dropTag(t.key); save(); renderAll(); toast("Tag unlinked", snap);
-  }
-}
-
 // More
+function modelRow(key) {
+  const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
+  const dot = have ? "ok" : busy ? "warn" : "";
+  return `<div class="set-row"><span class="status-dot ${dot}"></span><div class="grow"><b>${esc(i.name)}</b><br><span class="hint">${esc(i.detail)} · ${esc(i.size)}</span></div>
+    <span class="small muted">${have ? "Ready" : busy ? "Downloading" : "Not downloaded"}</span></div>`;
+}
 function renderMore() {
   const v = $("#view-more");
   const s = syncStatus();
   const on = uploadsEnabled();
+  const llm = "fast";
+  const need = ["asr", llm].filter(k => !haveModel(k));
+  const anyModel = ["asr", "fast"].some(haveModel);
+  const dl = ai.dl.key;
+  const dev = ai.device[activeLLM() || ""] || "";
   v.innerHTML = `
     <div class="list-head"><h2>More</h2></div>
     <div class="card">
+      <h3>Voice models</h3>
+      <p class="hint">Listening and reading run on this phone, so they work with no signal. They download once (use Wi-Fi), then stay on the phone.</p>
+      ${modelRow("asr")}${modelRow(llm)}
+      ${dl ? `<div class="mprog" data-mprog><i></i></div><p class="hint" data-mprog-label style="margin-top:6px">Starting…</p>` : ""}
+      ${ai.dl.error ? `<div class="banner warn" style="margin-top:8px">${icon("warn")}<span class="grow">${esc(ai.dl.error)}</span></div>` : ""}
+      <div class="stack" style="margin-top:10px">
+        ${need.length ? `<button class="btn primary block" id="btn-dl" ${dl ? "disabled" : ""}>${icon("download")}${dl ? "Downloading…" : ai.dl.error ? "Try again" : `Download ${need.length === 2 ? "voice models" : "missing model"}`}</button>` : ""}
+        ${anyModel && !dl ? `<button class="btn block quiet" id="btn-del-models">Delete downloaded models</button>` : ""}
+      </div>
+      <p class="hint" style="margin-top:8px">${dev ? `Reading runs on the phone's ${dev === "webgpu" ? "graphics chip" : "processor"}.` : ""}${ai.probe ? ` ${ai.probe.webgpu ? "Graphics acceleration is available." : ""}` : ""}</p>
+    </div>
+    <div class="card">
       <h3>Shared data</h3>
-      <p class="hint">Products, barcodes and tag links are shared with everyone who uses Shelf Scan. Your list stays on this phone.</p>
+      <p class="hint">The product list is shared with everyone who uses Shelf Scan. Your notes and photos stay on this phone.</p>
       <div class="set-row"><span class="status-dot ${s.dot}"></span><span class="grow small">${esc(s.text)}</span></div>
       <div class="set-row"><span class="grow small muted">Last updated from GitHub: ${ago(state.sync.lastPull)}</span></div>
       <div class="stack">
@@ -2614,17 +2910,11 @@ function renderMore() {
       <h3>This phone</h3>
       <label class="f" for="store-name">Store number</label>
       <input class="field" id="store-name" placeholder="e.g. 1234" value="${esc(state.storeName)}">
-      <label class="f">After scanning a product</label>
-      <div class="seg" id="after-scan">
-        <button data-v="photo" class="${(state.settings.afterScan || "photo") === "photo" ? "active" : ""}">Snap the shelf</button>
-        <button data-v="qty" class="${state.settings.afterScan === "qty" ? "active" : ""}">Enter quantity</button>
-      </div>
-      <p class="hint" style="margin-top:6px">${(state.settings.afterScan || "photo") === "photo" ? "Take a quick photo of the shelf, then decide how much to pull in the back." : "Type how many you need right at the shelf."}</p>
-      <div class="set-row" style="margin-top:6px"><label class="grow" for="beep">Scan beep</label><input type="checkbox" id="beep" ${state.settings.beep ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
+      <div class="set-row" style="margin-top:6px"><label class="grow" for="beep">Shutter beep</label><input type="checkbox" id="beep" ${state.settings.beep ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
     </div>
     <div class="card">
       <h3>Backup</h3>
-      <p class="hint">Copies everything on this phone, including your list.</p>
+      <p class="hint">Copies the product list and the written notes. Photos and recordings can't be included.</p>
       <div class="stack" style="margin-top:10px">
         <button class="btn block" id="btn-export">Copy backup</button>
         <textarea class="field" id="backup-text" rows="3" placeholder="Paste a backup here to restore" style="font:16px ui-monospace,Menlo,monospace"></textarea>
@@ -2637,30 +2927,22 @@ function renderMore() {
         <label class="f" for="own-token">GitHub key</label><input class="field" id="own-token" type="password" autocomplete="off" placeholder="github_pat_…">
         <label class="f" for="own-pass">Team password</label><input class="field" id="own-pass" type="text" autocomplete="off" autocapitalize="off" placeholder="At least 6 characters">
         <button class="btn primary block" id="btn-own-save" style="margin-top:12px">Save key and enable uploads</button>
-        <div class="set-row" style="margin-top:14px">
-          <label class="grow" for="per-store"><b>Shelf tags differ by store</b><br><span class="hint">Leave off unless the same product has a different QR code at different stores. Turning it on applies to everyone after it syncs. Existing links keep working as a fallback.</span></label>
-          <input type="checkbox" id="per-store" ${perStoreTags() ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)">
-        </div>
       </details>
     </div>
     <div class="card">
       <h3>Danger zone</h3>
-      <p class="hint">Reset shared tags deletes every shelf-tag link for everyone (products, barcodes and lists are kept). It needs the team password.</p>
-      <div class="stack" style="margin-top:10px">
-        <button class="btn block danger" id="btn-reset-tags">Reset shared tags</button>
-        <button class="btn block danger" id="btn-reset">Reset this phone</button>
-      </div>
+      <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 3.1 · ${state.products.length} products · ${Object.keys(state.tags).length} tags<br>
-      Product lookups from <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener" style="color:inherit">Open Food Facts</a><br>
-      <span style="opacity:.7">Screen ${screen.width}×${screen.height} · window ${innerWidth}×${innerHeight} · page ${document.documentElement.scrollHeight}${navigator.standalone ? " · home screen" : ""}</span></p>`;
+    <p class="foot">Shelf Scan Beta 4 (voice notes) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+      <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
+  if (dl) updateModelProgress();
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
   v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
-  v.querySelectorAll("#after-scan button").forEach(b => (b.onclick = () => {
-    state.settings.afterScan = b.dataset.v; save(); renderMore(); setMode(mode);
-    toast(b.dataset.v === "photo" ? "Scanning now asks for a shelf photo" : "Scanning now asks for a quantity");
-  }));
-  syncIndicator(v.querySelector("#after-scan"), false);
+  const dlb = v.querySelector("#btn-dl"); if (dlb) dlb.onclick = () => downloadModels(need);
+  const del = v.querySelector("#btn-del-models"); if (del) del.onclick = async () => {
+    if (!(await confirmDialog("Delete the downloaded voice models? Notes already read keep their lists. New notes wait until you download them again.", { ok: "Delete", danger: true }))) return;
+    await deleteModels(); toast("Models deleted");
+  };
   v.querySelector("#btn-export").onclick = exportBackup;
   v.querySelector("#btn-restore").onclick = () => restoreBackupText(v.querySelector("#backup-text").value);
   v.querySelector("#btn-sync").onclick = syncFromGitHub;
@@ -2671,24 +2953,11 @@ function renderMore() {
     setPass(""); cachedToken = null; renderAll();
   };
   v.querySelector("#btn-own-save").onclick = ownerSetup;
-  v.querySelector("#per-store").onchange = async e => {
-    const on = e.target.checked;
-    const ok = await confirmDialog(on
-      ? "Link shelf tags per store for everyone?<br><br>New links will only apply at the store they were made in. Existing links keep working at every store until a store links its own."
-      : "Go back to one set of shelf-tag links for all stores?<br><br>Links made per store will stop being used.", { ok: on ? "Turn on" : "Turn off" });
-    if (!ok) { e.target.checked = !on; return; }
-    state.config = { ...state.config, perStoreTags: on, updated: Date.now() };
-    state.outbox.config = 1;
-    save(); renderAll(); scheduleUpload();
-    toast(on ? "Tags are now linked per store" : "Tags are shared across all stores");
-    if (on && !storeId()) ensureStoreForTags();
-  };
-  v.querySelector("#btn-reset-tags").onclick = resetSharedTags;
   v.querySelector("#btn-reset").onclick = async () => {
     const n = pendingCount();
-    if (!(await confirmDialog(`Erase everything on this phone and start fresh from the shared data?${n ? `<br><br><b>${n} change${n === 1 ? " hasn't" : "s haven't"} uploaded</b> and will be lost.` : ""}`, { ok: "Erase", danger: true }))) return;
-    const keep = state.sync;
-    state = freshState(); state.sync = keep; save(); renderAll();
+    if (!(await confirmDialog(`Erase everything on this phone (notes, photos and settings) and start fresh from the shared product list?${n ? `<br><br><b>${n} change${n === 1 ? " hasn't" : "s haven't"} uploaded</b> and will be lost.` : ""}`, { ok: "Erase", danger: true }))) return;
+    const keep = state.sync, models = state.settings.models;
+    state = freshState(); state.sync = keep; state.settings.models = models; save(); renderAll(); scheduleSweep();
     pullShared({ overwrite: true, quiet: false }).catch(e => toast(e.message));
   };
 }
@@ -2715,42 +2984,6 @@ function passwordDialog(title, note, okLabel = "Enable") {
     setTimeout(() => inp.focus(), 50);
     passwordDialog.current = d;
   });
-}
-// Delete every shelf-tag link for everyone. Needs the team password (proved by decrypting the upload key)
-// and an explicit confirmation. Products, barcodes and lists are untouched; GitHub history keeps the old data.
-async function resetSharedTags() {
-  if (!navigator.onLine) return toast("No signal. Reset needs to reach GitHub.");
-  let token = null;
-  const p = passwordDialog("Reset shared tags", "Enter the team password to continue.", "Continue");
-  passwordDialog.current.check(async pw => {
-    const blob = await loadKeyBlob();
-    try { token = await decryptToken(blob, pw); } catch (e) { throw new Error("That password isn't right."); }
-  });
-  if (!(await p) || !token) return;
-  // Show how many links this removes before confirming.
-  let R, sha;
-  try {
-    const f = await readRepoFile(GITHUB.dataPath, token);
-    R = normShared(f.text ? JSON.parse(f.text) : null); sha = f.sha;
-  } catch (e) { return toast("Couldn't reach GitHub. Try again."); }
-  const count = new Set([...Object.keys(R.tags), ...Object.keys(state.tags)]).size;
-  const ok = await confirmDialog(`<b>Delete all ${count} shelf-tag link${count === 1 ? "" : "s"} for everyone?</b><br><br>Every phone drops its tag links the next time it syncs, and tags will need to be linked again. Products, barcodes and lists are kept.`,
-    { ok: "Reset tags", cancel: "Cancel", danger: true });
-  if (!ok) return;
-  const at = Date.now();
-  for (let attempt = 0; attempt < 4; attempt++) {
-    try {
-      if (attempt) { const f = await readRepoFile(GITHUB.dataPath, token); R = normShared(f.text ? JSON.parse(f.text) : null); sha = f.sha; }
-      R.tags = {}; R.deleted.tags = {}; R.tagsResetAt = at; R.updated = at;
-      await writeRepoFile(GITHUB.dataPath, JSON.stringify(R, null, 1), sha, token, `Shelf Scan: reset all shelf-tag links (${count})`);
-      // This phone: drop its links right away too.
-      state.tags = {}; state.outbox.tags = {}; state.deleted.tags = {}; state.sync.tagsResetAt = at;
-      save(); renderAll();
-      toast(`Reset ${count} shelf-tag link${count === 1 ? "" : "s"} for everyone`);
-      return;
-    } catch (e) { if (!e.conflict) return toast(e.message || "Couldn't reset. Try again."); }
-  }
-  toast("GitHub was busy. Try again.");
 }
 async function enableUploads() {
   const p = passwordDialog("Enable uploads", "Enter the team password. You'll only need it once on this phone.");
@@ -2797,91 +3030,6 @@ async function syncFromGitHub() {
   try { await pullShared({ overwrite: true, quiet: false }); }
   catch (e) { toast(e.message || "Couldn't reach GitHub"); }
 }
-// ---------- Barcode matcher ----------
-// Strict product matching used to import barcodes in bulk (.claude/usda/match.js): brand, flavor,
-// container, size and pack count must all agree, and limited editions are ruled out.
-const OZ_PER = { oz: 1, floz: 1, ml: 1 / 29.5735, l: 33.814, liter: 33.814, litre: 33.814 };
-const BRAND_SEARCH = {
-  "Coca-Cola": "coca cola", "Diet Coke": "diet coke", "Mr. Pibb": "mr pibb", "Seagram's": "seagrams",
-  "Diet Dr Pepper": "diet dr pepper", "AHA": "aha sparkling water", "FUZE": "fuze tea", "Hubert's": "huberts lemonade",
-  "Hi-C": "hi-c", "Monster Energy": "monster energy", "Reign": "reign energy", "NOS": "nos energy", "Core Power Elite": "core power elite",
-};
-const brandKey = b => ({ "Coca-Cola": "coke", "Mr. Pibb": "pibb", "Barq's": "barq", "Seagram's": "seagram", "Hubert's": "hubert",
-  "BODYARMOR": "bodyarmor", "BODYARMOR LYTE": "bodyarmor", "vitaminwater": "vitaminwater", "smartwater": "smartwater", "Monster Energy": "monster" }[b]
-  || bfNorm(b));
-// Extra words that rule a listing out for a brand (the sibling line that shares its name).
-const BRAND_EXCLUDE = { "Coca-Cola": ["diet"], "Dr Pepper": ["diet"], "BODYARMOR": ["lyte", "sportwater"], "Topo Chico": ["sabores"], "Core Power": ["elite"],
-  "smartwater": ["sparkling"], "Dasani": ["sparkling"] };
-const BF_VARIANTS = ["zero", "diet", "cherry", "vanilla", "caffeine", "lime", "orange", "cream", "peach", "grape", "strawberry", "pineapple",
-  "berry", "mango", "punch", "tropical", "citrus", "raspberry", "lemon", "lemonade", "ginger", "tonic", "club", "seltzer", "float", "chill",
-  "tea", "mexico", "mexican", "sugar", "free", "lyte", "ultra", "watermelon", "kiwi", "pomegranate", "blueberry", "passionfruit", "coconut"];
-// Limited editions and discontinued lines that share a regular product's name.
-const BF_LIMITED = ["starlight", "y3000", "creations", "creation", "dreamworld", "dream", "life", "kosher", "reduced", "ultimate", "futuristic",
-  "byte", "spiced", "marshmello", "oreo", "edition", "limited", "holiday", "wave", "move", "remix", "energy", "plus",
-  "stevia", "vitamin", "coffee", "feisty", "twisted", "zesty", "ginger", "lime", "mango", "blueberry", "strawberry",
-  "mix", "powder", "drops", "ashwagandha", "ashwaganda", "tangerine", "strawberries", "just", "organic", "splenda", "caffeinated"];
-function bfNorm(s) {
-  return (s || "").toLowerCase().replace(/coca[\s-]?cola|cocacola/g, "coke").replace(/barq'?s/g, "barq").replace(/['’`®™]/g, "")
-    .replace(/body armor/g, "bodyarmor").replace(/vitamin water/g, "vitaminwater").replace(/smart water/g, "smartwater")
-    .replace(/[^a-z0-9.]+/g, " ").replace(/\s+/g, " ").trim();
-}
-const bfFlavorTokens = f => bfNorm(f.replace(/\(Mexican\)/i, "mexican")).split(" ").filter(w => w && !["original", "taste", "the", "and", "with"].includes(w));
-// Volumes mentioned in a listing, in fl oz.
-function bfVolumes(t) {
-  const out = [];
-  for (const m of t.matchAll(/(\d+(?:\.\d+)?)\s*(fl\.?\s*oz|oz|ml|l|liters?|litres?)\b/g)) {
-    const u = m[2].replace(/\s|\./g, "").replace(/s$/, "");
-    out.push(parseFloat(m[1]) * (OZ_PER[u === "floz" ? "floz" : u] || 1));
-  }
-  return out;
-}
-function bfProductOz(p) { const v = bfVolumes(p.size.toLowerCase()); return v[0] || 0; }
-const near = (a, b) => Math.abs(a - b) / b < 0.04;
-function bfMatchScore(p, c, brandsSeen) {
-  const nameN = bfNorm(c.product_name), allN = bfNorm(`${c.product_name} ${c.brands || ""}`);
-  const words = new Set(allN.split(" "));
-  const key = brandKey(p.brand);
-  if (!allN.includes(key)) return 0;
-  if ((BRAND_EXCLUDE[p.brand] || []).some(w => words.has(w))) return 0;
-  // Another brand named in the product name (not just the maker field) → not this product.
-  for (const b of brandsSeen) { const k = brandKey(b); if (b !== p.brand && k !== key && !key.includes(k) && nameN.includes(k)) return 0; }
-  const own = bfFlavorTokens(p.flavor);
-  if (!own.every(w => w === "mexican" ? /mexic/.test(allN) : words.has(w))) return 0;
-  const sibling = new Set(state.products.filter(x => x.brand === p.brand).flatMap(x => bfFlavorTokens(x.flavor)));
-  // Words from the brand's own name ("diet" in Diet Coke, "energy" in Monster Energy) never count against it.
-  const brandWords = new Set(bfNorm(p.brand).split(" "));
-  if ([...new Set([...sibling, ...BF_VARIANTS])].some(w => !own.includes(w) && !brandWords.has(w) && !(w === "mexico" && own.includes("mexican")) && words.has(w))) return 0;
-  // Limited editions ("Starlight", "Creations", "Life"…) are separate products.
-  if (BF_LIMITED.some(w => words.has(w) && !own.includes(w) && !brandWords.has(w))) return 0;
-  // "Juice Monster" is its own line; only its flavors may say "juice".
-  if (p.brand === "Monster Energy" && words.has("juice") && !/loco|pipeline|pacific/i.test(p.flavor)) return 0;
-  // Container type must not contradict (can vs bottle vs glass).
-  const tq = `${c.product_name} ${c.quantity || ""}`.toLowerCase();
-  const kind = /glass/.test(p.size) ? "glass" : /can/.test(p.size) ? "can" : /carton/.test(p.size) ? "carton" : "bottle";
-  if (kind === "can" && /bottle|glass/.test(tq)) return 0;
-  if (kind !== "can" && /\bcans?\b/.test(tq)) return 0;
-  if (kind === "glass" && /plastic/.test(tq)) return 0;
-  if (kind === "bottle" && /glass/.test(tq)) return 0;
-  if (kind === "glass" && !/glass|mexic|mineral/.test(tq)) return 0;
-  // Size and pack must both be stated and match.
-  const size = bfProductOz(p), pack = p.pack === "Single" ? 1 : parseInt(p.pack, 10);
-  const vols = bfVolumes(tq);
-  if (!size || !vols.length) return 0;
-  const m = tq.match(/\b(\d{1,2})\s*(?:x|pk|pack|ct|count|cans|bottles)\b/) || tq.match(/\bpack of (\d{1,2})\b/);
-  let count = m ? parseInt(m[1], 10) : null;
-  const hasUnit = vols.some(v => near(v, size));
-  const total = vols.find(v => !near(v, size) && v > size);
-  // Only work out a pack count from a total volume when the listing isn't clearly a single container
-  // (a 3L bottle holds about the same as six 16.9oz bottles).
-  const singular = /\b(bottle|can|carton|glass bottle)\b(?!s)/.test(tq) && !/\b(bottles|cans|cartons|pack|pk)\b/.test(tq);
-  if (!count && singular) count = 1;
-  if (!count && total && Number.isInteger(Math.round(total / size)) && near(total, Math.round(total / size) * size)) count = Math.round(total / size);
-  if (!hasUnit && !(count && total && near(total, count * size))) return 0;
-  if ((count || 1) !== pack) return 0;
-  return 10 + Math.log10((c.unique_scans_n || 0) + 1);
-}
-// ---------- end barcode matcher ----------
-
 function exportBackup() {
   const text = JSON.stringify(state);
   const box = $("#backup-text");
@@ -2892,336 +3040,35 @@ function exportBackup() {
 async function restoreBackupText(text) {
   let data;
   try { data = JSON.parse(text); } catch (e) { data = null; }
-  if (!data || !data.products || !data.tags) { toast("That isn't a Shelf Scan backup"); return; }
+  if (!data || !data.products) { toast("That isn't a Shelf Scan backup"); return; }
   if (!(await confirmDialog("Replace everything on this phone with the backup?", { ok: "Replace", danger: true }))) return;
   const snap = snapshot(); state = data; migrate(); save(); renderAll(); toast("Backup restored", snap);
 }
 
-// ---------- Camera ----------
-let scanner = null, camOn = false, camStarting = false;
-function scanFormats() {
-  const F = window.Html5QrcodeSupportedFormats;
-  return F ? [F.QR_CODE, F.DATA_MATRIX, F.UPC_A, F.UPC_E, F.EAN_13, F.EAN_8, F.CODE_128, F.ITF] : undefined;
-}
-function setPhotoFirst(on) { $("#actions").classList.toggle("photo-first", on); renderPending(); }
-
-// ---------- Barcode decoder ----------
-// zxing-cpp (WebAssembly) behind the standard BarcodeDetector interface. It reads frames at full camera
-// resolution; the old library shrank every frame to the on-screen box (~356px), too small for UPC bars.
-const DETECTOR_URL = "https://cdn.jsdelivr.net/npm/barcode-detector@3.2.2/ponyfill/+esm";
-const ZXING_WASM_URL = "https://cdn.jsdelivr.net/npm/zxing-wasm@3.1.3/dist/reader/zxing_reader.wasm";
-const DETECT_FORMATS = ["qr_code", "data_matrix", "upc_a", "upc_e", "ean_13", "ean_8", "code_128", "itf"];
-let detectorPromise = null;
-function getDetector() {
-  if (!detectorPromise) detectorPromise = (async () => {
-    // A native detector (Android Chrome) is fastest; iPhone Safari doesn't have one, so load the WebAssembly one.
-    if (window.BarcodeDetector && BarcodeDetector.getSupportedFormats) {
-      try {
-        const have = await BarcodeDetector.getSupportedFormats();
-        if (["upc_a", "ean_13", "qr_code"].every(f => have.includes(f)))
-          return new BarcodeDetector({ formats: DETECT_FORMATS.filter(f => have.includes(f)) });
-      } catch (e) {}
-    }
-    const mod = await import(DETECTOR_URL);
-    if (mod.prepareZXingModule) mod.prepareZXingModule({ overrides: { locateFile: (p, pre) => p.endsWith(".wasm") ? ZXING_WASM_URL : pre + p } });
-    return new mod.BarcodeDetector({ formats: DETECT_FORMATS });
-  })().catch(e => { detectorPromise = null; throw e; });
-  return detectorPromise;
-}
-// Pick the most useful result: prefer the code nearest the middle of the frame.
-function bestResult(results, w, h) {
-  if (!results || !results.length) return null;
-  const d = r => { const b = r.boundingBox || { x: w / 2, y: h / 2, width: 0, height: 0 }; return Math.hypot(b.x + b.width / 2 - w / 2, b.y + b.height / 2 - h / 2); };
-  return [...results].sort((a, b) => d(a) - d(b))[0];
-}
-
-// ---------- Live camera ----------
-const cam = { stream: null, video: null, canvas: null, ctx: null, timer: null, busy: false, legacy: false };
-async function startCamera() {
-  $("#cam-error").textContent = "";
-  if (camOn || camStarting) return;
-  camStarting = true;
-  $("#cam-off").hidden = true;
-  $("#camera").classList.add("live");
-  try {
-    let detector = null;
-    try { detector = await getDetector(); } catch (e) { /* fall back to the old scanner below */ }
-    if (!detector) return await startLegacyCamera();
-    // High resolution so thin barcode bars survive; iPhones give 1920×1080 from the back camera.
-    cam.stream = await navigator.mediaDevices.getUserMedia({ audio: false,
-      video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } } });
-    const v = document.createElement("video");
-    v.setAttribute("playsinline", ""); v.muted = true; v.autoplay = true;
-    v.srcObject = cam.stream;
-    $("#reader").replaceChildren(v);
-    await v.play();
-    cam.video = v; cam.legacy = false;
-    try { await cam.stream.getVideoTracks()[0].applyConstraints({ advanced: [{ focusMode: "continuous" }] }); } catch (e) {}
-    camOn = true;
-    setupZoom();
-    $("#viewfinder").hidden = false;
-    $("#btn-cam-stop").hidden = false;
-    setPhotoFirst(false);
-    if (!state.settings.camOK) { state.settings.camOK = true; save(); }
-    scanLoop(detector);
-  } catch (err) {
-    stopStream();
-    $("#cam-off").hidden = false;
-    $("#camera").classList.remove("live");
-    $("#cam-error").textContent = "The live camera isn't available here. Use the photo button below." +
-      (location.protocol !== "https:" && location.hostname !== "localhost" ? " (It needs an https:// address.)" : "");
-    setPhotoFirst(true);
-    if (state.settings.camOK) { state.settings.camOK = false; save(); }
-  } finally { camStarting = false; }
-}
-// Decode ~8 times a second from the part of the frame shown in the square box, at full resolution.
-function scanLoop(detector) {
-  const tick = async () => {
-    if (!camOn || cam.legacy) return;
-    if (!cam.busy && modalDepth === 0 && !document.hidden && view === "scan") {
-      cam.busy = true;
-      try {
-        const r = await scanFrame(detector);
-        if (r) onDecoded(r.rawValue, String(r.format || "").toUpperCase());
-      } catch (e) { /* skip this frame */ }
-      cam.busy = false;
-    }
-    cam.timer = setTimeout(tick, 120);
-  };
-  clearTimeout(cam.timer);
-  tick();
-}
-// Decode the current frame: the part shown in the square box, at full camera resolution.
-async function scanFrame(detector) {
-  const v = cam.video;
-  if (!v || v.readyState < 2 || !v.videoWidth) return null;
-  const vw = v.videoWidth, vh = v.videoHeight;
-  // The box shows a centered square (object-fit: cover); with preview zoom it shows a smaller center part.
-  const viewZoom = zoom.hw ? 1 : zoom.level;
-  const side = Math.round(Math.min(vw, vh) / viewZoom);
-  const sx = Math.round((vw - side) / 2), sy = Math.round((vh - side) / 2);
-  const out = Math.min(side, 1280);
-  if (!cam.canvas) { cam.canvas = document.createElement("canvas"); cam.ctx = cam.canvas.getContext("2d", { willReadFrequently: true }); }
-  if (cam.canvas.width !== out) { cam.canvas.width = out; cam.canvas.height = out; }
-  cam.ctx.drawImage(v, sx, sy, side, side, 0, 0, out, out);
-  const r = bestResult(await detector.detect(cam.canvas), out, out);
-  return r && r.rawValue ? r : null;
-}
-function stopStream() {
-  clearTimeout(cam.timer); cam.timer = null;
-  if (cam.stream) cam.stream.getTracks().forEach(t => t.stop());
-  cam.stream = null;
-  if (cam.video) { cam.video.srcObject = null; cam.video.remove(); cam.video = null; }
-}
-// Backup: the original scanner library, used only if the decoder above can't load (e.g. first run offline).
-async function startLegacyCamera() {
-  if (!window.Html5Qrcode) throw new Error("no scanner");
-  scanner = scanner || new Html5Qrcode("reader", { verbose: false, formatsToSupport: scanFormats(),
-    experimentalFeatures: { useBarCodeDetectorIfSupported: true } });
-  await scanner.start({ facingMode: "environment" }, { fps: 12, aspectRatio: 1.0 },
-    (text, result) => onDecoded(text, result && result.result && result.result.format && result.result.format.formatName), () => {});
-  cam.legacy = true; camOn = true;
-  setupZoom();
-  $("#viewfinder").hidden = false; $("#btn-cam-stop").hidden = false;
-  setPhotoFirst(false);
-  if (!state.settings.camOK) { state.settings.camOK = true; save(); }
-}
-// Keep the camera warm for a minute after leaving the Scan tab, so coming back is instant.
-const CAMERA_WARM_MS = 60000;
-let camSleepTimer = null;
-function sleepCameraSoon() {
-  clearTimeout(camSleepTimer);
-  if (camOn) camSleepTimer = setTimeout(() => { if (view !== "scan") stopCamera(); }, CAMERA_WARM_MS);
-}
-function wakeCamera() {
-  clearTimeout(camSleepTimer); camSleepTimer = null;
-  if (camOn) {
-    // Still running: make sure the preview is playing (iOS can pause a video while its tab is hidden).
-    const v = cam.video || document.querySelector("#reader video");
-    if (v && v.paused) v.play().catch(() => {});
-    lastScan = { code: "", at: 0 };
-  } else if (state.settings.camOK) startCamera();
-}
-async function stopCamera() {
-  clearTimeout(camSleepTimer); camSleepTimer = null;
-  if (!camOn) return;
-  if (cam.legacy && scanner) { try { await scanner.stop(); } catch (e) {} }
-  stopStream();
-  camOn = false; cam.legacy = false;
-  $("#cam-off").hidden = false;
-  $("#camera").classList.remove("live");
-  $("#viewfinder").hidden = true;
-  $("#btn-cam-stop").hidden = true;
-  zoom.track = null; zoom.hw = null; zoom.level = 1;
-  $("#camera").style.removeProperty("--view-zoom");
-}
-
-// ---------- Pinch to zoom ----------
-// Uses the camera's real zoom when Safari exposes it (sharper, and the scanner sees the zoomed image).
-// Otherwise it enlarges the preview only, which still helps with aiming.
-const zoom = { track: null, hw: null, level: 1, min: 1, max: 4, pending: null };
-function setupZoom() {
-  zoom.track = null; zoom.hw = null; zoom.level = 1; zoom.min = 1; zoom.max = 4;
-  try {
-    const v = document.querySelector("#reader video");
-    const track = v && v.srcObject && v.srcObject.getVideoTracks()[0];
-    const caps = track && track.getCapabilities ? track.getCapabilities() : null;
-    if (caps && caps.zoom && caps.zoom.max > caps.zoom.min) {
-      zoom.track = track; zoom.hw = caps.zoom;
-      zoom.min = caps.zoom.min; zoom.max = Math.min(caps.zoom.max, caps.zoom.min * 6);
-      zoom.level = (track.getSettings && track.getSettings().zoom) || caps.zoom.min;
-    }
-  } catch (e) { /* preview zoom only */ }
-}
-function setZoom(z, { showPill = true } = {}) {
-  z = Math.min(zoom.max, Math.max(zoom.min, z));
-  zoom.level = z;
-  if (zoom.hw && zoom.track) {
-    // Coalesce rapid pinch updates into one constraint change per frame.
-    if (!zoom.pending) zoom.pending = requestAnimationFrame(() => {
-      zoom.pending = null;
-      zoom.track.applyConstraints({ advanced: [{ zoom: zoom.level }] }).catch(() => {
-        zoom.hw = null; zoom.min = 1; zoom.max = 4; setZoom(1);   // camera refused: fall back to preview zoom
-      });
-    });
-  } else {
-    $("#camera").style.setProperty("--view-zoom", z.toFixed(3));
-  }
-  if (showPill) {
-    const pill = $("#zoom-pill");
-    pill.textContent = `${(z / zoom.min).toFixed(1).replace(/\.0$/, "")}×`;
-    pill.classList.add("show");
-    clearTimeout(setZoom.t); setZoom.t = setTimeout(() => pill.classList.remove("show"), 900);
-  }
-}
-(() => {
-  const cam = $("#camera");
-  let startDist = 0, startZoom = 1, lastTap = 0;
-  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-  cam.addEventListener("touchstart", e => {
-    if (!camOn) return;
-    if (e.touches.length === 2) { startDist = dist(e.touches); startZoom = zoom.level; e.preventDefault(); }
-    else if (e.touches.length === 1 && !e.target.closest("button")) {
-      // Double-tap the feed to go back to 1×.
-      const now = Date.now();
-      if (now - lastTap < 300) { setZoom(zoom.min); lastTap = 0; } else lastTap = now;
-    }
-  }, { passive: false });
-  cam.addEventListener("touchmove", e => {
-    if (!camOn || e.touches.length !== 2 || !startDist) return;
-    e.preventDefault();
-    setZoom(startZoom * (dist(e.touches) / startDist));
-  }, { passive: false });
-  cam.addEventListener("touchend", e => { if (e.touches.length < 2) startDist = 0; });
-  // iOS also fires gesture events for pinches; stop them from zooming the page.
-  ["gesturestart", "gesturechange", "gestureend"].forEach(t => cam.addEventListener(t, e => e.preventDefault()));
-})();
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden) stopCamera();
-  else if (view === "scan" && state.settings.camOK) startCamera();
-});
-
-// Scan from a photo (fallback where the live camera is blocked).
-let photoScanner = null;
-function downscale(file, max) {
-  return new Promise(resolve => {
-    const img = new Image();
-    img.onload = () => {
-      const k = Math.min(1, max / Math.max(img.width, img.height));
-      if (k === 1) { URL.revokeObjectURL(img.src); return resolve(file); }
-      const c = document.createElement("canvas");
-      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-      URL.revokeObjectURL(img.src);
-      c.toBlob(b => resolve(b ? new File([b], "scan.jpg", { type: "image/jpeg" }) : file), "image/jpeg", 0.92);
-    };
-    img.onerror = () => resolve(file);
-    img.src = URL.createObjectURL(file);
-  });
-}
-async function scanPhoto(file) {
-  const status = $("#photo-status");
-  status.hidden = false;
-  status.textContent = "Reading code…";
-  // Full-resolution decode with the WebAssembly reader first.
-  try {
-    const detector = await getDetector();
-    const bmp = await createImageBitmap(file);
-    const r = bestResult(await detector.detect(bmp), bmp.width, bmp.height);
-    bmp.close && bmp.close();
-    if (r && r.rawValue) { status.hidden = true; lastScan = { code: "", at: 0 }; onDecoded(r.rawValue, String(r.format || "").toUpperCase()); return; }
-  } catch (e) { /* fall back to the old library below */ }
-  if (!window.Html5Qrcode) { beep(false); status.textContent = "No code found. Get closer so the code fills the photo, and avoid glare."; return; }
-  photoScanner = photoScanner || new Html5Qrcode("photo-reader", { verbose: false, formatsToSupport: scanFormats() });
-  for (const max of [1600, 3000]) {        // normal size first, then full resolution for small codes
-    try {
-      const f = await downscale(file, max);
-      const r = photoScanner.scanFileV2 ? await photoScanner.scanFileV2(f, false) : { decodedText: await photoScanner.scanFile(f, false) };
-      const fmt = r && r.result && r.result.format && r.result.format.formatName;
-      status.hidden = true;
-      lastScan = { code: "", at: 0 };
-      onDecoded(r.decodedText, fmt);
-      return;
-    } catch (e) { /* try next size */ }
-  }
-  beep(false);
-  status.textContent = "No code found. Get closer so the code fills the photo, and avoid glare.";
-}
-
-function enterCode() {
-  const d = el(`<div class="dialog"><p><b>Enter a code</b><br><span class="hint">For a damaged tag, or testing.</span></p>
-    <input class="field" id="code-input" autocomplete="off" autocapitalize="off" placeholder="Code or link">
-    <div class="seg" style="margin-top:10px" id="code-kind"><button data-k="tag" class="active">Shelf tag</button><button data-k="barcode">Barcode</button></div>
-    <div class="btns" style="margin-top:16px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="go">Go</button></div></div>`);
-  const close = openLayer(d, { center: true });
-  let kind = "tag";
-  d.querySelectorAll("#code-kind button").forEach(b => (b.onclick = () => {
-    kind = b.dataset.k; d.querySelectorAll("#code-kind button").forEach(x => x.classList.toggle("active", x === b));
-    syncIndicator(d.querySelector("#code-kind"));
-  }));
-  const inp = d.querySelector("input");
-  const go = () => { const v = inp.value.trim(); if (!v) return; close(); handleCode(v, kind); };
-  d.querySelector('[data-a="go"]').onclick = go;
-  d.querySelector('[data-a="c"]').onclick = close;
-  inp.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
-  setTimeout(() => inp.focus(), 50);
-}
 
 // ---------- Wire up ----------
 fillIcons();
 load();
 document.querySelectorAll("#tabs button").forEach(b => (b.onclick = () => showView(b.dataset.view)));
-document.querySelectorAll("#mode-seg button").forEach(b => (b.onclick = () => {
-  setMode(b.dataset.mode);
-  if (b.dataset.mode === "setup") startCamera();   // Link tags opens straight into the live camera where allowed
-}));
 $("#btn-cam-start").onclick = startCamera;
-$("#btn-cam-stop").onclick = stopCamera;
-$("#sync-ind").onclick = () => showView("more");
-$("#btn-pick-manual").onclick = async () => {
-  if (mode === "setup" && pending && pending.kind === "setupTag") {
-    const tagCode = pending.code;
-    const pid = await pickProduct({ title: "Which product is this tag for?" });
-    if (pid) setupLink(tagCode, pid);
-    return;
-  }
-  const pid = await pickProduct({ title: "Add which product?" });
-  if (pid) addFromScan(pid);
+$("#btn-cam-stop").onclick = () => { state.settings.camOK = false; save(); stopCamera(); };
+$("#btn-shutter").onclick = () => onShutter(false);
+$("#btn-phonecam").onclick = () => onShutter(true);
+$("#btn-type").onclick = async () => {
+  const text = await textPrompt("Type what you need");
+  if (text == null || !text) return;
+  await saveNote({ photos: [], audioRec: null, secs: 0, text, status: "heard" });
+  pump();
 };
-$("#btn-enter-code").onclick = enterCode;
-$("#photo-input").addEventListener("change", e => {
-  const f = e.target.files && e.target.files[0];
-  e.target.value = "";
-  if (f) scanPhoto(f);
-});
-setMode("count");
+$("#sync-ind").onclick = () => showView("more");
 renderAll();
 save();
 syncAllIndicators(false);
-setTimeout(sweepPhotos, 3000);   // tidy photos left over from cleared lists
+setTimeout(sweepMedia, 3000);   // tidy photos and recordings left over from deleted notes
 if (state.settings.camOK) startCamera();
+verifyModels().then(pump);      // anything still waiting from last time gets picked up
 
-// Pull everyone's latest shared data on open, then upload anything waiting.
+// Pull everyone's latest product list on open, then upload anything waiting.
 if (navigator.onLine) pullShared().catch(() => {}).finally(() => scheduleUpload(1000));
 
 // Updates: check for a new version whenever the app comes back to the foreground (home-screen apps on iPhone
@@ -3244,7 +3091,7 @@ function showUpdateReady() {
   const d = el(`<div class="dialog update-dialog" id="update-ready">
     <div class="update-icon">${icon("refresh")}</div>
     <h3>Update available</h3>
-    <p>A new version of Shelf Scan is ready. Reload to start using it. Your list and settings stay as they are.</p>
+    <p>A new version of Shelf Scan is ready. Reload to start using it. Your notes and settings stay as they are.</p>
     <div class="btns"><button class="btn quiet" data-a="later">Later</button><button class="btn primary" data-a="reload">Reload now</button></div></div>`);
   const close = openLayer(d, { center: true, onClose: () => (updatePromptOpen = false) });
   d.querySelector('[data-a="reload"]').onclick = () => location.reload();
