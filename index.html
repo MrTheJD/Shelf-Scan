@@ -2262,9 +2262,10 @@ function attachSheetDrag(sheet, close) {
 // Everything lives in one folder (sync/). Each phone only ever writes its own files, so nothing can conflict:
 //   <keyhash>_<phone>_<note>.json   the note (words, Aisle/Display, photo names)
 //   <keyhash>_<phone>_<photo>.jpg   a photo (already shrunk to ~150 KB)
+//   <keyhash>_<phone>_<audio>.wav   the voice recording (16 kHz mono, about 32 KB per second)
 //   <keyhash>_<phone>_ticks.json    this phone's ticks (the newest tick on a product wins, whoever made it)
 // Other phones' files are read, never changed. A phone deletes its own files when the note goes (or after 7 days).
-const TEAM_DIR = "sync", TEAM_POLL_MS = 5000, TEAM_MAX_AGE = 7 * 24 * 3600 * 1000;
+const TEAM_DIR = "sync", TEAM_POLL_MS = 1000, TEAM_MAX_AGE = 7 * 24 * 3600 * 1000;
 const devId = (() => {
   const make = () => "d" + Math.random().toString(36).slice(2, 8);
   try { let d = localStorage.getItem("shelfscan.dev"); if (!d) { d = make(); localStorage.setItem("shelfscan.dev", d); } return d; } catch (e) { return make(); }
@@ -2323,7 +2324,7 @@ async function teamPut(name, b64, message) {
     const r = await gh(`contents/${TEAM_DIR}/${name}`, { method: "PUT", body: { message, content: b64, branch: GITHUB.branch, ...(sha ? { sha } : {}) } });
     if (r.ok) { const j = await r.json(); T.list.set(name, j.content.sha); return; }
     if (r.status === 409) { await sleep(400 + Math.random() * 700); continue; }   // the other phone committed at the same moment
-    if (r.status === 422) { if (name.endsWith(".jpg")) { if (!T.list.has(name)) T.list.set(name, "?"); return; } T.etag = ""; throw new Error("Sync hiccup. Retrying."); }
+    if (r.status === 422) { if (/\.(jpg|wav)$/.test(name)) { if (!T.list.has(name)) T.list.set(name, "?"); return; } T.etag = ""; throw new Error("Sync hiccup. Retrying."); }
     throw httpErr(r);
   }
   throw new Error("GitHub was busy. Retrying.");
@@ -2344,7 +2345,7 @@ function teamTrack() {
   const now = Date.now(), tk = state.team.tick; let touched = false;
   for (const n of state.notes) {
     if (isMine(n)) {
-      const sig = JSON.stringify([n.text, n.kind, n.photos, n.status, myName()]);
+      const sig = JSON.stringify([n.text, n.kind, n.photos, n.status, myName(), n.audio, n.heard]);
       if (n._sig !== sig) { n._sig = sig; n.mod = now; touched = true; }
     }
     const dev = n.dev || devId, keys = new Set([...Object.keys(n.ticks || {}), ...(n.parts || []).map(p => p.vk), "?"]);
@@ -2366,7 +2367,9 @@ function applyTheirNote(dev, kh, j) {
   else if (!n.dev) return false;   // never overwrite one of my own notes
   if (!isNew && n.mod === j.mod) return false;
   let r; try { r = readBlurb(j.text); } catch (e) { r = { parts: [], flag: true }; }
-  Object.assign(n, { text: j.text, kind: j.kind === "display" ? "display" : "aisle", photos: j.photos || [], mod: j.mod, by: j.by || "", parts: r.parts, flag: r.flag, at: j.at });
+  Object.assign(n, { text: j.text, kind: j.kind === "display" ? "display" : "aisle", photos: j.photos || [], mod: j.mod, by: j.by || "", parts: r.parts, flag: r.flag, at: j.at,
+    secs: j.secs || 0, audioRef: j.audio || null, heard: j.heard || "", words: j.words || undefined });
+  if (!j.audio) n.audio = null;   // the recording is brought over separately (see teamPull); until then there is nothing to play
   return true;
 }
 // For every product on every note the newest tick wins, whichever phone made it.
@@ -2408,6 +2411,17 @@ async function teamPull(kh) {
     const r = await gh(`contents/${TEAM_DIR}/${nm}?ref=${GITHUB.branch}`, { accept: "application/vnd.github.raw" });
     if (r.ok) { await putPhoto(pid, new Blob([await r.arrayBuffer()], { type: "image/jpeg" })); touched = true; } else T.miss = true;
   }
+  // Their recordings, so the play button works here too.
+  for (const n of state.notes) if (n.dev && n.audioRef && n.audioRef !== n.audio) {
+    const aid = n.audioRef;
+    if (await getAudio(aid).catch(() => null)) { n.audio = aid; touched = true; continue; }
+    const nm = `${kh}_${n.dev}_${aid}.wav`;
+    if (!T.list.has(nm)) { T.miss = true; continue; }
+    const r = await gh(`contents/${TEAM_DIR}/${nm}?ref=${GITHUB.branch}`, { accept: "application/vnd.github.raw" });
+    if (!r.ok) { T.miss = true; continue; }
+    const buf = await r.arrayBuffer();
+    if (buf.byteLength > 44) { await putAudio(aid, { pcm: buf.slice(44), rate: 16000 }); n.audio = aid; touched = true; }   // the file is a plain 44-byte-header WAV (pcmToWav)
+  }
   if (touched) { state.notes.sort((a, b) => b.at - a.at); teamMergeTicks(); }
   return touched;
 }
@@ -2423,7 +2437,12 @@ async function teamPush(kh) {
       const b = await getPhoto(pid).catch(() => null); if (!b) continue;
       await teamPut(nm, await blobToB64(b), "Shelf Scan: photo");
     }
-    await teamPut(`${my}${n.id}.json`, b64encode(JSON.stringify({ id: n.id, at: n.at, mod, kind: noteKind(n), text: n.text, photos: n.photos || [], by: myName() })), "Shelf Scan: note");
+    if (n.audio) {
+      const nm = `${my}${n.audio}.wav`;
+      if (!T.list.has(nm)) { const rec = await getAudio(n.audio).catch(() => null); if (rec && rec.pcm) await teamPut(nm, await blobToB64(pcmToWav(rec.pcm, rec.rate || 16000)), "Shelf Scan: audio"); }
+    }
+    await teamPut(`${my}${n.id}.json`, b64encode(JSON.stringify({ id: n.id, at: n.at, mod, kind: noteKind(n), text: n.text, photos: n.photos || [], by: myName(),
+      audio: n.audio || null, secs: n.secs || 0, heard: n.heard || "", words: n.words || null })), "Shelf Scan: note");
     n.pushed = mod; save();
   }
   // Ticks: only this phone's own entries, for notes that still exist.
@@ -2436,7 +2455,7 @@ async function teamPush(kh) {
   }
   // Clean up: my files for notes that are gone, cleared, expired or whose photo was removed.
   if (T.listed && T.listCount < 1000) {
-    const keep = new Set([`${my}ticks.json`, ...mine.map(n => `${my}${n.id}.json`), ...mine.flatMap(n => (n.photos || []).map(p => `${my}${p}.jpg`))]);
+    const keep = new Set([`${my}ticks.json`, ...mine.map(n => `${my}${n.id}.json`), ...mine.flatMap(n => (n.photos || []).map(p => `${my}${p}.jpg`)), ...mine.filter(n => n.audio).map(n => `${my}${n.audio}.wav`)]);
     for (const [name, sha] of [...T.list]) if (name.startsWith(my) && !keep.has(name)) await teamDel(name, sha);
   }
 }
@@ -3246,7 +3265,7 @@ async function pickSlot(i) {
 
 async function onShutterBA(forcePhone) {
   const slot = baSlot();
-  if (!storeOf(slot) && (await askStore(slot)) == null) return;
+  if (!storeOf(slot)) { await askStore(slot); return; }   // the first tap only asks for the store number; the next tap takes the photo
   let blob = null;
   if (cam.stream && !forcePhone) { blob = await grabPhoto("#ba-video", "#ba-camera"); box_flash("#ba-camera"); }
   else blob = await cameraPhoto();
@@ -3532,6 +3551,8 @@ function editVariation(v, { prefill = "" } = {}) {
     save(); close(); renderAll(); toast("Deleted", snap);
   };
 }
+// The running count of releases since the project began (every pushed update that is not a phone's automatic sync). Add one with each push.
+const REVISION = 55;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -3558,7 +3579,7 @@ function renderMore() {
     </div>
     <div class="card">
       <h3>Team network</h3>
-      <p class="hint">Connect to share the product list and a live Needed list with your team, photos and ticks included. It goes through the GitHub repo and nothing else. Everything else stays on this phone.</p>
+      <p class="hint">Connect to share the product list and a live Needed list with your team, photos, voice recordings and ticks included. It goes through the GitHub repo and nothing else. Everything else stays on this phone.</p>
       <div class="set-row"><span class="status-dot ${on ? "ok" : ""}"></span><span class="grow"><b>${on ? "Connected" : "Not connected"}</b><br><span class="hint">${on ? "This phone can send and receive team data." : "Enter the database key once to connect this phone."}</span></span>
         ${on ? "" : `<button class="btn sm primary" id="btn-enable">Connect</button>`}</div>
       <label class="f" for="team-key">Team key</label>
@@ -3567,7 +3588,7 @@ function renderMore() {
       <input class="field" id="team-name" autocomplete="off" placeholder="e.g. James" value="${esc(state.team.name)}">
       <div class="set-row" style="margin-top:10px"><span class="status-dot ${ts.dot}" id="team-status-dot"></span><span class="grow small" id="team-status-text">${esc(ts.text)}</span></div>
       ${on ? `<div class="set-row"><span class="status-dot ${s.dot}"></span><span class="grow small">Product list: ${esc(s.text)}</span></div>` : ""}
-      ${T.priv === false && teamKey() ? `<div class="banner warn" style="margin:8px 0">${icon("warn")}<span class="grow">The repo ${esc(teamRepo())} is public, so anyone who knows where to look can see shared notes and photos. Ask the owner to move team data to a private repo.</span></div>` : ""}
+      ${T.priv === false && teamKey() ? `<div class="banner warn" style="margin:8px 0">${icon("warn")}<span class="grow">The repo ${esc(teamRepo())} is public, so anyone who knows where to look can see shared notes, photos and voice recordings. Ask the owner to move team data to a private repo.</span></div>` : ""}
       <div class="stack" style="margin-top:10px">
         <button class="btn block" id="btn-team-test">${icon("refresh")}Test connection</button>
         ${on ? `<button class="btn block quiet" id="btn-disable">Disconnect</button>` : ""}
@@ -3600,7 +3621,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 7.1 (before/after) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan Beta 7.2 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
