@@ -363,6 +363,9 @@ nav.tabs button.active svg.i { animation: tabPop .5s var(--spring); }
 #toast { touch-action: none; }
 
 header.top h1 img.brand { display: block; height: 24px; width: auto; }
+
+.deck-side .badge.new { left: -2px; right: auto; background: var(--ok); }
+.shot span { max-width: calc(100% - 8px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>
 </head>
 <body data-view="capture">
@@ -435,7 +438,7 @@ header.top h1 img.brand { display: block; height: 24px; width: auto; }
       <div class="deck-row">
         <button class="deck-side left" id="ba-last" aria-label="Open the last photo" style="visibility:hidden"></button>
         <div class="shutter-wrap"><button class="shutter-big" id="ba-shutter" aria-label="Take a photo"><span></span></button></div>
-        <button class="deck-side right" id="ba-gallery" aria-label="Open the gallery"><span data-icon="image"></span><span class="badge" id="ba-count" hidden></span></button>
+        <button class="deck-side right" id="ba-gallery" aria-label="Open the gallery"><span data-icon="image"></span><span class="badge" id="ba-count" hidden></span><span class="badge new" id="ba-new" hidden></span></button>
       </div>
       <p class="cap-hint" id="ba-hint"></p>
     </div>
@@ -802,7 +805,8 @@ function freshState() {
     notes: [],                              // newest first: { id, at, photos:[id], audio:id|null, secs, text, status, parts:[{vk, s, e}] (brand + flavor found in the text), flag, ticks:{pid: true}, err }
     recents: [],
     stores: ["", "", "", "", ""],            // the five store slots on the Before/After tab: the store number in each
-    shots: [],                              // Before/After photos: { id, at, slot:0-5, when:"before"|"after", kind:"aisle"|"display", photo }
+    received: [],                           // photos teammates sent: { id, dev, by, store, when, kind, photo, at, sent, seen }
+    shots: [],                              // Before/After photos: { id, at, slot:0-4, when:"before"|"after", kind:"aisle"|"display", photo, shared?: time the button was pressed, pushed?: time it reached GitHub }
     settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", baWhen: "before", baKind: "aisle", baSlot: 0, lens: "wide", hapticShutter: true, hapticTaps: true, wordTiming: false, asrId: "tiny", models: { asr: false } },   // models: which downloads finished
     sync: { lastPull: 0, lastPush: 0, error: "" },
     team: { key: "", name: "", repo: "", hidden: {}, tick: {}, seen: {}, rt: {} },   // Beta 6: shared Needed list (see team.js)
@@ -835,6 +839,7 @@ function migrate() {
   { const old = Array.isArray(state.stores) ? state.stores : [];   // Beta 7 had six slots; a number in the sixth moves to the fifth when that one is free
     state.stores = Array.from({ length: 5 }, (_, i) => String(old[i] || ""));
     if (old[5] && !state.stores[4]) { state.stores[4] = String(old[5]); for (const s of state.shots) if (s.slot === 5) s.slot = 4; } }
+  state.received = (Array.isArray(state.received) ? state.received : []).filter(r => r && r.id && r.photo && r.dev);
   if (!state.stores.some(Boolean) && state.storeName) state.stores[0] = String(state.storeName);   // the store already set in More becomes the first slot
   for (const s of state.shots) { if (s.when !== "after") s.when = "before"; if (s.kind !== "display") s.kind = "aisle"; if (!(s.slot >= 0 && s.slot < 6)) s.slot = 0; }
   state.notes = Array.isArray(state.notes) ? state.notes : [];
@@ -1095,7 +1100,7 @@ function hydratePhotos(root) {
 // Remove photos and clips no note points to (runs after deletes once the undo window has passed).
 async function sweepMedia() {
   try {
-    const keepP = new Set([...state.notes.flatMap(n => n.photos || []), ...(state.shots || []).map(s => s.photo)]), keepA = new Set(state.notes.map(n => n.audio).filter(Boolean));
+    const keepP = new Set([...state.notes.flatMap(n => n.photos || []), ...(state.shots || []).map(s => s.photo), ...(state.received || []).map(r => r.photo)]), keepA = new Set(state.notes.map(n => n.audio).filter(Boolean));
     keepA.add("_recovery");   // a recording in progress (see capture.js)
     const rec = await getAudio("_recovery").catch(() => null); if (rec && rec.photos) rec.photos.forEach(p => keepP.add(p));
     const ps = await mediaTx("photos", "readonly", s => s.getAllKeys()), as = await mediaTx("audio", "readonly", s => s.getAllKeys());
@@ -2592,7 +2597,7 @@ const devId = (() => {
   const make = () => "d" + Math.random().toString(36).slice(2, 8);
   try { let d = localStorage.getItem("shelfscan.dev"); if (!d) { d = make(); localStorage.setItem("shelfscan.dev", d); } return d; } catch (e) { return make(); }
 })();
-const T = { kh: "", khFor: "", list: new Map(), listCount: 0, listed: false, etag: "", busy: false, again: false, ticksDirty: false, last: 0, error: "", offline: false, miss: false, devices: new Set([devId]), timer: null, priv: null, privFor: "" };
+const T = { kh: "", khFor: "", list: new Map(), listCount: 0, listed: false, etag: "", busy: false, again: false, ticksDirty: false, last: 0, error: "", offline: false, miss: false, devices: new Set([devId]), timer: null, priv: null, privFor: "", arrived: [], sentNow: 0 };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const isMine = n => !n.dev;
 const teamKey = () => ((state.team && state.team.key) || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -2694,6 +2699,18 @@ function applyTheirNote(dev, kh, j) {
   if (!j.audio) n.audio = null;   // the recording is brought over separately (see teamPull); until then there is nothing to play
   return true;
 }
+// A photo a teammate chose to send (Before/After gallery): kept until they or I remove it, or 7 days pass.
+function applyTheirShot(dev, kh, j) {
+  if (!j || !j.id || !j.photo) return false;
+  const id = `${dev}:${j.id}`;
+  if (state.team.hidden[id] || Date.now() - (j.sent || j.at || 0) > TEAM_MAX_AGE) return false;
+  const f = { dev, team: kh, by: String(j.by || "").slice(0, 40), at: j.at || Date.now(), sent: j.sent || j.at || Date.now(), store: String(j.store || "").slice(0, 20),
+    when: j.when === "after" ? "after" : "before", kind: j.kind === "display" ? "display" : "aisle", photo: String(j.photo) };
+  const r = state.received.find(x => x.id === id);
+  if (r) { Object.assign(r, f); return true; }   // they moved it between Before and After, or Aisle and Display
+  state.received.unshift({ id, seen: false, ...f }); T.arrived.push(f.by || "A teammate");
+  return true;
+}
 // For every product on every note the newest tick wins, whichever phone made it.
 function teamMergeTicks() {
   const tk = state.team.tick, eff = { ...tk };
@@ -2717,6 +2734,7 @@ async function teamPull(kh) {
     const sha = T.list.get(f.name); if (state.team.seen[f.name] === sha) continue;
     const j = await teamReadJSON(f.name); if (!j) continue;
     if (f.what === "ticks.json") { state.team.rt[f.dev] = j.t || {}; touched = true; }
+    else if (f.what.startsWith("shot-")) { if (applyTheirShot(f.dev, kh, j)) touched = true; }
     else if (applyTheirNote(f.dev, kh, j)) touched = true;
     state.team.seen[f.name] = sha;
   }
@@ -2744,6 +2762,17 @@ async function teamPull(kh) {
     const buf = await r.arrayBuffer();
     if (buf.byteLength > 44) { await putAudio(aid, { pcm: buf.slice(44), rate: 16000 }); n.audio = aid; touched = true; }   // the file is a plain 44-byte-header WAV (pcmToWav)
   }
+  // Photos teammates sent: fetch the ones not stored yet, and drop old ones (or ones whose file is long gone before they could be fetched).
+  const before = state.received.length;
+  state.received = state.received.filter(r => Date.now() - r.sent < TEAM_MAX_AGE);
+  if (state.received.length !== before) touched = true;
+  for (const r of [...state.received]) {
+    if (await hasPhoto(r.photo)) continue;
+    const nm = `${kh}_${r.dev}_${r.photo}.jpg`;
+    if (!T.list.has(nm)) { if (Date.now() - r.sent > 3600000) { state.received = state.received.filter(x => x !== r); touched = true; } else T.miss = true; continue; }
+    const rr = await gh(`contents/${TEAM_DIR}/${nm}?ref=${GITHUB.branch}`, { accept: "application/vnd.github.raw" });
+    if (rr.ok) { await putPhoto(r.photo, new Blob([await rr.arrayBuffer()], { type: "image/jpeg" })); touched = true; } else T.miss = true;
+  }
   if (touched) { state.notes.sort((a, b) => b.at - a.at); teamMergeTicks(); }
   return touched;
 }
@@ -2767,6 +2796,13 @@ async function teamPush(kh) {
       audio: n.audio || null, secs: n.secs || 0, heard: n.heard || "", words: n.words || null })), "Shelf Scan: note");
     n.pushed = mod; save();
   }
+  // Photos I pressed "Send to team" on: the photo, then a small file that says what it is.
+  for (const s of state.shots.filter(x => x.shared && !x.pushed && Date.now() - x.at < TEAM_MAX_AGE)) {
+    const pn = `${my}${s.photo}.jpg`;
+    if (!T.list.has(pn)) { const b = await getPhoto(s.photo).catch(() => null); if (!b) { s.pushed = -1; continue; } await teamPut(pn, await blobToB64(b), "Shelf Scan: photo"); }
+    await teamPut(`${my}shot-${s.id}.json`, b64encode(JSON.stringify({ id: s.id, at: s.at, sent: s.shared, store: storeOf(s.slot), when: s.when, kind: s.kind, photo: s.photo, by: myName() })), "Shelf Scan: photo");
+    s.pushed = Date.now(); T.sentNow++; save();
+  }
   // Ticks: only this phone's own entries, for notes that still exist.
   const tk = state.team.tick, alive = new Set(state.notes.map(n => `${n.dev || devId}/${n.id}/`));
   for (const k of Object.keys(tk)) { const i = k.indexOf("/", k.indexOf("/") + 1); if (!alive.has(k.slice(0, i + 1))) delete tk[k]; }
@@ -2777,7 +2813,8 @@ async function teamPush(kh) {
   }
   // Clean up: my files for notes that are gone, cleared, expired or whose photo was removed.
   if (T.listed && T.listCount < 1000) {
-    const keep = new Set([`${my}ticks.json`, ...mine.map(n => `${my}${n.id}.json`), ...mine.flatMap(n => (n.photos || []).map(p => `${my}${p}.jpg`)), ...mine.filter(n => n.audio).map(n => `${my}${n.audio}.wav`)]);
+    const keep = new Set([`${my}ticks.json`, ...mine.map(n => `${my}${n.id}.json`), ...mine.flatMap(n => (n.photos || []).map(p => `${my}${p}.jpg`)), ...mine.filter(n => n.audio).map(n => `${my}${n.audio}.wav`),
+      ...state.shots.filter(s => s.shared && Date.now() - s.at < TEAM_MAX_AGE).flatMap(s => [`${my}shot-${s.id}.json`, `${my}${s.photo}.jpg`])]);
     for (const [name, sha] of [...T.list]) if (name.startsWith(my) && !keep.has(name)) await teamDel(name, sha);
   }
 }
@@ -2795,6 +2832,8 @@ async function teamCycle() {
     const touched = (changed || T.miss) ? await teamPull(kh) : false;
     await teamPush(kh);
     T.error = ""; T.last = Date.now(); T.fails = 0; T.retryAt = 0;
+    if (T.sentNow) { const n = T.sentNow; T.sentNow = 0; toast(`Sent ${n} photo${n === 1 ? "" : "s"} to the team`); haptic("ok"); }
+    if (T.arrived.length) { const n = T.arrived.length, who = [...new Set(T.arrived)].join(", "); T.arrived = []; toast(`${who} sent ${n} photo${n === 1 ? "" : "s"}`); haptic("ok"); }
     if (touched) { save(); renderAll(); }
   } catch (e) {
     T.error = e.message || String(e); if (e.auth) cachedToken = null;
@@ -2804,7 +2843,7 @@ async function teamCycle() {
 }
 
 // ---- what the screens show ----
-const teamWaiting = () => state.notes.filter(teamPending).length + (T.ticksDirty ? 1 : 0);
+const teamWaiting = () => state.notes.filter(teamPending).length + (T.ticksDirty ? 1 : 0) + state.shots.filter(s => s.shared && !s.pushed).length;
 function teamStatus() {
   const w = teamWaiting();
   if (!teamKey()) return { dot: "", text: "Off. Enter a team key to share your list." };
@@ -2831,8 +2870,9 @@ function teamSetKey(k) {
   k = k.trim();
   if (k.toLowerCase() === (state.team.key || "").toLowerCase()) { state.team.key = k; save(); return; }
   state.team.key = k; state.team.seen = {}; state.team.rt = {};
-  state.notes = state.notes.filter(isMine);
+  state.notes = state.notes.filter(isMine); state.received = [];
   for (const n of state.notes) { n.pushed = 0; n._sig = ""; }
+  for (const s of state.shots) if (s.shared) s.pushed = 0;   // photos already sent go out again under the new key
   T.list = new Map(); T.etag = ""; T.khFor = ""; T.listed = false; T.last = 0; T.ticksDirty = true;
   save(); renderAll(); if (teamKey()) teamSoon(300);
 }
@@ -3580,6 +3620,7 @@ function renderBA() {
   lb.style.visibility = last ? "visible" : "hidden";
   if (last && lb.dataset.shot !== last.photo) { lb.dataset.shot = last.photo; lb.innerHTML = `<img data-photo="${esc(last.photo)}" alt="">`; hydratePhotos(lb); }
   const c = $("#ba-count"); c.hidden = !mine.length; c.textContent = mine.length;
+  const nn = teamPhotosNew(), nb = $("#ba-new"); nb.hidden = !nn; nb.textContent = nn;
   if (view === "ba" && cam.stream) { const v = $("#ba-video"); if (v.paused) v.play().catch(() => {}); }
 }
 
@@ -3646,6 +3687,7 @@ function openGallery(startKind = baKind(), startSlot = baSlot()) {
   const s = el(`<div class="sheet gallery-sheet"><div class="handle"></div><h2>Before/After photos</h2>
     <div class="slots" id="gal-slots"></div>
     <div class="row" id="gal-share"></div>
+    <div class="row" id="gal-team"></div>
     <div class="seg" id="gal-seg">${KINDS.map(k => `<button data-k="${k}">${KIND_LABEL[k]} <span class="kcount" data-c="${k}"></span></button>`).join("")}</div>
     <div id="gal-body"></div><button class="btn primary block" data-a="close">Done</button></div>`);
   const close = openLayer(s, { onClose: () => renderAll() });
@@ -3655,11 +3697,13 @@ function openGallery(startKind = baKind(), startSlot = baSlot()) {
     s.querySelectorAll("#gal-seg button").forEach(b => { b.classList.toggle("active", b.dataset.k === kind); b.querySelector(".kcount").textContent = mine().filter(x => x.kind === b.dataset.k).length || ""; });
     syncIndicator(s.querySelector("#gal-seg"), false);
     s.querySelector("#gal-share").innerHTML = ["before", "after"].map(w => { const n = mine().filter(x => x.when === w).length; return `<button class="btn sm primary grow" data-share="${w}"${n ? "" : " disabled"}>${icon("upload")}Text all ${WHEN_LABEL[w]} (${n})</button>`; }).join("");
+    const unsent = mine().filter(x => !x.shared).length, news = teamPhotosNew();
+    s.querySelector("#gal-team").innerHTML = `<button class="btn sm grow" data-team="send"${unsent ? "" : " disabled"}>${icon("upload")}${unsent ? `Send to team (${unsent})` : mine().length ? "Sent to team" : "Send to team"}</button><button class="btn sm grow quiet" data-team="inbox">${icon("image")}From team (${state.received.length})${news ? ` <span class="kcount">${news}</span>` : ""}</button>`;
     let html = "";
     for (const w of ["before", "after"]) {
       const list = mine().filter(x => x.kind === kind && x.when === w);
       html += `<div class="cluster-h">${WHEN_LABEL[w]}<span class="n">${list.length}</span></div>`;
-      html += list.length ? `<div class="shot-grid">${list.map(x => `<button class="shot" data-s="${esc(x.id)}" data-photo-wrap><img data-photo="${esc(x.photo)}" alt=""><span>${esc(timeOf(x.at))}</span></button>`).join("")}</div>`
+      html += list.length ? `<div class="shot-grid">${list.map(x => `<button class="shot" data-s="${esc(x.id)}" data-photo-wrap><img data-photo="${esc(x.photo)}" alt=""><span>${x.shared ? "✓ " : ""}${esc(timeOf(x.at))}</span></button>`).join("")}</div>`
         : `<p class="muted small" style="margin:4px 0 0">No ${w} photos of ${kind === "display" ? "displays" : "aisles"} yet.</p>`;
     }
     if (mine().length) html += `<button class="btn block quiet" data-a="clear" style="margin-top:20px">Clear ${storeOf(slot) ? `store#${esc(storeOf(slot))}` : "this store"}'s photos</button>`;
@@ -3672,6 +3716,10 @@ function openGallery(startKind = baKind(), startSlot = baSlot()) {
     const b = e.target.closest("[data-slot]"); if (b) { slot = +b.dataset.slot; draw(); }
   };
   s.querySelector("#gal-seg").onclick = e => { const b = e.target.closest("button[data-k]"); if (b) { kind = b.dataset.k; draw(); } };
+  s.querySelector("#gal-team").onclick = e => {
+    const b = e.target.closest("[data-team]"); if (!b || b.disabled) return;
+    if (b.dataset.team === "send") sendToTeam(slot).then(ok => { if (ok) draw(); }); else openTeamPhotos(draw);
+  };
   s.querySelector("#gal-share").onclick = e => { const sh = e.target.closest("[data-share]"); if (sh && !sh.disabled) shareBatch(slot, sh.dataset.share); };
   s.querySelector("#gal-body").onclick = e => {
     const t = e.target.closest(".shot"); if (t) { const x = state.shots.find(y => y.id === t.dataset.s); if (x) openShot(x, draw); return; }
@@ -3797,15 +3845,79 @@ function openShot(x, onChange) {
     const pick = await menu("This photo", [
       { label: x.when === "before" ? "Move to After" : "Move to Before", value: "when" },
       { label: x.kind === "aisle" ? "Move to Display" : "Move to Aisle", value: "kind" },
+      { label: x.shared ? "Send to team again" : "Send to team", value: "send" },
       { label: "Delete photo", value: "delete", danger: true }]);
-    if (pick === "when") { x.when = x.when === "before" ? "after" : "before"; save(); head(); toast(`Moved to ${WHEN_LABEL[x.when]}`); }
-    else if (pick === "kind") { x.kind = x.kind === "aisle" ? "display" : "aisle"; save(); head(); toast(`Moved to ${KIND_LABEL[x.kind]}`); }
+    if (pick === "send") { await sendToTeam(x.slot, [x]); }
+    else if (pick === "when") { x.when = x.when === "before" ? "after" : "before"; if (x.shared) { x.pushed = 0; teamSoon(200); } save(); head(); toast(`Moved to ${WHEN_LABEL[x.when]}`); }
+    else if (pick === "kind") { x.kind = x.kind === "aisle" ? "display" : "aisle"; if (x.shared) { x.pushed = 0; teamSoon(200); } save(); head(); toast(`Moved to ${KIND_LABEL[x.kind]}`); }
     else if (pick === "delete") {
       const snap = snapshot();
       state.shots = state.shots.filter(y => y.id !== x.id); if (lastShotId === x.id) lastShotId = null;
       save(); close(); scheduleSweep(); toast("Photo deleted", snap);
     }
   };
+}
+
+// ---- Sending photos to the team, by hand ----
+// Nothing leaves this phone until a Send button is pressed. Sent photos go through the shared sync folder (see team.js) to everyone
+// with the same team key, who see them under "From team". `only` = just these photos (one picked photo can be sent again).
+const teamPhotosNew = () => state.received.filter(r => !r.seen).length;
+async function sendToTeam(slot, only) {
+  if (!teamKey()) { toast("Set a team key in More first."); return false; }
+  if (!uploadsEnabled()) { toast("Connect to the team network in More first."); return false; }
+  const list = only || state.shots.filter(x => x.slot === slot && !x.shared);
+  if (!list.length) { toast("Everything here is already sent"); return false; }
+  const who = storeOf(slot) ? `store#${esc(storeOf(slot))}` : "this store";
+  if (!(await confirmDialog(`Send ${list.length} photo${list.length === 1 ? "" : "s"} of ${who} to everyone on the team key <b>${esc(state.team.key)}</b>? They go through the shared GitHub repo, which anyone can read.`, { ok: "Send" }))) return false;
+  const now = Date.now(); for (const x of list) { x.shared = now; x.pushed = 0; }
+  save(); renderAll(); teamSoon(200);
+  toast(`Sending ${list.length} photo${list.length === 1 ? "" : "s"}…`);
+  return true;
+}
+// Hand one stored photo to the phone's share sheet (Save Image goes to Photos).
+async function savePhotoToPhone(photoId, name) {
+  const blob = await getPhoto(photoId).catch(() => null); if (!blob) return toast("This photo is missing");
+  const file = new File([blob], name, { type: "image/jpeg" });
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+  toast("Press and hold the photo, then choose Save to Photos");
+}
+// What teammates sent, grouped by person and store.
+function openTeamPhotos(onChange) {
+  const s = el(`<div class="sheet"><div class="handle"></div><h2>From the team</h2><div id="tp-body"></div><button class="btn primary block" data-a="close">Done</button></div>`);
+  const close = openLayer(s, { onClose: () => { if (onChange) onChange(); renderAll(); } });
+  const draw = () => {
+    const list = [...state.received].sort((a, b) => b.sent - a.sent), box = s.querySelector("#tp-body");
+    if (!list.length) { box.innerHTML = `<div class="empty"><p>Photos your teammates send show up here.</p></div>`; return; }
+    const groups = new Map(); for (const r of list) { const k = r.dev + "|" + r.store; (groups.get(k) || groups.set(k, []).get(k)).push(r); }
+    let html = "";
+    for (const rs of groups.values()) {
+      html += `<div class="cluster-h">${esc(rs[0].by || "Teammate")}${rs[0].store ? ` · store#${esc(rs[0].store)}` : ""}<span class="n">${rs.length}</span></div><div class="shot-grid">${rs.map(r => `<button class="shot" data-r="${esc(r.id)}" data-photo-wrap><img data-photo="${esc(r.photo)}" alt=""><span>${r.seen ? "" : "● "}${WHEN_LABEL[r.when]} · ${KIND_LABEL[r.kind]}</span></button>`).join("")}</div>`;
+    }
+    box.innerHTML = html + `<button class="btn block quiet" data-a="clearr" style="margin-top:20px">Clear received photos</button>`;
+    hydratePhotos(box);
+  };
+  s.querySelector("#tp-body").onclick = async e => {
+    const t = e.target.closest(".shot"); if (t) { const r = state.received.find(x => x.id === t.dataset.r); if (r) openReceived(r, draw); return; }
+    if (e.target.closest('[data-a="clearr"]') && await confirmDialog("Remove every photo teammates sent from this phone?", { ok: "Remove", danger: true })) {
+      const now = Date.now(); for (const r of state.received) state.team.hidden[r.id] = now;
+      state.received = []; save(); draw(); scheduleSweep(); renderAll();
+    }
+  };
+  s.querySelector('[data-a="close"]').onclick = close;
+  for (const r of state.received) r.seen = true;   // opening the list counts as seeing them
+  save(); renderAll(); draw();
+}
+function openReceived(r, onChange) {
+  const s = el(`<div class="sheet check-sheet shot-sheet"><div class="handle"></div><h2></h2>
+    <div class="zoom-stage"><img alt=""><span class="zoom-hint">Pinch to zoom</span></div>
+    <div class="row"><button class="btn sm grow" data-a="save">${icon("download")}Save to Photos</button><button class="btn sm grow quiet" data-a="remove">Remove</button></div>
+    <button class="btn primary block" data-a="close">Done</button></div>`);
+  const close = openLayer(s, { onClose: () => { if (onChange) onChange(); renderAll(); } });
+  s.querySelector("h2").textContent = `${r.by || "Teammate"}${r.store ? ` · #${r.store}` : ""} · ${WHEN_LABEL[r.when]} · ${KIND_LABEL[r.kind]}`;
+  const img = s.querySelector("img"); zoomStage(img, s.querySelector(".zoom-stage")); photoURL(r.photo).then(u => { img.src = u || ""; });
+  s.querySelector('[data-a="close"]').onclick = close;
+  s.querySelector('[data-a="save"]').onclick = () => savePhotoToPhone(r.photo, `${(r.by || "team").replace(/[^A-Za-z0-9-]/g, "")}_store${(r.store || "none").replace(/[^A-Za-z0-9-]/g, "")}_${WHEN_LABEL[r.when]}_${KIND_LABEL[r.kind]}.jpg`);
+  s.querySelector('[data-a="remove"]').onclick = () => { state.team.hidden[r.id] = Date.now(); state.received = state.received.filter(x => x !== r); save(); close(); scheduleSweep(); toast("Removed from this phone"); };
 }
 // ---------- Products: the brand + flavor combinations the list recognizes ----------
 // Size and pack don't matter here: they stay in the words you read. Edits apply to every size of a combination
@@ -3903,7 +4015,7 @@ function editVariation(v, { prefill = "" } = {}) {
   };
 }
 // The running count of releases since the project began (every pushed update that is not a phone's automatic sync). Add one with each push.
-const REVISION = 61;
+const REVISION = 62;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -3978,7 +4090,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelfie 1.1.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 1.2.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#team-key").onchange = e => teamSetKey(e.target.value);
