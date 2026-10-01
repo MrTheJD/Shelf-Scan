@@ -2296,6 +2296,104 @@ function wireSoundBtn() {
   document.querySelectorAll(".cam-sound").forEach(b => (b.onclick = () => { state.settings.beep = !shutterOn(); save(); renderSoundBtn(); if (shutterOn()) playShutter(); }));
   shutterLoad();   // decode it ahead of the first photo (it starts as soon as the phone allows sound)
 }
+// ---------- Backup on GitHub ----------
+// One backup file per person: data/backup-<name>.json, replaced every time that person backs up (so it never piles up).
+// It holds the product list, the settings, the team key and name, and the store numbers. It never holds the database key, and
+// the token that key unlocks is already in data/key.json (encrypted), so a public repo gives nothing away.
+// The Backup card in More shows every backup on GitHub in a list ("James - Oct 1 - backup 3"); backing up needs the connection
+// (the database key), restoring only needs a signal.
+const BK = { items: [], at: 0, loading: false, busy: false, error: "", sel: "" };
+const BK_SETTINGS = ["beep", "needKind", "captureKind", "baWhen", "baKind", "baSlot", "lens", "wordTiming"];
+const bkSlug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "phone";
+const bkWho = () => (state.team.name || "").trim() || myName();
+const bkLabel = b => `${b.name} - ${new Date(b.at).toLocaleDateString([], { month: "short", day: "numeric" })} - backup ${b.n}`;
+const bkToken = async () => { if (!uploadsEnabled()) return null; try { return await getToken(); } catch (e) { return null; } };
+
+function bkSnapshot(n) {
+  const settings = {}; for (const k of BK_SETTINGS) settings[k] = state.settings[k];
+  return { v: 1, name: bkWho(), at: Date.now(), n, settings,
+    team: { key: state.team.key || "", name: state.team.name || "", repo: state.team.repo || "" },
+    stores: state.stores, storeName: state.storeName || "",
+    products: state.products.map(shareable), deleted: { products: state.deleted.products } };
+}
+
+async function backupNow() {
+  if (BK.busy) return;
+  if (!uploadsEnabled()) return toast("Connect to the team network first. Backing up needs the database key.");
+  if (!navigator.onLine) return toast("No signal. Try again when you have service.");
+  BK.busy = true; fillBackupPick();
+  try {
+    const token = await getToken(), path = `data/backup-${bkSlug(bkWho())}.json`;
+    let saved = null;
+    for (let attempt = 0; attempt < 3 && !saved; attempt++) {
+      const { text, sha } = await readRepoFile(path, token);
+      let prevN = 0; try { prevN = (JSON.parse(text) || {}).n || 0; } catch (e) {}
+      const n = prevN + 1, snap = bkSnapshot(n);   // how many times this name has backed up: it is kept in their own file
+      try { await writeRepoFile(path, JSON.stringify(snap), sha, token, `Shelf Scan: backup (${snap.name})`); saved = snap; }
+      catch (e) { if (e.conflict) continue; throw e; }   // the same file changed at the same moment: read it again
+    }
+    if (!saved) throw new Error("GitHub was busy. Try again.");
+    toast(`Backed up: ${bkLabel(saved)}`);
+    BK.sel = `backup-${bkSlug(saved.name)}.json`;
+    await loadBackups(true);
+  } catch (e) { if (e.auth) cachedToken = null; toast(e.auth ? "The saved key no longer works. Connect again." : (e.message || "Couldn't back up")); }
+  BK.busy = false; fillBackupPick();
+}
+
+// Every backup on GitHub, newest first. Refreshed whenever More opens (at most every 30 seconds) and after a backup.
+async function loadBackups(force = false) {
+  if (BK.loading) return;
+  if (!force && BK.at && Date.now() - BK.at < 30000) { fillBackupPick(); return; }
+  BK.loading = true; BK.error = ""; fillBackupPick();
+  try {
+    const token = await bkToken();
+    const headers = { Accept: "application/vnd.github+json" }; if (token) headers.Authorization = `Bearer ${token}`;
+    const r = await fetch(`${apiBase}/contents/data?ref=${GITHUB.branch}&t=${Date.now()}`, { headers, cache: "no-store" });
+    if (!r.ok) throw new Error(r.status === 403 ? "GitHub is limiting requests. Try again in a minute." : `GitHub said ${r.status}`);
+    const files = (await r.json()).filter(f => f.type === "file" && /^backup-.*\.json$/.test(f.name)), items = [];
+    await Promise.all(files.map(async f => {
+      try { const { text } = await readRepoFile(`data/${f.name}`, token), j = JSON.parse(text); if (j && j.v === 1 && Array.isArray(j.products)) items.push({ file: f.name, name: j.name || "Someone", at: j.at || 0, n: j.n || 1 }); } catch (e) { /* skip a file that isn't a backup */ }
+    }));
+    items.sort((a, b) => b.at - a.at); BK.items = items; BK.at = Date.now();
+    if (!items.some(x => x.file === BK.sel)) BK.sel = items[0] ? items[0].file : "";
+  } catch (e) { BK.error = e.message || "Couldn't load the backups"; }
+  BK.loading = false; fillBackupPick();
+}
+function fillBackupPick() {
+  const sel = document.getElementById("backup-pick"); if (!sel) return;
+  sel.innerHTML = BK.items.length ? BK.items.map(b => `<option value="${esc(b.file)}"${b.file === BK.sel ? " selected" : ""}>${esc(bkLabel(b))}</option>`).join("")
+    : `<option value="">${BK.loading ? "Loading…" : "No backups yet"}</option>`;
+  const st = document.getElementById("backup-status"); if (st) st.textContent = BK.error || (BK.loading ? "Checking GitHub…" : BK.items.length ? `${BK.items.length} backup${BK.items.length === 1 ? "" : "s"} on GitHub` : "");
+  const go = document.getElementById("btn-backup"); if (go) { go.disabled = BK.busy || !uploadsEnabled(); go.lastChild.textContent = BK.busy ? "Backing up…" : "Back up now"; }
+  const rs = document.getElementById("btn-restore"); if (rs) rs.disabled = !BK.sel || BK.busy;
+}
+
+async function restoreSelected() {
+  const it = BK.items.find(x => x.file === BK.sel); if (!it) return toast("Pick a backup first");
+  const hasShots = state.shots.length > 0;
+  if (!(await confirmDialog(`Restore <b>${esc(bkLabel(it))}</b>? This replaces this phone's product list, settings, team key and name${hasShots ? "" : " and store numbers"}. Your notes and photos stay. The database key isn't part of a backup.`, { ok: "Restore", danger: true }))) return;
+  let data;
+  try { const { text } = await readRepoFile(`data/${it.file}`, await bkToken()); data = JSON.parse(text); } catch (e) { return toast("Couldn't read that backup"); }
+  if (!data || !Array.isArray(data.products)) return toast("That isn't a Shelf Scan backup");
+  const snap = snapshot(), prev = state, next = JSON.parse(snap);
+  next.products = data.products.map(p => ({ ...p }));
+  next.deleted = { products: (data.deleted && data.deleted.products) || {} };
+  for (const k of BK_SETTINGS) if (data.settings && data.settings[k] !== undefined) next.settings[k] = data.settings[k];
+  if (data.team) { next.team.name = data.team.name || ""; next.team.repo = data.team.repo || ""; }
+  if (!hasShots && Array.isArray(data.stores)) { next.stores = data.stores; next.storeName = data.storeName || ""; }   // photos are filed by slot, so store numbers only change when there are none
+  state = next; migrate();
+  // The restored list becomes the shared one: whatever differs from before is re-marked as just changed, so it uploads and wins.
+  const now = Date.now(), same = (a, b) => JSON.stringify(a) === JSON.stringify(b), strip = p => p && { ...shareable(p), updated: 0 };
+  const pm = Object.fromEntries(prev.products.map(p => [p.id, p])), nm = Object.fromEntries(state.products.map(p => [p.id, p]));
+  for (const id of new Set([...Object.keys(pm), ...Object.keys(nm)])) {
+    if (same(strip(pm[id]), strip(nm[id]))) continue;
+    if (nm[id]) { nm[id].updated = now; delete state.deleted.products[id]; } else state.deleted.products[id] = now;
+    state.outbox.products[id] = 1;
+  }
+  if (data.team && (data.team.key || "") !== (prev.team.key || "")) teamSetKey(data.team.key || "");
+  save(); renderAll(); scheduleUpload();
+  toast("Backup restored", snap);
+}
 // ============================================================
 // Team sync (Beta 6): phones that use the same team key share one Needed list through the GitHub repo.
 // ============================================================
@@ -3594,7 +3692,7 @@ function editVariation(v, { prefill = "" } = {}) {
   };
 }
 // The running count of releases since the project began (every pushed update that is not a phone's automatic sync). Add one with each push.
-const REVISION = 56;
+const REVISION = 57;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -3638,11 +3736,14 @@ function renderMore() {
     </div>
     <div class="card">
       <h3>Backup</h3>
-      <p class="hint">Copies the product list and the written notes. Photos and recordings can't be included.</p>
+      <p class="hint">Saves the product list, settings, team key and name, and store numbers to GitHub. Everyone gets one backup under their own name, and each new backup replaces their last one. The database key is never saved.</p>
       <div class="stack" style="margin-top:10px">
-        <button class="btn block" id="btn-export">Copy backup</button>
-        <textarea class="field" id="backup-text" rows="3" placeholder="Paste a backup here to restore" style="font:16px ui-monospace,Menlo,monospace"></textarea>
-        <button class="btn block" id="btn-restore">Restore from pasted backup</button>
+        <button class="btn block primary" id="btn-backup">${icon("upload")}Back up now</button>
+        ${on ? "" : `<p class="hint">Connect to the team network above to back up. Restoring works without it.</p>`}
+        <label class="f" for="backup-pick" style="margin-bottom:0">Backups on GitHub</label>
+        <select class="field" id="backup-pick" aria-label="Backups on GitHub"></select>
+        <p class="hint" id="backup-status" style="margin:0"></p>
+        <button class="btn block" id="btn-restore">Restore the selected backup</button>
       </div>
     </div>
     <div class="card">
@@ -3657,7 +3758,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 7.3 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan Beta 7.4 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#team-key").onchange = e => teamSetKey(e.target.value);
@@ -3669,8 +3770,10 @@ function renderMore() {
     if (!(await confirmDialog("Delete the speech model? Notes already read keep their lists. New notes wait until you download it again.", { ok: "Delete", danger: true }))) return;
     await deleteModels(); toast("Speech model deleted");
   };
-  v.querySelector("#btn-export").onclick = exportBackup;
-  v.querySelector("#btn-restore").onclick = () => restoreBackupText(v.querySelector("#backup-text").value);
+  v.querySelector("#btn-backup").onclick = backupNow;
+  v.querySelector("#btn-restore").onclick = restoreSelected;
+  v.querySelector("#backup-pick").onchange = e => { BK.sel = e.target.value; fillBackupPick(); };
+  fillBackupPick(); loadBackups();
   const en = v.querySelector("#btn-enable"); if (en) en.onclick = enableUploads;
   const dis = v.querySelector("#btn-disable"); if (dis) dis.onclick = async () => {
     if (!(await confirmDialog("Disconnect this phone from the team network? Your notes and products stay on this phone, but nothing is shared until you connect again.", { ok: "Disconnect" }))) return;
