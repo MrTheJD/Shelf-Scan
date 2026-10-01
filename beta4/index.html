@@ -1,0 +1,3103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#F40009">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Shelf Scan B4">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>Shelf Scan Beta 4</title>
+<style>
+/* Layout: one-thumb phone tool. Coke-red header, warm-grey ground, white surfaces, fixed icon tab bar. */
+:root {
+  --red: #F40009; --red-press: #C80008; --on-red: #FFFFFF;
+  --bg: #F4F2F0; --surface: #FFFFFF; --surface-2: #FAF9F8; --text: #111111; --muted: #6F6A66; --faint: #A39E99;
+  --line: #E8E4E0; --chip: #EEEAE6;
+  --ok: #1E8E3E; --ok-soft: #E3F4E8; --warn: #A85F00; --warn-soft: #FFF1DC;
+  --scrim: rgba(12, 8, 8, .48); --toast: #111111; --on-toast: #FFFFFF; --toast-action: #FF6B70;
+  --cam: #000000; --cam-edge: #000000; --on-cam: #D9D6D3; --img-bg: #FFFFFF; --thumb-ink: #FFFFFF; --thumb-fallback: #8A8480;
+  --shadow: 0 1px 2px rgba(40, 20, 20, .06), 0 2px 8px rgba(40, 20, 20, .05);
+  --sheet-shadow: 0 -8px 30px rgba(0, 0, 0, .18);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --r: 14px;
+  /* Motion: a gentle spring (~3% overshoot) and a soft ease-out. */
+  --spring: cubic-bezier(.2, .9, .3, 1.04);
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+}
+@supports (transition-timing-function: linear(0, 1)) {
+  :root { --spring: linear(0, 0.034 1.6%, 0.132 3.4%, 0.285 5.6%, 0.498 8.4%, 0.702 11.6%, 0.846 14.8%, 0.943 18.2%,
+    1.003 21.9%, 1.03 25.7%, 1.036 29.4%, 1.028 34.2%, 1.012 40.9%, 1.001 49.5%, 0.997 60%, 1); }
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #000000; --surface: #141312; --surface-2: #1B1A19; --text: #F5F3F1; --muted: #9C9692; --faint: #6B6662;
+    --line: #262423; --chip: #221F1E; --cam: #0B0B0B; --cam-edge: #2A2827;
+    --ok: #4CC36E; --ok-soft: #13301D; --warn: #F2A742; --warn-soft: #3A2A10;
+    --shadow: none; --sheet-shadow: 0 -8px 30px rgba(0, 0, 0, .6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #000000; --surface: #141312; --surface-2: #1B1A19; --text: #F5F3F1; --muted: #9C9692; --faint: #6B6662;
+  --line: #262423; --chip: #221F1E; --cam: #0B0B0B; --cam-edge: #2A2827;
+  --ok: #4CC36E; --ok-soft: #13301D; --warn: #F2A742; --warn-soft: #3A2A10;
+  --shadow: none; --sheet-shadow: 0 -8px 30px rgba(0, 0, 0, .6);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* Feel like an app: no double-tap zoom, no rubber-band scrolling past the top or bottom. */
+html, body { margin: 0; min-height: 100%; overscroll-behavior: none; touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+/* iPhone home-screen apps size the window short of the real screen when a page doesn't fill it, which lifts
+   the fixed tab bar off the bottom (seen on Scan and List; long pages like Products were fine). Making every
+   page at least the full screen height keeps the tab bar on the bottom edge. */
+html, body { min-height: 100vh; min-height: 100lvh; }
+body {
+  background: var(--bg); color: var(--text); font: 16px/1.4 var(--font);
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+input, select, textarea { font: inherit; color: var(--text); }
+svg.i { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+
+/* Header */
+header.top {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--red); color: var(--on-red);
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+header.top h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+.tagline { font-size: 10px; font-weight: 700; letter-spacing: .12em; border: 1.5px solid rgba(255,255,255,.75); border-radius: 5px; padding: 1px 5px; }
+header.top .spacer { flex: 1; }
+.store { font-size: 13px; font-weight: 600; opacity: .92; }
+.sync-ind { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; background: none; border: 0; color: var(--on-red); padding: 4px; }
+.sync-ind svg.i { width: 20px; height: 20px; }
+
+main { padding: 12px 16px 8px; max-width: 640px; margin: 0 auto; }
+.view { display: none; }
+.view.active { display: block; }
+.view > * + * { margin-top: 12px; }
+#view-scan > * + * { margin-top: 10px; }
+#view-scan > .hint { margin-top: 6px; }
+
+/* Tab bar */
+nav.tabs {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
+  display: flex; background: var(--surface); border-top: 1px solid var(--line);
+  padding: 4px 0 env(safe-area-inset-bottom, 0px);
+}
+nav.tabs button {
+  flex: 1; border: 0; background: none; padding: 6px 0 8px; font-size: 11px; font-weight: 600; color: var(--faint);
+  display: flex; flex-direction: column; align-items: center; gap: 3px; position: relative;
+}
+nav.tabs button.active { color: var(--red); }
+.badge {
+  position: absolute; top: 2px; left: calc(50% + 6px); min-width: 18px; height: 18px; border-radius: 9px;
+  background: var(--red); color: var(--on-red); font-size: 11px; font-weight: 700; line-height: 18px; padding: 0 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Building blocks */
+.card { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); padding: 14px; }
+.card h3 { margin: 0 0 4px; font-size: 16px; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+.center { text-align: center; }
+.row { display: flex; align-items: center; gap: 10px; }
+.grow { flex: 1; min-width: 0; }
+.stack > * + * { margin-top: 8px; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--text);
+  border-radius: 12px; padding: 11px 16px; font-weight: 650; font-size: 15px; text-decoration: none;
+  transition: transform .08s ease, background .15s ease;
+}
+.btn:active { transform: scale(.98); }
+.btn.primary { background: var(--red); border-color: var(--red); color: var(--on-red); }
+.btn.primary:active { background: var(--red-press); }
+.btn.quiet { background: var(--chip); border-color: transparent; }
+.btn.danger { color: var(--red); }
+.btn.block { display: flex; width: 100%; }
+.btn.sm { padding: 7px 12px; font-size: 14px; border-radius: 10px; }
+.btn:disabled { opacity: .5; }
+.icon-btn { width: 40px; height: 40px; padding: 0; border-radius: 12px; }
+
+.seg { display: flex; background: var(--chip); border-radius: 12px; padding: 3px; }
+.seg button { flex: 1; border: 0; background: none; padding: 9px 4px; border-radius: 10px; font-weight: 650; font-size: 14px; color: var(--muted); }
+.seg button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+
+input.field, select.field, textarea.field {
+  width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); outline: none;
+}
+input.field:focus, textarea.field:focus, select.field:focus { border-color: var(--red); }
+.search-wrap { position: relative; }
+.search-wrap svg.i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--faint); width: 18px; height: 18px; }
+.search-wrap input.field { padding-left: 38px; }
+label.f { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; }
+
+.chips { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; border: 0; background: var(--chip); color: var(--text); border-radius: 999px; padding: 7px 13px; font-size: 13px; font-weight: 600; }
+.chip.active { background: var(--text); color: var(--bg); }
+
+/* Scan */
+/* Sized for iPhone 13 (390×844 pt): a square viewfinder ~358pt wide fills the space between
+   the mode switch and the action buttons, and the whole scan screen fits without scrolling. */
+.camera { position: relative; background: var(--cam); border-radius: 18px; overflow: hidden; border: 1px solid var(--cam-edge);
+  aspect-ratio: 1 / 1; max-height: 52dvh; margin-inline: auto; }
+.camera.live { max-height: none; touch-action: none; }   /* pinch goes to the camera, not the page */
+/* The feed fills the square and is cropped evenly from the center, whatever shape the camera sends. */
+/* !important: the scanner library sets position:relative inline on start, which collapsed the box to 0 height. */
+#reader { position: absolute !important; inset: 0 !important; width: auto !important; height: auto !important; overflow: hidden; padding: 0 !important; border: 0 !important; }
+#reader video { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block;
+  object-fit: cover; object-position: center; transform: scale(var(--view-zoom, 1)); transform-origin: center; }
+#reader #qr-shaded-region, #reader img[alt="Info icon"], #reader img[alt="Camera based scan"] { display: none !important; }
+.camera .cam-off { height: 100%; justify-content: center; }
+/* Our own centered scan frame (corner brackets). */
+.viewfinder { position: absolute; inset: 14%; z-index: 2; pointer-events: none;
+  background:
+    linear-gradient(#fff, #fff) left top / 26px 3px no-repeat, linear-gradient(#fff, #fff) left top / 3px 26px no-repeat,
+    linear-gradient(#fff, #fff) right top / 26px 3px no-repeat, linear-gradient(#fff, #fff) right top / 3px 26px no-repeat,
+    linear-gradient(#fff, #fff) left bottom / 26px 3px no-repeat, linear-gradient(#fff, #fff) left bottom / 3px 26px no-repeat,
+    linear-gradient(#fff, #fff) right bottom / 26px 3px no-repeat, linear-gradient(#fff, #fff) right bottom / 3px 26px no-repeat;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,.5)); opacity: .9; }
+.zoom-pill { position: absolute; left: 50%; bottom: 12px; z-index: 3; transform: translateX(-50%); padding: 4px 11px; border-radius: 999px;
+  background: rgba(0,0,0,.55); color: #fff; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;
+  opacity: 0; transition: opacity .25s ease; pointer-events: none; }
+.zoom-pill.show { opacity: 1; }
+/* Shelf-photo shutter over the live camera */
+.shot-ui { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; animation: fade .25s ease both; }
+.shot-ui > * { pointer-events: auto; }
+.shot-top { display: flex; align-items: flex-start; gap: 8px; margin: 10px; padding: 9px 12px; border-radius: 14px; background: rgba(0,0,0,.6); color: #fff; font-size: 14px; }
+.shot-top span { opacity: .8; }
+.shot-hint { font-size: 13px; opacity: .85; margin-top: 2px; }
+.shot-link { border: 0; background: none; color: #fff; text-decoration: underline; font-size: 13px; padding: 2px 0; white-space: nowrap; }
+.shot-bottom { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 14px 14px; }
+.shot-cancel { justify-self: start; border: 0; border-radius: 999px; padding: 9px 14px; background: rgba(0,0,0,.55); color: #fff; font-weight: 650; font-size: 14px; }
+.shutter { width: 74px; height: 74px; border-radius: 50%; border: 4px solid #fff; background: rgba(255,255,255,.18); padding: 5px; transition: transform .45s var(--spring); }
+.shutter span { display: block; width: 100%; height: 100%; border-radius: 50%; background: #fff; }
+.shutter:active { transform: scale(.9); transition-duration: .1s; }
+.camera.shooting .viewfinder { display: none; }
+.camera.flash::after { content: ""; position: absolute; inset: 0; z-index: 5; background: #fff; animation: fadeOut .35s ease forwards; pointer-events: none; }
+/* Shelf photo in list rows */
+.shelf-thumb { position: relative; width: 56px; height: 56px; flex: none; border: 0; padding: 0; border-radius: 12px; overflow: hidden; background: var(--chip); }
+.shelf-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.shelf-thumb.missing::after { content: "No photo"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--muted); }
+.shelf-thumb .count { position: absolute; right: 3px; bottom: 3px; min-width: 16px; height: 16px; border-radius: 8px; background: rgba(0,0,0,.65); color: #fff; font-size: 10px; font-weight: 800; line-height: 16px; text-align: center; }
+.item.done .shelf-thumb { opacity: .45; }
+/* Full-screen photo viewer */
+.viewer-overlay { padding: 0 !important; background: #000 !important; }
+.viewer { position: fixed; inset: 0; display: flex; flex-direction: column; background: #000; color: #fff; animation: fade .25s ease both; }
+.viewer-top { display: flex; align-items: center; gap: 10px; padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px; }
+.viewer-top .small { opacity: .75; }
+.viewer-x { width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255,255,255,.14); color: #fff; display: flex; align-items: center; justify-content: center; }
+.viewer-stage { flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; touch-action: none; }
+.viewer-stage img { max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center; transition: transform .08s linear; }
+.viewer-dots { display: flex; justify-content: center; gap: 8px; min-height: 20px; }
+.viewer-dots .dot { width: 8px; height: 8px; border-radius: 50%; border: 0; padding: 0; background: rgba(255,255,255,.35); }
+.viewer-dots .dot.on { background: #fff; }
+.viewer-actions { display: flex; gap: 10px; justify-content: center; padding: 10px 16px calc(14px + env(safe-area-inset-bottom, 0px)); }
+.viewer-actions .btn { flex: 1; max-width: 220px; }
+.cam-off { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 34px 16px; color: var(--on-cam); text-align: center; }
+.cam-off svg.i { width: 34px; height: 34px; opacity: .7; }
+.cam-off p { margin: 0; font-size: 13px; max-width: 30ch; }
+.cam-stop { position: absolute; top: 10px; right: 10px; z-index: 3; width: 34px; height: 34px; border-radius: 50%; border: 0; background: rgba(0,0,0,.55); color: #fff; display: flex; align-items: center; justify-content: center; }
+.cam-stop svg.i { width: 18px; height: 18px; }
+.actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.actions .btn { flex-direction: column; gap: 4px; padding: 10px 6px; font-size: 13px; }
+.actions.photo-first { grid-template-columns: 1fr 1fr; }
+.actions.photo-first .photo-btn { grid-column: 1 / -1; flex-direction: row; background: var(--red); border-color: var(--red); color: var(--on-red); font-size: 16px; padding: 15px; }
+
+.banner { display: flex; align-items: center; gap: 8px; background: var(--warn-soft); color: var(--text); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+.banner .grow { font-weight: 650; }
+
+.last { display: flex; align-items: center; gap: 12px; }
+.last .label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.last .code { font-size: 12px; color: var(--muted); word-break: break-all; }
+
+/* Lists */
+.list { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
+.item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; position: relative; min-height: 60px; }
+.item + .item::before { content: ""; position: absolute; top: 0; left: 66px; right: 0; border-top: 1px solid var(--line); }
+.item.tap { cursor: pointer; }
+.item.tap:active { background: var(--surface-2); }
+.item .name { font-weight: 650; font-size: 15.5px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; line-height: 1.25; }
+.item .sub { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.group-h { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 20px 4px 8px; }
+.view > .group-h:first-child { margin-top: 4px; }
+
+.thumb {
+  width: 44px; height: 44px; border-radius: 10px; flex: none; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: var(--thumb-ink);
+  background: var(--thumb-fallback); letter-spacing: -.02em;
+}
+.thumb img { width: 100%; height: 100%; object-fit: contain; background: var(--img-bg); }
+.thumb.lg { width: 76px; height: 76px; font-size: 22px; border-radius: 14px; }
+.thumb.art { padding: 3px; }
+.thumb.art svg { display: block; filter: drop-shadow(0 1px 1px rgba(0,0,0,.18)); }
+
+.check {
+  width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); background: none; flex: none; padding: 0;
+  display: flex; align-items: center; justify-content: center; color: var(--on-red); transition: background .15s ease, border-color .15s ease;
+}
+.check svg.i { width: 16px; height: 16px; stroke-width: 3; }
+.check.on { background: var(--red); border-color: var(--red); }
+.item.done .name { text-decoration: line-through; text-decoration-thickness: 2px; color: var(--muted); }
+.item.done .thumb { opacity: .45; }
+.qty-tap {
+  border: 0; background: var(--chip); border-radius: 12px; min-width: 50px; min-height: 44px; padding: 5px 8px; flex: none;
+  display: flex; flex-direction: column; align-items: center; line-height: 1.1;
+}
+.qty-tap b { font-size: 21px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.qty-tap span { font-size: 11px; color: var(--muted); font-weight: 600; }
+.item.done .qty-tap { opacity: .5; }
+.more-btn { border: 0; background: none; color: var(--faint); width: 26px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; padding: 0; }
+
+.pill { font-size: 11px; font-weight: 700; letter-spacing: .04em; padding: 3px 8px; border-radius: 999px; background: var(--chip); color: var(--muted); white-space: nowrap; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+
+.list-head { display: flex; align-items: baseline; gap: 10px; }
+.list-head h2 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
+.empty { text-align: center; padding: 48px 16px; color: var(--muted); }
+.empty svg.i { width: 40px; height: 40px; color: var(--faint); }
+.empty h3 { color: var(--text); margin: 12px 0 4px; }
+.empty p { margin: 0; font-size: 14px; }
+
+/* Sheets & dialogs */
+.overlay { position: fixed; inset: 0; background: var(--scrim); z-index: 50; display: flex; align-items: flex-end; justify-content: center; animation: fade .28s var(--ease-out) both; }
+.overlay.closing { animation: fadeOut .24s ease forwards; pointer-events: none; }
+.sheet {
+  background: var(--bg); width: 100%; max-width: 640px; overflow-y: auto; overscroll-behavior: contain;
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 12px);
+  /* Extra 40px below the fold so the spring's small overshoot never shows a gap at the bottom. */
+  border-radius: 22px 22px 0 0; padding: 10px 16px calc(58px + env(safe-area-inset-bottom, 0px)); margin-bottom: -40px;
+  box-shadow: var(--sheet-shadow); animation: sheetIn .6s var(--spring) both;
+}
+.overlay.closing .sheet { animation: sheetOut .26s cubic-bezier(.4, 0, .9, .6) forwards; }
+.sheet > * + * { margin-top: 10px; }
+.sheet h2 { margin: 4px 0 0; font-size: 20px; font-weight: 800; letter-spacing: -.01em; }
+.sheet .handle { width: 38px; height: 5px; background: var(--line); border-radius: 3px; margin: 0 auto 8px; }
+.overlay.center { align-items: center; padding: 16px; }
+.dialog { background: var(--surface); border-radius: 22px; padding: 20px; width: 100%; max-width: 380px; animation: dialogIn .5s var(--spring) both; }
+.overlay.closing .dialog { animation: dialogOut .2s ease forwards; }
+.dialog p { margin: 0 0 16px; line-height: 1.45; }
+.dialog .btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.menu-list { background: var(--surface); border-radius: var(--r); overflow: hidden; }
+.menu-list button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 15px 16px; font-size: 16px; font-weight: 550; }
+.menu-list button + button { border-top: 1px solid var(--line); }
+.menu-list button.danger { color: var(--red); }
+.qty { display: flex; align-items: center; gap: 8px; }
+.qty button { width: 52px; height: 52px; border-radius: 14px; border: 0; background: var(--chip); font-size: 26px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.qty input { width: 80px; text-align: center; font-size: 28px; font-weight: 800; padding: 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); font-variant-numeric: tabular-nums; }
+.qty .unit { color: var(--muted); font-weight: 600; }
+#toast {
+  position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  background: var(--toast); color: var(--on-toast); border-radius: 16px; padding: 11px 16px; z-index: 100;
+  display: flex; align-items: center; gap: 14px; max-width: calc(100% - 32px); font-size: 14px; font-weight: 550; box-shadow: 0 6px 24px rgba(0,0,0,.25);
+  opacity: 0; transform: translate(-50%, 18px) scale(.94); pointer-events: none;
+  transition: opacity .2s ease, transform .5s var(--spring);
+}
+#toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); pointer-events: auto; }
+.update-dialog { text-align: center; }
+.update-dialog h3 { margin: 10px 0 6px; font-size: 19px; font-weight: 800; }
+.update-dialog p { color: var(--muted); font-size: 15px; }
+.update-dialog .btns { justify-content: stretch; }
+.update-dialog .btns .btn { flex: 1; }
+.update-icon { width: 52px; height: 52px; margin: 0 auto; border-radius: 16px; background: var(--red); color: var(--on-red);
+  display: flex; align-items: center; justify-content: center; }
+.update-icon svg.i { width: 26px; height: 26px; }
+
+/* ---------- Motion ----------
+   Fluid, spring-based movement in the spirit of iOS 26: controls glide between states,
+   sheets spring into place, presses give a soft squeeze and settle back. Small overshoot,
+   short durations, nothing bouncy or translucent. All of it turns off with Reduce Motion. */
+.seg { position: relative; isolation: isolate; }
+nav.tabs { isolation: isolate; }   /* stays position: fixed (set above); fixed already anchors the sliding pill */
+.seg button, nav.tabs button { position: relative; z-index: 1; transition: color .25s ease; }
+/* Sliding selection pill (position set from JS on the element as --ind-x / --ind-w). */
+.seg.has-ind::before, nav.tabs.has-ind::before {
+  content: ""; position: absolute; z-index: 0; left: 0; width: var(--ind-w, 0);
+  transform: translateX(var(--ind-x, 0)); pointer-events: none;
+  transition: transform .55s var(--spring), width .55s var(--spring);
+}
+.seg.has-ind::before { top: 3px; bottom: 3px; background: var(--surface); border-radius: 10px; box-shadow: var(--shadow); }
+.seg.has-ind button.active { background: none; box-shadow: none; }
+nav.tabs.has-ind::before { top: 4px; height: 50px; background: var(--chip); border-radius: 18px; }
+.seg.no-anim::before, nav.tabs.no-anim::before { transition: none; }
+/* While the keyboard is open, the tab bar gets out of the way (like native iOS apps) instead of riding on top of it. */
+nav.tabs { transition: transform .35s var(--ease-out), visibility 0s; }
+body.kb-open nav.tabs { transform: translateY(110%); visibility: hidden; transition: transform .2s ease, visibility 0s .2s; }
+/* Every tab keeps the same icon and label position; the active one is shown by color and the pill only. */
+nav.tabs button { height: 54px; justify-content: center; line-height: 1.2; }
+nav.tabs button svg.i { display: block; transform: none; }
+
+/* Press: quick squeeze, springy release. */
+.btn, .chip, .qty-tap, .check, .more-btn, .qty button, .menu-list button, nav.tabs button, .seg button, .cam-stop, .sync-ind {
+  transition: transform .5s var(--spring), background-color .2s ease, color .2s ease, border-color .2s ease, opacity .2s ease;
+}
+.btn:active, .chip:active, .qty-tap:active, .qty button:active, .more-btn:active, .cam-stop:active, .sync-ind:active { transform: scale(.94); transition-duration: .12s; transition-timing-function: ease-out; }
+.check:active { transform: scale(.88); transition-duration: .12s; }
+.seg button:active { transform: scale(.95); transition-duration: .12s; }
+nav.tabs button, nav.tabs button:active { transform: none; }   /* no squeeze: Safari can leave tapped tabs looking pressed */
+.menu-list button:active { background: var(--chip); transform: scale(.985); transition-duration: .1s; }
+.item.tap { transition: transform .5s var(--spring), background-color .2s ease; }
+.item.tap:active { transform: scale(.985); transition-duration: .12s; }
+
+/* Things arriving. */
+.view.active { animation: viewIn .42s var(--ease-out) both; }
+.item.enter { animation: rowIn .55s var(--spring) both; }
+.banner { animation: bannerIn .5s var(--spring) both; }
+.check.on.pop svg.i { animation: checkIn .45s var(--spring) both; }   /* only when just crossed off */
+.item .name, .item .thumb { transition: color .3s ease, opacity .3s ease; }
+.last.refresh > * { animation: lastIn .45s var(--spring) both; }
+#reader video { animation: fade .45s ease both; }
+.bump { animation: bump .45s var(--spring); }
+
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { to { opacity: 0; } }
+@keyframes sheetIn { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes sheetOut { to { transform: translateY(100%); } }
+@keyframes dialogIn { from { transform: scale(.9); opacity: 0; } 40% { opacity: 1; } to { transform: none; opacity: 1; } }
+@keyframes dialogOut { to { transform: scale(.95); opacity: 0; } }
+@keyframes viewIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes rowIn { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes bannerIn { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
+@keyframes checkIn { from { transform: scale(.3); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes lastIn { from { opacity: .3; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes bump { 0% { transform: scale(1); } 35% { transform: scale(1.12); } 100% { transform: scale(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+#toast button { background: none; border: 0; color: var(--toast-action); font-weight: 800; letter-spacing: .04em; padding: 0; }
+
+/* More */
+.set-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+.set-row + .set-row { border-top: 1px solid var(--line); }
+.status-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--faint); flex: none; }
+.status-dot.ok { background: var(--ok); } .status-dot.warn { background: var(--warn); } .status-dot.bad { background: var(--red); }
+details.owner summary { cursor: pointer; font-weight: 650; color: var(--muted); font-size: 14px; list-style: none; }
+details.owner summary::-webkit-details-marker { display: none; }
+code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+.foot { text-align: center; color: var(--faint); font-size: 12px; margin: 20px 0 8px; }
+
+/* ---------- Beta 4: voice notes ---------- */
+.camera { aspect-ratio: auto; width: 100%; height: 40dvh; }
+.camera video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; animation: fade .45s ease both; }
+.camera .cam-off, .camera .cam-wait { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px; color: var(--on-cam); text-align: center; }
+.camera .cam-wait { font-size: 14px; }
+.camera .cam-off p { margin: 0; font-size: 13px; max-width: 30ch; }
+.camera .cam-off .btn.quiet { background: rgba(255,255,255,.14); color: #fff; }
+#view-capture > * + * { margin-top: 10px; }
+.cap-bar { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.shutter-big { width: 82px; height: 82px; border-radius: 50%; border: 4px solid var(--red); background: var(--surface); padding: 5px; transition: transform .45s var(--spring); }
+.shutter-big span { display: block; width: 100%; height: 100%; border-radius: 50%; background: var(--red); }
+.shutter-big:active { transform: scale(.9); transition-duration: .1s; }
+.shutter-big:disabled { opacity: .4; }
+.cap-hint { font-size: 13px; color: var(--muted); text-align: center; margin: 0; }
+.cap-links { display: flex; gap: 8px; }
+.cap-links .btn { flex: 1; }
+.queue-line { font-size: 13px; color: var(--muted); text-align: center; margin: 0; }
+.queue-line.busy::before, .spin { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; border: 2px solid var(--line); border-top-color: var(--red); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.card.last, #last-note { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.last-text { font-size: 14px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+#last-note svg.i { color: var(--faint); }
+.banner.warn { background: var(--warn-soft); }
+.banner.busy { background: var(--chip); }
+.banner svg.i { color: var(--warn); }
+
+/* Recorder sheet */
+.rec-sheet { text-align: center; }
+.rec-sheet h2 { text-align: center; }
+.rec-meter { height: 12px; border-radius: 6px; background: var(--chip); overflow: hidden; margin: 14px 4px 0; }
+.rec-meter i { display: block; height: 100%; width: 100%; background: var(--red); transform: scaleX(0); transform-origin: left; transition: transform .08s linear; }
+.rec-time { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.rec-done { padding: 16px; font-size: 18px; }
+.rec-alt .btn { font-size: 14px; }
+
+/* Needed list */
+.need .check { margin-right: 0; }
+.jump-btn { border: 0; background: var(--chip); color: var(--muted); width: 40px; height: 44px; border-radius: 12px; flex: none; display: flex; align-items: center; justify-content: center; padding: 0; transition: transform .5s var(--spring), background-color .2s ease; }
+.jump-btn:active { transform: scale(.92); transition-duration: .12s; }
+.item.need { padding-right: 10px; }
+.item.done .jump-btn { opacity: .5; }
+.pill.warn { white-space: nowrap; }
+.src-row { padding: 12px; }
+.src-text { font-size: 14px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.src-row .qty button { width: 44px; height: 44px; font-size: 22px; }
+.src-row .qty input { width: 64px; font-size: 22px; padding: 6px; }
+
+/* Notes */
+.note-photo { position: relative; width: 84px; height: 84px; flex: none; border: 0; padding: 0; border-radius: 14px; overflow: hidden; background: var(--chip); }
+.note-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.note-photo.missing::after, .shelf-thumb.missing::after { content: "No photo"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--muted); }
+.note-photo .count { position: absolute; right: 4px; bottom: 4px; min-width: 18px; height: 18px; border-radius: 9px; background: rgba(0,0,0,.65); color: #fff; font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; }
+.card.note { padding: 12px; transition: box-shadow .3s ease, background-color .4s ease; }
+.card.note > * + * { margin-top: 10px; }
+.transcript { font-size: 15px; line-height: 1.35; color: var(--text); background: var(--surface-2); border-radius: 12px; padding: 10px 12px; cursor: text; }
+.note-items { border-radius: 12px; overflow: hidden; background: var(--surface-2); }
+.note-items .item { min-height: 56px; }
+.note-items .item + .item::before { left: 66px; }
+.note-item .qty-tap { pointer-events: none; }
+@keyframes flashNote { 0% { box-shadow: 0 0 0 3px var(--red); } 70% { box-shadow: 0 0 0 3px var(--red); } 100% { box-shadow: var(--shadow); } }
+@keyframes flashItem { 0%, 70% { background: var(--warn-soft); } 100% { background: transparent; } }
+.card.note.flash { animation: flashNote 2.2s ease both; }
+.note-item.flash { animation: flashItem 2.2s ease both; }
+
+/* More: model download */
+.mprog { height: 10px; border-radius: 5px; background: var(--chip); overflow: hidden; margin-top: 12px; }
+.mprog i { display: block; height: 100%; width: 0; background: var(--red); transition: width .3s ease; }
+
+.item.need .sub, .note-item .sub { white-space: normal; overflow: visible; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Shelf Scan</h1><span class="tagline">BETA 4</span>
+  <span class="spacer"></span>
+  <span class="store" id="hdr-store"></span>
+  <button class="sync-ind" id="sync-ind" hidden></button>
+</header>
+
+<main>
+  <!-- CAPTURE -->
+  <section class="view active" id="view-capture">
+    <div class="camera" id="camera">
+      <video id="cam-video" playsinline muted autoplay hidden></video>
+      <div class="cam-wait" id="cam-starting" hidden>Starting the camera…</div>
+      <div class="cam-off" id="cam-off">
+        <span data-icon="camera"></span>
+        <button class="btn primary" id="btn-cam-start">Start camera</button>
+        <p id="cam-error"></p>
+      </div>
+      <button class="cam-stop" id="btn-cam-stop" aria-label="Turn the camera off" hidden><span data-icon="x"></span></button>
+    </div>
+    <div class="cap-bar">
+      <button class="shutter-big" id="btn-shutter" aria-label="Take a photo, then say what you need"><span></span></button>
+      <p class="cap-hint">Snap the shelf, then say what you need.</p>
+    </div>
+    <div id="model-banner" hidden></div>
+    <p class="queue-line" id="queue-line" hidden></p>
+    <div class="cap-links">
+      <button class="btn quiet" id="btn-type"><span data-icon="note"></span>Type a note</button>
+      <button class="btn quiet" id="btn-phonecam"><span data-icon="image"></span>Phone camera</button>
+    </div>
+    <div class="card last" id="last-note" hidden></div>
+  </section>
+
+  <section class="view" id="view-needed"></section>
+  <section class="view" id="view-notes"></section>
+  <section class="view" id="view-products"></section>
+  <section class="view" id="view-more"></section>
+</main>
+
+<nav class="tabs" id="tabs">
+  <button data-view="capture" class="active"><span data-icon="camera"></span>Capture</button>
+  <button data-view="needed"><span data-icon="list"></span>Needed<span class="badge" id="need-badge" hidden></span></button>
+  <button data-view="notes"><span data-icon="note"></span>Notes</button>
+  <button data-view="products"><span data-icon="grid"></span>Products</button>
+  <button data-view="more"><span data-icon="sliders"></span>More</button>
+</nav>
+
+<div id="toast"><span id="toast-msg"></span><button id="toast-undo">UNDO</button></div>
+<div id="layer"></div>
+
+<script>
+"use strict";
+/* ============================================================
+   Shelf Scan Beta 4: voice notes
+   Snap a shelf, say what you need. Speech is turned into text and then into a short
+   list by small language models that run on the phone itself.
+   Everything stays on this phone except the shared product list (data/shared.json in the GitHub repo).
+   ============================================================ */
+
+const STORAGE_KEY = "shelfscan.b4";
+const PASS_KEY = "shelfscan.b4.uploadPass";   // kept outside state so backups never carry it
+const STALE_DAYS = 45;
+const GITHUB = { owner: "MrTheJD", repo: "Shelf-Scan", branch: "main", dataPath: "data/shared.json", keyPath: "data/key.json" };
+const UPLOAD_DELAY_MS = 4000;
+
+// ---------- Icons ----------
+const ICONS = {
+  scan: "M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10",
+  list: "M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01",
+  grid: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
+  tag: "M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8zM7.5 7.5h.01",
+  sliders: "M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6",
+  camera: "M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+  image: "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21",
+  search: "M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35",
+  hash: "M4 9h16M4 15h16M10 3L8 21M16 3l-2 18",
+  check: "M20 6L9 17l-5-5",
+  x: "M18 6L6 18M6 6l12 12",
+  dots: "M12 12h.01M19 12h.01M5 12h.01",
+  plus: "M12 5v14M5 12h14",
+  cloud: "M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z",
+  upload: "M16 16l-4-4-4 4M12 12v9M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3",
+  cloudoff: "M22.61 16.95A5 5 0 0 0 18 10h-1.26a8 8 0 0 0-7.05-6M5 5a8 8 0 0 0 4 15h9a5 5 0 0 0 1.7-.3M1 1l22 22",
+  refresh: "M21 12a9 9 0 0 1-15.5 6.2L3 16M3 12a9 9 0 0 1 15.5-6.2L21 8M21 3v5h-5M3 21v-5h5",
+  mic: "M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3zM19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8",
+  play: "M6 4l14 8-14 8z",
+  note: "M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8M8 17h5",
+  jump: "M15 10l5 5-5 5M4 4v7a4 4 0 0 0 4 4h12",
+  download: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3",
+  warn: "M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01",
+  box: "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96L12 12.01l8.73-5.05M12 22.08V12",
+};
+function icon(name, cls = "") {
+  return `<svg class="i ${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONS[name]}"/></svg>`;
+}
+function fillIcons(root = document) {
+  root.querySelectorAll("[data-icon]").forEach(s => { s.outerHTML = icon(s.dataset.icon); });
+}
+
+// ---------- Starter product list ----------
+// Brand/flavor/format combos only. No UPCs are pre-filled: barcodes are
+// learned the first time they're scanned. Verify against the bottler order guide.
+const CATEGORY_ORDER = [
+  "12oz Cans", "Mini Cans", "16oz Cans", "20oz", "Bottle Multipacks", "2L & 1L", "Glass",
+  "Water", "Sports Drinks", "Tea & Juice", "Energy", "Other"
+];
+const FORMATS = {
+  c12_12:  { size: "12oz can",    pack: "12pk",   category: "12oz Cans",         unit: "pack" },
+  c12_24:  { size: "12oz can",    pack: "24pk",   category: "12oz Cans",         unit: "pack" },
+  c12_35:  { size: "12oz can",    pack: "35pk",   category: "12oz Cans",         unit: "pack" },
+  c12_8:   { size: "12oz can",    pack: "8pk",    category: "12oz Cans",         unit: "pack" },
+  c75_10:  { size: "7.5oz can",   pack: "10pk",   category: "Mini Cans",         unit: "pack" },
+  b20:     { size: "20oz bottle", pack: "Single", category: "20oz",              unit: "bottle" },
+  b20_6:   { size: "20oz bottle", pack: "6pk",    category: "Bottle Multipacks", unit: "pack" },
+  b169_6:  { size: "16.9oz bottle", pack: "6pk",  category: "Bottle Multipacks", unit: "pack" },
+  b169_24: { size: "16.9oz bottle", pack: "24pk", category: "Bottle Multipacks", unit: "pack" },
+  b12_8:   { size: "12oz bottle", pack: "8pk",    category: "Bottle Multipacks", unit: "pack" },
+  l2:      { size: "2L bottle",   pack: "Single", category: "2L & 1L",           unit: "bottle" },
+  l1:      { size: "1L bottle",   pack: "Single", category: "2L & 1L",           unit: "bottle" },
+  l125:    { size: "1.25L bottle", pack: "Single", category: "2L & 1L",          unit: "bottle" },
+  g12_4:   { size: "12oz glass",  pack: "4pk",    category: "Glass",             unit: "pack" },
+  g8_6:    { size: "8oz glass",   pack: "6pk",    category: "Glass",             unit: "pack" },
+  g12_12:  { size: "12oz glass",  pack: "12pk",   category: "Glass",             unit: "pack" },
+  w20:     { size: "20oz bottle", pack: "Single", category: "Water",             unit: "bottle" },
+  w1l:     { size: "1L bottle",   pack: "Single", category: "Water",             unit: "bottle" },
+  w15l:    { size: "1.5L bottle", pack: "Single", category: "Water",             unit: "bottle" },
+  w169_24: { size: "16.9oz bottle", pack: "24pk", category: "Water",             unit: "pack" },
+  w169_6:  { size: "16.9oz bottle", pack: "6pk",  category: "Water",             unit: "pack" },
+  s28:     { size: "28oz bottle", pack: "Single", category: "Sports Drinks",     unit: "bottle" },
+  s20_8:   { size: "20oz bottle", pack: "8pk",    category: "Sports Drinks",     unit: "pack" },
+  s16:     { size: "16oz bottle", pack: "Single", category: "Sports Drinks",     unit: "bottle" },
+  vw20:    { size: "20oz bottle", pack: "Single", category: "Sports Drinks",     unit: "bottle" },
+  t185:    { size: "18.5oz bottle", pack: "Single", category: "Tea & Juice",     unit: "bottle" },
+  t185_6:  { size: "18.5oz bottle", pack: "6pk",  category: "Tea & Juice",       unit: "pack" },
+  t23:     { size: "23oz can",    pack: "Single", category: "Tea & Juice",       unit: "can" },
+  j12_12:  { size: "12oz can",    pack: "12pk",   category: "Tea & Juice",       unit: "pack" },
+  j20:     { size: "20oz bottle", pack: "Single", category: "Tea & Juice",       unit: "bottle" },
+  e16:     { size: "16oz can",    pack: "Single", category: "Energy",            unit: "can" },
+  e16_4:   { size: "16oz can",    pack: "4pk",    category: "Energy",            unit: "pack" },
+  // Added in Beta 3 (cross-checked against a bottler order sheet by package)
+  c12_6:   { size: "12oz can",    pack: "6pk",    category: "12oz Cans",         unit: "pack" },
+  c75_6:   { size: "7.5oz can",   pack: "6pk",    category: "Mini Cans",         unit: "pack" },
+  b169_8:  { size: "16.9oz bottle", pack: "8pk",  category: "Bottle Multipacks", unit: "pack" },
+  g12:     { size: "12oz glass",  pack: "Single", category: "Glass",             unit: "bottle" },
+  w237:    { size: "23.7oz bottle", pack: "Single", category: "Water",           unit: "bottle" },
+  w169_12: { size: "16.9oz bottle", pack: "12pk", category: "Water",             unit: "pack" },
+  w12_8:   { size: "12oz can",    pack: "8pk",    category: "Water",             unit: "pack" },
+  s20:     { size: "20oz bottle", pack: "Single", category: "Sports Drinks",     unit: "bottle" },
+  s12_8:   { size: "12oz bottle", pack: "8pk",    category: "Sports Drinks",     unit: "pack" },
+  s12_6:   { size: "12oz bottle", pack: "6pk",    category: "Sports Drinks",     unit: "pack" },
+  s1l:     { size: "1L bottle",   pack: "Single", category: "Sports Drinks",     unit: "bottle" },
+  s700:    { size: "700ml bottle", pack: "Single", category: "Sports Drinks",    unit: "bottle" },
+  vw169_6: { size: "16.9oz bottle", pack: "6pk",  category: "Sports Drinks",     unit: "pack" },
+  cp14:    { size: "14oz bottle", pack: "Single", category: "Sports Drinks",     unit: "bottle" },
+  cp14_4:  { size: "14oz bottle", pack: "4pk",    category: "Sports Drinks",     unit: "pack" },
+  t52:     { size: "52oz bottle", pack: "Single", category: "Tea & Juice",       unit: "bottle" },
+  t169_6:  { size: "16.9oz bottle", pack: "6pk",  category: "Tea & Juice",       unit: "pack" },
+  t20:     { size: "20oz bottle", pack: "Single", category: "Tea & Juice",       unit: "bottle" },
+  t1l:     { size: "1L bottle",   pack: "Single", category: "Tea & Juice",       unit: "bottle" },
+  j2l:     { size: "2L bottle",   pack: "Single", category: "Tea & Juice",       unit: "bottle" },
+  j16:     { size: "16oz bottle", pack: "Single", category: "Tea & Juice",       unit: "bottle" },
+  e12_12:  { size: "12oz can",    pack: "12pk",   category: "Energy",            unit: "pack" },
+  e16_15:  { size: "16oz can",    pack: "15pk",   category: "Energy",            unit: "pack" },
+  e24:     { size: "24oz can",    pack: "Single", category: "Energy",            unit: "can" },
+  c12_1:   { size: "12oz can",    pack: "Single", category: "12oz Cans",         unit: "can" },
+  w12_4:   { size: "12oz can",    pack: "4pk",    category: "Water",             unit: "pack" },
+  t24:     { size: "24oz bottle", pack: "Single", category: "Tea & Juice",       unit: "bottle" },
+  hc6_8:   { size: "6oz carton",  pack: "8pk",    category: "Tea & Juice",       unit: "pack" },
+  // Added after checking every product's "Available Sizes" on coca-cola.com
+  b8_6:    { size: "8oz bottle",  pack: "6pk",    category: "Bottle Multipacks", unit: "pack" },
+  b132_6:  { size: "13.2oz bottle", pack: "6pk",  category: "Bottle Multipacks", unit: "pack" },
+  b10_6:   { size: "10oz bottle", pack: "6pk",    category: "Bottle Multipacks", unit: "pack" },
+  c16:     { size: "16oz can",    pack: "Single", category: "16oz Cans",         unit: "can" },
+  b24:     { size: "24oz bottle", pack: "Single", category: "20oz",              unit: "bottle" },
+  l3:      { size: "3L bottle",   pack: "Single", category: "2L & 1L",           unit: "bottle" },
+  g169:    { size: "16.9oz glass", pack: "Single", category: "Glass",            unit: "bottle" },
+  g65_6:   { size: "6.5oz glass", pack: "6pk",    category: "Glass",             unit: "pack" },
+  g254:    { size: "25.4oz glass", pack: "Single", category: "Glass",            unit: "bottle" },
+  w10_6:   { size: "10oz bottle", pack: "6pk",    category: "Water",             unit: "pack" },
+  w12b_8:  { size: "12oz bottle", pack: "8pk",    category: "Water",             unit: "pack" },
+  a16:     { size: "16oz can",    pack: "Single", category: "Water",             unit: "can" },
+  t12_12:  { size: "12oz can",    pack: "12pk",   category: "Tea & Juice",       unit: "pack" },
+  t16c:    { size: "16oz can",    pack: "Single", category: "Tea & Juice",       unit: "can" },
+  j169_6:  { size: "16.9oz bottle", pack: "6pk",  category: "Tea & Juice",       unit: "pack" },
+};
+// Sizes below follow each product's "Available Sizes" on coca-cola.com (checked Sept 2026).
+// A container size maps to the packs Walmart carries it in: 7.5oz cans → 6pk & 10pk,
+// 8oz & 13.2oz bottles → 6pk, 12oz cans → 12pk (+8/24/35pk for the big brands),
+// 16oz cans → single, 16.9oz bottles → 6pk (+24pk core), 20oz → single, 1–3L → single.
+const MINI = ["c75_6","c75_10"];
+const SODA_CORE = ["c12_8","c12_12","c12_24","c12_35", ...MINI, "b8_6","b169_6","b169_24","b20","b20_6","b12_8","l1","l125","l2"];
+const SEED_LINES = [
+  // Coca-Cola
+  ["Coca-Cola", ["Original", "Zero Sugar"], [...SODA_CORE, "c16"]],
+  ["Coca-Cola", ["Original", "Zero Sugar"], ["g8_6"]],
+  ["Coca-Cola", ["Caffeine-Free", "Caffeine-Free Zero Sugar"], ["c12_12","c12_24","l2","b20"]],
+  ["Coca-Cola", ["Original (Mexican)"], ["g12","g12_4","g169"]],
+  ["Coca-Cola", ["Cherry"], ["c12_12","c12_24", ...MINI, "b169_6","l2","b20"]],
+  ["Coca-Cola", ["Cherry Zero Sugar"], ["c12_12","c12_24", ...MINI, "b169_6","b20","l2"]],
+  ["Coca-Cola", ["Vanilla"], ["c12_12","c12_24","b169_6","b20","l2"]],
+  ["Coca-Cola", ["Vanilla Zero Sugar"], ["c12_12","c12_24","b20","l2"]],
+  ["Coca-Cola", ["Cherry Float", "Zero Sugar Cherry Float"], ["c12_12","b20"]],
+  ["Coca-Cola", ["Georgia Peach", "California Raspberry"], ["c12_12"]],
+  ["Diet Coke", [""], [...SODA_CORE, "b132_6"]],
+  ["Diet Coke", ["Caffeine-Free"], ["c12_12","c12_24","l2","b20"]],
+  ["Diet Coke", ["Cherry"], ["c12_12","b20"]],
+  // Sprite
+  ["Sprite", [""], [...SODA_CORE, "b132_6","l3"]],
+  ["Sprite", ["Zero Sugar"], ["c12_12","c12_24", ...MINI, "b169_6","b20","l2"]],
+  ["Sprite", ["(Mexican)"], ["g12_4","g169"]],
+  ["Sprite", ["Chill"], ["c12_1","c12_12","c75_6","b20"]],
+  ["Sprite", ["Chill Zero Sugar", "Chill Mango Citrus", "+ Tea Zero Sugar", "+ Tea Peach"], ["c12_1","c12_12"]],
+  ["Sprite", ["+ Tea"], ["c12_1","c12_12","b20"]],
+  ["Sprite", ["Cherry", "Lymonade"], ["c12_12","b20"]],
+  ["Sprite", ["Tropical Mix"], ["b20"]],
+  // Fanta
+  ["Fanta", ["Orange"], ["c12_8","c12_12","c12_24", ...MINI, "b132_6","c16","b169_6","b20","l2"]],
+  ["Fanta", ["Zero Sugar Orange"], ["c12_12","b20","l2"]],
+  ["Fanta", ["Strawberry", "Pineapple"], ["c12_12","c16","b20","l2"]],
+  ["Fanta", ["Grape"], ["c12_12","b20","l2"]],
+  ["Fanta", ["Berry"], ["c12_12","b20"]],
+  ["Fanta", ["Peach", "Piña Colada"], ["b20"]],
+  ["Fanta", ["Orange (Mexican)"], ["g12_4","g169"]],
+  // Fresca, Barq's, Mello Yello, Mr. Pibb, Seagram's
+  ["Fresca", ["Grapefruit Citrus"], ["c12_8","c12_12","b169_6","b20","l2"]],
+  ["Fresca", ["Black Cherry Citrus", "Peach Citrus"], ["c12_8","c12_12"]],
+  ["Barq's", ["Root Beer"], ["c12_12","c12_24", ...MINI, "b169_6","b20","l2"]],
+  ["Barq's", ["Zero Sugar Root Beer"], ["c12_12","b169_6","b20","l2"]],
+  ["Barq's", ["Red Creme Soda", "Creme Soda French Vanilla"], ["c12_12"]],
+  ["Mello Yello", [""], ["c12_12","c12_24","b169_6","b20","b24","l2"]],
+  ["Mello Yello", ["Zero Sugar"], ["c12_12","b20"]],
+  ["Mr. Pibb", [""], ["c12_12","b20","l2"]],
+  ["Mr. Pibb", ["Zero Sugar", "Thrillin' Vanilla", "Punchin' Peach"], ["c12_12","b20"]],
+  ["Seagram's", ["Ginger Ale"], ["c12_12","c12_24", ...MINI, "b10_6","b169_6","b20","l1","l125","l2"]],
+  ["Seagram's", ["Zero Sugar Ginger Ale"], ["c12_12", ...MINI, "b20","l2","l1"]],
+  ["Seagram's", ["Club Soda", "Tonic"], ["c12_12", ...MINI, "b10_6","l1"]],
+  ["Seagram's", ["Seltzer Water"], ["c12_12","b20"]],
+  ["Simply Pop", ["Raspberry", "Strawberry", "Pineapple Mango", "Fruit Punch", "Citrus Punch"], ["c12_1"]],
+  // Dr Pepper — only some Coca-Cola bottlers carry it. Retire these if yours doesn't.
+  ["Dr Pepper", [""], ["c12_12","c12_24", ...MINI, "b169_6","b20","l1","l2"]],
+  ["Dr Pepper", ["Zero Sugar"], ["c12_12","c12_24","b20","l2"]],
+  ["Diet Dr Pepper", [""], ["c12_12","c12_24","b20","l2"]],
+  ["Dr Pepper", ["Cherry", "Cream Soda"], ["c12_12","b20","l2"]],
+  // Water
+  ["Dasani", ["Purified Water"], ["w10_6","w12b_8","w169_6","w169_12","w169_24","w20","w1l","w15l"]],
+  ["smartwater", ["", "Alkaline with Antioxidant"], ["w20","w237","w1l","w15l","w12_8"]],
+  ["smartwater", [""], ["w169_6"]],
+  ["Topo Chico", ["Mineral Water"], ["g65_6","g12","g12_4","g12_12","g254","w12_8"]],
+  ["Topo Chico", ["Twist of Lime", "Grapefruit"], ["g12_4","w12_8"]],
+  ["Topo Chico Sabores", ["Passionfruit", "Raspberry with Lemon", "Lime with Mint", "Tangerine with Ginger", "Tropical Mango", "Blueberry with Hibiscus"], ["w12_8"]],
+  ["AHA", ["Lime Watermelon", "Orange Grapefruit", "Blueberry Pomegranate", "Peach Honey", "Blackberry Lemon", "Pineapple Passionfruit"], ["w12_8"]],
+  ["AHA", ["Lime Watermelon", "Blueberry Pomegranate"], ["a16"]],
+  // Sports & enhanced water
+  ["Powerade", ["Mountain Berry Blast", "Fruit Punch", "Lemon Lime", "Grape", "Orange", "Strawberry Lemonade", "Glacier Cherry"], ["s28","s20","s20_8"]],
+  ["Powerade", ["Mountain Berry Blast", "Fruit Punch"], ["s12_8"]],
+  ["Powerade", ["Zero Mixed Berry", "Zero Grape", "Zero Fruit Punch", "Zero Lemon Lime", "Zero Orange", "Zero Strawberry Lemonade"], ["s28","s20_8"]],
+  ["BODYARMOR", ["Strawberry Banana", "Fruit Punch", "Tropical Punch", "Blue Raspberry", "Orange Mango", "Mixed Berry", "Watermelon Strawberry", "Cherry Lime", "Kiwi Strawberry"], ["s16","s28"]],
+  ["BODYARMOR", ["Strawberry Banana", "Fruit Punch"], ["s12_8"]],
+  ["BODYARMOR LYTE", ["Peach Mango", "Blueberry Pomegranate", "Berry Punch", "Tropical Coconut"], ["s16"]],
+  ["BODYARMOR", ["SportWater"], ["s700","s1l"]],
+  ["vitaminwater", ["XXX", "Power-C", "Focus", "Energy", "Essential", "Elevate", "Refresh"], ["vw20"]],
+  ["vitaminwater", ["XXX", "Power-C", "Elevate"], ["vw169_6"]],
+  ["vitaminwater", ["Zero Rise", "Zero Squeezed", "Zero XXX", "Zero Power-C", "Zero Re-hydrate", "Zero Shine"], ["vw20"]],
+  ["vitaminwater", ["Zero Rise", "Zero Squeezed", "Zero XXX", "Zero Re-hydrate"], ["vw169_6"]],
+  ["Core Power", ["Chocolate", "Vanilla", "Strawberry Banana"], ["cp14","cp14_4"]],
+  ["Core Power Elite", ["Chocolate", "Vanilla"], ["cp14"]],
+  // Tea, lemonade & juice
+  ["Gold Peak", ["Sweet Tea", "Unsweetened Tea"], ["t185","t185_6","t52"]],
+  ["Gold Peak", ["Diet Tea", "Raspberry Tea", "Green Tea", "Lemonade Tea", "Slightly Sweet Tea"], ["t185"]],
+  ["Peace Tea", ["Just Peachy", "Razzleberry", "Sno-Berry", "Caddy Shack"], ["t16c","t23"]],
+  ["Peace Tea", ["Just Peachy", "Razzleberry", "Caddy Shack"], ["t12_12"]],
+  ["FUZE", ["Lemon + Sweet Tea", "Pineapple + Mango", "Strawberry + Peach", "Watermelon + Lime", "Blueberry + Lemonade"], ["t24","t1l"]],
+  ["FUZE", ["Lemon + Sweet Tea"], ["t12_12"]],
+  ["Minute Maid", ["Lemonade"], ["j12_12", ...MINI, "j169_6","j20","j2l"]],
+  ["Minute Maid", ["Fruit Punch"], ["j12_12","j169_6","j20","j2l"]],
+  ["Minute Maid", ["Pink Lemonade", "Blue Raspberry"], ["j12_12","j20","j2l"]],
+  ["Minute Maid", ["Zero Sugar Lemonade"], ["j12_12","j20"]],
+  ["Minute Maid", ["Peach"], ["j20","j2l"]],
+  ["Minute Maid", ["Tropical Punch", "Berry Punch", "Watermelon Punch", "Kiwi Strawberry", "Pineapple Burst"], ["j20"]],
+  ["Hubert's", ["Lemonade", "Strawberry Guava", "Blackberry Basil", "Tangerine Passionfruit", "Lavender Blueberry Mint", "Pomegranate Limeade"], ["j16"]],
+  ["Hi-C", ["Flashin' Fruit Punch", "Orange Lavaburst", "Torrential Tropical Punch", "Boppin' Strawberry", "Grabbin' Grape", "Strawberry Kiwi Kraze"], ["hc6_8"]],
+  // Energy (Monster family is distributed by Coca-Cola bottlers)
+  ["Monster Energy", ["Original", "Zero Ultra", "Ultra Paradise", "Ultra Violet", "Ultra Red", "Ultra Blue", "Ultra Sunrise", "Lo-Carb", "Mango Loco", "Pipeline Punch", "Pacific Punch", "Rehab Tea + Lemonade"], ["e16"]],
+  ["Monster Energy", ["Original", "Zero Ultra", "Lo-Carb"], ["e16_4","e16_15","e24"]],
+  ["Monster Energy", ["Ultra Paradise", "Ultra Violet", "Mango Loco"], ["e16_4"]],
+  ["Monster Energy", ["Java Mean Bean"], ["e16"]],
+  ["Reign", ["Melon Mania", "Razzle Berry", "Orange Dreamsicle"], ["e16"]],
+  ["NOS", ["Original", "Grape"], ["e16"]],
+  ["Full Throttle", ["Original"], ["e16"]],
+];
+// Products from earlier catalogs that are no longer made. Hidden automatically unless someone has linked them.
+const DISCONTINUED = ["vitaminwater-revive-20oz-bottle-single",
+  // Sizes coca-cola.com no longer lists for these flavors
+  "fanta-peach-12oz-can-12pk", "fanta-peach-2l-bottle-single", "fanta-berry-2l-bottle-single"];
+const BRAND_COLORS = {
+  "Coca-Cola": "#F40009", "Diet Coke": "#8C8F93", "Sprite": "#00843D", "Fanta": "#F58220",
+  "Fresca": "#5E9E47", "Barq's": "#6B3E26", "Mello Yello": "#8DAE1B", "Mr. Pibb": "#7A1B2A", "Simply Pop": "#E4572E",
+  "Topo Chico Sabores": "#C7852B", "Hi-C": "#E03A3E",
+  "Seagram's": "#1D4F91", "Dr Pepper": "#711F25", "Diet Dr Pepper": "#9A9FA5", "Dasani": "#1F7FD1", "smartwater": "#4A90C2", "Topo Chico": "#B8921F",
+  "AHA": "#0E8F9A", "Powerade": "#0057B8", "BODYARMOR": "#D6002A", "BODYARMOR LYTE": "#E0588A", "vitaminwater": "#7B3FA0",
+  "Core Power": "#00205B", "Core Power Elite": "#111B3C",
+  "Gold Peak": "#A87B0A", "Peace Tea": "#D14F86", "FUZE": "#E35205", "Minute Maid": "#D9A400", "Hubert's": "#C99700",
+  "Monster Energy": "#1E1E1E", "Reign": "#5B2BB5", "NOS": "#0055A5", "Full Throttle": "#3A3A3A",
+};
+
+function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
+
+// Products Coca-Cola renamed. The new name is shown, but the product keeps the id it was
+// created with, so shelf tags and barcodes already linked to it stay linked.
+const RENAMED = {
+  "Mr. Pibb|": "Pibb Xtra|",
+  "Barq's|Zero Sugar Root Beer": "Barq's|Diet Root Beer",
+  "Seagram's|Zero Sugar Ginger Ale": "Seagram's|Diet Ginger Ale",
+  "Peace Tea|Just Peachy": "Peace Tea|Georgia Peach",
+  "smartwater|Alkaline with Antioxidant": "smartwater|Alkaline",
+  "Sprite|Zero Sugar": "Sprite|Zero",
+  "Mello Yello|Zero Sugar": "Mello Yello|Zero",
+  "Fanta|Zero Sugar Orange": "Fanta|Orange Zero",
+};
+// SEED_BARCODES:BEGIN (generated by .claude/usda/bake.js from USDA FoodData Central Branded Foods, Apr 2026)
+const SEED_BARCODES = {
+  "barq-s-diet-root-beer-12oz-can-12pk": ["049000031089","049000023992"],
+  "barq-s-diet-root-beer-20oz-bottle-single": ["049000024012"],
+  "barq-s-diet-root-beer-2l-bottle-single": ["049000051247"],
+  "barq-s-root-beer-16-9oz-bottle-6pk": ["049000025637"],
+  "barq-s-root-beer-20oz-bottle-single": ["049000023923"],
+  "barq-s-root-beer-2l-bottle-single": ["049000050233"],
+  "bodyarmor-cherry-lime-16oz-bottle-single": ["810113830209"],
+  "bodyarmor-fruit-punch-16oz-bottle-single": ["858176002409","858176002133"],
+  "bodyarmor-lyte-berry-punch-16oz-bottle-single": ["858176002904"],
+  "bodyarmor-lyte-blueberry-pomegranate-16oz-bottle-single": ["858176002508"],
+  "bodyarmor-lyte-peach-mango-16oz-bottle-single": ["858176002416","858176002270"],
+  "bodyarmor-lyte-tropical-coconut-16oz-bottle-single": ["858176002966"],
+  "bodyarmor-mixed-berry-16oz-bottle-single": ["858176002089"],
+  "bodyarmor-orange-mango-16oz-bottle-single": ["858176002386","858176002058"],
+  "bodyarmor-strawberry-banana-16oz-bottle-single": ["858176002393","858176002065"],
+  "bodyarmor-tropical-punch-16oz-bottle-single": ["858176002171"],
+  "bodyarmor-watermelon-strawberry-16oz-bottle-single": ["858176002423"],
+  "coca-cola-caffeine-free-2l-bottle-single": ["049000050127"],
+  "coca-cola-caffeine-free-zero-sugar-2l-bottle-single": ["049000060911"],
+  "coca-cola-cherry-16-9oz-bottle-6pk": ["049000075960"],
+  "coca-cola-cherry-20oz-bottle-single": ["049000018011"],
+  "coca-cola-cherry-2l-bottle-single": ["049000050165"],
+  "coca-cola-cherry-7-5oz-can-10pk": ["049000074772"],
+  "coca-cola-cherry-zero-sugar-2l-bottle-single": ["049000051995"],
+  "coca-cola-original-1-25l-bottle-single": ["049000055375"],
+  "coca-cola-original-12oz-bottle-8pk": ["049000005486"],
+  "coca-cola-original-12oz-can-12pk": ["049000028904"],
+  "coca-cola-original-12oz-can-24pk": ["049000025675","049000012781"],
+  "coca-cola-original-12oz-can-35pk": ["049000058468"],
+  "coca-cola-original-16-9oz-bottle-24pk": ["049000035551","049000030587"],
+  "coca-cola-original-16-9oz-bottle-6pk": ["049000024685"],
+  "coca-cola-original-16oz-can-single": ["049000053418"],
+  "coca-cola-original-1l-bottle-single": ["049000005226"],
+  "coca-cola-original-20oz-bottle-single": ["049000000443"],
+  "coca-cola-original-2l-bottle-single": ["049000050103"],
+  "coca-cola-original-7-5oz-can-10pk": ["049000067217","049000552096"],
+  "coca-cola-original-7-5oz-can-6pk": ["049000061017"],
+  "coca-cola-original-8oz-glass-6pk": ["049000018349","049000069044","049000035179"],
+  "coca-cola-original-mexican-12oz-glass-single": ["049000004632"],
+  "coca-cola-original-mexican-16-9oz-glass-single": ["049000047790"],
+  "coca-cola-vanilla-2l-bottle-single": ["049000067286"],
+  "coca-cola-zero-sugar-1-25l-bottle-single": ["049000055412"],
+  "coca-cola-zero-sugar-12oz-can-24pk": ["049000042849","049000043006"],
+  "coca-cola-zero-sugar-1l-bottle-single": ["049000044362"],
+  "coca-cola-zero-sugar-20oz-bottle-single": ["049000040869"],
+  "coca-cola-zero-sugar-2l-bottle-single": ["049000050141"],
+  "coca-cola-zero-sugar-7-5oz-can-6pk": ["049000061048"],
+  "core-power-chocolate-14oz-bottle-single": ["811620022217","811620021951"],
+  "core-power-vanilla-14oz-bottle-single": ["811620021968"],
+  "dasani-purified-water-1-5l-bottle-single": ["049000026573"],
+  "dasani-purified-water-1l-bottle-single": ["049000026566"],
+  "diet-coke-1-25l-bottle-single": ["049000055399"],
+  "diet-coke-12oz-bottle-8pk": ["049000005943"],
+  "diet-coke-12oz-can-12pk": ["049000028911"],
+  "diet-coke-12oz-can-24pk": ["049000046571","049000010633"],
+  "diet-coke-12oz-can-35pk": ["049000058475"],
+  "diet-coke-16-9oz-bottle-24pk": ["049000035575"],
+  "diet-coke-16-9oz-bottle-6pk": ["049000024692"],
+  "diet-coke-1l-bottle-single": ["04952400"],
+  "diet-coke-20oz-bottle-single": ["049000000450","049000048841"],
+  "diet-coke-2l-bottle-single": ["049000050110","04966306"],
+  "diet-coke-7-5oz-can-10pk": ["049000067224"],
+  "diet-coke-7-5oz-can-6pk": ["049000061055"],
+  "diet-coke-caffeine-free-12oz-can-24pk": ["049000048797"],
+  "diet-coke-caffeine-free-20oz-bottle-single": ["049000000467"],
+  "diet-coke-caffeine-free-2l-bottle-single": ["049000050134"],
+  "diet-coke-cherry-12oz-can-12pk": ["049000031041"],
+  "dr-pepper-cream-soda-20oz-bottle-single": ["078000033519"],
+  "dr-pepper-cream-soda-2l-bottle-single": ["078000035520"],
+  "fanta-berry-12oz-can-12pk": ["049000067750"],
+  "fanta-berry-20oz-bottle-single": ["049000067736"],
+  "fanta-grape-12oz-can-12pk": ["049000030747"],
+  "fanta-grape-20oz-bottle-single": ["049000026276"],
+  "fanta-grape-2l-bottle-single": ["049000050240"],
+  "fanta-orange-12oz-can-12pk": ["049000030730","049000028164"],
+  "fanta-orange-12oz-can-24pk": ["049000056365","049000030693"],
+  "fanta-orange-20oz-bottle-single": ["049000019162"],
+  "fanta-orange-2l-bottle-single": ["049000050257"],
+  "fanta-orange-7-5oz-can-10pk": ["049000067262"],
+  "fanta-orange-7-5oz-can-6pk": ["049000061031"],
+  "fanta-orange-mexican-16-9oz-glass-single": ["049000047851"],
+  "fanta-pineapple-2l-bottle-single": ["049000050264"],
+  "fanta-strawberry-12oz-can-12pk": ["049000030754"],
+  "fanta-strawberry-16oz-can-single": ["049000058420"],
+  "fanta-strawberry-20oz-bottle-single": ["049000026207"],
+  "fanta-strawberry-2l-bottle-single": ["049000050271"],
+  "fuze-lemon-sweet-tea-1l-bottle-single": ["080793792641"],
+  "fuze-lemon-sweet-tea-24oz-bottle-single": ["080793782512"],
+  "gold-peak-green-tea-18-5oz-bottle-single": ["083900005979"],
+  "gold-peak-slightly-sweet-tea-18-5oz-bottle-single": ["049000072495"],
+  "gold-peak-unsweetened-tea-18-5oz-bottle-single": ["083900005771"],
+  "gold-peak-unsweetened-tea-52oz-bottle-single": ["049000074185"],
+  "hi-c-orange-lavaburst-6oz-carton-8pk": ["025000101342"],
+  "hi-c-torrential-tropical-punch-6oz-carton-8pk": ["025000101403"],
+  "minute-maid-berry-punch-20oz-bottle-single": ["025000037764"],
+  "minute-maid-fruit-punch-20oz-bottle-single": ["025000058028"],
+  "minute-maid-fruit-punch-2l-bottle-single": ["025000053924"],
+  "minute-maid-kiwi-strawberry-20oz-bottle-single": ["025000100598"],
+  "minute-maid-peach-20oz-bottle-single": ["025000010002"],
+  "minute-maid-peach-2l-bottle-single": ["025000010101"],
+  "minute-maid-pink-lemonade-2l-bottle-single": ["025000053498"],
+  "minute-maid-watermelon-punch-20oz-bottle-single": ["025000030291"],
+  "monster-energy-lo-carb-16oz-can-4pk": ["070847811299"],
+  "monster-energy-lo-carb-16oz-can-single": ["070847037866"],
+  "monster-energy-mango-loco-16oz-can-single": ["070847032700"],
+  "monster-energy-original-16oz-can-single": ["070847037569"],
+  "monster-energy-pacific-punch-16oz-can-single": ["070847031918","070847031901"],
+  "monster-energy-pipeline-punch-16oz-can-single": ["070847027973"],
+  "monster-energy-ultra-paradise-16oz-can-single": ["070847034599","070847033080"],
+  "monster-energy-ultra-sunrise-16oz-can-single": ["070847037934"],
+  "monster-energy-zero-ultra-16oz-can-single": ["070847037965"],
+  "peace-tea-georgia-peach-23oz-can-single": ["049000531268"],
+  "peace-tea-razzleberry-16oz-can-single": ["049000533002"],
+  "peace-tea-razzleberry-23oz-can-single": ["049000531053","070847004066"],
+  "peace-tea-sno-berry-23oz-can-single": ["070847018568"],
+  "powerade-fruit-punch-20oz-bottle-single": ["049000003710"],
+  "powerade-fruit-punch-28oz-bottle-single": ["049000079388"],
+  "powerade-lemon-lime-20oz-bottle-single": ["049000003697"],
+  "powerade-mountain-berry-blast-28oz-bottle-single": ["049000079357"],
+  "powerade-orange-20oz-bottle-single": ["049000032789"],
+  "seagram-s-club-soda-1l-bottle-single": ["072979000220"],
+  "seagram-s-club-soda-7-5oz-can-6pk": ["072979005003"],
+  "seagram-s-diet-ginger-ale-2l-bottle-single": ["072979003818"],
+  "seagram-s-ginger-ale-1-25l-bottle-single": ["072979004310"],
+  "seagram-s-ginger-ale-12oz-can-12pk": ["072979004167"],
+  "seagram-s-ginger-ale-12oz-can-24pk": ["072979002644"],
+  "seagram-s-ginger-ale-2l-bottle-single": ["072979004181"],
+  "seagram-s-ginger-ale-7-5oz-can-10pk": ["072979004853"],
+  "seagram-s-seltzer-water-20oz-bottle-single": ["072979004051"],
+  "smartwater-alkaline-1-5l-bottle-single": ["786162411150"],
+  "smartwater-alkaline-1l-bottle-single": ["786162411419","786162411174","786162411167"],
+  "smartwater-alkaline-20oz-bottle-single": ["786162411396"],
+  "smartwater-alkaline-23-7oz-bottle-single": ["786162411211"],
+  "sprite-12oz-can-12pk": ["049000028928"],
+  "sprite-12oz-can-24pk": ["049000019384","049000001297"],
+  "sprite-12oz-can-35pk": ["049000058482"],
+  "sprite-20oz-bottle-single": ["049000007640"],
+  "sprite-2l-bottle-single": ["049000050158","049000052091"],
+  "sprite-mexican-12oz-glass-4pk": ["049000075489"],
+  "topo-chico-mineral-water-12oz-glass-4pk": ["021136020373"],
+  "topo-chico-mineral-water-25-4oz-glass-single": ["021136010626"],
+};
+// SEED_BARCODES:END
+function buildSeedProducts() {
+  const out = [], seen = new Set();
+  for (const [brand, flavors, fmts] of SEED_LINES) {
+    for (const flavor of flavors) {
+      for (const f of fmts) {
+        const fmt = FORMATS[f];
+        const [idBrand, idFlavor] = (RENAMED[`${brand}|${flavor}`] || `${brand}|${flavor}`).split("|");
+        const id = slug(`${idBrand} ${idFlavor} ${fmt.size} ${fmt.pack}`);
+        if (seen.has(id)) continue;
+        seen.add(id);
+        out.push({ id, brand, flavor, size: fmt.size, pack: fmt.pack, category: fmt.category,
+                   unit: fmt.unit, barcodes: [...(SEED_BARCODES[id] || [])], img: "", custom: false, retired: false, updated: 0 });
+      }
+    }
+  }
+  return out;
+}
+// Starter products always show the app's current name (e.g. after a rename), wherever their data came from.
+let SEED_NAMES = null;
+function canonicalize(products) {
+  SEED_NAMES = SEED_NAMES || Object.fromEntries(buildSeedProducts().map(p => [p.id, p]));
+  for (const p of products) {
+    const s = !p.custom && SEED_NAMES[p.id];
+    if (s && (p.brand !== s.brand || p.flavor !== s.flavor)) { p.brand = s.brand; p.flavor = s.flavor; p._st = undefined; }
+  }
+}
+
+// ---------- State ----------
+let state;
+// note.status: "queued" (voice clip waiting to be transcribed) → "heard" (has text, waiting to be read by the
+// language model) → "reading" → "done". Also "empty" (nothing said) and "error".
+function freshState() {
+  return {
+    version: 4,
+    storeName: "",
+    products: buildSeedProducts(),
+    // Dormant: shelf-tag data from the scanning app. Kept only so shared data round-trips untouched.
+    tags: {},
+    config: { perStoreTags: false, updated: 0 },
+    deleted: { products: {}, tags: {} },    // tombstones: id -> time deleted
+    outbox: { products: {}, tags: {} },     // changed since last upload
+    notes: [],                              // newest first: { id, at, photos:[id], audio:id|null, secs, text, status, items:[{pid, phrase, qty, conf, why, done}], err }
+    recents: [],
+    settings: { beep: true, camOK: false, models: { asr: false, fast: false } },   // models: which downloads finished
+    sync: { lastPull: 0, lastPush: 0, error: "" },
+  };
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) state = JSON.parse(raw);
+  } catch (e) { /* storage unavailable */ }
+  if (!state || !state.products) state = freshState();
+  migrate();
+}
+function migrate() {
+  const f = freshState();
+  for (const k of ["deleted", "outbox", "sync", "settings", "config"]) state[k] = Object.assign(f[k], state[k] || {});
+  state.settings.models = Object.assign({ asr: false, fast: false }, state.settings.models || {});
+  state.deleted.products = state.deleted.products || {}; state.deleted.tags = state.deleted.tags || {};
+  state.outbox.products = state.outbox.products || {}; state.outbox.tags = state.outbox.tags || {};
+  state.recents = state.recents || [];
+  state.tags = state.tags || {};
+  state.notes = Array.isArray(state.notes) ? state.notes : [];
+  for (const p of state.products) { if (p.updated === undefined) p.updated = 0; if (!Array.isArray(p.barcodes)) p.barcodes = []; }
+  // Work that was interrupted (app closed, phone ran low on memory) goes back in the queue.
+  for (const n of state.notes) {
+    n.items = n.items || []; n.photos = n.photos || [];
+    if (n.status === "reading") n.status = "heard";
+  }
+  // New starter products added to the app show up for existing users.
+  const have = new Set(state.products.map(p => p.id));
+  for (const p of buildSeedProducts()) if (!have.has(p.id) && !state.deleted.products[p.id]) state.products.push(p);
+  canonicalize(state.products);
+  for (const id of DISCONTINUED) { const p = productById(id); if (p && !p.retired && !p.updated) p.retired = true; }
+  state.version = 4;
+}
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch (e) { toast("Couldn't save. Phone storage is full or blocked."); }
+}
+function snapshot() { return JSON.stringify(state); }
+
+const productById = id => state.products.find(p => p.id === id);
+function productByBarcode(code) { return state.products.find(p => p.barcodes.includes(code)); }
+// ---------- Shelf-tag scope (dormant per-store mode) ----------
+// Default: every store uses the same QR codes, so a tag link is stored under the raw code.
+// If stores turn out to differ, the owner flips "Shelf tags differ by store" (More → Owner setup);
+// the switch syncs to everyone. Links made after that are stored per store as "store:<number>|<code>",
+// and the old shared links still work as a fallback wherever a store has no link of its own.
+const STORE_KEY_RE = /^store:([^|]*)\|/;
+const perStoreTags = () => !!(state.config && state.config.perStoreTags);
+const storeId = () => (state.storeName || "").trim().toLowerCase();
+const codeOfKey = key => key.replace(STORE_KEY_RE, "");
+const scopeOfKey = key => { const m = key.match(STORE_KEY_RE); return m ? m[1] : ""; };
+// The key a new link for this code is saved under.
+function tagKeyFor(code) { return perStoreTags() ? `store:${storeId()}|${code}` : code; }
+// Which saved link applies to a scanned code here: this store's own link first, then the shared one.
+function lookupTag(code) {
+  if (perStoreTags()) {
+    const k = `store:${storeId()}|${code}`;
+    if (state.tags[k]) return { key: k, rec: state.tags[k] };
+  }
+  return state.tags[code] ? { key: code, rec: state.tags[code] } : null;
+}
+// Links that belong to the current scope (this store in per-store mode, shared links otherwise).
+const inScope = key => scopeOfKey(key) === (perStoreTags() ? storeId() : "") && (perStoreTags() || !STORE_KEY_RE.test(key));
+function tagForProduct(pid) {
+  for (const key in state.tags) if (state.tags[key].productId === pid && inScope(key)) return key;
+  return null;
+}
+// For display: this store's link, or in per-store mode the shared fallback (flagged).
+function tagInfoForProduct(pid) {
+  const own = tagForProduct(pid);
+  if (own) return { key: own, code: codeOfKey(own), ...state.tags[own], fallback: false };
+  if (perStoreTags()) for (const key in state.tags)
+    if (!STORE_KEY_RE.test(key) && state.tags[key].productId === pid) return { key, code: key, ...state.tags[key], fallback: true };
+  return null;
+}
+// One pass over the tags → productId → tag info for the current scope. Screens that show every product
+// use this instead of calling tagInfoForProduct() per product (which re-scans all tags each time).
+function tagIndex() {
+  const own = new Map(), shared = new Map();
+  for (const key in state.tags) {
+    const t = state.tags[key];
+    if (inScope(key)) { if (!own.has(t.productId)) own.set(t.productId, { key, code: codeOfKey(key), ...t, fallback: false }); }
+    else if (perStoreTags() && !STORE_KEY_RE.test(key) && !shared.has(t.productId)) shared.set(t.productId, { key, code: key, ...t, fallback: true });
+  }
+  for (const [pid, t] of shared) if (!own.has(pid)) own.set(pid, t);
+  return own;
+}
+// Before scanning tags in per-store mode, make sure the store number is set.
+async function ensureStoreForTags() {
+  if (!perStoreTags() || storeId()) return true;
+  return new Promise(resolve => {
+    const d = el(`<div class="dialog"><p><b>Which store is this?</b><br><span class="hint">Shelf tags are linked per store, so set your store number first.</span></p>
+      <input class="field" id="store-prompt" inputmode="numeric" autocomplete="off" placeholder="Store number">
+      <div class="btns" style="margin-top:14px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="ok">Save</button></div></div>`);
+    let done = false;
+    const close = openLayer(d, { center: true, onClose: () => { if (!done) resolve(false); } });
+    const inp = d.querySelector("input");
+    const ok = () => { if (!inp.value.trim()) return; state.storeName = inp.value.trim(); save(); renderAll(); done = true; close(); resolve(true); };
+    d.querySelector('[data-a="ok"]').onclick = ok;
+    d.querySelector('[data-a="c"]').onclick = () => { done = true; close(); resolve(false); };
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") ok(); });
+    setTimeout(() => inp.focus(), 50);
+  });
+}
+function pName(p) { return p.flavor ? `${p.brand} ${p.flavor}` : p.brand; }
+function pSub(p) { return `${p.size} · ${p.pack}`; }
+function pFull(p) { return `${pName(p)} — ${pSub(p)}`; }
+
+// ---------- Change tracking (what needs uploading) ----------
+function markProduct(id) {
+  const p = productById(id); if (!p) return;
+  p.updated = Date.now(); p._st = undefined;
+  delete state.deleted.products[id];
+  state.outbox.products[id] = 1;
+  scheduleUpload();
+}
+function markTag(code) {
+  const t = state.tags[code]; if (!t) return;
+  t.updated = Date.now();
+  delete state.deleted.tags[code];
+  state.outbox.tags[code] = 1;
+  scheduleUpload();
+}
+function dropTag(code) {
+  delete state.tags[code];
+  state.deleted.tags[code] = Date.now();
+  state.outbox.tags[code] = 1;
+  scheduleUpload();
+}
+function dropProduct(id) {
+  state.products = state.products.filter(p => p.id !== id);
+  state.deleted.products[id] = Date.now();
+  state.outbox.products[id] = 1;
+  for (const c in state.tags) if (state.tags[c].productId === id) dropTag(c);
+  for (const n of state.notes) for (const it of n.items) if (it.pid === id) { it.pid = null; it.conf = "check"; it.why = "no match"; }
+  scheduleUpload();
+}
+const shareable = p => { const { _st, ...rest } = p; return rest; };
+const tagShareable = t => ({ productId: t.productId, created: t.created, updated: t.updated });
+function pendingCount() { return Object.keys(state.outbox.products).length + Object.keys(state.outbox.tags).length + (state.outbox.config ? 1 : 0); }
+
+// Undo restores an earlier snapshot; anything that differs is re-marked so the undo also uploads.
+function restore(snap) {
+  const prev = state;
+  state = JSON.parse(snap);
+  migrate();
+  const now = Date.now();
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const prevP = Object.fromEntries(prev.products.map(p => [p.id, p]));
+  const nextP = Object.fromEntries(state.products.map(p => [p.id, p]));
+  for (const id of new Set([...Object.keys(prevP), ...Object.keys(nextP)])) {
+    const a = prevP[id] && { ...shareable(prevP[id]), updated: 0 }, b = nextP[id] && { ...shareable(nextP[id]), updated: 0 };
+    if (same(a, b)) continue;
+    if (nextP[id]) { nextP[id].updated = now; delete state.deleted.products[id]; }
+    else state.deleted.products[id] = now;
+    state.outbox.products[id] = 1;
+  }
+  for (const code of new Set([...Object.keys(prev.tags), ...Object.keys(state.tags)])) {
+    const a = prev.tags[code] && prev.tags[code].productId, b = state.tags[code] && state.tags[code].productId;
+    if (a === b) continue;
+    if (state.tags[code]) { state.tags[code].updated = now; delete state.deleted.tags[code]; }
+    else state.deleted.tags[code] = now;
+    state.outbox.tags[code] = 1;
+  }
+  for (const id in prev.outbox.products) state.outbox.products[id] = 1;
+  for (const c in prev.outbox.tags) state.outbox.tags[c] = 1;
+  state.sync = prev.sync;
+  save(); renderAll(); scheduleUpload();
+}
+
+// ---------- Utilities ----------
+const $ = sel => document.querySelector(sel);
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+function el(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; }
+function initials(brand) {
+  return brand.replace(/[^A-Za-z ]/g, "").split(/\s+/).filter(Boolean).map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
+}
+// A photo the user added wins; otherwise the stock photo bundled with the app (img/index.js).
+const stockImage = p => (window.PRODUCT_IMAGES || {})[p.id] || "";
+function thumbHtml(p, lg) {
+  const cls = "thumb" + (lg ? " lg" : "");
+  const src = p && (p.img || stockImage(p));
+  if (src) return `<div class="${cls}"><img src="${esc(src)}" alt="" loading="lazy" onerror="this.parentNode.textContent='${esc(initials(p.brand))}'"></div>`;
+  if (!p) return `<div class="${cls}">?</div>`;
+  return `<div class="${cls} art" style="background:${artColors(p).bg}">${productArt(p)}</div>`;
+}
+
+// ---------- Illustrated product tiles ----------
+// Package silhouette (can, bottle, 2L, glass, fridge pack…) on the brand color,
+// with a label band in the flavor's color and a count badge for multipacks.
+const FLAVOR_COLORS = [
+  [/zero|black/i, "#111111"], [/diet/i, "#C9CCD1"], [/cherry/i, "#7E0A1C"], [/vanilla/i, "#F1E3BD"],
+  [/caffeine/i, "#D4AF37"], [/root beer/i, "#4A2A18"], [/ginger/i, "#D9B44A"], [/tonic|club/i, "#A9CDEB"],
+  [/blue/i, "#1E73BE"], [/grape|violet/i, "#6A2C91"], [/strawberry/i, "#E8384F"], [/pineapple|lemon(?!ade)/i, "#F7D117"],
+  [/peach|mango/i, "#F6A04D"], [/orange/i, "#F58220"], [/lime|green/i, "#7AC143"], [/raspberry|razz/i, "#C2185B"],
+  [/berry|pomegranate/i, "#7B2E8E"], [/punch|fruit/i, "#E03A3E"], [/tropical|paradise/i, "#FF8A00"],
+  [/pink/i, "#F48FB1"], [/lemonade/i, "#F4E04D"], [/unsweet/i, "#D9C9A3"], [/sweet/i, "#B8860B"],
+  [/grapefruit|citrus/i, "#F28C6B"],
+];
+function flavorColor(p) {
+  for (const [re, c] of FLAVOR_COLORS) if (re.test(p.flavor)) return c;
+  return null;
+}
+function packageShape(p) {
+  const s = (p.size || "").toLowerCase();
+  const oz = parseFloat(s) || 0;
+  if (/glass/.test(s)) return "glass";
+  if (/carton|box|pouch/.test(s)) return "carton";
+  if (/can/.test(s)) return oz && oz < 9 ? "mini" : oz >= 15 ? "tall" : "can";
+  if (/\d(\.\d+)?\s*l\b|liter|litre/.test(s) || oz >= 24) return "big";
+  return "bottle";
+}
+const SHAPES = {
+  carton: { body: "M16 12h16a1.5 1.5 0 0 1 1.5 1.5V39a1.5 1.5 0 0 1-1.5 1.5H16a1.5 1.5 0 0 1-1.5-1.5V13.5A1.5 1.5 0 0 1 16 12zM27 12V6.5h2V12", band: [14.5, 22, 19, 9] },
+  can:    { body: "M17 11h14a2 2 0 0 1 2 2v24a2 2 0 0 1-2 2H17a2 2 0 0 1-2-2V13a2 2 0 0 1 2-2zM18 8.5h12", band: [15, 20, 18, 8] },
+  mini:   { body: "M18.5 15h11a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2V17a2 2 0 0 1 2-2zM19.5 12.5h9", band: [16.5, 22, 15, 7] },
+  tall:   { body: "M18 7h12a2 2 0 0 1 2 2v30a2 2 0 0 1-2 2H18a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z", band: [16, 18, 16, 10] },
+  bottle: { body: "M21.5 5h5v4c0 2.5 4.5 3.5 4.5 8v4.5c0 2-1 2.5-1 4.5s1 2.5 1 4.5V38a3 3 0 0 1-3 3h-8a3 3 0 0 1-3-3v-11.5c0-2 1-2.5 1-4.5s-1-2.5-1-4.5V17c0-4.5 4.5-5.5 4.5-8z", band: [17, 16.5, 14, 6] },
+  big:    { body: "M20.5 4h7v4c0 2.5 6.5 3.5 6.5 9v5c0 2.5-1.5 3-1.5 5s1.5 2.5 1.5 5V39a3 3 0 0 1-3 3H17a3 3 0 0 1-3-3V28c0-2.5 1.5-3 1.5-5s-1.5-2.5-1.5-5v-1c0-5.5 6.5-6.5 6.5-9z", band: [14, 15.5, 20, 7] },
+  glass:  { body: "M22.5 4h3v9c0 3 4 3.5 4 8.5 0 3-1.5 4-1.5 7s1.5 4 1.5 7V39a3 3 0 0 1-3 3h-5a3 3 0 0 1-3-3v-3.5c0-3 1.5-4 1.5-7s-1.5-4-1.5-7c0-5 4-5.5 4-8.5z", band: [18.5, 24, 11, 7] },
+};
+const isLight = hex => {
+  const n = parseInt(hex.slice(1), 16), r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255;
+  return 0.299 * r + 0.587 * g + 0.114 * b > 170;
+};
+// Tile takes the flavor's color; the brand color moves to the label band.
+function artColors(p) {
+  const brand = BRAND_COLORS[p.brand] || "#8A8480";
+  const flavor = flavorColor(p);
+  const bg = flavor || brand;
+  const band = flavor && flavor.toLowerCase() !== brand.toLowerCase() ? brand : null;
+  return { bg, band, ink: isLight(bg) ? "#1B1B1B" : "#FFFFFF" };
+}
+const artCache = new Map();
+function productArt(p) {
+  const key = `${p.brand}|${p.flavor}|${p.size}|${p.pack}`;
+  if (artCache.has(key)) return artCache.get(key);
+  const { bg: brand, band, ink: W } = artColors(p);   // "brand" = tile color below (outlines, badge text)
+  const shape = packageShape(p);
+  const n = parseInt(p.pack, 10) || 1;
+  let g = "";
+  let clipN = 0;
+  const one = (sh, tx = 0, ty = 0, k = 1, outline = false) => {
+    const S = SHAPES[sh], [bx, by, bw, bh] = S.band, id = `c${artCache.size}-${clipN++}`;
+    // In a multipack each item gets a brand-colored outline so overlapping shapes stay distinct.
+    return `<g transform="translate(${tx} ${ty}) scale(${k})"><clipPath id="${id}"><path d="${S.body}"/></clipPath>` +
+      (outline ? `<path d="${S.body}" fill="none" stroke="${brand}" stroke-width="${(3.2 / k).toFixed(2)}" stroke-linejoin="round"/>` : "") +
+      `<path d="${S.body}" fill="${W}"/>` +
+      (band ? `<rect x="${bx - 4}" y="${by}" width="${bw + 8}" height="${bh}" fill="${band}" clip-path="url(#${id})"/>` : "") + `</g>`;
+  };
+  if (n > 1) {
+    // Three of the package side by side (back two smaller), plus a count badge.
+    const k = 0.72;
+    g = one(shape, -4.5, 9, k, true) + one(shape, 17.5, 9, k, true) + one(shape, 3.5, 3, 0.86, true) +
+        `<rect x="${n >= 10 ? 27 : 30}" y="32" width="${n >= 10 ? 20 : 16}" height="14" rx="7" fill="${W}" stroke="${brand}" stroke-width="1.5"/>` +
+        `<text x="${n >= 10 ? 37 : 38}" y="42.5" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="10" font-weight="800" fill="${brand}">${n}</text>`;
+  } else {
+    g = one(shape);
+  }
+  const svg = `<svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden="true">${g}</svg>`;
+  artCache.set(key, svg);
+  return svg;
+}
+function daysAgo(ts) { return Math.floor((Date.now() - ts) / 86400000); }
+function fmtDate(ts) { return new Date(ts).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); }
+function ago(ts) {
+  if (!ts) return "never";
+  const m = Math.round((Date.now() - ts) / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
+  if (m < 1440) return `${Math.round(m / 60)} hr ago`;
+  return fmtDate(ts);
+}
+
+function normalizeBarcode(code) {
+  let c = String(code).trim();
+  if (/^\d{13}$/.test(c) && c[0] === "0") c = c.slice(1);   // EAN-13 with leading 0 == UPC-A
+  return c;
+}
+function normalizeTag(code) { return String(code).trim(); }
+// Redraw long lists once typing pauses briefly, not on every keystroke.
+function debounce(fn, ms = 90) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+let toastTimer;
+function toast(msg, undoSnap) {
+  const t = $("#toast");
+  $("#toast-msg").textContent = msg;
+  const u = $("#toast-undo");
+  u.style.display = undoSnap ? "" : "none";
+  u.onclick = () => { if (undoSnap) { restore(undoSnap); toast("Undone"); } };
+  if (t.classList.contains("show")) bump(t.querySelector("#toast-msg"));   // replacing an open toast: small nudge
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), undoSnap ? 6000 : 2600);
+}
+// Replay the small "bump" spring on an element (quantities, badges, messages).
+function bump(node) {
+  if (!node) return;
+  node.classList.remove("bump"); void node.offsetWidth; node.classList.add("bump");
+}
+// Slide a segmented control's (or the tab bar's) selection pill under its active button.
+function syncIndicator(container, animate = true) {
+  if (!container) return;
+  const active = container.querySelector("button.active");
+  if (!active || !container.getClientRects().length) return;   // skip while hidden (offsetParent is null for the fixed tab bar)
+  const inset = container.matches("nav.tabs") ? 6 : 0;
+  container.classList.toggle("no-anim", !animate || !container.classList.contains("has-ind"));
+  container.style.setProperty("--ind-x", `${active.offsetLeft + inset}px`);
+  container.style.setProperty("--ind-w", `${active.offsetWidth - inset * 2}px`);
+  container.classList.add("has-ind");
+  if (!animate) requestAnimationFrame(() => container.classList.remove("no-anim"));
+}
+function syncAllIndicators(animate = true) {
+  document.querySelectorAll(".seg, nav.tabs").forEach(c => syncIndicator(c, animate));
+}
+window.addEventListener("resize", () => syncAllIndicators(false));
+
+// ---------- Keyboard ----------
+// iOS keeps fixed bars on top of the keyboard while you scroll, so hide the tab bar while typing.
+const TYPING = 'input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="button"]), textarea, select';
+function updateKeyboardState() {
+  const a = document.activeElement;
+  const typing = !!(a && a.matches && a.matches(TYPING));
+  const vv = window.visualViewport;
+  const squeezed = vv ? window.innerHeight - vv.height > 120 : false;   // keyboard is taking up space
+  document.body.classList.toggle("kb-open", typing || squeezed);
+}
+document.addEventListener("focusin", updateKeyboardState);
+document.addEventListener("focusout", () => setTimeout(updateKeyboardState, 60));   // let focus settle on the next field first
+if (window.visualViewport) window.visualViewport.addEventListener("resize", updateKeyboardState);
+
+let audioCtx;
+function beep(ok = true) {
+  if (!state.settings.beep) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.frequency.value = ok ? 1200 : 400; g.gain.value = 0.08;
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + (ok ? 0.08 : 0.2));
+  } catch (e) {}
+}
+
+// ---------- Modal layer ----------
+let modalDepth = 0;
+function openLayer(node, { center = false, onClose, sticky = false } = {}) {
+  const ov = el(`<div class="overlay${center ? " center" : ""}"></div>`);
+  ov.appendChild(node);
+  ov.addEventListener("click", e => { if (e.target === ov && !sticky) close(); });
+  $("#layer").appendChild(ov);
+  modalDepth++;
+  ov.querySelectorAll(".seg").forEach(c => syncIndicator(c, false));
+  let closed = false;
+  function close() {
+    if (closed || !ov.isConnected) return;
+    closed = true; modalDepth--;
+    // Let the sheet glide away before removing it.
+    ov.classList.add("closing");
+    const done = () => ov.remove();
+    ov.addEventListener("animationend", e => { if (e.target !== ov) done(); }, { once: false });
+    setTimeout(done, 320);
+    if (onClose) onClose();
+  }
+  return close;
+}
+function confirmDialog(message, { ok = "Confirm", cancel = "Cancel", danger = false } = {}) {
+  return new Promise(resolve => {
+    const d = el(`<div class="dialog"><p></p><div class="btns">
+      <button class="btn" data-a="no">${esc(cancel)}</button>
+      <button class="btn ${danger ? "primary" : "primary"}" data-a="yes">${esc(ok)}</button></div></div>`);
+    d.querySelector("p").innerHTML = message;
+    let done = false;
+    const close = openLayer(d, { center: true, onClose: () => { if (!done) resolve(false); } });
+    d.querySelector('[data-a="no"]').onclick = () => { done = true; close(); resolve(false); };
+    d.querySelector('[data-a="yes"]').onclick = () => { done = true; close(); resolve(true); };
+  });
+}
+function menu(title, options) {
+  return new Promise(resolve => {
+    const s = el(`<div class="sheet"><div class="handle"></div><h2></h2><div class="menu-list"></div>
+      <button class="btn block" data-a="cancel">Cancel</button></div>`);
+    s.querySelector("h2").textContent = title;
+    let done = false;
+    const close = openLayer(s, { onClose: () => { if (!done) resolve(null); } });
+    for (const o of options) {
+      const b = el(`<button class="${o.danger ? "danger" : ""}"></button>`);
+      b.textContent = o.label;
+      b.onclick = () => { done = true; close(); resolve(o.value); };
+      s.querySelector(".menu-list").appendChild(b);
+    }
+    s.querySelector('[data-a="cancel"]').onclick = () => { done = true; close(); resolve(null); };
+  });
+}
+
+// ---------- Search ----------
+const ALIASES = {
+  cz: "coke zero", dc: "diet coke", cf: "caffeine free", coke: "coca cola", coca: "coca",
+  "2liter": "2l", "2litre": "2l", pack: "pk", liter: "l", litre: "l", ounce: "oz",
+  bb: "bodyarmor", pwr: "powerade", mm: "minute maid", vw: "vitaminwater",
+};
+function normText(s) {
+  return s.toLowerCase()
+    .replace(/coca[\s-]?cola/g, "coca cola coke")
+    .replace(/diet coke/g, "diet coke coca cola")
+    .replace(/['’`]/g, "")
+    .replace(/(\d)\s*-?\s*(liter|litre|ltr)s?\b/g, "$1l")
+    .replace(/(\d)\s*-?\s*(ounce|ounces)\b/g, "$1oz")
+    .replace(/(\d)\s*-?\s*(oz|l|pk|pack|ct)\b/g, "$1$2")
+    .replace(/(\d+)\s*pack\b/g, "$1pk")
+    .replace(/[^a-z0-9. ]+/g, " ")
+    .replace(/\s+/g, " ").trim();
+}
+// Search text: the product's own name/size/pack, plus its list group (which only counts as a weaker match,
+// so "sprite 2l" ranks the 2L above the 1L even though both sit in the "2L & 1L" group).
+function searchText(p) {
+  if (!p._st) Object.defineProperty(p, "_st", { value: normText(`${p.brand} ${p.flavor} ${p.size} ${p.pack}`) + " | " + normText(p.category), writable: true, enumerable: false, configurable: true });
+  return p._st;
+}
+function queryTokens(q) {
+  const toks = [];
+  for (let t of normText(q).split(" ").filter(Boolean)) {
+    const a = ALIASES[t];
+    if (a) toks.push(...a.split(" ")); else toks.push(t.replace(/pack$/, "pk"));
+  }
+  return toks;
+}
+function searchProducts(q, { category = "", includeRetired = false } = {}) {
+  let pool = state.products.filter(p => (includeRetired || !p.retired) && (!category || p.category === category));
+  const toks = queryTokens(q || "");
+  if (!toks.length) return pool;
+  const scored = [];
+  for (const p of pool) {
+    const [own, group] = searchText(p).split(" | ");
+    const words = own.split(" ");
+    let hits = 0, ownHits = 0, prefix = 0, exact = 0;
+    for (const t of toks) {
+      const inOwn = own.includes(t);
+      if (inOwn || group.includes(t)) {
+        hits++;
+        if (inOwn) ownHits++;
+        if (words.some(w => w.startsWith(t))) prefix++;
+        if (words.includes(t)) exact++;
+      }
+    }
+    if (hits) scored.push({ p, hits, ownHits, prefix, exact });
+  }
+  const full = scored.filter(s => s.hits === toks.length);
+  const use = full.length ? full : scored.filter(s => s.hits >= Math.max(1, toks.length - 1));
+  use.sort((a, b) => b.hits - a.hits || b.ownHits - a.ownHits || b.exact - a.exact || b.prefix - a.prefix);
+  return use.map(s => s.p);
+}
+function bumpRecent(pid) { state.recents = [pid, ...state.recents.filter(x => x !== pid)].slice(0, 12); }
+function catSort(a, b) {
+  const ia = CATEGORY_ORDER.indexOf(a), ib = CATEGORY_ORDER.indexOf(b);
+  return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
+}
+function allCategories() { return [...new Set(state.products.map(p => p.category))].sort(catSort); }
+
+// ---------- Product picker ----------
+function searchBox(placeholder) {
+  return `<div class="search-wrap">${icon("search")}<input class="field" type="search" placeholder="${esc(placeholder)}" autocomplete="off" autocorrect="off" spellcheck="false"></div>`;
+}
+function pickProduct({ title = "Pick a product", initialQuery = "" } = {}) {
+  return new Promise(resolve => {
+    const s = el(`<div class="sheet"><div class="handle"></div><h2></h2>${searchBox("Try “zero 12pk” or “sprite 2l”")}
+      <div class="chips"></div><div class="results"></div></div>`);
+    s.querySelector("h2").textContent = title;
+    let done = false, cat = "";
+    const close = openLayer(s, { onClose: () => { if (!done) resolve(null); } });
+    const input = s.querySelector("input");
+    input.value = initialQuery;
+    const chips = s.querySelector(".chips");
+    const renderChips = () => {
+      chips.innerHTML = "";
+      for (const c of ["", ...allCategories()]) {
+        const b = el(`<button class="chip${c === cat ? " active" : ""}"></button>`);
+        b.textContent = c || "All";
+        b.onclick = () => { cat = c; renderChips(); renderResults(); };
+        chips.appendChild(b);
+      }
+    };
+    const results = s.querySelector(".results");
+    const choose = pid => { done = true; bumpRecent(pid); save(); close(); resolve(pid); };
+    const renderResults = () => {
+      const q = input.value.trim();
+      results.innerHTML = "";
+      if (!q && !cat && state.recents.length) {
+        const rec = state.recents.map(productById).filter(p => p && !p.retired);
+        if (rec.length) {
+          results.appendChild(el(`<div class="group-h">Recent</div>`));
+          results.appendChild(listOf(rec, choose));
+        }
+        results.appendChild(el(`<div class="group-h">All products</div>`));
+      }
+      const items = searchProducts(q, { category: cat });
+      const shown = items.slice(0, 150);
+      if (shown.length) results.appendChild(listOf(shown, choose));
+      if (items.length > shown.length) results.appendChild(el(`<p class="hint center" style="padding:10px">${items.length - shown.length} more. Keep typing to narrow it down.</p>`));
+      if (!items.length) results.appendChild(el(`<div class="empty"><p>No match for “${esc(q)}”</p></div>`));
+      const add = el(`<button class="btn block" style="margin-top:12px">${icon("plus")}Add new product${q ? ` “${esc(q)}”` : ""}</button>`);
+      add.onclick = async () => {
+        const pid = await editProduct(null, { prefillName: q });
+        if (pid) choose(pid);
+      };
+      results.appendChild(add);
+    };
+    input.addEventListener("input", debounce(renderResults, 60));
+    renderChips(); renderResults();
+    setTimeout(() => input.focus(), 50);
+  });
+}
+// Builds the whole list in one parse, with a single tap handler (much faster than 200 separate rows).
+function listOf(products, onTap, extra) {
+  const wrap = el(`<div class="list">${products.map(p =>
+    `<div class="item tap" data-pid="${esc(p.id)}">${thumbHtml(p)}<div class="grow"><div class="name">${esc(pName(p))}</div>` +
+    `<div class="sub">${esc(pSub(p))}</div></div>${extra ? extra(p) : ""}</div>`).join("")}</div>`);
+  wrap.addEventListener("click", e => { const r = e.target.closest(".item[data-pid]"); if (r) onTap(r.dataset.pid); });
+  return wrap;
+}
+
+// ---------- Photos and voice clips ----------
+// Stored in IndexedDB (localStorage is only ~5 MB). They stay on this phone and are deleted when their note goes.
+const mediaDB = (() => {
+  let p = null;
+  return () => p || (p = new Promise((res, rej) => {
+    const r = indexedDB.open("shelfscan-b4", 1);
+    r.onupgradeneeded = () => { r.result.createObjectStore("photos"); r.result.createObjectStore("audio"); };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => { p = null; rej(r.error); };
+  }));
+})();
+async function mediaTx(store, mode, fn) {
+  const db = await mediaDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, mode), req = fn(tx.objectStore(store));
+    tx.oncomplete = () => res(req && req.result);
+    tx.onerror = tx.onabort = () => rej(tx.error);
+  });
+}
+const photoURLs = new Map();
+const putPhoto = (id, blob) => mediaTx("photos", "readwrite", s => s.put(blob, id));
+const getPhoto = id => mediaTx("photos", "readonly", s => s.get(id));
+const delPhoto = id => { const u = photoURLs.get(id); if (u) { URL.revokeObjectURL(u); photoURLs.delete(id); } return mediaTx("photos", "readwrite", s => s.delete(id)); };
+const putAudio = (id, rec) => mediaTx("audio", "readwrite", s => s.put(rec, id));
+const getAudio = id => mediaTx("audio", "readonly", s => s.get(id));
+const delAudio = id => mediaTx("audio", "readwrite", s => s.delete(id));
+const newId = prefix => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+async function photoURL(id) {
+  if (photoURLs.has(id)) return photoURLs.get(id);
+  const blob = await getPhoto(id).catch(() => null);
+  if (!blob) return null;
+  const u = URL.createObjectURL(blob); photoURLs.set(id, u); return u;
+}
+// Fill <img data-photo="id"> placeholders after a render.
+function hydratePhotos(root) {
+  root.querySelectorAll("img[data-photo]").forEach(async img => {
+    const u = await photoURL(img.dataset.photo);
+    if (u) img.src = u; else img.closest("[data-photo-wrap]")?.classList.add("missing");
+  });
+}
+// Remove photos and clips no note points to (runs after deletes once the undo window has passed).
+async function sweepMedia() {
+  try {
+    const keepP = new Set(state.notes.flatMap(n => n.photos || [])), keepA = new Set(state.notes.map(n => n.audio).filter(Boolean));
+    const ps = await mediaTx("photos", "readonly", s => s.getAllKeys()), as = await mediaTx("audio", "readonly", s => s.getAllKeys());
+    for (const k of ps) if (!keepP.has(k)) await delPhoto(k);
+    for (const k of as) if (!keepA.has(k)) await delAudio(k);
+  } catch (e) { /* storage unavailable */ }
+}
+function scheduleSweep() { clearTimeout(scheduleSweep.t); scheduleSweep.t = setTimeout(sweepMedia, 10000); }
+
+// Resize an image or video frame to at most 1280px on the long side and encode it as JPEG (~150 KB).
+function frameToBlob(source, sw, sh, sx = 0, sy = 0, cw = sw, ch = sh) {
+  const k = Math.min(1, 1280 / Math.max(cw, ch));
+  const c = document.createElement("canvas"); c.width = Math.round(cw * k); c.height = Math.round(ch * k);
+  c.getContext("2d").drawImage(source, sx, sy, cw, ch, 0, 0, c.width, c.height);
+  return new Promise(r => c.toBlob(r, "image/jpeg", 0.72));
+}
+async function fileToBlob(file) {
+  const bmp = await createImageBitmap(file);
+  const b = await frameToBlob(bmp, bmp.width, bmp.height); bmp.close && bmp.close(); return b;
+}
+// The iPhone camera app, for extra photos (and as a fallback when the live camera isn't available).
+function cameraPhoto() {
+  return new Promise(resolve => {
+    const inp = el(`<input type="file" accept="image/*" capture="environment" hidden>`);
+    inp.onchange = async () => { const f = inp.files && inp.files[0]; inp.remove(); resolve(f ? await fileToBlob(f) : null); };
+    document.body.appendChild(inp); inp.click();
+  });
+}
+
+// ---------- Turning what was said into catalog products ----------
+// The language model splits a note into items ("diet coke 12 pack" x 3); this code finds the closest real product.
+// Ported from the benchmark lab (.claude/lab/bench), where this combination read 36 to 42 of 49 test notes fully right.
+const sNorm = s => String(s ?? "").toLowerCase().replace(/[’'`]/g, "").replace(/[^a-z0-9. ]+/g, " ").replace(/\s+/g, " ").trim();
+function lev(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+// Spoken / misheard forms of each brand → catalog brand.
+const BRAND_ALIASES = {
+  "coke": "Coca-Cola", "coca cola": "Coca-Cola", "cocacola": "Coca-Cola", "coke classic": "Coca-Cola",
+  "diet coke": "Diet Coke", "diet cola": "Diet Coke",
+  "mellow yellow": "Mello Yello", "mello yello": "Mello Yello", "mello": "Mello Yello",
+  "mr pibb": "Mr. Pibb", "mister pibb": "Mr. Pibb", "pibb": "Mr. Pibb", "pibb xtra": "Mr. Pibb",
+  "seagrams": "Seagram's", "sea grams": "Seagram's", "seagram": "Seagram's", "seagram s": "Seagram's",
+  "barqs": "Barq's", "barks": "Barq's", "bark s": "Barq's", "barq": "Barq's",
+  "dr pepper": "Dr Pepper", "doctor pepper": "Dr Pepper", "dr. pepper": "Dr Pepper",
+  "power aid": "Powerade", "powerade": "Powerade",
+  "body armor": "BODYARMOR", "bodyarmor": "BODYARMOR", "body armour": "BODYARMOR",
+  "vitamin water": "vitaminwater", "vitaminwater": "vitaminwater",
+  "smart water": "smartwater", "smartwater": "smartwater",
+  "topo chico": "Topo Chico", "topochico": "Topo Chico",
+  "monster": "Monster Energy", "monster energy": "Monster Energy",
+  "peace tea": "Peace Tea", "gold peak": "Gold Peak", "minute maid": "Minute Maid",
+  "hi c": "Hi-C", "hic": "Hi-C", "full throttle": "Full Throttle", "core power": "Core Power",
+};
+let brandIdx = null, brandIdxFor = -1;
+function brandIndex() {
+  if (brandIdx && brandIdxFor === state.products.length) return brandIdx;
+  brandIdx = new Map(); brandIdxFor = state.products.length;
+  for (const b of new Set(state.products.map(p => p.brand))) brandIdx.set(sNorm(b), b);
+  const have = new Set(brandIdx.values());
+  for (const [k, v] of Object.entries(BRAND_ALIASES)) if (have.has(v)) brandIdx.set(sNorm(k), v);
+  return brandIdx;
+}
+function resolveBrand(text) {
+  const n = sNorm(text), idx = brandIndex();
+  if (!n) return null;
+  if (idx.has(n)) return idx.get(n);
+  let best = null, bestD = 99;
+  for (const [k, v] of idx) { const d = lev(n, k); if (d < bestD) { bestD = d; best = v; } }
+  // A small typo (about 1 letter in 5) is fine; a wholly different word (Gatorade vs Dasani) is not.
+  return bestD <= Math.max(1, Math.floor(n.length / 5)) ? best : null;
+}
+
+const ONES = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19 };
+const TENS = { twenty: 20, thirty: 30, forty: 40, fifty: 50 };
+// "twenty four" -> "24", "sixteen point nine" -> "16.9", "eighteen and a half" -> "18.5"
+function speechToDigits(text) {
+  const t = sNorm(text).replace(/\b(\d+)\s+point\s+(\d)\b/g, "$1.$2").split(" ");
+  const out = [];
+  for (let i = 0; i < t.length; i++) {
+    const w = t[i];
+    if (TENS[w] != null) { const nx = ONES[t[i + 1]]; if (nx > 0 && nx < 10) { out.push(String(TENS[w] + nx)); i++; } else out.push(String(TENS[w])); }
+    else if (ONES[w] != null) out.push(String(ONES[w]));
+    else out.push(w);
+  }
+  return out.join(" ").replace(/\b(\d+) and a half\b/g, (_, n) => `${n}.5`).replace(/\b(\d+)\s+point\s+(\d+)\b/g, "$1.$2");
+}
+function sizeCandidates(s) {
+  const out = new Set();
+  for (const m of s.matchAll(/(\d+(?:\.\d+)?)\s*(ounces?|oz|liters?|litres?|l)\b/g)) out.add(`${parseFloat(m[1])}${/^o/.test(m[2]) ? "oz" : "l"}`);
+  if (/\bmini\b/.test(s)) out.add("7.5oz");
+  return out;
+}
+function packCandidates(s) {
+  const out = new Set();
+  for (const m of s.matchAll(/(\d+)\s*(?:packs?|pk|count|ct)\b/g)) out.add(`${parseInt(m[1], 10)}pk`);
+  // "cans" or "bottles" on their own mean singles; next to a pack count ("12 pack cans") they only name the container.
+  if (/\bsingles?\b/.test(s) || (!out.size && /\b(bottles?|cans?)\b/.test(s))) out.add("single");
+  return out;
+}
+const FLAVOR_SYN = [[/\bzero( sugar| calorie)?\b/g, "zero"], [/\bgeorgia peach\b/g, "just peachy"], [/\b(regular|classic|original|plain)\b/g, "original"],
+  [/\bgrape fruit\b/g, "grapefruit"], [/\bmellow yellow\b/g, "mello yello"]];
+const FLAVOR_STOP = new Set(["just", "the", "a", "of", "and", "with"]);
+const flavorTokens = f => { let n = sNorm(f); for (const [re, to] of FLAVOR_SYN) n = n.replace(re, to); return n.split(" ").filter(w => w && !FLAVOR_STOP.has(w)); };
+const pSizeKey = p => { const m = (p.size || "").match(/^(\d+(?:\.\d+)?)(oz|L)/); return m ? `${parseFloat(m[1])}${m[2].toLowerCase()}` : ""; };
+const pPackKey = p => (p.pack === "Single" ? "single" : String(p.pack || "").toLowerCase());
+
+// Longest brand names win ("diet coke" is not also "coke"); a separate "coke" later in the note still counts.
+function detectBrands(tokens) {
+  const idx = brandIndex(), found = new Set(), taken = new Array(tokens.length).fill(false);
+  for (let n = 3; n >= 1; n--) for (let i = 0; i + n <= tokens.length; i++) {
+    if (taken.slice(i, i + n).some(Boolean)) continue;
+    const g = tokens.slice(i, i + n).join(" ");
+    const b = idx.has(g) ? idx.get(g) : (g.length >= 4 ? resolveBrand(g) : null);
+    if (b) { found.add(b); for (let k = i; k < i + n; k++) taken[k] = true; }
+  }
+  return found;
+}
+// Scored candidates for a phrase, best first.
+function rankPhrase(phrase) {
+  const s = speechToDigits(phrase), tokens = s.split(" ");
+  let n = s; for (const [re, to] of FLAVOR_SYN) n = n.replace(re, to);
+  const tset = new Set(n.split(" "));
+  const sizes = sizeCandidates(s), packs = packCandidates(s);
+  const brands = detectBrands(tokens);
+  if (!brands.size) return [];
+  const wantCan = /\bcans?\b/.test(s), wantBottle = /\bbottles?\b/.test(s);
+  const out = [];
+  for (const b of brands) {
+    const pool = state.products.filter(p => p.brand === b && !p.retired);
+    // Did the speaker name any flavor at all for this brand? If not, the plain/original product is the answer.
+    const named = pool.some(p => flavorTokens(p.flavor).some(w => w !== "original" && tset.has(w)));
+    for (const p of pool) {
+      const ft = flavorTokens(p.flavor), fHit = ft.filter(t => tset.has(t)).length;
+      const isPlain = ft.length === 1 && ft[0] === "original";
+      const fs = isPlain ? (named ? (fHit ? 3 : 0) : 3) : ft.length ? 3 * fHit / ft.length : (named ? 0.3 : 0.9);
+      const pen = ft.length && !isPlain && fHit === 0 ? -1 : 0;   // a flavored product shouldn't win when no flavor was named
+      // Small tie-breakers: a named container (cans / bottles), and a bare bottle size ("diet coke 20 ounce") means a single bottle.
+      const isCan = /can/i.test(p.size || ""), isBottle = /bottle/i.test(p.size || "");
+      const box = (wantCan && isCan) || (wantBottle && isBottle) ? 0.5 : 0;
+      const dflt = !packs.size && isBottle && pPackKey(p) === "single" ? 1 : 0;
+      out.push({ p, sc: fs + pen + (sizes.has(pSizeKey(p)) ? 2 : 0) + (packs.has(pPackKey(p)) ? 2 : 0) + box + dflt });
+    }
+  }
+  return out.sort((a, b) => b.sc - a.sc);
+}
+// A product phrase ("diet coke 12 pack") -> { p, conf, why } or null when no brand we carry is named.
+// conf is "check" when the top two candidates are too close to call, so the person can confirm with one tap.
+function resolvePhrase(phrase) {
+  const r = rankPhrase(phrase);
+  if (!r.length) return null;
+  const top = r[0], next = r.find(x => x.p.id !== top.p.id);
+  const gap = next ? top.sc - next.sc : 9;
+  return { p: top.p, conf: gap >= 1 && top.sc >= 2 ? "ok" : "check", why: gap < 1 ? "close call" : "" };
+}
+// Is this product's pack/size number the same as the quantity the model reported? ("12 pack" heard as 12 needed)
+function qtyLooksLikePack(phrase, qty, p) {
+  if (qty == null || !p) return false;
+  const nums = [...speechToDigits(phrase).matchAll(/\d+(?:\.\d+)?/g)].map(m => parseFloat(m[0]));
+  return nums.filter(v => v === qty).length === 1 && (qty === parseInt(p.pack, 10) || parseFloat(p.size) === qty);
+}
+// Model answer for one note -> note items.
+function itemsFromModel(list) {
+  const items = [];
+  for (const it of list) {
+    if (!it || typeof it !== "object" || typeof it.product !== "string" || !it.product.trim()) continue;
+    let qty = it.qty == null || it.qty === "" ? null : Math.round(Number(it.qty));
+    if (!(qty > 0 && qty < 1000)) qty = null;
+    const r = resolvePhrase(it.product);
+    if (r && qtyLooksLikePack(it.product, qty, r.p)) qty = null;
+    items.push({ pid: r ? r.p.id : null, phrase: it.product.trim(), qty, conf: r && r.conf === "ok" && qty != null ? "ok" : "check", why: !r ? "no match" : r.conf !== "ok" ? r.why : qty == null ? "how many?" : "", done: false });
+  }
+  return items;
+}
+
+// ---------- On-device voice models and the note queue ----------
+// A note goes: queued (voice clip waiting) → heard (text waiting for the language model) → reading → done.
+// The queue runs in the background (oldest note first, listening before reading) so you can keep snapping
+// shelves, or walk to the back room, while the phone works through it.
+const MODEL_INFO = {
+  asr: { name: "Speech to text", detail: "Whisper Base", size: "about 80 MB" },
+  fast: { name: "Language", detail: "Qwen 2.5 0.5B", size: "about 0.8 GB" },
+};
+const MODEL_CACHE_HINT = { asr: "whisper-base.en", fast: "Qwen2.5-0.5B-Instruct" };
+const ai = {
+  worker: null, ready: {}, device: {}, probe: null,
+  dl: { key: null, loaded: 0, total: 0, error: "" },   // the download in progress, if any
+  pumping: false, pending: new Map(), seq: 0, wake: null,
+};
+const haveModel = key => !!state.settings.models[key];
+// The language model in use (Qwen 0.5B: Llama 1B was 1.7 GB, too much memory for an iPhone 13).
+function activeLLM() { return haveModel("fast") ? "fast" : null; }
+const voiceReady = () => haveModel("asr") && !!activeLLM();
+
+function getWorker() {
+  if (ai.worker) return ai.worker;
+  const w = new Worker("ai-worker.js", { type: "module" });
+  w.onmessage = e => {
+    const m = e.data;
+    if (m.type === "progress") { ai.dl.loaded = m.loaded; ai.dl.total = m.total; updateModelProgress(); return; }
+    if (m.type === "probe") { ai.probe = m; if (view === "more") renderMore(); return; }
+    const p = ai.pending.get(m.id != null ? m.id : "load:" + m.key);
+    if (!p) return;
+    if (m.type === "error") { ai.pending.delete(m.id != null ? m.id : "load:" + m.key); p.reject(new Error(m.message)); }
+    else if (m.type === "ready") { ai.device[m.key] = m.device; ai.pending.delete("load:" + m.key); p.resolve(m); }
+    else if (m.type === "text" || m.type === "items") { ai.pending.delete(m.id); p.resolve(m); }
+  };
+  w.onerror = e => failAllPending(new Error(e.message || "The voice worker stopped"));
+  ai.worker = w;
+  w.postMessage({ type: "probe" });
+  return w;
+}
+function failAllPending(err) {
+  for (const p of ai.pending.values()) p.reject(err);
+  ai.pending.clear();
+  if (ai.worker) { try { ai.worker.terminate(); } catch (e) {} ai.worker = null; }
+  ai.ready = {};
+}
+// Send a request to the worker and wait for its answer. A stuck job is cancelled (the worker restarts fresh).
+function workerCall(msg, timeoutMs, transfer) {
+  const w = getWorker();
+  const id = msg.type === "load" ? "load:" + msg.key : ++ai.seq;
+  return new Promise((resolve, reject) => {
+    const timer = timeoutMs ? setTimeout(() => failAllPending(new Error("Took too long. Try again.")), timeoutMs) : null;
+    ai.pending.set(id, { resolve: v => { clearTimeout(timer); resolve(v); }, reject: e => { clearTimeout(timer); reject(e); } });
+    w.postMessage({ ...msg, id }, transfer || []);
+  });
+}
+
+// ---- Downloading ----
+async function downloadModels(keys) {
+  if (ai.dl.key) return;
+  if (!navigator.onLine) return toast("No signal. Connect to Wi-Fi to download.");
+  ai.dl.error = "";
+  try {
+    for (const key of keys) {
+      if (haveModel(key)) continue;
+      ai.dl = { key, loaded: 0, total: 0, error: "" };
+      if (view === "more") renderMore();
+      await workerCall({ type: "load", key });     // no timeout: it's a big download
+      state.settings.models[key] = true; save();
+    }
+    ai.dl = { key: null, loaded: 0, total: 0, error: "" };
+    toast("Voice models ready");
+  } catch (e) {
+    ai.dl = { key: null, loaded: 0, total: 0, error: e.message || "Download failed" };
+    failAllPending(e);
+  }
+  renderAll(); pump();
+}
+function updateModelProgress() {
+  const bar = document.querySelector("[data-mprog]");
+  if (!bar || !ai.dl.key) return;
+  const t = ai.dl.total, pct = t ? Math.min(100, Math.round(ai.dl.loaded / t * 100)) : 0;
+  bar.querySelector("i").style.width = pct + "%";
+  const lab = document.querySelector("[data-mprog-label]");
+  if (lab) lab.textContent = t ? `${MODEL_INFO[ai.dl.key].name}: ${(ai.dl.loaded / 1e6).toFixed(0)} of ${(t / 1e6).toFixed(0)} MB` : `${MODEL_INFO[ai.dl.key].name}: starting…`;
+}
+async function deleteModels() {
+  failAllPending(new Error("cancelled"));
+  try {
+    const c = await caches.open("transformers-cache");
+    for (const req of await c.keys()) await c.delete(req);
+  } catch (e) { /* nothing cached */ }
+  state.settings.models = { asr: false, fast: false };
+  ai.ready = {}; save(); renderAll();
+}
+// If the phone cleared the downloaded files (low storage), forget that they were downloaded so nothing re-downloads in the background.
+async function verifyModels() {
+  try {
+    if (!("caches" in self)) return;
+    const c = await caches.open("transformers-cache");
+    const urls = (await c.keys()).map(r => r.url);
+    let changed = false;
+    for (const key of Object.keys(MODEL_CACHE_HINT)) {
+      if (state.settings.models[key] && !urls.some(u => u.includes(MODEL_CACHE_HINT[key]))) { state.settings.models[key] = false; changed = true; }
+    }
+    if (changed) { save(); renderAll(); }
+  } catch (e) { /* ignore */ }
+}
+
+// ---- The queue ----
+const nextNote = status => [...state.notes].reverse().find(n => n.status === status);
+function pendingNotes() { return state.notes.filter(n => n.status === "queued" || n.status === "heard" || n.status === "reading"); }
+// What's holding the queue, for display.
+function queueState() {
+  const left = pendingNotes();
+  if (!left.length) return { busy: false, text: "" };
+  const needAsr = left.some(n => n.status === "queued"), needLLM = left.some(n => n.status === "heard" || n.status === "reading");
+  if ((needAsr && !haveModel("asr")) || (needLLM && !activeLLM() && !needAsr)) return { busy: false, blocked: true, text: `${left.length} note${left.length === 1 ? "" : "s"} waiting. Download the voice models in More.` };
+  return { busy: true, text: `Reading ${left.length} note${left.length === 1 ? "" : "s"}…` };
+}
+async function holdScreenOn() {
+  try { if (navigator.wakeLock && !document.hidden && !ai.wake) { ai.wake = await navigator.wakeLock.request("screen"); ai.wake.addEventListener("release", () => (ai.wake = null)); } } catch (e) {}
+}
+function releaseScreen() { try { ai.wake && ai.wake.release(); } catch (e) {} ai.wake = null; }
+document.addEventListener("visibilitychange", () => { if (!document.hidden && ai.pumping) holdScreenOn(); });
+
+async function pump() {
+  if (ai.pumping) return;
+  ai.pumping = true; holdScreenOn(); renderQueueStatus();
+  try {
+    for (;;) {
+      let n = nextNote("queued");
+      if (n && haveModel("asr")) { await listenTo(n); continue; }
+      n = nextNote("heard");
+      if (n && activeLLM()) { await readNote(n); continue; }
+      break;
+    }
+  } finally { ai.pumping = false; releaseScreen(); renderAll(); }
+}
+async function listenTo(n) {
+  try {
+    const rec = n.audio ? await getAudio(n.audio) : null;
+    if (!rec) throw new Error("The recording is missing.");
+    const i16 = new Int16Array(rec.pcm), f32 = new Float32Array(i16.length);
+    for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
+    if (!ai.ready.asr) { await workerCall({ type: "load", key: "asr" }, 120000); ai.ready.asr = true; }
+    const r = await workerCall({ type: "transcribe", pcm: f32 }, 120000, [f32.buffer]);
+    n.text = cleanTranscript(r.text);
+    n.status = n.text ? "heard" : "empty"; n.err = "";
+  } catch (e) { n.status = "error"; n.err = e.message || "Couldn't listen to this"; }
+  save(); renderAll();
+}
+// Whisper writes things like [BLANK_AUDIO] or (silence) when nothing was said.
+function cleanTranscript(t) {
+  t = String(t || "").replace(/\[[^\]]*\]|\([^)]*\)|\*[^*]*\*/g, " ").replace(/\s+/g, " ").trim();
+  return /[a-z0-9]/i.test(t) ? t : "";
+}
+async function readNote(n) {
+  const key = activeLLM();
+  n.status = "reading"; save(); renderAll();
+  try {
+    if (!ai.ready[key]) { await workerCall({ type: "load", key }, 180000); ai.ready[key] = true; }
+    const r = await workerCall({ type: "extract", key, text: n.text }, 120000);
+    if (!r.items) throw new Error("Couldn't make sense of this note.");
+    n.items = itemsFromModel(r.items);
+    n.status = "done"; n.err = "";
+  } catch (e) { n.status = "error"; n.err = e.message || "Couldn't read this note"; n.retry = "heard"; }
+  save(); renderAll();
+}
+// Put a note back in line: to be listened to again, or read again.
+function requeue(n) {
+  n.err = "";
+  n.status = n.audio && !n.text ? "queued" : "heard";
+  save(); renderAll(); pump();
+}
+function renderQueueStatus() { if (view === "needed" || view === "notes" || view === "capture") renderAll(); }
+
+// ============================================================
+// Shared data on GitHub
+// ============================================================
+function b64encode(str) { return btoa(unescape(encodeURIComponent(str))); }
+function b64decode(b64) { return decodeURIComponent(escape(atob(b64.replace(/\s/g, "")))); }
+const bytesToB64 = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes)));
+const b64ToBytes = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+const apiBase = `https://api.github.com/repos/${GITHUB.owner}/${GITHUB.repo}`;
+
+function emptyShared() { return { version: 1, updated: 0, products: {}, tags: {}, deleted: { products: {}, tags: {} } }; }
+function normShared(d) {
+  const s = emptyShared();
+  if (!d || typeof d !== "object") return s;
+  s.updated = d.updated || 0;
+  s.products = d.products || {}; s.tags = d.tags || {};
+  s.deleted.products = (d.deleted && d.deleted.products) || {}; s.deleted.tags = (d.deleted && d.deleted.tags) || {};
+  if (d.config) s.config = d.config;
+  s.tagsResetAt = d.tagsResetAt || 0;   // set by "Reset shared tags": links made before this are gone everywhere
+  return s;
+}
+
+// Read a repo file. With a token: GitHub API (fresh, gives the sha needed to write).
+// Without: public API first, then the Pages copy next to the app.
+async function readRepoFile(path, token) {
+  const headers = { Accept: "application/vnd.github+json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  try {
+    const r = await fetch(`${apiBase}/contents/${path}?ref=${GITHUB.branch}&t=${Date.now()}`, { headers, cache: "no-store" });
+    if (r.status === 404) return { text: null, sha: null };
+    if (r.ok) {
+      const j = await r.json();
+      if (j.content) return { text: b64decode(j.content), sha: j.sha };
+      // Files over 1MB come back without content; fetch the raw bytes.
+      const raw = await fetch(`${apiBase}/contents/${path}?ref=${GITHUB.branch}`, { headers: { ...headers, Accept: "application/vnd.github.raw" }, cache: "no-store" });
+      if (raw.ok) return { text: await raw.text(), sha: j.sha };
+    }
+    if (token) throw new Error(`GitHub said ${r.status}`);
+  } catch (e) { if (token) throw e; }
+  const r = await fetch(`../${path}?t=${Date.now()}`, { cache: "no-store" });   // Pages copy (may lag a minute)
+  if (r.status === 404) return { text: null, sha: null };
+  if (!r.ok) throw new Error(`Couldn't load shared data (${r.status})`);
+  return { text: await r.text(), sha: null };
+}
+async function writeRepoFile(path, text, sha, token, message) {
+  const r = await fetch(`${apiBase}/contents/${path}`, {
+    method: "PUT",
+    headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ message, content: b64encode(text), branch: GITHUB.branch, ...(sha ? { sha } : {}) }),
+  });
+  if (r.status === 409 || r.status === 422) { const e = new Error("conflict"); e.conflict = true; throw e; }
+  if (r.status === 401 || r.status === 403) { const e = new Error("GitHub rejected the upload key"); e.auth = true; throw e; }
+  if (!r.ok) throw new Error(`GitHub said ${r.status}`);
+  return (await r.json()).content.sha;
+}
+
+// Merge shared data into this phone. Newest change wins, item by item.
+function applyShared(remote, { overwrite = false } = {}) {
+  remote = normShared(remote);
+  if (overwrite) {
+    const map = new Map(buildSeedProducts().map(p => [p.id, p]));
+    for (const id in remote.products) map.set(id, { ...remote.products[id] });
+    for (const id in remote.deleted.products) map.delete(id);
+    state.products = [...map.values()];
+    const tags = {};
+    for (const code in remote.tags) {
+      const rt = remote.tags[code];
+      if (!map.has(rt.productId)) continue;
+      tags[code] = { ...rt, lastSeen: (state.tags[code] && state.tags[code].lastSeen) || rt.created || Date.now() };
+    }
+    state.tags = tags;
+    state.deleted = { products: {}, tags: {} };
+    state.outbox = { products: {}, tags: {} };
+    state.config = { perStoreTags: false, updated: 0, ...(remote.config || {}) };
+    state.sync.tagsResetAt = remote.tagsResetAt || 0;
+  } else {
+    if (remote.config && (remote.config.updated || 0) > (state.config.updated || 0)) {
+      state.config = { ...state.config, ...remote.config };
+      delete state.outbox.config;
+    }
+    // Shared tags were reset: drop every local link made before the reset (including ones never uploaded).
+    if (remote.tagsResetAt) {
+      for (const k of Object.keys(state.tags)) if ((state.tags[k].updated || 0) <= remote.tagsResetAt) { delete state.tags[k]; delete state.outbox.tags[k]; }
+      state.sync.tagsResetAt = remote.tagsResetAt;
+    }
+    const localTs = id => { const p = productById(id); return Math.max(p ? p.updated || 0 : 0, state.deleted.products[id] || 0); };
+    for (const id in remote.products) {
+      const rp = remote.products[id];
+      if ((rp.updated || 0) <= localTs(id)) continue;
+      const i = state.products.findIndex(p => p.id === id);
+      if (i >= 0) state.products[i] = { ...rp }; else state.products.push({ ...rp });
+      delete state.deleted.products[id]; delete state.outbox.products[id];
+    }
+    for (const id in remote.deleted.products) {
+      const ts = remote.deleted.products[id];
+      if (ts <= localTs(id)) continue;
+      state.products = state.products.filter(p => p.id !== id);
+      state.deleted.products[id] = ts; delete state.outbox.products[id];
+    }
+    const tagTs = c => Math.max(state.tags[c] ? state.tags[c].updated || 0 : 0, state.deleted.tags[c] || 0);
+    for (const code in remote.tags) {
+      const rt = remote.tags[code];
+      if ((rt.updated || 0) <= tagTs(code)) continue;
+      state.tags[code] = { ...rt, lastSeen: (state.tags[code] && state.tags[code].lastSeen) || rt.created || Date.now() };
+      delete state.deleted.tags[code]; delete state.outbox.tags[code];
+    }
+    for (const code in remote.deleted.tags) {
+      const ts = remote.deleted.tags[code];
+      if (ts <= tagTs(code)) continue;
+      delete state.tags[code];
+      state.deleted.tags[code] = ts; delete state.outbox.tags[code];
+    }
+  }
+  // Keep things consistent: tags must point at real products, one tag per product per scope (newest wins).
+  const byProduct = {};
+  for (const key of Object.keys(state.tags)) {
+    const t = state.tags[key];
+    if (!productById(t.productId)) { delete state.tags[key]; continue; }
+    const slot = (STORE_KEY_RE.test(key) ? "store:" + scopeOfKey(key) : "shared") + "/" + t.productId;
+    const prev = byProduct[slot];
+    if (prev && state.tags[prev].updated >= t.updated) delete state.tags[key];
+    else { if (prev) delete state.tags[prev]; byProduct[slot] = key; }
+  }
+  // Notes that mention a product that no longer exists keep their words but ask for a new product.
+  for (const n of state.notes) for (const it of n.items) if (it.pid && !productById(it.pid)) { it.pid = null; it.conf = "check"; it.why = "no match"; }
+  state.products.forEach(p => (p._st = undefined));
+  canonicalize(state.products);
+}
+
+async function pullShared({ overwrite = false, quiet = true } = {}) {
+  let token = null;
+  if (uploadsEnabled()) { try { token = await getToken(); } catch (e) { /* read without it */ } }
+  const { text } = await readRepoFile(GITHUB.dataPath, token);
+  const remote = text ? JSON.parse(text) : emptyShared();
+  applyShared(remote, { overwrite });
+  state.sync.lastPull = Date.now();
+  if (!uploadsEnabled()) state.sync.error = "";
+  save(); renderAll();
+  if (!quiet) toast(overwrite ? "Replaced with the shared data" : "Up to date");
+}
+
+// ---------- Upload key (encrypted with the team password) ----------
+const KDF_ITER = 250000;
+async function deriveAesKey(password, salt, iter) {
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: iter, hash: "SHA-256" }, base,
+    { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+async function encryptToken(token, password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveAesKey(password, salt, KDF_ITER);
+  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(token));
+  return { v: 1, kdf: "PBKDF2-SHA256", iter: KDF_ITER, salt: bytesToB64(salt), iv: bytesToB64(iv), ct: bytesToB64(ct) };
+}
+async function decryptToken(blob, password) {
+  const key = await deriveAesKey(password, b64ToBytes(blob.salt), blob.iter);
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64ToBytes(blob.iv) }, key, b64ToBytes(blob.ct));
+  return new TextDecoder().decode(pt);
+}
+function getPass() { try { return localStorage.getItem(PASS_KEY) || ""; } catch (e) { return ""; } }
+function setPass(p) { try { if (p) localStorage.setItem(PASS_KEY, p); else localStorage.removeItem(PASS_KEY); } catch (e) {} }
+const uploadsEnabled = () => !!getPass();
+let cachedToken = null;
+async function loadKeyBlob() {
+  const { text } = await readRepoFile(GITHUB.keyPath, null);
+  if (!text) throw new Error("Uploads haven't been set up for this app yet.");
+  return JSON.parse(text);
+}
+async function getToken() {
+  if (cachedToken) return cachedToken;
+  const pass = getPass();
+  if (!pass) throw new Error("Uploads are off");
+  const blob = await loadKeyBlob();
+  try { cachedToken = await decryptToken(blob, pass); }
+  catch (e) { const err = new Error("The upload password no longer works. Enable uploads again."); err.auth = true; throw err; }
+  return cachedToken;
+}
+async function checkToken(token) {
+  const r = await fetch(apiBase, { headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}` }, cache: "no-store" });
+  if (r.status === 401) throw new Error("GitHub didn't accept that key.");
+  if (!r.ok) throw new Error(`Couldn't reach the repository (${r.status}). Check that the key has access to ${GITHUB.repo}.`);
+  const j = await r.json();
+  if (j.permissions && !j.permissions.push) throw new Error("That key can read but not write. Give it Contents: Read and write.");
+}
+
+// ---------- Automatic uploads ----------
+let uploadTimer = null, uploading = false, uploadAgain = false;
+function scheduleUpload(delay = UPLOAD_DELAY_MS) {
+  renderSyncIndicator();
+  if (!uploadsEnabled()) return;
+  clearTimeout(uploadTimer);
+  uploadTimer = setTimeout(uploadChanges, delay);
+}
+async function uploadChanges() {
+  if (!uploadsEnabled() || !pendingCount()) { renderSyncIndicator(); return; }
+  if (!navigator.onLine) { state.sync.error = "offline"; renderSyncIndicator(); return; }
+  if (uploading) { uploadAgain = true; return; }
+  uploading = true; renderSyncIndicator();
+  try {
+    const token = await getToken();
+    // What we're sending, with the timestamp it had, so later edits aren't wrongly cleared.
+    const sentP = {}, sentT = {};
+    for (const id in state.outbox.products) { const p = productById(id); sentP[id] = p ? p.updated : state.deleted.products[id] || 0; }
+    for (const c in state.outbox.tags) { const t = state.tags[c]; sentT[c] = t ? t.updated : state.deleted.tags[c] || 0; }
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const { text, sha } = await readRepoFile(GITHUB.dataPath, token);
+      const R = normShared(text ? JSON.parse(text) : null);
+      let n = 0;
+      for (const id in sentP) {
+        const rTs = Math.max((R.products[id] && R.products[id].updated) || 0, R.deleted.products[id] || 0);
+        if (rTs > sentP[id]) continue;                         // someone else changed it more recently
+        const p = productById(id);
+        if (p) { R.products[id] = shareable(p); delete R.deleted.products[id]; }
+        else { delete R.products[id]; R.deleted.products[id] = state.deleted.products[id] || Date.now(); }
+        n++;
+      }
+      for (const c in sentT) {
+        const rTs = Math.max((R.tags[c] && R.tags[c].updated) || 0, R.deleted.tags[c] || 0, R.tagsResetAt || 0);
+        if (rTs > sentT[c]) continue;                         // newer elsewhere, or made before a tag reset
+        const t = state.tags[c];
+        if (t) { R.tags[c] = tagShareable(t); delete R.deleted.tags[c]; }
+        else { delete R.tags[c]; R.deleted.tags[c] = state.deleted.tags[c] || Date.now(); }
+        n++;
+      }
+      const sentConfig = state.outbox.config ? state.config.updated : null;
+      if (sentConfig !== null && (!R.config || (R.config.updated || 0) <= sentConfig)) { R.config = { ...state.config }; n++; }
+      R.updated = Date.now();
+      try {
+        await writeRepoFile(GITHUB.dataPath, JSON.stringify(R, null, 1), sha, token,
+          `Shelf Scan: ${n} change${n === 1 ? "" : "s"}${state.storeName ? ` (store ${state.storeName})` : ""}`);
+      } catch (e) { if (e.conflict) continue; throw e; }   // someone uploaded at the same moment; re-read and retry
+      for (const id in sentP) {
+        const p = productById(id), now = p ? p.updated : state.deleted.products[id] || 0;
+        if (now === sentP[id]) delete state.outbox.products[id];
+      }
+      for (const c in sentT) {
+        const t = state.tags[c], now = t ? t.updated : state.deleted.tags[c] || 0;
+        if (now === sentT[c]) delete state.outbox.tags[c];
+      }
+      if (sentConfig !== null && state.config.updated === sentConfig) delete state.outbox.config;
+      applyShared(R);                                        // pick up everyone else's changes too
+      state.sync.lastPush = state.sync.lastPull = Date.now();
+      state.sync.error = "";
+      save(); renderAll();
+      return;
+    }
+    throw new Error("Too many people uploading at once. Will retry.");
+  } catch (e) {
+    state.sync.error = e.message || String(e);
+    if (e.auth) cachedToken = null;
+    save();
+    if (!e.auth) scheduleUpload(30000);                      // try again shortly
+  } finally {
+    uploading = false;
+    renderSyncIndicator();
+    if (view === "more") renderMore();
+    if (uploadAgain) { uploadAgain = false; scheduleUpload(500); }
+  }
+}
+window.addEventListener("online", () => { state.sync.error = ""; scheduleUpload(500); });
+
+function syncStatus() {
+  const n = pendingCount();
+  if (!uploadsEnabled()) return { dot: "", text: "Uploads are off on this phone", short: "" };
+  if (uploading) return { dot: "warn", text: `Uploading ${n} change${n === 1 ? "" : "s"}…`, short: "up" };
+  if (state.sync.error === "offline" || (!navigator.onLine && n)) return { dot: "warn", text: `${n} change${n === 1 ? "" : "s"} waiting for signal`, short: "wait" };
+  if (state.sync.error) return { dot: "bad", text: state.sync.error, short: "err" };
+  if (n) return { dot: "warn", text: `${n} change${n === 1 ? "" : "s"} waiting to upload`, short: "wait" };
+  return { dot: "ok", text: `All changes uploaded${state.sync.lastPush ? " · " + ago(state.sync.lastPush) : ""}`, short: "ok" };
+}
+function renderSyncIndicator() {
+  const b = $("#sync-ind"); if (!b) return;
+  const s = syncStatus(), n = pendingCount();
+  b.hidden = !s.short;
+  b.innerHTML = s.short === "ok" ? icon("cloud") : s.short === "err" ? icon("cloudoff") : `${icon("upload")}${n || ""}`;
+  b.setAttribute("aria-label", s.text);
+}
+
+// ---------- Add / edit product ----------
+function editProduct(pid, { prefillName = "", barcode = "", off = null } = {}) {
+  const isNew = !pid;
+  const p = isNew
+    ? { id: "", brand: "", flavor: "", size: "", pack: "Single", category: "12oz Cans", unit: "pack", barcodes: barcode ? [barcode] : [], img: "", custom: true, retired: false, updated: 0 }
+    : JSON.parse(JSON.stringify(productById(pid)));
+  if (isNew && off) {
+    p.brand = off.brand || "";
+    p.flavor = off.name && off.brand ? off.name.replace(new RegExp(off.brand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i"), "").trim() : (off.name || "");
+    p.size = off.quantity || "";
+    p.img = off.img || "";
+  } else if (isNew && prefillName) {
+    const brand = [...new Set(state.products.map(x => x.brand))].sort((a, b) => b.length - a.length)
+      .find(b => prefillName.toLowerCase().startsWith(b.toLowerCase()));
+    if (brand) { p.brand = brand; p.flavor = prefillName.slice(brand.length).trim(); }
+    else p.flavor = prefillName;
+  }
+  const cats = allCategories();
+  return new Promise(resolve => {
+    const s = el(`<div class="sheet"><div class="handle"></div><h2>${isNew ? "Add product" : "Edit product"}</h2>
+      <div class="row"><div id="ep-thumb"></div><div class="grow row" style="flex-wrap:wrap;gap:8px">
+        <label class="btn sm">${icon("camera")}Photo<input type="file" accept="image/*" capture="environment" hidden></label>
+        <button class="btn sm quiet" data-a="clearimg">Remove photo</button></div></div>
+      <label class="f" for="ep-brand">Brand</label><input class="field" id="ep-brand" data-k="brand" list="dl-brands" placeholder="Coca-Cola">
+      <label class="f" for="ep-flavor">Flavor / variety</label><input class="field" id="ep-flavor" data-k="flavor" placeholder="Zero Sugar">
+      <div class="row" style="align-items:flex-start">
+        <div class="grow"><label class="f" for="ep-size">Size</label><input class="field" id="ep-size" data-k="size" placeholder="12oz can"></div>
+        <div class="grow"><label class="f" for="ep-pack">Pack</label><input class="field" id="ep-pack" data-k="pack" placeholder="12pk"></div>
+      </div>
+      <label class="f" for="ep-cat">List group</label><input class="field" id="ep-cat" data-k="category" list="dl-cats">
+      <label class="f" for="ep-unit">Count by</label><input class="field" id="ep-unit" data-k="unit" list="dl-units" placeholder="pack, case, tray, bottle">
+      <datalist id="dl-brands">${[...new Set(state.products.map(x => x.brand))].map(b => `<option value="${esc(b)}">`).join("")}</datalist>
+      <datalist id="dl-cats">${cats.map(c => `<option value="${esc(c)}">`).join("")}</datalist>
+      <datalist id="dl-units"><option value="pack"><option value="case"><option value="tray"><option value="bottle"><option value="can"></datalist>
+      <button class="btn primary block" data-a="save" style="margin-top:18px;padding:14px">${isNew ? "Add product" : "Save"}</button>
+      ${isNew ? "" : `<button class="btn block" data-a="retire">${p.retired ? "Show in lists again" : "Retire (hide from lists)"}</button>`}
+      ${!isNew && p.custom ? `<button class="btn block danger" data-a="delete">Delete product</button>` : ""}
+      <button class="btn block quiet" data-a="cancel">Cancel</button></div>`);
+    let done = false;
+    const close = openLayer(s, { onClose: () => { if (!done) resolve(null); } });
+    s.querySelectorAll("[data-k]").forEach(inp => (inp.value = p[inp.dataset.k] || ""));
+    const readForm = () => s.querySelectorAll("[data-k]").forEach(inp => (p[inp.dataset.k] = inp.value.trim()));
+    const renderThumb = () => (s.querySelector("#ep-thumb").innerHTML = thumbHtml({ ...p, brand: p.brand || "?" }, true));
+    const renderCodes = () => {
+      const box = s.querySelector("#ep-codes");
+      box.innerHTML = p.barcodes.length ? "" : `<span class="hint">None yet. They're learned when you scan.</span>`;
+      p.barcodes.forEach((c, i) => {
+        const r = el(`<div class="row" style="margin:4px 0"><code class="grow">${esc(c)}</code><button class="btn sm danger">Remove</button></div>`);
+        r.querySelector("button").onclick = () => { p.barcodes.splice(i, 1); renderCodes(); };
+        box.appendChild(r);
+      });
+    };
+    renderThumb();
+    s.querySelector('input[type="file"]').onchange = async e => {
+      const f = e.target.files[0]; if (!f) return;
+      p.img = await shrinkImage(f, 240); renderThumb();
+    };
+    s.querySelector('[data-a="clearimg"]').onclick = () => { p.img = ""; renderThumb(); };
+    s.querySelector('[data-a="save"]').onclick = async () => {
+      readForm();
+      if (!p.brand) return toast("Enter a brand");
+      if (!p.category) p.category = "Other";
+      if (!p.unit) p.unit = "pack";
+      const dupName = state.products.find(x => x.id !== p.id && normText(pFull(x)) === normText(pFull(p)));
+      if (dupName) {
+        const use = await confirmDialog(`<b>${esc(pFull(dupName))}</b> already exists. Use that one instead?`, { ok: "Use existing", cancel: "Keep editing" });
+        if (use) { done = true; close(); resolve(dupName.id); }
+        return;
+      }
+      const snap = snapshot();
+      for (const c of p.barcodes) {
+        const other = state.products.find(x => x.id !== p.id && x.barcodes.includes(c));
+        if (other) {
+          const ok = await confirmDialog(`Barcode ${esc(c)} is on <b>${esc(pFull(other))}</b>. Move it here?`, { ok: "Move" });
+          if (!ok) return;
+          other.barcodes = other.barcodes.filter(b => b !== c);
+          markProduct(other.id);
+        }
+      }
+      if (isNew) {
+        let id = slug(pFull(p)) || "product", n = 2;
+        while (productById(id) || state.deleted.products[id]) id = slug(pFull(p)) + "-" + n++;
+        p.id = id;
+        state.products.push(p);
+      } else {
+        const i = state.products.findIndex(x => x.id === p.id);
+        state.products[i] = p;
+      }
+      markProduct(p.id);
+      save(); done = true; close(); renderAll();
+      toast(isNew ? `Added ${pName(p)}` : "Saved", snap);
+      resolve(p.id);
+    };
+    const retireBtn = s.querySelector('[data-a="retire"]');
+    if (retireBtn) retireBtn.onclick = () => {
+      const snap = snapshot();
+      const real = productById(p.id); real.retired = !real.retired;
+      markProduct(real.id);
+      save(); done = true; close(); renderAll();
+      toast(real.retired ? "Retired" : "Restored", snap); resolve(p.id);
+    };
+    const delBtn = s.querySelector('[data-a="delete"]');
+    if (delBtn) delBtn.onclick = async () => {
+      if (!(await confirmDialog(`Delete <b>${esc(pFull(p))}</b>?`, { ok: "Delete", danger: true }))) return;
+      const snap = snapshot();
+      dropProduct(p.id);
+      save(); done = true; close(); renderAll(); toast("Deleted", snap); resolve(null);
+    };
+    s.querySelector('[data-a="cancel"]').onclick = () => { done = true; close(); resolve(null); };
+  });
+}
+function shrinkImage(file, max) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src);
+      resolve(c.toDataURL("image/jpeg", 0.72));
+    };
+    img.onerror = () => resolve("");
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+// ---------- Camera, microphone and making a note ----------
+const MAX_NOTE_SECS = 30;     // Whisper reads 30 seconds at a time
+const cam = { stream: null, starting: false, sleepTimer: null, audioTrack: null, error: "" };
+
+async function startCamera() {
+  if (cam.stream || cam.starting) return;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { cam.error = "This browser can't use the camera here."; return renderCapture(); }
+  cam.starting = true; cam.error = ""; renderCapture();
+  const video = { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } };
+  try {
+    let stream;
+    // Ask for the microphone together with the camera so the phone only asks once.
+    try { stream = await navigator.mediaDevices.getUserMedia({ video, audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+    catch (e) { if (e && e.name === "NotAllowedError") throw e; stream = await navigator.mediaDevices.getUserMedia({ video }); }
+    cam.stream = stream;
+    cam.audioTrack = stream.getAudioTracks()[0] || null;
+    if (cam.audioTrack) cam.audioTrack.enabled = false;   // only listening while recording
+    const v = $("#cam-video"); v.srcObject = stream; await v.play().catch(() => {});
+    state.settings.camOK = true; save();
+  } catch (e) {
+    cam.error = e && e.name === "NotAllowedError" ? "Camera access is blocked. Allow it in Settings, or use the phone camera button below." : "Couldn't start the camera.";
+  }
+  cam.starting = false; renderCapture();
+}
+function stopCamera() {
+  clearTimeout(cam.sleepTimer);
+  if (cam.stream) cam.stream.getTracks().forEach(t => t.stop());
+  cam.stream = null; cam.audioTrack = null;
+  const v = $("#cam-video"); if (v) v.srcObject = null;
+  renderCapture();
+}
+// Leaving the Capture tab keeps the camera warm for a minute so coming back is instant.
+function sleepCameraSoon() { clearTimeout(cam.sleepTimer); if (cam.stream) cam.sleepTimer = setTimeout(stopCamera, 60000); }
+function wakeCamera() { clearTimeout(cam.sleepTimer); if (!cam.stream && state.settings.camOK) startCamera(); }
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) { if (cam.stream && !recorder) stopCamera(); }
+  else if (view === "capture") wakeCamera();
+});
+
+// Crop the live video to the shape of the viewfinder (what you see is what's saved).
+async function grabPhoto() {
+  const v = $("#cam-video"), box = $("#camera");
+  const vw = v.videoWidth, vh = v.videoHeight;
+  if (!vw || !vh) return null;
+  const want = box.clientWidth / box.clientHeight, have = vw / vh;
+  let cw = vw, ch = vh, sx = 0, sy = 0;
+  if (have > want) { cw = Math.round(vh * want); sx = Math.round((vw - cw) / 2); } else { ch = Math.round(vw / want); sy = Math.round((vh - ch) / 2); }
+  return frameToBlob(v, vw, vh, sx, sy, cw, ch);
+}
+async function onShutter(forcePhone) {
+  if (recorder) return;
+  let blob = null;
+  if (cam.stream && !forcePhone) {
+    blob = await grabPhoto();
+    box_flash();
+  } else {
+    blob = await cameraPhoto();   // no live camera: use the iPhone camera app
+  }
+  if (!blob) return;
+  beep(true);
+  const photoId = newId("p");
+  try { await putPhoto(photoId, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
+  startRecording({ photos: [photoId] });
+}
+function box_flash() { const b = $("#camera"); b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); setTimeout(() => b.classList.remove("flash"), 400); }
+
+// ---- Recording ----
+let recorder = null;
+async function micTrack() {
+  if (cam.audioTrack) return cam.audioTrack;
+  const s = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+  cam.audioTrack = s.getAudioTracks()[0]; cam.stream = cam.stream || null; cam.micOnly = s;
+  cam.audioTrack.enabled = false;
+  return cam.audioTrack;
+}
+function resampleTo16k(chunks, inRate) {
+  let total = 0; for (const c of chunks) total += c.length;
+  const x = new Float32Array(total); let o = 0; for (const c of chunks) { x.set(c, o); o += c.length; }
+  const ratio = inRate / 16000, n = Math.floor(total / ratio), out = new Int16Array(n);
+  let peak = 0;
+  const f = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const a = Math.floor(i * ratio), b = Math.min(total, Math.max(a + 1, Math.ceil((i + 1) * ratio)));
+    let s = 0; for (let k = a; k < b; k++) s += x[k];
+    f[i] = s / (b - a); const v = Math.abs(f[i]); if (v > peak) peak = v;
+  }
+  const gain = peak > 0.01 ? Math.min(0.9 / peak, 20) : 1;   // quiet recordings are brought up; silence is left alone
+  for (let i = 0; i < n; i++) out[i] = Math.max(-32768, Math.min(32767, Math.round(f[i] * gain * 32767)));
+  return { pcm: out.buffer, rate: 16000, peak };
+}
+// Recording sheet. Starts listening straight away; the person taps Done when finished.
+// `base`: what to do with the result ({photos} for a new note, or {note} to re-record an existing one).
+async function startRecording(base) {
+  if (recorder) return;
+  const sheet = el(`<div class="sheet rec-sheet"><div class="handle"></div>
+    <h2>What do you need here?</h2>
+    <p class="hint center" id="rec-hint">Say the product and how many, like â€œthree Diet Coke twelve packsâ€.</p>
+    <div class="rec-meter"><i id="rec-level"></i></div>
+    <div class="rec-time" id="rec-time">0:00</div>
+    <button class="btn primary block rec-done" data-a="done">${icon("check")}Done</button>
+    <div class="row rec-alt"><button class="btn quiet grow" data-a="type">${icon("note")}Type it instead</button><button class="btn quiet grow" data-a="cancel">${icon("x")}Discard</button></div></div>`);
+  let finished = false;
+  const r = recorder = { chunks: [], rate: 0, secs: 0, peak: 0, t0: 0, ctx: null, node: null, src: null, timer: null, closeSheet: null };
+  const cleanup = () => {
+    clearInterval(r.timer);
+    try { r.node && r.node.disconnect(); r.src && r.src.disconnect(); } catch (e) {}
+    try { r.ctx && r.ctx.close(); } catch (e) {}
+    if (cam.audioTrack) cam.audioTrack.enabled = false;
+    if (cam.micOnly) { cam.micOnly.getTracks().forEach(t => t.stop()); cam.micOnly = null; cam.audioTrack = null; }
+    recorder = null;
+  };
+  const discard = async () => {
+    if (finished) return; finished = true; cleanup(); r.closeSheet();
+    if (base.photos) for (const id of base.photos) delPhoto(id).catch(() => {});
+  };
+  r.closeSheet = openLayer(sheet, { sticky: true });
+  // Start the audio pipeline (this runs inside the tap that took the photo, which iOS requires).
+  try {
+    const track = await micTrack();
+    const AC = window.AudioContext || window.webkitAudioContext;
+    r.ctx = new AC(); if (r.ctx.state === "suspended") await r.ctx.resume();
+    r.rate = r.ctx.sampleRate;
+    r.src = r.ctx.createMediaStreamSource(new MediaStream([track]));
+    r.node = r.ctx.createScriptProcessor(4096, 1, 1);
+    const mute = r.ctx.createGain(); mute.gain.value = 0;
+    r.node.onaudioprocess = e => {
+      const d = e.inputBuffer.getChannelData(0); r.chunks.push(new Float32Array(d));
+      let s = 0; for (let i = 0; i < d.length; i += 4) s += d[i] * d[i];
+      const lvl = Math.sqrt(s / (d.length / 4)); r.peak = Math.max(r.peak, lvl);
+      const lv = sheet.querySelector("#rec-level"); if (lv) lv.style.transform = `scaleX(${Math.min(1, lvl * 7)})`;
+    };
+    r.src.connect(r.node); r.node.connect(mute); mute.connect(r.ctx.destination);
+    track.enabled = true; r.t0 = Date.now();
+    r.timer = setInterval(() => {
+      r.secs = (Date.now() - r.t0) / 1000;
+      const t = sheet.querySelector("#rec-time"); if (t) t.textContent = `${Math.floor(r.secs / 60)}:${String(Math.floor(r.secs % 60)).padStart(2, "0")}`;
+      if (r.secs > 3 && r.peak < 0.004) { const h = sheet.querySelector("#rec-hint"); if (h) h.textContent = "I can't hear anything. Is the microphone covered?"; }
+      if (r.secs >= MAX_NOTE_SECS) done();
+    }, 200);
+  } catch (e) {
+    const h = sheet.querySelector("#rec-hint");
+    h.textContent = e && e.name === "NotAllowedError" ? "The microphone is blocked. Allow it in Settings, or type the note instead." : "The microphone isn't available. You can type the note instead.";
+    sheet.querySelector('[data-a="done"]').disabled = true;
+  }
+  const done = async () => {
+    if (finished) return; finished = true;
+    const secs = r.secs, chunks = r.chunks, rate = r.rate, tooQuiet = r.peak < 0.004;
+    cleanup(); r.closeSheet();
+    if (!chunks.length || secs < 0.6 || tooQuiet) {
+      // Nothing usable was said: keep the photo, and let the person choose what to do.
+      const note = await saveNote({ ...base, audioRec: null, secs: 0, text: "", status: "empty" });
+      toast("Didn't hear anything. Open the note to record again.");
+      return note;
+    }
+    const rec = resampleTo16k(chunks, rate);
+    await saveNote({ ...base, audioRec: { pcm: rec.pcm, rate: rec.rate }, secs, text: "", status: "queued" });
+    pump();
+  };
+  sheet.querySelector('[data-a="done"]').onclick = done;
+  sheet.querySelector('[data-a="cancel"]').onclick = async () => {
+    if (base.note) { finished = true; cleanup(); r.closeSheet(); return; }
+    if (!(await confirmDialog("Discard this photo and note?", { ok: "Discard", danger: true }))) return;
+    discard();
+  };
+  sheet.querySelector('[data-a="type"]').onclick = async () => {
+    finished = true; cleanup(); r.closeSheet();
+    const text = await textPrompt("Type what you need", base.note ? base.note.text : "");
+    if (text == null) { if (base.note) return; if (base.photos) for (const id of base.photos) delPhoto(id).catch(() => {}); return; }
+    await saveNote({ ...base, audioRec: null, secs: 0, text, status: text.trim() ? "heard" : "empty" });
+    pump();
+  };
+}
+// Create a new note, or (base.note) replace what an existing note heard.
+async function saveNote({ photos, note, audioRec, secs, text, status }) {
+  let audioId = null;
+  if (audioRec) { audioId = newId("a"); try { await putAudio(audioId, audioRec); } catch (e) { toast("Couldn't save the recording. Phone storage may be full."); } }
+  if (note) {
+    const old = note.audio;
+    note.audio = audioId; note.secs = secs; note.text = text; note.status = status; note.err = ""; note.items = [];
+    if (old) delAudio(old).catch(() => {});
+    save(); renderAll(); return note;
+  }
+  const n = { id: newId("n"), at: Date.now(), photos: photos || [], audio: audioId, secs, text, status, items: [], err: "" };
+  state.notes.unshift(n);
+  save(); renderAll();
+  lastNoteId = n.id;
+  renderCapture();
+  return n;
+}
+let lastNoteId = null;
+
+// A small text box (for typed notes and fixing what was heard).
+function textPrompt(title, value = "", { ok = "Save" } = {}) {
+  return new Promise(resolve => {
+    const d = el(`<div class="dialog"><p><b></b></p>
+      <textarea class="field" rows="4" autocapitalize="sentences" placeholder="For example: three Diet Coke twelve packs"></textarea>
+      <div class="btns" style="margin-top:14px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="ok">${esc(ok)}</button></div></div>`);
+    d.querySelector("b").textContent = title;
+    const ta = d.querySelector("textarea"); ta.value = value;
+    let done = false;
+    const close = openLayer(d, { center: true, sticky: true, onClose: () => { if (!done) resolve(null); } });
+    d.querySelector('[data-a="c"]').onclick = () => { done = true; close(); resolve(null); };
+    d.querySelector('[data-a="ok"]').onclick = () => { done = true; close(); resolve(ta.value.trim()); };
+    setTimeout(() => ta.focus(), 50);
+  });
+}
+
+// Full-screen photo viewer with previous/next.
+function openViewer(ids, start = 0) {
+  let i = start;
+  const v = el(`<div class="viewer"><div class="viewer-top"><button class="viewer-x" aria-label="Close">${icon("x")}</button><span class="small grow" id="vw-count"></span></div>
+    <div class="viewer-stage"><img alt=""></div><div class="viewer-dots"></div></div>`);
+  const close = openLayer(v, { sticky: true });
+  v.closest(".overlay").classList.add("viewer-overlay");
+  v.querySelector(".viewer-x").onclick = close;
+  const show = async () => {
+    const img = v.querySelector("img"); img.src = (await photoURL(ids[i])) || "";
+    v.querySelector("#vw-count").textContent = ids.length > 1 ? `Photo ${i + 1} of ${ids.length}` : "";
+    v.querySelector(".viewer-dots").innerHTML = ids.length > 1 ? ids.map((_, k) => `<button class="dot${k === i ? " on" : ""}" data-k="${k}" aria-label="Photo ${k + 1}"></button>`).join("") : "";
+  };
+  v.querySelector(".viewer-dots").onclick = e => { const b = e.target.closest("[data-k]"); if (b) { i = +b.dataset.k; show(); } };
+  v.querySelector(".viewer-stage").onclick = () => { if (ids.length > 1) { i = (i + 1) % ids.length; show(); } };
+  show();
+}
+
+// Play back a note's recording.
+let playCtx = null;
+async function playNote(n) {
+  const rec = n.audio && await getAudio(n.audio).catch(() => null);
+  if (!rec) return toast("No recording for this note");
+  const i16 = new Int16Array(rec.pcm);
+  playCtx = playCtx || new (window.AudioContext || window.webkitAudioContext)();
+  if (playCtx.state === "suspended") await playCtx.resume();
+  const buf = playCtx.createBuffer(1, i16.length, rec.rate), ch = buf.getChannelData(0);
+  for (let i = 0; i < i16.length; i++) ch[i] = i16[i] / 32768;
+  const src = playCtx.createBufferSource(); src.buffer = buf; src.connect(playCtx.destination); src.start();
+}
+
+// ---------- Views ----------
+let view = "capture";
+function showView(v) {
+  view = v;
+  document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.id === "view-" + v));
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.view === v));
+  syncIndicator($("#tabs"));
+  if (v !== "capture") sleepCameraSoon(); else wakeCamera();
+  renderAll();
+  window.scrollTo(0, 0);
+}
+function renderAll() {
+  $("#hdr-store").textContent = state.storeName ? "Store " + state.storeName : "";
+  const rows = neededRows(), open = rows.filter(r => !r.done).length;
+  const badge = $("#need-badge");
+  if (open && String(open) !== badge.textContent) bump(badge);
+  badge.hidden = !open; badge.textContent = open;
+  renderSyncIndicator();
+  if (view === "capture") renderCapture();
+  if (view === "needed") renderNeeded();
+  if (view === "notes") renderNotes();
+  if (view === "products") renderProducts();
+  if (view === "more") renderMore();
+}
+const timeOf = ts => new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+const itemProduct = it => (it.pid ? productById(it.pid) : null) || null;
+
+// ---------- Capture ----------
+function renderCapture() {
+  const on = !!cam.stream;
+  $("#cam-off").hidden = on || cam.starting;
+  $("#cam-video").hidden = !on;
+  $("#cam-starting").hidden = !cam.starting;
+  $("#cam-error").textContent = cam.error;
+  $("#btn-cam-stop").hidden = !on;
+  $("#btn-shutter").disabled = cam.starting;
+  const q = queueState();
+  const vb = $("#model-banner");
+  if (!voiceReady()) {
+    vb.hidden = false;
+    vb.innerHTML = `<div class="banner">${icon("download")}<span class="grow">Voice notes need a one-time download.</span><button class="btn sm primary" data-a="go">Set up</button></div>`;
+    vb.querySelector("button").onclick = () => showView("more");
+  } else vb.hidden = true;
+  const last = state.notes.find(n => n.id === lastNoteId) || state.notes[0];
+  const card = $("#last-note");
+  card.hidden = !last;
+  if (last) {
+    card.innerHTML = `<button class="shelf-thumb" data-photo-wrap><img data-photo="${esc(last.photos[0] || "")}" alt=""></button>
+      <div class="grow"><div class="label">Last note · ${timeOf(last.at)}</div><div class="last-text">${esc(noteSummary(last))}</div></div>${icon("jump")}`;
+    card.onclick = () => jumpToNote(last.id);
+    hydratePhotos(card);
+  }
+  const line = $("#queue-line");
+  line.hidden = !q.text;
+  line.textContent = q.text;
+  line.classList.toggle("busy", !!q.busy);
+}
+function noteSummary(n) {
+  if (n.status === "queued") return haveModel("asr") ? "Waiting to listen…" : "Saved. It will be read once the voice models are downloaded.";
+  if (n.status === "heard") return n.text ? `“${n.text}”` : "Waiting to read…";
+  if (n.status === "reading") return "Reading…";
+  if (n.status === "error") return n.err || "Couldn't read this note";
+  if (n.status === "empty") return "Nothing was heard";
+  const k = n.items.length;
+  return k ? n.items.map(it => { const p = itemProduct(it); return `${it.qty != null ? it.qty + " × " : ""}${p ? pName(p) : it.phrase}`; }).join(", ") : "No product found";
+}
+
+// ---------- Needed (the short list) ----------
+function neededRows() {
+  const map = new Map();
+  for (const n of state.notes) n.items.forEach((it, idx) => {
+    const p = itemProduct(it);
+    const key = p ? p.id : "?" + sNorm(it.phrase);
+    let r = map.get(key);
+    if (!r) map.set(key, r = { key, p, phrase: it.phrase, qty: 0, unknown: false, check: false, done: true, src: [] });
+    if (it.qty == null) r.unknown = true; else r.qty += it.qty;
+    if (it.conf === "check" || !p) r.check = true;
+    if (!it.done) r.done = false;
+    r.src.push({ n, idx, it });
+  });
+  return [...map.values()];
+}
+function qtyLabel(r) { return r.unknown ? (r.qty ? `${r.qty}+` : "?") : String(r.qty); }
+function renderNeeded() {
+  const v = $("#view-needed");
+  const rows = neededRows(), q = queueState();
+  const open = rows.filter(r => !r.done).length;
+  let html = `<div class="list-head"><h2>Needed</h2><span class="muted small">${rows.length ? `${open} to go` : ""}</span><span class="grow"></span></div>`;
+  if (q.text) html += `<div class="banner ${q.busy ? "busy" : ""}"><span class="spin"></span><span class="grow">${esc(q.text)}</span></div>`;
+  if (!rows.length) {
+    html += `<div class="empty">${icon("list")}<h3>Nothing needed yet</h3><p>Snap a shelf and say what's missing. It lands here.</p></div>`;
+    v.innerHTML = html; return;
+  }
+  const check = rows.filter(r => r.check && !r.done);
+  if (check.length) html += `<div class="banner warn">${icon("warn")}<span class="grow">${check.length} ${check.length === 1 ? "item needs" : "items need"} a quick look. Tap a row marked “check”.</span></div>`;
+  // Group by product group, unmatched first.
+  const groups = new Map();
+  for (const r of rows) { const g = r.p ? r.p.category : "Not matched to a product"; (groups.get(g) || groups.set(g, []).get(g)).push(r); }
+  const order = [...groups.keys()].sort((a, b) => (a.startsWith("Not matched") ? -1 : b.startsWith("Not matched") ? 1 : catSort(a, b)));
+  for (const g of order) {
+    html += `<div class="group-h">${esc(g)}</div><div class="list">` + groups.get(g).map(r => needRow(r)).join("") + `</div>`;
+  }
+  html += `<button class="btn block quiet" id="btn-clear-all" style="margin-top:22px">Clear the whole list</button>`;
+  v.innerHTML = html;
+  v.onclick = e => {
+    const row = e.target.closest(".need[data-k]"); if (!row) { if (e.target.closest("#btn-clear-all")) clearAllNotes(); return; }
+    const r = rows.find(x => x.key === row.dataset.k); if (!r) return;
+    const a = e.target.closest("[data-a]")?.dataset.a;
+    if (a === "toggle") { const to = !r.done; r.src.forEach(s => (s.it.done = to)); save(); renderAll(); }
+    else if (a === "jump" && r.src.length === 1) jumpToNote(r.src[0].n.id, r.src[0].idx);
+    else openSources(r.key);
+  };
+}
+function needRow(r) {
+  const name = r.p ? pName(r.p) : `“${r.phrase}”`, sub = r.p ? pSub(r.p) : "No matching product. Tap to pick one.";
+  const unit = r.p ? esc(r.p.unit || "pack") : "";
+  return `<div class="item need tap${r.done ? " done" : ""}" data-k="${esc(r.key)}">
+    <button class="check${r.done ? " on" : ""}" data-a="toggle" aria-label="Cross off">${icon("check")}</button>
+    ${r.p ? thumbHtml(r.p) : `<div class="thumb">?</div>`}
+    <div class="grow"><div class="name">${esc(name)}</div><div class="sub">${esc(sub)}${r.check && !r.done ? ` <span class="pill warn">CHECK</span>` : ""}${r.src.length > 1 ? ` <span class="pill">${r.src.length} notes</span>` : ""}</div></div>
+    <button class="qty-tap" data-a="qty" aria-label="Quantity"><b>${qtyLabel(r)}</b><span>${unit}</span></button>
+    <button class="jump-btn" data-a="jump" aria-label="Go to the note this came from">${icon("jump")}</button></div>`;
+}
+// The notes behind one row of the list: change the product, the quantities, or go to a note.
+function openSources(key) {
+  const s = el(`<div class="sheet"><div class="handle"></div><h2></h2><p class="hint" id="src-sub"></p><div id="src-list" class="stack"></div>
+    <button class="btn block" data-a="change">${icon("search")}Change product</button>
+    <button class="btn block quiet" data-a="close">Done</button></div>`);
+  const close = openLayer(s, { onClose: () => renderAll() });
+  const draw = () => {
+    const r = neededRows().find(x => x.key === key);
+    if (!r) { close(); return; }
+    s.querySelector("h2").textContent = r.p ? pName(r.p) : `“${r.phrase}”`;
+    s.querySelector("#src-sub").textContent = r.p ? pSub(r.p) : "No matching product yet";
+    const box = s.querySelector("#src-list"); box.innerHTML = "";
+    r.src.forEach((x, i) => {
+      const row = el(`<div class="card src-row"><div class="row"><button class="shelf-thumb" data-a="photo" data-photo-wrap><img data-photo="${esc(x.n.photos[0] || "")}" alt=""></button>
+        <div class="grow"><div class="small muted">${timeOf(x.n.at)}</div><div class="src-text">${esc(x.n.text ? `“${x.n.text}”` : "(typed / no words)")}</div></div></div>
+        <div class="row" style="margin-top:10px"><div class="qty grow"><button data-d="-1" aria-label="Fewer">−</button><input inputmode="numeric" value="${x.it.qty ?? ""}" placeholder="?" aria-label="Quantity"><button data-d="1" aria-label="More">+</button></div>
+        <button class="btn sm" data-a="jump">${icon("jump")}Go to note</button></div></div>`);
+      const inp = row.querySelector("input");
+      const setQ = q => { setItemQty(x.n, x.idx, q); draw(); };
+      row.querySelectorAll("[data-d]").forEach(b => (b.onclick = () => setQ(Math.max(1, (x.it.qty || 0) + +b.dataset.d))));
+      inp.onchange = () => setQ(inp.value.trim() === "" ? null : Math.max(1, parseInt(inp.value, 10) || 1));
+      row.querySelector('[data-a="jump"]').onclick = () => { close(); jumpToNote(x.n.id, x.idx); };
+      row.querySelector('[data-a="photo"]').onclick = () => x.n.photos.length && openViewer(x.n.photos);
+      box.appendChild(row);
+    });
+    hydratePhotos(box);
+  };
+  draw();
+  s.querySelector('[data-a="close"]').onclick = close;
+  s.querySelector('[data-a="change"]').onclick = async () => {
+    const r = neededRows().find(x => x.key === key); if (!r) return;
+    const pid = await pickProduct({ title: "Which product is this?", initialQuery: r.p ? "" : r.phrase });
+    if (!pid) return;
+    const snap = snapshot();
+    r.src.forEach(x => { x.it.pid = pid; x.it.conf = x.it.qty != null ? "ok" : "check"; x.it.why = x.it.qty != null ? "" : "how many?"; });
+    save(); key = pid; draw(); renderAll(); toast("Product changed", snap);
+  };
+}
+function setItemQty(n, idx, qty) {
+  const it = n.items[idx]; if (!it) return;
+  it.qty = qty;
+  if (it.pid && qty != null) { it.conf = "ok"; it.why = ""; } else { it.conf = "check"; it.why = "how many?"; }
+  save(); renderAll();
+}
+function clearAllNotes() {
+  confirmDialog("Clear the whole list? This removes every note and photo.", { ok: "Clear list", danger: true }).then(ok => {
+    if (!ok) return;
+    const snap = snapshot();
+    state.notes = []; lastNoteId = null; save(); renderAll(); scheduleSweep();
+    toast("List cleared", snap);
+  });
+}
+
+// ---------- Notes ----------
+function noteStatusPill(n) {
+  const m = { queued: ["Waiting", ""], heard: ["Heard", ""], reading: ["Reading", ""], done: ["Read", "ok"], error: ["Problem", "warn"], empty: ["Nothing heard", "warn"] }[n.status] || ["", ""];
+  return `<span class="pill ${m[1]}">${m[0]}</span>`;
+}
+function renderNotes() {
+  const v = $("#view-notes");
+  if (!state.notes.length) { v.innerHTML = `<div class="list-head"><h2>Notes</h2></div><div class="empty">${icon("note")}<h3>No notes yet</h3><p>Each note is a shelf photo with what you said about it.</p></div>`; return; }
+  v.innerHTML = `<div class="list-head"><h2>Notes</h2><span class="muted small">${state.notes.length}</span></div><div id="note-list" class="stack">${state.notes.map(noteCard).join("")}</div>`;
+  hydratePhotos(v);
+  v.querySelector("#note-list").onclick = onNotesClick;
+}
+function noteCard(n) {
+  const body = (() => {
+    if (n.status === "queued") return `<p class="hint">${haveModel("asr") ? "Waiting its turn to be listened to…" : "Saved. It will be read once the voice models are downloaded (More tab)."}</p>`;
+    if (n.status === "reading") return `<div class="transcript" data-a="edit">“${esc(n.text)}”</div><p class="hint"><span class="spin"></span> Reading…</p>`;
+    if (n.status === "error") return `${n.text ? `<div class="transcript" data-a="edit">“${esc(n.text)}”</div>` : ""}<div class="banner warn">${icon("warn")}<span class="grow">${esc(n.err || "Something went wrong")}</span><button class="btn sm" data-a="retry">Try again</button></div>`;
+    if (n.status === "empty") return `<div class="banner warn">${icon("warn")}<span class="grow">Nothing was heard.</span></div><div class="row" style="margin-top:8px"><button class="btn sm grow" data-a="rerecord">${icon("mic")}Record again</button><button class="btn sm grow" data-a="edit">${icon("note")}Type it</button></div>`;
+    const t = n.text ? `<div class="transcript" data-a="edit">“${esc(n.text)}”</div>` : "";
+    if (n.status === "heard") return `${t}<p class="hint">${activeLLM() ? "Waiting its turn to be read…" : "Heard. The language model isn't downloaded yet (More tab)."}</p>${addItemBtn()}`;
+    return `${t}<div class="note-items">${n.items.map((it, i) => noteItem(it, i)).join("") || `<p class="hint">No product found in this note.</p>`}</div>${addItemBtn()}`;
+  })();
+  return `<div class="card note" id="note-${esc(n.id)}" data-id="${esc(n.id)}">
+    <div class="row note-top">
+      <button class="note-photo" data-a="photo" data-photo-wrap aria-label="View photo"><img data-photo="${esc(n.photos[0] || "")}" alt="">${n.photos.length > 1 ? `<span class="count">${n.photos.length}</span>` : ""}</button>
+      <div class="grow"><div class="small muted">${timeOf(n.at)}${n.secs ? ` · ${Math.round(n.secs)}s` : ""}</div>${noteStatusPill(n)}</div>
+      ${n.audio ? `<button class="btn sm quiet icon-btn" data-a="play" aria-label="Play recording">${icon("play")}</button>` : ""}
+      <button class="more-btn" data-a="menu" aria-label="More">${icon("dots")}</button>
+    </div>${body}</div>`;
+}
+const addItemBtn = () => `<button class="btn sm quiet" data-a="additem" style="margin-top:8px">${icon("plus")}Add item</button>`;
+function noteItem(it, i) {
+  const p = itemProduct(it);
+  return `<div class="note-item item tap${it.done ? " done" : ""}" data-i="${i}">${p ? thumbHtml(p) : `<div class="thumb">?</div>`}
+    <div class="grow"><div class="name">${esc(p ? pName(p) : `“${it.phrase}”`)}</div><div class="sub">${esc(p ? pSub(p) : "No matching product")}${it.conf === "check" ? ` <span class="pill warn">CHECK${it.why ? ": " + esc(it.why) : ""}</span>` : ""}</div></div>
+    <div class="qty-tap" aria-label="Quantity"><b>${it.qty ?? "?"}</b></div></div>`;
+}
+async function onNotesClick(e) {
+  const card = e.target.closest(".note"); if (!card) return;
+  const n = state.notes.find(x => x.id === card.dataset.id); if (!n) return;
+  const a = e.target.closest("[data-a]")?.dataset.a;
+  const itemRow = e.target.closest(".note-item");
+  if (itemRow) return itemMenu(n, +itemRow.dataset.i);
+  if (a === "photo") return n.photos.length ? openViewer(n.photos) : addPhoto(n);
+  if (a === "play") return playNote(n);
+  if (a === "edit") return editText(n);
+  if (a === "retry") return requeue(n);
+  if (a === "rerecord") return startRecording({ note: n });
+  if (a === "additem") return addItem(n);
+  if (a === "menu") {
+    const pick = await menu("Note", [
+      { label: "Edit what was heard", value: "edit" }, ...(n.audio ? [{ label: "Play recording", value: "play" }] : []),
+      { label: "Record again", value: "rerecord" }, { label: "Add another photo", value: "photo" },
+      ...(n.text ? [{ label: "Read again", value: "retry" }] : []), { label: "Delete note", value: "delete", danger: true }]);
+    if (pick === "edit") editText(n); else if (pick === "play") playNote(n); else if (pick === "rerecord") startRecording({ note: n });
+    else if (pick === "photo") addPhoto(n); else if (pick === "retry") { n.status = "heard"; save(); renderAll(); pump(); }
+    else if (pick === "delete") deleteNote(n);
+  }
+}
+async function editText(n) {
+  const t = await textPrompt("What was said", n.text || "");
+  if (t == null) return;
+  n.text = t; n.items = []; n.err = ""; n.status = t ? "heard" : "empty"; save(); renderAll(); pump();
+}
+async function addPhoto(n) {
+  if (n.photos.length >= 6) return toast("That's the most photos for one note");
+  const blob = await cameraPhoto(); if (!blob) return;
+  const id = newId("p"); await putPhoto(id, blob); n.photos.push(id); save(); renderAll();
+}
+function deleteNote(n) {
+  const snap = snapshot();
+  state.notes = state.notes.filter(x => x.id !== n.id); save(); renderAll(); scheduleSweep();
+  toast("Note deleted", snap);
+}
+async function addItem(n) {
+  const pid = await pickProduct({ title: "Add which product?" }); if (!pid) return;
+  const q = await qtyDialog(pName(productById(pid)), 1); if (q === undefined) return;
+  n.items.push({ pid, phrase: pName(productById(pid)), qty: q, conf: q != null ? "ok" : "check", why: q != null ? "" : "how many?", done: false });
+  if (n.status !== "done") n.status = "done";
+  save(); renderAll();
+}
+async function itemMenu(n, i) {
+  const it = n.items[i]; if (!it) return;
+  const pick = await menu(itemProduct(it) ? pName(itemProduct(it)) : `“${it.phrase}”`, [
+    { label: "Change product", value: "p" }, { label: "Change quantity", value: "q" }, { label: it.done ? "Mark as still needed" : "Cross off", value: "d" },
+    { label: "Remove from this note", value: "x", danger: true }]);
+  const snap = snapshot();
+  if (pick === "p") { const pid = await pickProduct({ title: "Which product?", initialQuery: itemProduct(it) ? "" : it.phrase }); if (pid) { it.pid = pid; it.conf = it.qty != null ? "ok" : "check"; it.why = it.qty != null ? "" : "how many?"; save(); renderAll(); } }
+  else if (pick === "q") { const q = await qtyDialog(itemProduct(it) ? pName(itemProduct(it)) : it.phrase, it.qty || 1); if (q !== undefined) setItemQty(n, i, q); }
+  else if (pick === "d") { it.done = !it.done; save(); renderAll(); }
+  else if (pick === "x") { n.items.splice(i, 1); save(); renderAll(); toast("Item removed", snap); }
+}
+// A number stepper. Resolves the number, or undefined when cancelled.
+function qtyDialog(title, value = 1) {
+  return new Promise(resolve => {
+    const d = el(`<div class="dialog"><p><b></b><br><span class="hint">How many do you need?</span></p>
+      <div class="qty"><button data-d="-1" aria-label="Fewer">−</button><input inputmode="numeric" aria-label="Quantity"><button data-d="1" aria-label="More">+</button></div>
+      <div class="btns" style="margin-top:16px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="ok">Save</button></div></div>`);
+    d.querySelector("b").textContent = title;
+    const inp = d.querySelector("input"); inp.value = value;
+    let done = false;
+    const close = openLayer(d, { center: true, sticky: true, onClose: () => { if (!done) resolve(undefined); } });
+    d.querySelectorAll("[data-d]").forEach(b => (b.onclick = () => (inp.value = Math.max(1, (parseInt(inp.value, 10) || 0) + +b.dataset.d))));
+    d.querySelector('[data-a="c"]').onclick = () => { done = true; close(); resolve(undefined); };
+    d.querySelector('[data-a="ok"]').onclick = () => { done = true; close(); resolve(inp.value.trim() ? Math.max(1, parseInt(inp.value, 10) || 1) : null); };
+  });
+}
+// Jump from a list row to the note (and item) it came from.
+function jumpToNote(id, idx) {
+  showView("notes");
+  setTimeout(() => {
+    const c = document.getElementById("note-" + id); if (!c) return;
+    const top = c.getBoundingClientRect().top + window.scrollY - 80;
+    window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    c.classList.remove("flash"); void c.offsetWidth; c.classList.add("flash");
+    const it = idx != null && c.querySelector(`.note-item[data-i="${idx}"]`);
+    if (it) { it.classList.remove("flash"); void it.offsetWidth; it.classList.add("flash"); }
+    setTimeout(() => { c.classList.remove("flash"); it && it.classList.remove("flash"); }, 2200);
+  }, 80);
+}
+
+// Products
+let prodQuery = "", prodCat = "";
+function renderProducts() {
+  const v = $("#view-products");
+  if (!v.querySelector("input")) {
+    v.innerHTML = `<div class="list-head"><h2>Products</h2><span class="grow"></span><button class="btn sm primary" data-a="add">${icon("plus")}Add</button></div>
+      ${searchBox("Search products")}<div class="chips"></div>
+      <p class="hint" id="prod-count"></p><div id="prod-results"></div>`;
+    v.querySelector("input").addEventListener("input", debounce(e => { prodQuery = e.target.value; renderProductResults(); }));
+    v.querySelector('[data-a="add"]').onclick = () => editProduct(null, { prefillName: prodQuery });
+  }
+  const chips = v.querySelector(".chips");
+  chips.innerHTML = "";
+  for (const c of ["", ...allCategories(), "Retired"]) {
+    const b = el(`<button class="chip${c === prodCat ? " active" : ""}"></button>`);
+    b.textContent = c || "All";
+    b.onclick = () => { prodCat = c; renderProducts(); };
+    chips.appendChild(b);
+  }
+  renderProductResults();
+}
+function renderProductResults() {
+  const v = $("#view-products");
+  let items = prodCat === "Retired"
+    ? searchProducts(prodQuery, { includeRetired: true }).filter(p => p.retired)
+    : searchProducts(prodQuery, { category: prodCat });
+  if (!prodQuery) items = [...items].sort((a, b) => catSort(a.category, b.category) || pName(a).localeCompare(pName(b)));
+  v.querySelector("#prod-count").textContent = `${items.length} product${items.length === 1 ? "" : "s"}`;
+  const box = v.querySelector("#prod-results");
+  box.innerHTML = "";
+  const shown = items.slice(0, 200);
+  if (shown.length) box.appendChild(listOf(shown, pid => editProduct(pid), p =>
+    (p.custom ? ` <span class="pill">CUSTOM</span>` : "")));
+  else box.appendChild(el(`<div class="empty"><p>No products match.</p></div>`));
+  if (items.length > shown.length) box.appendChild(el(`<p class="hint center" style="padding:10px">${items.length - shown.length} more. Search to narrow it down.</p>`));
+}
+
+// More
+function modelRow(key) {
+  const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
+  const dot = have ? "ok" : busy ? "warn" : "";
+  return `<div class="set-row"><span class="status-dot ${dot}"></span><div class="grow"><b>${esc(i.name)}</b><br><span class="hint">${esc(i.detail)} · ${esc(i.size)}</span></div>
+    <span class="small muted">${have ? "Ready" : busy ? "Downloading" : "Not downloaded"}</span></div>`;
+}
+function renderMore() {
+  const v = $("#view-more");
+  const s = syncStatus();
+  const on = uploadsEnabled();
+  const llm = "fast";
+  const need = ["asr", llm].filter(k => !haveModel(k));
+  const anyModel = ["asr", "fast"].some(haveModel);
+  const dl = ai.dl.key;
+  const dev = ai.device[activeLLM() || ""] || "";
+  v.innerHTML = `
+    <div class="list-head"><h2>More</h2></div>
+    <div class="card">
+      <h3>Voice models</h3>
+      <p class="hint">Listening and reading run on this phone, so they work with no signal. They download once (use Wi-Fi), then stay on the phone.</p>
+      ${modelRow("asr")}${modelRow(llm)}
+      ${dl ? `<div class="mprog" data-mprog><i></i></div><p class="hint" data-mprog-label style="margin-top:6px">Starting…</p>` : ""}
+      ${ai.dl.error ? `<div class="banner warn" style="margin-top:8px">${icon("warn")}<span class="grow">${esc(ai.dl.error)}</span></div>` : ""}
+      <div class="stack" style="margin-top:10px">
+        ${need.length ? `<button class="btn primary block" id="btn-dl" ${dl ? "disabled" : ""}>${icon("download")}${dl ? "Downloading…" : ai.dl.error ? "Try again" : `Download ${need.length === 2 ? "voice models" : "missing model"}`}</button>` : ""}
+        ${anyModel && !dl ? `<button class="btn block quiet" id="btn-del-models">Delete downloaded models</button>` : ""}
+      </div>
+      <p class="hint" style="margin-top:8px">${dev ? `Reading runs on the phone's ${dev === "webgpu" ? "graphics chip" : "processor"}.` : ""}${ai.probe ? ` ${ai.probe.webgpu ? "Graphics acceleration is available." : ""}` : ""}</p>
+    </div>
+    <div class="card">
+      <h3>Shared data</h3>
+      <p class="hint">The product list is shared with everyone who uses Shelf Scan. Your notes and photos stay on this phone.</p>
+      <div class="set-row"><span class="status-dot ${s.dot}"></span><span class="grow small">${esc(s.text)}</span></div>
+      <div class="set-row"><span class="grow small muted">Last updated from GitHub: ${ago(state.sync.lastPull)}</span></div>
+      <div class="stack">
+        ${on ? `<button class="btn block" id="btn-upload-now">${icon("upload")}Upload now</button>`
+             : `<button class="btn primary block" id="btn-enable">${icon("upload")}Enable uploads</button>`}
+        <button class="btn block" id="btn-sync">${icon("refresh")}Sync from GitHub</button>
+        ${on ? `<button class="btn block quiet" id="btn-disable">Turn off uploads on this phone</button>` : ""}
+      </div>
+    </div>
+    <div class="card">
+      <h3>This phone</h3>
+      <label class="f" for="store-name">Store number</label>
+      <input class="field" id="store-name" placeholder="e.g. 1234" value="${esc(state.storeName)}">
+      <div class="set-row" style="margin-top:6px"><label class="grow" for="beep">Shutter beep</label><input type="checkbox" id="beep" ${state.settings.beep ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
+    </div>
+    <div class="card">
+      <h3>Backup</h3>
+      <p class="hint">Copies the product list and the written notes. Photos and recordings can't be included.</p>
+      <div class="stack" style="margin-top:10px">
+        <button class="btn block" id="btn-export">Copy backup</button>
+        <textarea class="field" id="backup-text" rows="3" placeholder="Paste a backup here to restore" style="font:16px ui-monospace,Menlo,monospace"></textarea>
+        <button class="btn block" id="btn-restore">Restore from pasted backup</button>
+      </div>
+    </div>
+    <div class="card">
+      <details class="owner"><summary>Owner setup: upload key</summary>
+        <p class="hint" style="margin-top:10px">Only needed once, by the repo owner. Paste a GitHub key that can write to ${esc(GITHUB.owner)}/${esc(GITHUB.repo)} and choose the team password. The key is encrypted on this phone before it's saved.</p>
+        <label class="f" for="own-token">GitHub key</label><input class="field" id="own-token" type="password" autocomplete="off" placeholder="github_pat_…">
+        <label class="f" for="own-pass">Team password</label><input class="field" id="own-pass" type="text" autocomplete="off" autocapitalize="off" placeholder="At least 6 characters">
+        <button class="btn primary block" id="btn-own-save" style="margin-top:12px">Save key and enable uploads</button>
+      </details>
+    </div>
+    <div class="card">
+      <h3>Danger zone</h3>
+      <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
+    </div>
+    <p class="foot">Shelf Scan Beta 4 (voice notes) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+      <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
+  if (dl) updateModelProgress();
+  v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
+  v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
+  const dlb = v.querySelector("#btn-dl"); if (dlb) dlb.onclick = () => downloadModels(need);
+  const del = v.querySelector("#btn-del-models"); if (del) del.onclick = async () => {
+    if (!(await confirmDialog("Delete the downloaded voice models? Notes already read keep their lists. New notes wait until you download them again.", { ok: "Delete", danger: true }))) return;
+    await deleteModels(); toast("Models deleted");
+  };
+  v.querySelector("#btn-export").onclick = exportBackup;
+  v.querySelector("#btn-restore").onclick = () => restoreBackupText(v.querySelector("#backup-text").value);
+  v.querySelector("#btn-sync").onclick = syncFromGitHub;
+  const en = v.querySelector("#btn-enable"); if (en) en.onclick = enableUploads;
+  const up = v.querySelector("#btn-upload-now"); if (up) up.onclick = () => { state.sync.error = ""; uploadChanges(); renderMore(); };
+  const dis = v.querySelector("#btn-disable"); if (dis) dis.onclick = async () => {
+    if (!(await confirmDialog("Turn off uploads on this phone? Your changes will stay on this phone only.", { ok: "Turn off" }))) return;
+    setPass(""); cachedToken = null; renderAll();
+  };
+  v.querySelector("#btn-own-save").onclick = ownerSetup;
+  v.querySelector("#btn-reset").onclick = async () => {
+    const n = pendingCount();
+    if (!(await confirmDialog(`Erase everything on this phone (notes, photos and settings) and start fresh from the shared product list?${n ? `<br><br><b>${n} change${n === 1 ? " hasn't" : "s haven't"} uploaded</b> and will be lost.` : ""}`, { ok: "Erase", danger: true }))) return;
+    const keep = state.sync, models = state.settings.models;
+    state = freshState(); state.sync = keep; state.settings.models = models; save(); renderAll(); scheduleSweep();
+    pullShared({ overwrite: true, quiet: false }).catch(e => toast(e.message));
+  };
+}
+function passwordDialog(title, note, okLabel = "Enable") {
+  return new Promise(resolve => {
+    const d = el(`<div class="dialog"><p><b>${esc(title)}</b><br><span class="hint">${esc(note)}</span></p>
+      <input class="field" type="text" id="pw-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Password">
+      <p class="hint" id="pw-err" style="color:var(--red);margin:8px 0 0"></p>
+      <div class="btns" style="margin-top:14px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="ok">${esc(okLabel)}</button></div></div>`);
+    let done = false;
+    const close = openLayer(d, { center: true, onClose: () => { if (!done) resolve(null); } });
+    const inp = d.querySelector("input"), err = d.querySelector("#pw-err"), ok = d.querySelector('[data-a="ok"]');
+    d.querySelector('[data-a="c"]').onclick = () => { done = true; close(); resolve(null); };
+    const go = async () => {
+      if (!inp.value) return;
+      ok.disabled = true; ok.textContent = "Checking…"; err.textContent = "";
+      try { await resolveCheck(inp.value); done = true; close(); resolve(inp.value); }
+      catch (e) { err.textContent = e.message; ok.disabled = false; ok.textContent = okLabel; }
+    };
+    let resolveCheck;
+    d.check = fn => (resolveCheck = fn);
+    ok.onclick = go;
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+    setTimeout(() => inp.focus(), 50);
+    passwordDialog.current = d;
+  });
+}
+async function enableUploads() {
+  const p = passwordDialog("Enable uploads", "Enter the team password. You'll only need it once on this phone.");
+  passwordDialog.current.check(async pw => {
+    const blob = await loadKeyBlob();
+    let token;
+    try { token = await decryptToken(blob, pw); } catch (e) { throw new Error("That password isn't right."); }
+    await checkToken(token);
+    cachedToken = token;
+  });
+  const pw = await p;
+  if (!pw) return;
+  setPass(pw); state.sync.error = "";
+  save(); renderAll();
+  toast("Uploads enabled. Changes now upload automatically.");
+  scheduleUpload(300);
+}
+async function ownerSetup() {
+  const token = $("#own-token").value.trim(), pw = $("#own-pass").value;
+  if (!token) return toast("Paste the GitHub key first");
+  if (pw.length < 6) return toast("Use a password of at least 6 characters");
+  const btn = $("#btn-own-save");
+  btn.disabled = true; btn.textContent = "Saving…";
+  try {
+    await checkToken(token);
+    const blob = await encryptToken(token, pw);
+    const { sha } = await readRepoFile(GITHUB.keyPath, token);
+    await writeRepoFile(GITHUB.keyPath, JSON.stringify(blob, null, 1), sha, token, "Shelf Scan: set upload key");
+    setPass(pw); cachedToken = token; state.sync.error = "";
+    save(); renderAll();
+    toast("Upload key saved. Uploads are on.");
+    scheduleUpload(300);
+  } catch (e) {
+    toast(e.message || "Couldn't save the key");
+    btn.disabled = false; btn.textContent = "Save key and enable uploads";
+  }
+}
+async function syncFromGitHub() {
+  const n = pendingCount();
+  const ok = await confirmDialog(`Replace this phone's products, barcodes and tags with the shared data from GitHub? Your list is kept.${n ? `<br><br><b>${n} change${n === 1 ? " hasn't" : "s haven't"} uploaded</b> and will be lost.` : ""}`, { ok: "Replace", danger: !!n });
+  if (!ok) return;
+  if (!navigator.onLine) return toast("No signal. Try again when you're online.");
+  toast("Syncing…");
+  try { await pullShared({ overwrite: true, quiet: false }); }
+  catch (e) { toast(e.message || "Couldn't reach GitHub"); }
+}
+function exportBackup() {
+  const text = JSON.stringify(state);
+  const box = $("#backup-text");
+  const fallback = () => { box.value = text; box.focus(); box.select(); toast("Backup is in the box. Select all and copy it."); };
+  try { navigator.clipboard.writeText(text).then(() => toast("Backup copied"), fallback); }
+  catch (e) { fallback(); }
+}
+async function restoreBackupText(text) {
+  let data;
+  try { data = JSON.parse(text); } catch (e) { data = null; }
+  if (!data || !data.products) { toast("That isn't a Shelf Scan backup"); return; }
+  if (!(await confirmDialog("Replace everything on this phone with the backup?", { ok: "Replace", danger: true }))) return;
+  const snap = snapshot(); state = data; migrate(); save(); renderAll(); toast("Backup restored", snap);
+}
+
+
+// ---------- Wire up ----------
+fillIcons();
+load();
+document.querySelectorAll("#tabs button").forEach(b => (b.onclick = () => showView(b.dataset.view)));
+$("#btn-cam-start").onclick = startCamera;
+$("#btn-cam-stop").onclick = () => { state.settings.camOK = false; save(); stopCamera(); };
+$("#btn-shutter").onclick = () => onShutter(false);
+$("#btn-phonecam").onclick = () => onShutter(true);
+$("#btn-type").onclick = async () => {
+  const text = await textPrompt("Type what you need");
+  if (text == null || !text) return;
+  await saveNote({ photos: [], audioRec: null, secs: 0, text, status: "heard" });
+  pump();
+};
+$("#sync-ind").onclick = () => showView("more");
+renderAll();
+save();
+syncAllIndicators(false);
+setTimeout(sweepMedia, 3000);   // tidy photos and recordings left over from deleted notes
+if (state.settings.camOK) startCamera();
+verifyModels().then(pump);      // anything still waiting from last time gets picked up
+
+// Pull everyone's latest product list on open, then upload anything waiting.
+if (navigator.onLine) pullShared().catch(() => {}).finally(() => scheduleUpload(1000));
+
+// Updates: check for a new version whenever the app comes back to the foreground (home-screen apps on iPhone
+// stay loaded for days), and offer a one-tap reload once it's installed.
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(reg => {
+    const check = () => reg.update().catch(() => {});
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) check(); });
+    setInterval(check, 30 * 60 * 1000);
+  }).catch(() => {});
+  navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadController) showUpdateReady(); });
+}
+// Centered pop-up; "Later" dismisses it until the app next comes back to the foreground.
+let updatePromptOpen = false, updateWaiting = false;
+function showUpdateReady() {
+  updateWaiting = true;
+  if (updatePromptOpen) return;
+  updatePromptOpen = true;
+  const d = el(`<div class="dialog update-dialog" id="update-ready">
+    <div class="update-icon">${icon("refresh")}</div>
+    <h3>Update available</h3>
+    <p>A new version of Shelf Scan is ready. Reload to start using it. Your notes and settings stay as they are.</p>
+    <div class="btns"><button class="btn quiet" data-a="later">Later</button><button class="btn primary" data-a="reload">Reload now</button></div></div>`);
+  const close = openLayer(d, { center: true, onClose: () => (updatePromptOpen = false) });
+  d.querySelector('[data-a="reload"]').onclick = () => location.reload();
+  d.querySelector('[data-a="later"]').onclick = close;
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && updateWaiting) showUpdateReady(); });
+</script>
+</body>
+</html>
