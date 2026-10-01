@@ -646,7 +646,7 @@ function canonicalize(products) {
 // monsterenergy.com/en-us/energy-drinks, and Wikipedia's Dr Pepper article (drpepper.com is script-rendered and can't be read here).
 // Sizes and packs don't matter to the list, so each of these is one record with none.
 const EXTRA_VARIATIONS = [
-  ["Coca-Cola", ["Starlight", "Starlight Zero Sugar", "Dreamworld", "Dreamworld Zero Sugar", "Move", "Move Zero Sugar", "Y3000", "Y3000 Zero Sugar", "Ultimate", "Ultimate Zero Sugar", "Oreo Zero Sugar", "K-Wave Zero Sugar", "Happy Tears Zero Sugar", "Marshmello's", "Marshmello's Zero Sugar", "Byte Zero Sugar"]],
+  ["Coca-Cola", ["Orange Cream", "Starlight", "Starlight Zero Sugar", "Dreamworld", "Dreamworld Zero Sugar", "Move", "Move Zero Sugar", "Y3000", "Y3000 Zero Sugar", "Ultimate", "Ultimate Zero Sugar", "Oreo Zero Sugar", "K-Wave Zero Sugar", "Happy Tears Zero Sugar", "Marshmello's", "Marshmello's Zero Sugar", "Byte Zero Sugar"]],
   ["Simply Pop", ["Orange", "Cherry Pomegranate"]],
   ["Simply", ["Orange", "Orange Pulp Free", "Orange High Pulp", "Orange Low Acid", "Orange Calcium", "Orange Medium Pulp Calcium and Vitamin D", "Orange Mango", "Orange Pineapple", "Lemonade", "Lemonade Raspberry", "Lemonade Blueberry", "Limeade", "Limeade Cherry", "Grape", "Peach", "Apple", "Cranberry Cocktail", "Fruit Punch", "Watermelon", "Grapefruit", "Pineapple", "Light Orange Pulp Free", "Light Lemonade"]],
   ["Minute Maid", ["Orange Juice", "Orange Juice Pulp Free", "100% Apple Juice", "Cranberry Apple Raspberry", "Cranberry Grape", "Pineapple Orange", "Peach Mango", "Tropical Blend", "Cranberry Cocktail", "Zero Sugar Mango Passion Fruit", "Zero Sugar Pink Lemonade", "Zero Sugar Fruit Punch", "Zero Sugar Orange Pineapple"]],
@@ -665,11 +665,18 @@ const EXTRA_VARIATIONS = [
     "Ultra Strawberry Dreams", "Ultra Peachy Keen", "Ultra Fantasy Ruby Red", "Ultra Fiesta Mango", "Ultra Watermelon", "Ultra Rosá", "Ultra Black",
     "Java Dubai Chocolate", "Java Loca Moca", "Java Salted Caramel", "Java Café Latte", "Java Irish Crème", "Juice Voodoo Grape", "Juice Strawberry Lemonade", "Juice Viking Berry", "Juice Bad Apple", "Juice Rio Punch", "Rehab Peach Tea", "Rehab Wild Berry Tea", "Rehab Green Tea"]],
   ["Reign", ["Watermelon Sour Gummy", "White Gummy Bear", "Sour Gummy Worm", "White Haze", "REIGNbow Sherbet", "Lilikoi Lychee"]],
-  ["Dr Pepper", ["Caffeine Free", "Cherry Zero Sugar", "Cream Soda Zero Sugar", "Strawberries and Cream", "Strawberries and Cream Zero Sugar", "Creamy Coconut", "Creamy Coconut Zero Sugar", "Blackberry", "Blackberry Zero Sugar", "Vanilla Float", "Dark Berry", "Cherry Vanilla", "Made with Real Sugar"]],
+  ["Dr Pepper", ["Caffeine Free", "Cherry Zero Sugar", "Cream Soda Zero Sugar", "Strawberries and Cream", "Strawberries and Cream Zero Sugar", "Creamy Coconut", "Creamy Coconut Zero Sugar", "Blackberry", "Blackberry Zero Sugar", "Vanilla Float", "Dark Berry", "Cherry Vanilla", "Made with Real Sugar", "Berries and Cream"]],
+  ["Diet Dr Pepper", ["Caffeine Free", "Cherry Vanilla"]],
+  ["NOS", ["Sonic Sour", "Nitro Mango", "Zero Sugar", "Grand Prix Guava", "Active Fruit Punch", "Active Raspberry Lemonade", "Active Acai Blueberry Pomegranate", "Charged Citrus", "Zero Charged Citrus"]],
+  ["Full Throttle", ["True Blue", "Red Apple"]],
+  ["Fanta", ["Ghost Face Punch"]],
+  ["Sprite", ["Winter Spiced Cranberry"]],
 ];
 
-// Records left over from earlier imports that duplicate a real product (kept, but no longer recognized).
-const RETIRED_VARIATIONS = new Set(["bodyarmor|lyte sports drink peach mango", "fairlife|core power", "gold peak|raspberry tea"]);
+// Records left over from earlier imports that duplicate a real product, and products that are no longer made (kept, but no longer recognized).
+const RETIRED_VARIATIONS = new Set(["bodyarmor|lyte sports drink peach mango", "fairlife|core power", "gold peak|raspberry tea", "coca cola|zero sugar caffeine free",
+  // Coca-Cola Creations: coca-cola.com lists every one as no longer available in stores
+  "coca cola|starlight", "coca cola|starlight zero sugar", "coca cola|dreamworld", "coca cola|dreamworld zero sugar", "coca cola|move", "coca cola|move zero sugar", "coca cola|y3000", "coca cola|y3000 zero sugar", "coca cola|ultimate", "coca cola|ultimate zero sugar", "coca cola|oreo zero sugar", "coca cola|k wave zero sugar", "coca cola|happy tears zero sugar", "coca cola|marshmellos", "coca cola|marshmellos zero sugar", "coca cola|byte zero sugar"]);
 // ---------- State ----------
 let state;
 // note.status: "queued" (voice clip waiting to be transcribed) → "heard" (has text, waiting to be read by the
@@ -999,14 +1006,6 @@ const FLAVOR_ALIASES = [
   ["Coca-Cola", "Original (Mexican)", ["mexican", "mexican coke", "mexico", "glass bottle", "mexican coca cola"]],
   ["Coca-Cola", "Georgia Peach", ["georgia peach", "peach", "georgia"]],
   ["Coca-Cola", "California Raspberry", ["california raspberry", "raspberry", "california"]],
-  ["Coca-Cola", "Y3000", ["y 3000", "y three thousand", "why 3000", "y3000", "y thirty hundred"]],
-  ["Coca-Cola", "Y3000 Zero Sugar", ["y 3000 zero", "y three thousand zero"]],
-  ["Coca-Cola", "K-Wave Zero Sugar", ["k wave", "kwave", "k wave zero", "k wave zero sugar"]],
-  ["Coca-Cola", "Oreo Zero Sugar", ["oreo", "oreo zero", "oreo coke"]],
-  ["Coca-Cola", "Marshmello's", ["marshmello", "marshmallow", "marshmellow", "marshmello s"]],
-  ["Coca-Cola", "Marshmello's Zero Sugar", ["marshmello zero", "marshmallow zero"]],
-  ["Coca-Cola", "Happy Tears Zero Sugar", ["happy tears", "happy tears zero"]],
-  ["Coca-Cola", "Byte Zero Sugar", ["byte", "bite zero", "byte zero", "by zero", "by zero sugar", "buy zero", "bite zero sugar", "byte zero sugar"]],
   ["Diet Coke", "Caffeine-Free", ["caffeine free", "decaf", "no caffeine"]],
   ["Diet Coke", "Cherry", ["cherry", "diet cherry", "cherries"]],
   ["Sprite", "Zero Sugar", ["zero", "zero sugar", "zero calorie"]],
@@ -1296,11 +1295,27 @@ const FLAVOR_ALIASES = [
   ["Reign", "REIGNbow Sherbet", ["reignbow sherbet", "rainbow sherbet", "reign bow sherbet", "rainbow sherbert", "sherbet", "sherbert"]],
   ["Reign", "Lilikoi Lychee", ["lilikoi lychee", "lilikoi lichee", "lily koi lychee", "lilikoi lychee", "lychee", "lichee", "lilikoi"]],
   ["Reign", "Razzle Berry", ["razzle berry", "razzleberry", "razz berry"]],
-  ["Coca-Cola", "Starlight", ["starlight", "star light"]],
-  ["Coca-Cola", "Dreamworld", ["dreamworld", "dream world"]],
-  ["Coca-Cola", "Ultimate", ["ultimate", "ultimates"]],
-  ["Coca-Cola", "Move", ["move", "moves"]],
   ["Dasani", "Purified Water", ["purified", "purified water", "water", "plain water"]],
+  ["Dr Pepper", "Berries and Cream", ["berries and cream", "berries & cream", "berry and cream", "berries n cream", "berry cream"]],
+  ["Diet Dr Pepper", "Caffeine Free", ["caffeine free", "caffeine free diet", "decaf", "no caffeine", "diet caffeine free"]],
+  ["Diet Dr Pepper", "Cherry Vanilla", ["cherry vanilla", "vanilla cherry", "diet cherry vanilla"]],
+  ["NOS", "Grape", ["gt grape", "g t grape", "grape"]],
+  ["NOS", "Sonic Sour", ["sonic sour", "sonic sower", "sonic", "sour"]],
+  ["NOS", "Nitro Mango", ["nitro mango", "night row mango", "nitro mangoes"]],
+  ["NOS", "Zero Sugar", ["zero", "zero sugar"]],
+  ["NOS", "Grand Prix Guava", ["grand prix guava", "grand pre guava", "grand prix", "guava"]],
+  ["NOS", "Active Fruit Punch", ["active fruit punch", "fruit punch"]],
+  ["NOS", "Active Raspberry Lemonade", ["active raspberry lemonade", "raspberry lemonade"]],
+  ["NOS", "Active Acai Blueberry Pomegranate", ["active acai blueberry pomegranate", "acai blueberry pomegranate", "acai", "a sigh"]],
+  ["NOS", "Charged Citrus", ["charged citrus", "charge citrus"]],
+  ["NOS", "Zero Charged Citrus", ["zero charged citrus", "charged citrus zero", "zero citrus"]],
+  ["Full Throttle", "True Blue", ["true blue", "true blues", "blue"]],
+  ["Full Throttle", "Red Apple", ["red apple", "apple"]],
+  ["Fanta", "Ghost Face Punch", ["ghost face punch", "ghost face", "ghostface punch", "ghostface", "ghost punch"]],
+  ["Sprite", "Winter Spiced Cranberry", ["winter spiced cranberry", "winter spice cranberry", "spiced cranberry", "cranberry", "winter cranberry"]],
+  ["Coca-Cola", "Orange Cream", ["orange cream", "orange creme", "creamsicle", "orange cream soda"]],
+  ["Coca-Cola", "Caffeine-Free Zero Sugar", ["caffeine free zero", "zero caffeine free", "zero sugar caffeine free", "caffeine free zero sugar", "caffeine free coke zero", "decaf zero", "zero decaf"]],
+  ["Coca-Cola", "Zero Sugar Cherry Float", ["cherry float zero", "cherry float zero sugar", "zero cherry float", "zero sugar cherry float", "float zero"]],
 ];
 // ---------- Turning what was said into catalog products ----------
 // The language model splits a note into items ("diet coke 12 pack" x 3); this code finds the closest real product.
@@ -1456,6 +1471,8 @@ function rankPhrase(phrase) {
   if (!brands.size) return [];
   // The brand's own words ("coke" in "cherry coke zero sugar") don't count as flavor words and don't break up the flavor.
   const inBrand = new Set(); for (const sp of spans) for (let k = sp.start; k < sp.end; k++) inBrand.add(k);
+  // "Diet Cherry Coke": the "diet" is not next to "coke", but it is still Diet Coke (and cherry is the flavor).
+  if (brands.has("Coca-Cola") && !brands.has("Diet Coke")) { const di = tokens.indexOf("diet"); if (di >= 0 && !inBrand.has(di)) { brands.delete("Coca-Cola"); brands.add("Diet Coke"); inBrand.add(di); } }
   let n = tokens.filter((t, i) => !inBrand.has(i)).join(" "); for (const [re, to] of FLAVOR_SYN) n = n.replace(re, to);
   const ptoks = n.split(" "), tset = new Set(ptoks);  const all = variations(), out = [], phrase2 = ` ${n} `;
   for (const b of brands) {
@@ -1491,7 +1508,7 @@ function resolvePhrase(phrase) {
 // Works out which products (brand + flavor) a blurb mentions so blurbs about the same product can sit together on the list.
 // It never changes the words: the list shows exactly what was said.
 const UNIT_WORDS = new Set(["oz", "ounce", "ounces", "l", "liter", "liters", "litre", "litres", "leader", "leaders", "litter", "litters", "ml", "pack", "packs", "pk", "ct", "count", "fl"]);
-const FILLER_WORDS = new Set(["of", "the", "a", "an", "and", "or", "more", "need", "needs", "needed", "like", "about", "maybe", "case", "cases", "we", "i", "just", "some", "them", "those", "these", "that", "this", "each", "too", "please", "it", "is", "are", "to", "get", "got", "bottle", "bottles", "can", "cans", "single", "singles", "also", "plus", "out", "empty", "bare", "low", "shelf", "here", "there", "yeah", "okay", "um", "uh", "so", "then", "for", "with", "in", "on", "at", "no", "not", "any", "one", "ones", "back", "check", "extra", "full", "all", "make", "actually", "sorry", "wait", "mean", "think", "guess", "ill", "thats", "lets", "see", "say", "will", "would", "could", "should", "have", "has", "had", "be", "been", "was", "were", "my", "your", "their", "they", "you", "what", "when", "where", "which", "who", "how", "why", "now", "still", "again", "only", "even", "really", "very", "much", "many", "lot", "lots", "flat", "flats", "tray", "trays", "pallet", "pallets", "box", "boxes", "going", "gonna", "let", "know", "idea", "goes", "mini", "big", "small", "large", "tall", "little", "giant", "huge", "double", "glass", "plastic", "bottled", "canned", "kind"]);
+const FILLER_WORDS = new Set(["classic", "regular", "taste", "of", "the", "a", "an", "and", "or", "more", "need", "needs", "needed", "like", "about", "maybe", "case", "cases", "we", "i", "just", "some", "them", "those", "these", "that", "this", "each", "too", "please", "it", "is", "are", "to", "get", "got", "bottle", "bottles", "can", "cans", "single", "singles", "also", "plus", "out", "empty", "bare", "low", "shelf", "here", "there", "yeah", "okay", "um", "uh", "so", "then", "for", "with", "in", "on", "at", "no", "not", "any", "one", "ones", "back", "check", "extra", "full", "all", "make", "actually", "sorry", "wait", "mean", "think", "guess", "ill", "thats", "lets", "see", "say", "will", "would", "could", "should", "have", "has", "had", "be", "been", "was", "were", "my", "your", "their", "they", "you", "what", "when", "where", "which", "who", "how", "why", "now", "still", "again", "only", "even", "really", "very", "much", "many", "lot", "lots", "flat", "flats", "tray", "trays", "pallet", "pallets", "box", "boxes", "going", "gonna", "let", "know", "idea", "goes", "mini", "big", "small", "large", "tall", "little", "giant", "huge", "double", "glass", "plastic", "bottled", "canned", "kind"]);
 const TRAIL_NEXT = new RegExp("[\\s,;.]*\\b(?:and|plus|also)\\b(?:[\\s,;.]+(?:a|an|of|the|couple|pair|dozen|\\d+|" + [...Object.keys(ONES), ...Object.keys(TENS)].join("|") + "))*[\\s,;.]*$", "i");
 // Lowercase letter/number words with their positions in the original text. Apostrophes join (barq's -> barqs); anything else splits.
 function tokenize(text) {
@@ -1514,7 +1531,7 @@ function knownWords(brand) {
   if (hit && hit.sig === sig) return hit.set;
   const set = new Set();
   const add = s => { for (const w of sNorm(s).split(" ")) if (w) set.add(w); };
-  for (const v of variations({ includeRetired: true })) if (v.brand === brand) { add(v.flavor); flavorTokens(v.flavor).forEach(w => set.add(w)); flavorAliases(); for (const a of aliasRaw.get(v.key) || []) add(a); }
+  for (const v of variations()) if (v.brand === brand) { add(v.flavor); flavorTokens(v.flavor).forEach(w => set.add(w)); flavorAliases(); for (const a of aliasRaw.get(v.key) || []) add(a); }
   for (const w of ["zero", "sugar", "diet", "free", "caffeine", "calorie", "with", "and", "plus", "of"]) set.add(w);
   knownCache.set(brand, { sig, set });
   return set;
@@ -3030,7 +3047,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 6.1 (team list) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan Beta 6.2 (team list) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
