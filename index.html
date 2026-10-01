@@ -1656,6 +1656,7 @@ function pendingNotes() { return state.notes.filter(n => n.status === "queued" |
 function queueState() {
   const left = pendingNotes();
   if (left.length && !haveModel("asr")) return { busy: false, blocked: true, text: `${left.length} note${left.length === 1 ? "" : "s"} saved. Download the speech model in More to read ${left.length === 1 ? "it" : "them"}.` };
+  if (left.length && state.settings.voiceHold) return { busy: false, blocked: true, text: `${left.length} note${left.length === 1 ? "" : "s"} waiting. Voice is paused.` };
   if (left.length) return { busy: true, text: `Listening to ${left.length} note${left.length === 1 ? "" : "s"}…` };
   return { busy: false, text: "" };
 }
@@ -1673,12 +1674,29 @@ async function pump() {
       let n = nextNote("heard");              // a heard note becomes list items at once
       if (n) { quickRead(n); continue; }
       n = nextNote("queued");
-      if (n && haveModel("asr")) { await listenTo(n); continue; }
+      if (n && haveModel("asr") && !state.settings.voiceHold) { await listenTo(n); continue; }
       break;
     }
   } finally { ai.pumping = false; releaseScreen(); renderAll(); }
 }
+// If the phone runs out of memory the page is simply reloaded, with no error to catch. So before the heavy steps a note is
+// left in storage; finding it at the next launch means the last attempt was killed, and voice is paused rather than retried in a loop.
+const busyKey = which => "shelfscan.busy." + which;
+const busyMark = (which, v) => { try { localStorage.setItem(busyKey(which), v || "1"); } catch (e) {} };
+const busyClear = which => { try { localStorage.removeItem(busyKey(which)); } catch (e) {} };
+function checkLastCrash() {
+  let load = "", listen = "";
+  try { load = localStorage.getItem(busyKey("load")) || ""; listen = localStorage.getItem(busyKey("listen")) || ""; } catch (e) {}
+  if (!load && !listen) return;
+  busyClear("load"); busyClear("listen");
+  state.settings.voiceHold = { at: Date.now(), phase: listen ? "listening" : "loading the speech model" };
+  const n = listen && state.notes.find(x => x.id === listen);
+  if (n && n.status !== "done") { n.status = "error"; n.err = "The phone ran out of memory while listening. Record it again or type it."; }
+  save();
+}
+function resumeVoice() { state.settings.voiceHold = null; save(); renderAll(); warmUp(); pump(); }
 async function listenTo(n) {
+  busyMark("listen", n.id);
   try {
     const rec = n.audio ? await getAudio(n.audio) : null;
     if (!rec) throw new Error("The recording is missing.");
@@ -1689,6 +1707,7 @@ async function listenTo(n) {
     n.text = cleanTranscript(r.text);
     n.status = n.text ? "heard" : "empty"; n.err = "";
   } catch (e) { n.status = "error"; n.err = e.message || "Couldn't listen to this"; }
+  busyClear("listen");
   save(); renderAll();
 }
 // Whisper writes things like [BLANK_AUDIO] or (silence) when nothing was said.
@@ -1705,7 +1724,9 @@ function quickRead(n) {
 }
 // At startup: get the speech model ready in the background so the first note isn't waiting on it.
 function warmUp() {
-  if (haveModel("asr")) workerCall({ type: "load", key: "asr" }, 0).then(() => (ai.ready.asr = true), () => {});
+  if (!haveModel("asr") || state.settings.voiceHold || ai.ready.asr || ai.pending.has("load:asr")) return;
+  busyMark("load");
+  workerCall({ type: "load", key: "asr" }, 0).then(() => (ai.ready.asr = true), () => {}).then(() => busyClear("load"));
 }
 // Put a note back in line: to be listened to again, or read again.
 function requeue(n) {
@@ -2192,7 +2213,7 @@ async function startCamera() {
   if (cam.stream || cam.starting) return;
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { cam.error = "This browser can't use the camera here."; return renderCapture(); }
   cam.starting = true; cam.error = ""; renderCapture();
-  const video = { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } };
+  const video = { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }   // photos are saved at 1280px anyway; a smaller live feed leaves the speech model more memory;
   try {
     let stream;
     // Ask for the microphone together with the camera so the phone only asks once.
@@ -2450,7 +2471,11 @@ function renderCapture() {
   $("#btn-shutter").setAttribute("aria-label", `Take a ${ck} photo, then say what you need`);
   const q = queueState();
   const vb = $("#model-banner");
-  if (!voiceReady()) {
+  if (state.settings.voiceHold) {
+    vb.hidden = false;
+    vb.innerHTML = `<div class="banner">${icon("warn")}<span class="grow">The phone ran out of memory while ${esc(state.settings.voiceHold.phase)}. Voice is paused so it doesn't keep restarting the app.</span><button class="btn sm primary" data-a="go">Try again</button></div>`;
+    vb.querySelector("button").onclick = resumeVoice;
+  } else if (!voiceReady()) {
     vb.hidden = false;
     vb.innerHTML = `<div class="banner">${icon("download")}<span class="grow">Voice notes need a one-time download.</span><button class="btn sm primary" data-a="go">Set up</button></div>`;
     vb.querySelector("button").onclick = () => showView("more");
@@ -2934,7 +2959,8 @@ save();
 syncAllIndicators(false);
 setTimeout(sweepMedia, 3000);   // tidy photos and recordings left over from deleted notes
 if (state.settings.camOK) startCamera();
-verifyModels().then(() => { warmUp(); pump(); });   // get the models ready, and pick up anything still waiting from last time
+checkLastCrash();
+verifyModels().then(() => { setTimeout(warmUp, 3000); pump(); });   // the model loads a moment after the camera starts, not at the same instant   // get the models ready, and pick up anything still waiting from last time
 
 // Pull everyone's latest product list on open, then upload anything waiting.
 if (navigator.onLine) pullShared().catch(() => {}).finally(() => scheduleUpload(1000));

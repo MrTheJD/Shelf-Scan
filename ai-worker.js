@@ -5,6 +5,8 @@ import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transfo
 
 env.allowLocalModels = false;
 env.useBrowserCache = true;
+// Keep memory low on phones: one thread, and no big pre-reserved memory pool.
+try { env.backends.onnx.wasm.numThreads = 1; } catch (e) {}
 
 const ASR = { id: "Xenova/whisper-base.en", dtype: "q8" };
 let asr = null, loading = null;
@@ -22,7 +24,7 @@ function load() {
         post("progress", { key: "asr", loaded: l, total: t });
       }
     };
-    asr = await pipeline("automatic-speech-recognition", ASR.id, { device: "wasm", dtype: ASR.dtype, progress_callback });
+    asr = await pipeline("automatic-speech-recognition", ASR.id, { device: "wasm", dtype: ASR.dtype, progress_callback, session_options: { enableCpuMemArena: false, enableMemPattern: false, graphOptimizationLevel: "basic" } });
     return asr;
   })().finally(() => { loading = null; }));
 }
