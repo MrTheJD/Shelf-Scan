@@ -45,8 +45,15 @@ self.onmessage = async e => {
     } else if (m.type === "transcribe") {
       const t0 = Date.now();
       const pipe = await load(m.model);
-      const r = await pipe(m.pcm, { return_timestamps: false });
-      post("text", { id: m.id, text: String(r.text || "").trim(), ms: Date.now() - t0 });
+      // Ask for a time on every word (the note player lights them up as they are said); if that fails, plain text still works.
+      const dur = m.pcm.length / 16000;
+      let r, words = null;
+      try {
+        r = await pipe(m.pcm, { return_timestamps: "word" });
+        const raw = (r.chunks || []).map(c => [String(c.text || "").trim(), c.timestamp && c.timestamp[0], c.timestamp && c.timestamp[1]]).filter(w => w[0] && w[1] != null && w[1] < dur + 0.5);
+        words = raw.map((w, i) => [w[0], +w[1].toFixed(2), +Math.min(w[2] == null ? (raw[i + 1] ? raw[i + 1][1] : dur) : w[2], dur).toFixed(2)]);
+      } catch (err) { r = await pipe(m.pcm, { return_timestamps: false }); }
+      post("text", { id: m.id, text: String(r.text || "").trim(), words, ms: Date.now() - t0 });
     }
   } catch (err) {
     post("error", { id: m.id, key: m.key, message: String((err && err.message) || err) });

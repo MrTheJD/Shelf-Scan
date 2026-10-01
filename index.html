@@ -280,6 +280,18 @@ body[data-view="capture"] #view-capture.active { max-width: 640px; margin: 0 aut
 
 .by-tag{display:inline-flex;align-items:center;font-size:12px;font-weight:700;line-height:1;padding:4px 8px;border-radius:999px;background:var(--ink,#1d1d1f);color:#fff;white-space:nowrap}
 .pend-tag{display:inline-flex;align-items:center;font-size:12px;font-weight:600;line-height:1;padding:4px 8px;border-radius:999px;border:1px dashed currentColor;opacity:.6;white-space:nowrap}
+
+/* ---------- Note player: the word being said is lit up ---------- */
+.w { border-radius: 4px; transition: background-color .12s ease, color .12s ease; }
+.w.on { background: var(--ink); color: var(--on-ink); box-shadow: 0 0 0 2px var(--ink); }
+.item.done .w.on { text-decoration: none; }
+.pbtn { width: 40px; height: 40px; flex: none; border-radius: 50%; border: 0; padding: 0; background: var(--chip); color: var(--text); display: flex; align-items: center; justify-content: center; }
+.pbtn svg.i { width: 18px; height: 18px; }
+.pbtn.playing { background: var(--red); color: var(--on-red); }
+.pbtn.big { width: 44px; height: 44px; }
+.pbar { display: flex; align-items: center; gap: 12px; }
+.pbar input[type=range] { flex: 1; min-width: 0; accent-color: var(--red); height: 32px; }
+.ptime { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 </style>
 </head>
 <body data-view="capture">
@@ -1736,7 +1748,7 @@ async function listenTo(n) {
     for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
     if (!ai.ready.asr) { await workerCall(loadMsg(), 120000); ai.ready.asr = true; }
     const r = await workerCall({ type: "transcribe", model: asrId(), pcm: f32 }, 120000, [f32.buffer]);
-    n.text = cleanTranscript(r.text);
+    n.text = cleanTranscript(r.text); n.words = r.words || null; n._al = null;
     n.status = n.text ? "heard" : "empty"; n.err = "";
   } catch (e) { n.status = "error"; n.err = e.message || "Couldn't listen to this"; }
   busyClear("listen");
@@ -2439,7 +2451,7 @@ async function saveNote({ photos, note, audioRec, secs, text, status, kind }) {
   if (audioRec) { audioId = newId("a"); try { await putAudio(audioId, audioRec); } catch (e) { toast("Couldn't save the recording. Phone storage may be full."); } }
   if (note) {
     const old = note.audio;
-    note.audio = audioId; note.secs = secs; note.text = text; note.status = status; note.err = ""; note.parts = []; note.flag = false; note.ticks = {};
+    note.audio = audioId; note.secs = secs; note.words = null; note._al = null; note.text = text; note.status = status; note.err = ""; note.parts = []; note.flag = false; note.ticks = {};
     if (old) delAudio(old).catch(() => {});
     save(); renderAll(); return note;
   }
@@ -2468,19 +2480,131 @@ function textPrompt(title, value = "", { ok = "Save" } = {}) {
   });
 }
 
-// Play back a note's recording.
-let playCtx = null;
-async function playNote(n) {
-  const rec = n.audio && await getAudio(n.audio).catch(() => null);
-  if (!rec) return toast("No recording for this note");
-  const i16 = new Int16Array(rec.pcm);
-  playCtx = playCtx || new (window.AudioContext || window.webkitAudioContext)();
-  if (playCtx.state === "suspended") await playCtx.resume();
-  const buf = playCtx.createBuffer(1, i16.length, rec.rate), ch = buf.getChannelData(0);
-  for (let i = 0; i < i16.length; i++) ch[i] = i16[i] / 32768;
-  const src = playCtx.createBufferSource(); src.buffer = buf; src.connect(playCtx.destination); src.start();
+
+// ---------- Playing a note back, with each word lit up as it is said ----------
+// The whole note is always shown. While the recording plays, the word being said is highlighted, and tapping a word jumps there.
+// The speech model hands back a start and end time for every word it heard (n.words = [[word, start, end], ...]); this lines them up
+// with the note's text, which may have been edited since.
+ICONS.pause = "M6 4h4v16H6zM14 4h4v16h-4z";
+const player = { id: null, audio: null, url: "", raf: 0, loading: null };
+const normW = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
+
+// The note's text split into words, each with a time (or null when there is no timing for this note).
+function alignWords(n) {
+  if (!n.words || !n.words.length || !n.text) return null;
+  if (n._alFor === n.text && n._al) return n._al;
+  const toks = [], re = /\S+/g; let m;
+  while ((m = re.exec(n.text))) toks.push({ w: m[0], a: m.index, b: m.index + m[0].length, s: null, e: null });
+  let j = 0;
+  for (const t of toks) {
+    const nt = normW(t.w); if (!nt) continue;
+    // a text word can be one timed word, or several joined ("Coca-Cola" was heard as "Coca" + "-Cola")
+    search: for (let k = j; k < Math.min(n.words.length, j + 4); k++) {
+      let joined = "";
+      for (let q = k; q < Math.min(n.words.length, k + 3); q++) {
+        joined += normW(n.words[q][0]);
+        if (joined === nt) { t.s = n.words[k][1]; t.e = n.words[q][2]; j = q + 1; break search; }
+        if (joined.length >= nt.length) break;
+      }
+    }
+  }
+  // Words with no match (edited, or heard differently) borrow a time between their neighbours.
+  const end = Math.max(n.secs || 0, ...n.words.map(w => w[2] || 0));
+  for (let i = 0; i < toks.length; i++) {
+    if (toks[i].s != null) continue;
+    let k = i; while (k < toks.length && toks[k].s == null) k++;
+    const from = i ? toks[i - 1].e : 0, to = k < toks.length ? toks[k].s : end, per = (to - from) / (k - i + 1);
+    for (let q = i; q < k; q++) { toks[q].s = from + per * (q - i + 0.5); toks[q].e = toks[q].s + per; }
+    i = k - 1;
+  }
+  n._alFor = n.text; n._al = toks;
+  return toks;
+}
+// The note's text as HTML: words are spans the player can light up; the part about one product is bold.
+function noteTextHTML(n, pid) {
+  const toks = alignWords(n);
+  if (!toks) return markText(n, pid);
+  const t = n.text, ranges = (n.parts || []).filter(p => p.vk === pid).map(p => [p.s, p.e]);
+  let html = "", i = 0;
+  toks.forEach((k, idx) => {
+    html += esc(t.slice(i, k.a)); i = k.b;
+    const hl = ranges.some(([s, e]) => k.a < e && k.b > s);
+    html += `<span class="w${hl ? " hl" : ""}" data-n="${esc(n.id)}" data-i="${idx}" data-s="${k.s.toFixed(2)}">${esc(k.w)}</span>`;
+  });
+  return html + esc(t.slice(i));
 }
 
+// ---- the audio ----
+function pcmToWav(pcm, rate) {
+  const n = pcm.byteLength >> 1, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); str(8, "WAVE"); str(12, "fmt "); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, "data"); v.setUint32(40, n * 2, true);
+  new Int16Array(buf, 44, n).set(new Int16Array(pcm));
+  return new Blob([buf], { type: "audio/wav" });
+}
+function playerStop() {
+  cancelAnimationFrame(player.raf); player.raf = 0;
+  if (player.audio) { try { player.audio.pause(); } catch (e) {} player.audio.src = ""; }
+  if (player.url) URL.revokeObjectURL(player.url);
+  player.id = null; player.audio = null; player.url = "";
+  playerPaint();
+}
+async function playerLoad(n) {
+  if (player.id === n.id && player.audio) return player.audio;
+  const rec = n.audio && await getAudio(n.audio).catch(() => null);
+  if (!rec) { toast("No recording for this note"); return null; }
+  playerStop();
+  player.url = URL.createObjectURL(pcmToWav(rec.pcm, rec.rate || 16000));
+  const a = player.audio = new Audio(player.url); a.preload = "auto"; player.id = n.id;
+  a.onended = () => { playerPaint(); };
+  a.onpause = () => playerPaint();
+  a.onplay = () => { cancelAnimationFrame(player.raf); const loop = () => { playerPaint(); if (player.audio === a && !a.paused && !a.ended) player.raf = requestAnimationFrame(loop); }; loop(); };
+  return a;
+}
+async function playerToggle(n) {
+  const a = await playerLoad(n); if (!a) return;
+  if (a.paused || a.ended) { if (a.ended) a.currentTime = 0; try { await a.play(); } catch (e) { toast("Couldn't play the recording"); } } else a.pause();
+  playerPaint();
+}
+async function playerSeek(n, t, play = true) {
+  const a = await playerLoad(n); if (!a) return;
+  a.currentTime = Math.max(0, t);
+  if (play && a.paused) { try { await a.play(); } catch (e) {} }
+  playerPaint();
+}
+const fmtT = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+// Light up the current word and update every play button and bar for the note that is playing.
+function playerPaint() {
+  const a = player.audio, id = player.id, t = a ? a.currentTime : 0, playing = !!(a && !a.paused && !a.ended);
+  document.querySelectorAll(".w.on").forEach(w => w.classList.remove("on"));
+  if (id && a && (playing || t > 0)) {
+    const ws = [...document.querySelectorAll(`.w[data-n="${CSS.escape(id)}"]`)];
+    // the word whose start is the latest one already passed (so it stays lit through short pauses)
+    let cur = -1; ws.forEach((w, i) => { if (+w.dataset.s <= t + 0.04) cur = i; });
+    if (cur >= 0 && !(a.ended)) { const idx = ws[cur].dataset.i; document.querySelectorAll(`.w[data-n="${CSS.escape(id)}"][data-i="${idx}"]`).forEach(w => w.classList.add("on")); }
+  }
+  document.querySelectorAll("[data-a=play]").forEach(b => {
+    const on = playing && b.dataset.n === id;
+    if (b.classList.contains("playing") !== on) { b.classList.toggle("playing", on); b.innerHTML = icon(on ? "pause" : "play"); b.setAttribute("aria-label", on ? "Pause" : "Play the recording"); }
+  });
+  document.querySelectorAll(".pbar").forEach(bar => {
+    const mine = bar.dataset.n === id, dur = (mine && a && isFinite(a.duration) && a.duration) || +bar.dataset.secs || 0;
+    const r = bar.querySelector("input"), lab = bar.querySelector(".ptime");
+    if (r && document.activeElement !== r) r.value = mine && dur ? Math.round(t / dur * 1000) : 0;
+    if (lab) lab.textContent = `${fmtT(mine ? t : 0)} / ${fmtT(dur)}`;
+  });
+}
+// The play bar inside a note sheet.
+function playerBarHTML(n) {
+  return `<div class="pbar" data-n="${esc(n.id)}" data-secs="${n.secs || 0}"><button class="pbtn big" data-a="play" data-n="${esc(n.id)}" aria-label="Play the recording">${icon("play")}</button>
+    <input type="range" min="0" max="1000" value="0" aria-label="Position"><span class="ptime">0:00 / ${fmtT(n.secs || 0)}</span></div>`;
+}
+function wirePlayerBar(root, n) {
+  const bar = root.querySelector(".pbar"); if (!bar) return;
+  bar.querySelector("[data-a=play]").onclick = () => playerToggle(n);
+  bar.querySelector("input").oninput = async e => { const a = await playerLoad(n); if (!a) return; const dur = isFinite(a.duration) && a.duration ? a.duration : n.secs || 0; a.currentTime = (+e.target.value / 1000) * dur; playerPaint(); };
+}
 // ---------- Views ----------
 let view = "capture";
 function showView(v) {
@@ -2504,6 +2628,7 @@ function renderAll() {
   if (view === "needed") renderNeeded();
   if (view === "products") renderProducts();
   if (view === "more") renderMore();
+  if (typeof playerPaint === "function") playerPaint();
 }
 const timeOf = ts => new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
@@ -2629,6 +2754,7 @@ function renderNeeded() {
     if (e.target.closest("#btn-clear-all")) return clearAllNotes();
     const row = e.target.closest(".need[data-n]"); if (!row) return;
     const n = state.notes.find(x => x.id === row.dataset.n); if (!n) return;
+    if (e.target.closest('[data-a="play"]')) return playerToggle(n);
     if (e.target.closest('[data-a="toggle"]')) { n.ticks = n.ticks || {}; n.ticks[row.dataset.k] = !n.ticks[row.dataset.k]; save(); renderAll(); }
     else openCheck(n, row.dataset.k);
   };
@@ -2651,7 +2777,8 @@ function needRow(n, a) {
   return `<div class="item need tap${done ? " done" : ""}${n.flag ? " flagged" : ""}" data-n="${esc(n.id)}" data-k="${esc(a.key)}">
     <button class="check${done ? " on" : ""}" data-a="toggle" aria-label="Mark as pulled">${icon("check")}</button>
     <div class="shelf-thumb" data-photo-wrap>${n.photos[0] ? `<img data-photo="${esc(n.photos[0])}" alt="">` : icon("note")}</div>
-    <div class="grow"><div class="blurb">${markText(n, a.vk)}</div>${chips || n.flag || teamTags(n) ? `<div class="chips-row">${teamTags(n)}${chips}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}</div>` : ""}</div>
+    <div class="grow"><div class="blurb">${noteTextHTML(n, a.vk)}</div>${chips || n.flag || teamTags(n) ? `<div class="chips-row">${teamTags(n)}${chips}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}</div>` : ""}</div>
+    ${n.audio ? `<button class="pbtn" data-a="play" data-n="${esc(n.id)}" aria-label="Play the recording">${icon("play")}</button>` : ""}
     ${icon("jump")}</div>`;
 }
 function clearAllNotes() {
@@ -2669,9 +2796,11 @@ function openCheck(n, focusPid) {
   let photoIdx = 0;
   const s = el(`<div class="sheet check-sheet"><div class="handle"></div><h2>Check against the photo</h2>
     <div class="zoom-stage" id="ck-stage"><img alt=""><span class="zoom-hint">Pinch to zoom</span></div><div class="viewer-dots" id="ck-dots" style="padding:0"></div>
-    <div class="transcript" id="ck-text"></div><div class="chips-row" id="ck-chips"></div>
+    <div class="transcript" id="ck-text"></div>${n.audio ? playerBarHTML(n) : ""}<div class="chips-row" id="ck-chips"></div>
     <div class="row" id="ck-actions"></div><button class="btn primary block" data-a="close">Done</button></div>`);
-  const close = openLayer(s, { onClose: () => renderAll() });
+  const close = openLayer(s, { onClose: () => { playerStop(); renderAll(); } });
+  wirePlayerBar(s, n);
+  s.querySelector("#ck-text").onclick = e => { const w = e.target.closest(".w"); if (w && n.audio) playerSeek(n, +w.dataset.s); };
   const img = s.querySelector("img");
   zoomStage(img, s.querySelector("#ck-stage"));
   const showPhoto = async () => {
@@ -2682,12 +2811,11 @@ function openCheck(n, focusPid) {
   };
   s.querySelector("#ck-dots").onclick = e => { const b = e.target.closest("[data-k]"); if (b) { photoIdx = +b.dataset.k; showPhoto(); } };
   const draw = () => {
-    s.querySelector("#ck-text").innerHTML = n.text ? `“${markText(n, focusPid && focusPid !== "?" ? focusPid : null)}”` : "(no words: typed or no recording)";
+    s.querySelector("#ck-text").innerHTML = n.text ? `“${noteTextHTML(n, focusPid && focusPid !== "?" ? focusPid : null)}”` : "(no words: typed or no recording)";
     s.querySelector("#ck-chips").innerHTML = `<span class="pill kind ${noteKind(n)}">${KIND_LABEL[noteKind(n)]}</span>${teamTags(n)}${chipsFor(n, null)}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}`;
-    s.querySelector("#ck-actions").innerHTML = `<button class="btn sm grow" data-a="edit">${icon("note")}Edit text</button>${n.audio ? `<button class="btn sm grow quiet" data-a="play">${icon("play")}Play</button>` : ""}<button class="btn sm grow quiet" data-a="more">More…</button>`;
+    s.querySelector("#ck-actions").innerHTML = `<button class="btn sm grow" data-a="edit">${icon("note")}Edit text</button><button class="btn sm grow quiet" data-a="more">More…</button>`;
     const a = s.querySelector("#ck-actions");
     a.querySelector('[data-a="edit"]').onclick = async () => { await editText(n); draw(); };
-    const pb = a.querySelector('[data-a="play"]'); if (pb) pb.onclick = () => playNote(n);
     a.querySelector('[data-a="more"]').onclick = async () => {
       const pick = await menu("This note", [
         { label: "Record again", value: "rerecord" }, { label: "Add another photo", value: "photo" },
@@ -2902,7 +3030,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 6 (team list) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan Beta 6.1 (team list) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
