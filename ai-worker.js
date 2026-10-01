@@ -28,7 +28,8 @@ function load(model) {
         post("progress", { key: "asr", loaded: l, total: t });
       }
     };
-    const p = await pipeline("automatic-speech-recognition", MODELS[model], { device: "wasm", dtype: DTYPE, progress_callback, session_options: { enableCpuMemArena: false, enableMemPattern: false, graphOptimizationLevel: "basic" } });
+    // Base: skip the graph optimizer too. It makes extra copies of the weights while loading, which is the biggest memory spike.
+    const p = await pipeline("automatic-speech-recognition", MODELS[model], { device: "wasm", dtype: DTYPE, progress_callback, session_options: { enableCpuMemArena: false, enableMemPattern: false, graphOptimizationLevel: model === "base" ? "disabled" : "basic" } });
     asr = p; asrFor = model;
     return p;
   })().finally(() => { loading = null; }));
