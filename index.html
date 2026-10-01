@@ -1787,6 +1787,10 @@ async function pump() {
 }
 // If the phone runs out of memory the page is simply reloaded, with no error to catch. So before the heavy steps a note is
 // left in storage; finding it at the next launch means the last attempt was killed, and voice is paused rather than retried in a loop.
+// A trail of the last few steps, kept in storage: after a restart it shows exactly where the last attempt stopped.
+const stepKey = "shelfscan.steps";
+function step(s) { try { const l = JSON.parse(localStorage.getItem(stepKey) || "[]"); l.push(`${s}@${(Date.now() % 100000)}`); localStorage.setItem(stepKey, JSON.stringify(l.slice(-8))); } catch (e) {} }
+const stepsNow = () => { try { return JSON.parse(localStorage.getItem(stepKey) || "[]"); } catch (e) { return []; } };
 const busyKey = which => "shelfscan.busy." + which;
 const busyMark = (which, v) => { try { localStorage.setItem(busyKey(which), v || "1"); } catch (e) {} };
 const busyClear = which => { try { localStorage.removeItem(busyKey(which)); } catch (e) {} };
@@ -1795,7 +1799,8 @@ function checkLastCrash() {
   try { load = localStorage.getItem(busyKey("load")) || ""; listen = localStorage.getItem(busyKey("listen")) || ""; } catch (e) {}
   if (!load && !listen) return;
   busyClear("load"); busyClear("listen");
-  state.settings.voiceHold = { at: Date.now(), phase: listen ? "listening" : "loading the speech model" };
+  state.settings.voiceHold = { at: Date.now(), phase: listen ? "listening" : "loading the speech model", steps: stepsNow() };
+  try { localStorage.removeItem(stepKey); } catch (e) {}
   if (listen && state.settings.wordTiming) state.settings.wordTiming = false;   // the extra memory for word times is the first thing to give up
   const n = listen && state.notes.find(x => x.id === listen);
   if (n && n.status !== "done") { n.status = "error"; n.err = "The phone ran out of memory while listening. Record it again or type it."; }
@@ -1803,14 +1808,17 @@ function checkLastCrash() {
 }
 function resumeVoice() { state.settings.voiceHold = null; save(); renderAll(); warmUp(); pump(); }
 async function listenTo(n) {
-  busyMark("listen", n.id);
+  busyMark("listen", n.id); step("listen");
   try {
     const rec = n.audio ? await getAudio(n.audio) : null;
     if (!rec) throw new Error("The recording is missing.");
     const i16 = new Int16Array(rec.pcm), f32 = new Float32Array(i16.length);
     for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
-    if (!ai.ready.asr) { await workerCall(loadMsg(), 120000); ai.ready.asr = true; }
+    step(`audio ${i16.length}`);
+    if (!ai.ready.asr) { step("load"); await workerCall(loadMsg(), 120000); ai.ready.asr = true; step("loaded"); }
+    step("run");
     const r = await workerCall({ type: "transcribe", model: asrId(), words: !!state.settings.wordTiming, pcm: f32 }, 120000, [f32.buffer]);
+    step("ran");
     n.text = cleanTranscript(r.text); n.words = r.words || null; n._al = null;
     n.status = n.text ? "heard" : "empty"; n.err = "";
   } catch (e) { n.status = "error"; n.err = e.message || "Couldn't listen to this"; }
@@ -1824,6 +1832,7 @@ function cleanTranscript(t) {
 }
 // The instant read: a heard note goes on the list at once. The matcher only works out where it belongs.
 function quickRead(n) {
+  step("read");
   try { const r = readBlurb(n.text); n.parts = r.parts; n.flag = r.flag; } catch (e) { n.parts = []; n.flag = true; }
   n.ticks = {}; delete n.items;
   n.status = "done"; n.err = "";
@@ -2479,7 +2488,7 @@ async function startRecording(base) {
   }
   const done = async () => {
     if (finished) return; finished = true;
-    const secs = r.secs, chunks = r.chunks, rate = r.rate, tooQuiet = r.peak < 0.004;
+    step("done"); const secs = r.secs, chunks = r.chunks, rate = r.rate, tooQuiet = r.peak < 0.004;
     cleanup(); r.closeSheet();
     if (!chunks.length || secs < 0.6 || tooQuiet) {
       // Nothing usable was said: keep the photo, and let the person choose what to do.
@@ -2489,7 +2498,9 @@ async function startRecording(base) {
       return note;
     }
     const rec = resampleTo16k(chunks, rate);
+    step("resampled");
     await saveNote({ ...base, audioRec: { pcm: rec.pcm, rate: rec.rate }, secs, text: "", status: "queued" });
+    step("saved");
     clearRecovery();
     pump();
   };
@@ -2724,7 +2735,7 @@ function renderCapture() {
   const vb = $("#model-banner");
   if (state.settings.voiceHold) {
     vb.hidden = false;
-    vb.innerHTML = `<div class="banner">${icon("warn")}<span class="grow">The phone ran out of memory while ${esc(state.settings.voiceHold.phase)}. Voice is paused so it doesn't keep restarting the app.</span><button class="btn sm primary" data-a="go">Try again</button></div>`;
+    vb.innerHTML = `<div class="banner">${icon("warn")}<span class="grow">The app was restarted while ${esc(state.settings.voiceHold.phase)}. Voice is paused so it doesn't keep restarting.${(state.settings.voiceHold.steps || []).length ? `<br><span class="small muted">Last steps: ${esc(state.settings.voiceHold.steps.map(s => s.split("@")[0]).join(" → "))}</span>` : ""}</span><button class="btn sm primary" data-a="go">Try again</button></div>`;
     vb.querySelector("button").onclick = resumeVoice;
   } else if (deferVoice() && voiceReady() && on && queuedCount() && !cam.hold) {
     vb.hidden = false;
@@ -3096,7 +3107,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 6.3.1 (team list) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan Beta 6.3.2 (team list) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
