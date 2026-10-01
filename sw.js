@@ -1,7 +1,7 @@
 // Offline support for Shelf Scan Beta 4: the app shell is cached on install; the voice library and its
 // runtime are cached the first time they load. The downloaded voice models are NOT handled here: the
 // model library keeps them in its own cache, and they must never be fetched behind the person's back.
-const CACHE = "shelfscan-b72-v23";
+const CACHE = "shelfscan-b73-v24";
 const SHELL = ["./", "index.html", "ai-worker.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 const NEVER = ["api.github.com", "huggingface.co", "hf.co", "cdn-lfs.huggingface.co", "xethub.hf.co", "raw.githubusercontent.com", "objects.githubusercontent.com"];
 
