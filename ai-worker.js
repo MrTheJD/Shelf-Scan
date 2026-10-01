@@ -1,7 +1,8 @@
 // Speech worker: turns a recording into words (Whisper) off the main thread so the camera and the list stay
 // smooth. The model downloads once (only when the person taps Download in More) and is kept in the browser's
 // cache; after that it runs on the phone, offline. (Smart reading uses a separate worker: llm-worker.js.)
-import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.0/+esm";
+// Engine pinned to 3.8.1 (stable onnxruntime 1.22). The 4.3.0 build runs on a nightly onnxruntime, and the app restarted on iPhone (iOS 26.7) while transcribing with it.
+import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/+esm";
 
 env.allowLocalModels = false;
 env.useBrowserCache = true;
