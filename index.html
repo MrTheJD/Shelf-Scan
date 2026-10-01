@@ -735,12 +735,12 @@ function migrate() {
   }
   // Beta 6.3: the Needed list is organized by brand, so old product-level parts and ticks become brand-level ones.
   for (const n of state.notes) {
-    if (n.bk === 1 || n.status !== "done" || !n.text) continue;
+    if (n.bk >= 3 || n.status !== "done" || !n.text) continue;   // 1 = brand-only (6.3), 2 = Diet Dr Pepper under Dr Pepper, 3 = Diet Coke under Coca-Cola (6.3.5)
     const byBrand = {};
-    for (const k in n.ticks || {}) { const b = k === "?" ? "?" : k.split("|")[0]; (byBrand[b] = byBrand[b] || []).push(!!n.ticks[k]); }
+    for (const k in n.ticks || {}) { let b = k === "?" ? "?" : k.split("|")[0]; b = { "diet dr pepper": "dr pepper", "diet coke": "coca cola" }[b] || b; (byBrand[b] = byBrand[b] || []).push(!!n.ticks[k]); }
     try { const r = readBlurb(n.text); n.parts = r.parts; n.flag = r.flag; } catch (e) { n.parts = []; n.flag = true; }
     n.ticks = {}; for (const b in byBrand) if (byBrand[b].every(Boolean)) n.ticks[b] = true;
-    n.bk = 1;
+    n.bk = 3;
   }
   // New starter products added to the app show up for existing users.
   const have = new Set(state.products.map(p => p.id));
@@ -1592,8 +1592,8 @@ function readBlurbDetailed(text) {
 
 // ---------- Brand-only reading (the Needed list is organized by brand; the flavor stays in the words) ----------
 const bKey = b => sNorm(b);
-// Sub-brands and company names that sit on the same shelf as their parent are listed under it.
-const BRAND_GROUP = { "BODYARMOR LYTE": "BODYARMOR", "Core Power Elite": "Core Power", "fairlife": "Core Power", "Topo Chico Sabores": "Topo Chico" };
+// Sub-brands, company names and diet / sugar-free versions are listed under their parent brand.
+const BRAND_GROUP = { "BODYARMOR LYTE": "BODYARMOR", "Core Power Elite": "Core Power", "fairlife": "Core Power", "Diet Dr Pepper": "Dr Pepper", "Diet Coke": "Coca-Cola", "Topo Chico Sabores": "Topo Chico" };
 // -> { parts: [{ vk: brand key, brand, s, e }], flag }. flag = "check the text": no brand was recognized, or a clause with a number names something we did not recognize.
 // ---- When no brand is recognized: the nearest-sounding one ----
 // Whisper writes "Coke Zero" as "Cocosero", "Code 0", "Hook zero", and "Fanta" as "Phantom". Every note names a brand first, so if nothing matched,
@@ -3021,7 +3021,10 @@ function zoomStage(img, stage) {
 // Size and pack don't matter here: they stay in the words you read. Edits apply to every size of a combination
 // and upload to the shared product list like before.
 let prodQuery = "", showRetired = false;
-const BRAND_FIRST = ["Coca-Cola", "Diet Coke"];
+const BRAND_FIRST = ["Coca-Cola"];
+// The list shows one heading per brand, the same grouping the Needed list uses: diet versions and sub-brands sit under their parent.
+const CHILD_LABEL = { "Diet Coke": "Diet", "Diet Dr Pepper": "Diet", "BODYARMOR LYTE": "Lyte", "Core Power Elite": "Elite", "fairlife": "fairlife", "Topo Chico Sabores": "Sabores" };
+const rowLabel = v => { const pre = CHILD_LABEL[v.brand]; return pre ? (v.flavor ? `${pre} ${v.flavor}` : pre) : (v.flavor || "No flavor"); };
 function renderProducts() {
   const v = $("#view-products");
   if (!v.querySelector("input")) {
@@ -3044,13 +3047,13 @@ function renderProductResults() {
   const retired = shown.filter(v => v.retired).length;
   if (!showRetired) shown = shown.filter(v => !v.retired);
   const byBrand = new Map();
-  for (const v of shown) (byBrand.get(v.brand) || byBrand.set(v.brand, []).get(v.brand)).push(v);
+  for (const v of shown) { const g = BRAND_GROUP[v.brand] || v.brand; (byBrand.get(g) || byBrand.set(g, []).get(g)).push(v); }
   const brands = [...byBrand.keys()].sort((a, b) => { const ia = BRAND_FIRST.indexOf(a), ib = BRAND_FIRST.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b); });
   let html = "";
   for (const b of brands) {
-    const rows = byBrand.get(b).sort((x, y) => x.flavor.localeCompare(y.flavor));
+    const rows = byBrand.get(b).sort((x, y) => rowLabel(x).localeCompare(rowLabel(y)));
     html += `<div class="group-h">${esc(b)} <span class="muted">${rows.length}</span></div><div class="list">` + rows.map(v =>
-      `<div class="item tap compact" data-vk="${esc(v.key)}"><div class="grow"><div class="name">${esc(v.flavor || "No flavor")}</div></div>${v.retired ? `<span class="pill">RETIRED</span>` : ""}${v.custom ? `<span class="pill">CUSTOM</span>` : ""}</div>`).join("") + `</div>`;
+      `<div class="item tap compact" data-vk="${esc(v.key)}"><div class="grow"><div class="name">${esc(rowLabel(v))}</div></div>${v.retired ? `<span class="pill">RETIRED</span>` : ""}${v.custom ? `<span class="pill">CUSTOM</span>` : ""}</div>`).join("") + `</div>`;
   }
   if (!brands.length) html = `<div class="empty"><p>Nothing matches.</p></div>`;
   if (retired || showRetired) html += `<button class="btn block quiet" id="btn-retired" style="margin-top:16px">${showRetired ? "Hide retired" : `Show retired (${retired})`}</button>`;
@@ -3177,7 +3180,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 6.3.4 (team list) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan Beta 6.3.5 (team list) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
