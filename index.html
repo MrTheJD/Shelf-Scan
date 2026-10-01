@@ -732,6 +732,15 @@ function migrate() {
     }
     if (n.status === "done" && n.text && !n.parts) { try { const r = readBlurb(n.text); n.parts = r.parts; n.flag = r.flag; } catch (e) { n.parts = []; n.flag = true; } }
   }
+  // Beta 6.3: the Needed list is organized by brand, so old product-level parts and ticks become brand-level ones.
+  for (const n of state.notes) {
+    if (n.bk === 1 || n.status !== "done" || !n.text) continue;
+    const byBrand = {};
+    for (const k in n.ticks || {}) { const b = k === "?" ? "?" : k.split("|")[0]; (byBrand[b] = byBrand[b] || []).push(!!n.ticks[k]); }
+    try { const r = readBlurb(n.text); n.parts = r.parts; n.flag = r.flag; } catch (e) { n.parts = []; n.flag = true; }
+    n.ticks = {}; for (const b in byBrand) if (byBrand[b].every(Boolean)) n.ticks[b] = true;
+    n.bk = 1;
+  }
   // New starter products added to the app show up for existing users.
   const have = new Set(state.products.map(p => p.id));
   for (const p of buildSeedProducts()) if (!have.has(p.id) && !state.deleted.products[p.id]) state.products.push(p);
@@ -1379,10 +1388,12 @@ function brandIndex() {
   for (const [k, v] of Object.entries(BRAND_ALIASES)) if (have.has(v)) brandIdx.set(sNorm(k), v);
   return brandIdx;
 }
+const NOT_BRANDS = new Set(["fantasy", "fantastic", "fantasies"]);
 function resolveBrand(text) {
   const n = sNorm(text), idx = brandIndex();
   if (!n) return null;
   if (idx.has(n)) return idx.get(n);
+  if (NOT_BRANDS.has(n)) return null;   // ordinary words that sit one letter from a brand ("fantasy" is not Fanta)
   let best = null, bestD = 99;
   for (const [k, v] of idx) { const d = lev(n, k); if (d < bestD) { bestD = d; best = v; } }
   // A small typo (about 1 letter in 5) is fine; a wholly different word (Gatorade vs Dasani) is not.
@@ -1548,7 +1559,7 @@ function oddWordAfter(toks, sp, brand) {
   return false;
 }// -> { parts: [{ vk, s, e }], flag }. Each part is one brand + flavor and the stretch of the text about it.
 // flag = "check the text": nothing was recognized, or a clause with a number mentions something we didn't recognize.
-function readBlurb(text) {
+function readBlurbDetailed(text) {
   text = String(text || "");
   const toks = tokenize(text), spans = brandSpans(toks.map(x => x.t));
   const parts = [], named = new Set(); let unsure = false;
@@ -1576,7 +1587,40 @@ function readBlurb(text) {
     }
   }
   return { parts, flag };
-}// ---------- On-device speech model and the note queue ----------
+}
+
+// ---------- Brand-only reading (the Needed list is organized by brand; the flavor stays in the words) ----------
+const bKey = b => sNorm(b);
+// Sub-brands and company names that sit on the same shelf as their parent are listed under it.
+const BRAND_GROUP = { "BODYARMOR LYTE": "BODYARMOR", "Core Power Elite": "Core Power", "fairlife": "Core Power", "Topo Chico Sabores": "Topo Chico" };
+// -> { parts: [{ vk: brand key, brand, s, e }], flag }. flag = "check the text": no brand was recognized, or a clause with a number names something we did not recognize.
+function readBlurb(text) {
+  text = String(text || "");
+  const toks = tokenize(text), spans = brandSpans(toks.map(x => x.t)), parts = [];
+  spans.forEach((sp, k) => {
+    // "Gold Peak tea with Simply lemonade": the Simply is an ingredient, not another product.
+    if (sp.brand === "Simply" && k && spans[k - 1].brand === "Gold Peak" && sp.start && toks[sp.start - 1].t === "with") return;
+    let brand = sp.brand, first = sp.start;
+    // "Diet Cherry Coke": the diet is not next to the coke, but it is still Diet Coke.
+    if (brand === "Coca-Cola") for (let d = 1; d <= 2; d++) { const q = sp.start - d; if (q >= 0 && toks[q].t === "diet" && !spans.some(o => o !== sp && q >= o.start && q < o.end)) { brand = "Diet Coke"; first = q; break; } }
+    const s = toks[first].s, to = k + 1 < spans.length ? toks[spans[k + 1].start].s : text.length;
+    const seg = text.slice(s, to).replace(TRAIL_NEXT, "").replace(/[\s,;.]+$/, "");
+    brand = BRAND_GROUP[brand] || brand;
+    parts.push({ vk: bKey(brand), brand, s, e: s + seg.length });
+  });
+  let flag = !parts.length;
+  if (!flag) {
+    for (const clause of text.split(/,|;|\band\b|\bplus\b/i)) {
+      const cs = text.indexOf(clause), ce = cs + clause.length;
+      if (spans.some(sp => toks[sp.start].s >= cs && toks[sp.start].s < ce)) continue;
+      if (!/\d/.test(speechToDigits(clause))) continue;
+      const words = tokenize(clause).map(x => x.t).filter(w => w.length > 2 && !/^\d+$/.test(w) && !ONES[w] && !TENS[w] && !UNIT_WORDS.has(w) && !FILLER_WORDS.has(w) && w !== "dozen" && w !== "couple");
+      if (words.length) { flag = true; break; }
+    }
+  }
+  return { parts, flag };
+}
+// ---------- On-device speech model and the note queue ----------
 // A note goes: queued (voice clip waiting) → heard (words) → done (items on the list from the quick read).
 // The queue runs in the background so you can keep snapping shelves, or walk to the back room, while the phone works.
 // Two sizes of the same speech model: Tiny (default, lighter on memory) and Base (more accurate).
@@ -2725,8 +2769,10 @@ const captureKind = () => (state.settings.captureKind === "display" ? "display" 
 const curKind = () => (state.settings.needKind === "display" ? "display" : "aisle");
 const CHECK_GROUP = "Check the text";
 // The products (brand + flavor) a blurb is listed under: one appearance each, or a single "?" one when none were recognized.
+// The Needed list is organized by brand. The note keeps the flavor in its words; the matcher only has to get the brand right.
+const brandMap = () => { const m = new Map(); for (const p of state.products) { const k = sNorm(p.brand); if (!m.has(k)) m.set(k, p.brand); } return m; };
 function appearances(n) {
-  const vm = vmap(), vks = [...new Set((n.parts || []).map(p => p.vk).filter(k => vm.has(k)))];
+  const bm = brandMap(), vks = [...new Set((n.parts || []).map(p => p.vk).filter(k => bm.has(k)))];
   return vks.length ? vks.map(vk => ({ key: vk, vk })) : [{ key: "?", vk: null }];
 }
 const noteDone = n => appearances(n).every(a => (n.ticks || {})[a.key]);
@@ -2734,10 +2780,10 @@ const listed = kind => state.notes.filter(n => noteKind(n) === kind && n.status 
 const openCount = kind => listed(kind).filter(n => !noteDone(n)).length;
 // Blurbs are clustered by brand and flavor (Coca-Cola and Diet Coke first, then alphabetical); the ones nothing was recognized in come first.
 function neededGroups(kind) {
-  const vm = vmap(), clusters = new Map();
+  const bm = brandMap(), clusters = new Map();
   for (const n of listed(kind)) for (const a of appearances(n)) (clusters.get(a.key) || clusters.set(a.key, []).get(a.key)).push({ n, a });
   const rank = v => { const i = BRAND_FIRST.indexOf(v.brand); return i < 0 ? 99 : i; };
-  const list = [...clusters.entries()].map(([key, rows]) => ({ key, v: key === "?" ? null : vm.get(key), rows: rows.sort((r1, r2) => r1.n.at - r2.n.at) }));
+  const list = [...clusters.entries()].map(([key, rows]) => ({ key, v: key === "?" ? null : { brand: bm.get(key), flavor: "" }, rows: rows.sort((r1, r2) => r1.n.at - r2.n.at) }));
   list.sort((c1, c2) => (!c1.v ? -1 : !c2.v ? 1 : rank(c1.v) - rank(c2.v) || c1.v.brand.localeCompare(c2.v.brand) || c1.v.flavor.localeCompare(c2.v.flavor)));
   return list;
 }
@@ -2787,8 +2833,8 @@ function markText(n, pid) {
   for (const [s, e] of ranges) { if (s < i) continue; html += esc(t.slice(i, s)) + `<b class="hl">${esc(t.slice(s, e))}</b>`; i = e; }
   return html + esc(t.slice(i));
 }
-const chipsFor = (n, exceptVk) => { const vm = vmap(); return [...new Set((n.parts || []).map(p => p.vk))].filter(k => k !== exceptVk && vm.has(k))
-  .map(k => `<span class="chip-sm">${esc(vName(vm.get(k)))}</span>`).join(""); };
+const chipsFor = (n, exceptVk) => { const bm = brandMap(); return [...new Set((n.parts || []).map(p => p.vk))].filter(k => k !== exceptVk && bm.has(k))
+  .map(k => `<span class="chip-sm">${esc(bm.get(k))}</span>`).join(""); };
 function needRow(n, a) {
   const done = !!(n.ticks || {})[a.key], chips = chipsFor(n, a.vk);
   return `<div class="item need tap${done ? " done" : ""}${n.flag ? " flagged" : ""}" data-n="${esc(n.id)}" data-k="${esc(a.key)}">
@@ -3047,7 +3093,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 6.2 (team list) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan Beta 6.3 (team list) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
