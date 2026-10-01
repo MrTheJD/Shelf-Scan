@@ -316,6 +316,9 @@ body[data-view="ba"] #view-ba.active { max-width: 640px; margin: 0 auto; }
 .shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .shot span { position: absolute; left: 4px; bottom: 4px; padding: 2px 7px; border-radius: 999px; background: rgba(0, 0, 0, .62); color: #fff; font-size: 11px; font-weight: 650; }
 .shot-sheet .zoom-stage { aspect-ratio: auto; }
+
+.save-hint { position: fixed; z-index: 200; left: 16px; right: 16px; top: calc(var(--safe-t) + 116px); max-width: 420px; margin: 0 auto; padding: 14px 16px; border-radius: 16px; background: var(--ink); color: var(--on-ink); box-shadow: 0 10px 30px rgba(0, 0, 0, .35); display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 1.35; pointer-events: none; }
+.save-hint b { font-size: 16px; }
 </style>
 </head>
 <body data-view="capture">
@@ -3250,13 +3253,44 @@ async function shareBatch(slot, w) {
   } catch (e) { if (e && e.name === "AbortError") return; }
   toast("Sharing isn't available here. Open a photo and use Save to Photos.");
 }
-// End of shift: hand every photo to the phone's share sheet (choose Save Images) with names like
-// store1234_Before_Aisle_1_2026-10-01.jpg, and only once that has gone through, forget the store numbers and clear the photos.
+// Asks whether to save the photos first. Resolves "save", "clear" (just clear) or null (cancel).
+function askSaveFirst(n) {
+  return new Promise(resolve => {
+    const d = el(`<div class="dialog"><p><b>Clear everything?</b></p>
+      <p>This clears every store number and all ${n} Before/After photo${n === 1 ? "" : "s"} from the app. Do you want to save the photos to this phone first?</p>
+      <div class="stack"><button class="btn primary block" data-a="save">${icon("download")}Yes, save them first</button>
+      <button class="btn block" data-a="clear">No, just clear</button>
+      <button class="btn block quiet" data-a="c">Cancel</button></div></div>`);
+    let done = false;
+    const close = openLayer(d, { center: true, sticky: true, onClose: () => { if (!done) resolve(null); } });
+    for (const k of ["save", "clear", "c"]) d.querySelector(`[data-a="${k}"]`).onclick = () => { done = true; close(); resolve(k === "c" ? null : k); };
+  });
+}
+// A note shown on screen while the share sheet is open, so nobody has to guess which button saves the photos.
+function showSaveHint(n) {
+  const h = el(`<div class="save-hint" role="status"><b>Next: tap “Save ${n === 1 ? "Image" : n + " Images"}”</b><span>In the list that opens, tap “Save ${n === 1 ? "Image" : n + " Images"}” (scroll down in the list if you don't see it). Your photos then go to the Photos app.</span></div>`);
+  document.body.appendChild(h);
+  return () => h.remove();
+}
+// End of shift: forget the store numbers and clear the photos, saving them to the phone first if asked. The share sheet gets the
+// photos named like store1234_Before_Aisle_1_2026-10-01.jpg; nothing is cleared unless that has gone through.
 const pad2 = n => String(n).padStart(2, "0");
+function clearEverything() {
+  const snap = snapshot();
+  state.shots = []; state.stores = Array(SLOTS).fill(""); state.storeName = ""; state.settings.baSlot = 0; lastShotId = null;
+  save(); renderAll(); scheduleSweep();
+  toast("Cleared", snap);
+  return true;
+}
 async function saveAndClear() {
-  if (!state.shots.length) { toast("No photos to save"); return false; }
   const n = state.shots.length;
-  if (!(await confirmDialog(`Save ${n} photo${n === 1 ? "" : "s"} to this phone, then clear every store number and all Before/After photos from the app?`, { ok: "Save and clear", danger: true }))) return false;
+  if (!n) {
+    if (!state.stores.some(Boolean)) { toast("Nothing to clear"); return false; }
+    return (await confirmDialog("Clear the store numbers?", { ok: "Clear", danger: true })) ? clearEverything() : false;
+  }
+  const choice = await askSaveFirst(n);
+  if (!choice) return false;
+  if (choice === "clear") return clearEverything();
   const list = [...state.shots].sort((a, b) => a.slot - b.slot || a.when.localeCompare(b.when) || a.kind.localeCompare(b.kind) || a.at - b.at), count = {}, files = [];
   for (const x of list) {
     const d = new Date(x.at), key = `${x.slot}|${x.when}|${x.kind}`; count[key] = (count[key] || 0) + 1;
@@ -3264,20 +3298,18 @@ async function saveAndClear() {
     if (blob) files.push(new File([blob], `store${(storeOf(x.slot) || "none").replace(/[^A-Za-z0-9-]/g, "")}_${WHEN_LABEL[x.when]}_${KIND_LABEL[x.kind]}_${count[key]}_${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}.jpg`, { type: "image/jpeg" }));
   }
   if (files.length < list.length) { toast("Some photos are missing, so nothing was cleared"); return false; }
+  const hideHint = showSaveHint(files.length);
   try {
     if (!(navigator.canShare && navigator.canShare({ files }))) throw new Error("no share");
     await navigator.share({ files });
   } catch (e) {
+    hideHint();
     toast(e && e.name === "AbortError" ? "Not saved, so nothing was cleared" : "Saving isn't available here, so nothing was cleared");
     return false;
   }
-  const snap = snapshot();
-  state.shots = []; state.stores = Array(SLOTS).fill(""); state.storeName = ""; state.settings.baSlot = 0; lastShotId = null;
-  save(); renderAll(); scheduleSweep();
-  toast("Saved and cleared", snap);
-  return true;
-}
-// slot = a store number to clear, or null for every store.
+  hideHint();
+  return clearEverything();
+}// slot = a store number to clear, or null for every store.
 function clearShots(slot) {
   const msg = slot == null ? "Remove the Before/After photos of every store from this phone? Save or send the ones you need first."
     : `Remove the Before/After photos of ${storeOf(slot) ? `store#${esc(storeOf(slot))}` : "this store"} from this phone? Save or send them first.`;
