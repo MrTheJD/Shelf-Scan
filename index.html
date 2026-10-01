@@ -688,7 +688,7 @@ function migrate() {
   const f = freshState();
   for (const k of ["deleted", "outbox", "sync", "settings"]) state[k] = Object.assign(f[k], state[k] || {});
   state.settings.models = { asr: !!(state.settings.models && state.settings.models.asr) };
-  if (!state.settings.asrId) { state.settings.asrId = "tiny"; state.settings.models.asr = false; }   // Beta 6: the small speech model is the default; phones that had the bigger one download it again when they choose
+  if (state.settings.asrId !== "tiny") { state.settings.asrId = "tiny"; state.settings.models.asr = false; }   // Beta 6: the small speech model is the default; phones that had the bigger one download it again when they choose
   delete state.settings.smart; delete state.settings.smartV; delete state.settings.smartId;   // smart reading was removed in Beta 5.1.1
   state.deleted = { products: state.deleted.products || {} };
   state.outbox = { products: state.outbox.products || {} };
@@ -1551,7 +1551,8 @@ function readBlurb(text) {
 // A note goes: queued (voice clip waiting) → heard (words) → done (items on the list from the quick read).
 // The queue runs in the background so you can keep snapping shelves, or walk to the back room, while the phone works.
 // Two sizes of the same speech model: Tiny (default, lighter on memory) and Base (more accurate).
-const asrId = () => (state.settings.asrId === "base" ? "base" : "tiny");
+// Base crashed iPhone Safari at load time even with the camera off (it goes over the per-page memory limit), so Tiny is the only size offered.
+const asrId = () => "tiny";
 const MODEL_INFO = {
   get asr() { return asrId() === "base" ? { name: "Speech to text", detail: "Whisper Base", size: "about 80 MB" } : { name: "Speech to text", detail: "Whisper Tiny", size: "about 40 MB" }; },
 };
@@ -2851,7 +2852,6 @@ function renderMore() {
     <div class="card">
       <h3>Voice</h3>
       <p class="hint">Listening runs on this phone, so it works with no signal. The speech model downloads once (use Wi-Fi), then stays on the phone.</p>
-      <div class="set-row"><label class="grow" for="asr-base">More accurate: Base model<br><span class="hint">Hears better, but it needs more memory. So it listens one note at a time while the camera is off: when you leave the camera or tap Listen now.</span></label><input type="checkbox" id="asr-base" ${asrId() === "base" ? "checked" : ""} ${dl ? "disabled" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
       ${modelRow("asr")}
       <p class="hint" style="margin:-4px 0 6px 21px">Turns your recording into words and gives you a list right away.</p>
       ${dl ? `<div class="mprog" data-mprog><i></i></div><p class="hint" data-mprog-label style="margin-top:6px">Starting…</p>` : ""}
@@ -2909,7 +2909,6 @@ function renderMore() {
   v.querySelector("#team-key").onchange = e => teamSetKey(e.target.value);
   v.querySelector("#team-name").onchange = e => { state.team.name = e.target.value.trim(); save(); teamSoon(300); };
   v.querySelector("#btn-team-test").onclick = teamTest;
-  v.querySelector("#asr-base").onchange = async e => { await setAsrChoice(e.target.checked ? "base" : "tiny"); renderMore(); };
   v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
   v.querySelectorAll("[data-dl]").forEach(b => (b.onclick = () => downloadModels([b.dataset.dl])));
   const del = v.querySelector("#btn-del-models"); if (del) del.onclick = async () => {
