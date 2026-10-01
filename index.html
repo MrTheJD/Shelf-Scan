@@ -608,6 +608,12 @@ function buildSeedProducts() {
       }
     }
   }
+  for (const [brand, flavors] of EXTRA_VARIATIONS) for (const flavor of flavors) {
+    const id = slug(`${brand} ${flavor || "plain"}`);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, brand, flavor, size: "", pack: "", category: "Other", unit: "pack", img: "", custom: false, retired: false, updated: 0 });
+  }
   return out;
 }
 // Starter products always show the app's current name (e.g. after a rename), wherever their data came from.
@@ -620,6 +626,35 @@ function canonicalize(products) {
   }
 }
 
+// ---------- Added flavors (checked against the brands' own sites, 2026-10-01) ----------
+// Sources: coca-cola.com/us/en/brands/* product pages, powerade.com/products, drinkbodyarmor.com sitemap, fairlife.com/core-power,
+// monsterenergy.com/en-us/energy-drinks, and Wikipedia's Dr Pepper article (drpepper.com is script-rendered and can't be read here).
+// Sizes and packs don't matter to the list, so each of these is one record with none.
+const EXTRA_VARIATIONS = [
+  ["Coca-Cola", ["Starlight", "Starlight Zero Sugar", "Dreamworld", "Dreamworld Zero Sugar", "Move", "Move Zero Sugar", "Y3000", "Y3000 Zero Sugar", "Ultimate", "Ultimate Zero Sugar", "Oreo Zero Sugar", "K-Wave Zero Sugar", "Happy Tears Zero Sugar", "Marshmello's", "Marshmello's Zero Sugar", "Byte Zero Sugar"]],
+  ["Simply Pop", ["Orange", "Cherry Pomegranate"]],
+  ["Simply", ["Orange", "Orange Pulp Free", "Orange High Pulp", "Orange Low Acid", "Orange Calcium", "Orange Medium Pulp Calcium and Vitamin D", "Orange Mango", "Orange Pineapple", "Lemonade", "Lemonade Raspberry", "Lemonade Blueberry", "Limeade", "Limeade Cherry", "Grape", "Peach", "Apple", "Cranberry Cocktail", "Fruit Punch", "Watermelon", "Grapefruit", "Pineapple", "Light Orange Pulp Free", "Light Lemonade"]],
+  ["Minute Maid", ["Orange Juice", "Orange Juice Pulp Free", "100% Apple Juice", "Cranberry Apple Raspberry", "Cranberry Grape", "Pineapple Orange", "Peach Mango", "Tropical Blend", "Cranberry Cocktail", "Zero Sugar Mango Passion Fruit", "Zero Sugar Pink Lemonade", "Zero Sugar Fruit Punch", "Zero Sugar Orange Pineapple"]],
+  ["Hi-C", ["Mashin' Mango Melon"]],
+  ["Honest Kids", ["Appley Ever After", "Super Fruit Punch", "Goodness Grapeness", "Bananas About Strawberries", "Strawberry Peachy Keen", "Berry Good Lemonade"]],
+  ["Tum-e Yummies", ["Edgy Orange Burst", "Epic Apple Flip", "Big Berry Blast", "Fruit Punch Party", "Rad Raspberry Zing"]],
+  ["Moxie", ["", "Diet"]],
+  ["Gold Peak", ["Zero Sugar Sweet Tea", "Extra Sweet Tea", "Georgia Peach Tea", "California Raspberry Tea", "Lemon Tea", "Black Tea with Simply Lemonade", "Tea with Simply Raspberry", "Black Tea with Simply Peach"]],
+  ["Topo Chico Sabores", ["Raspberry"]],
+  ["Powerade", ["Island Burst", "Melon", "Zero Strawberry Smash", "Power Water Mountain Berry Blast", "Power Water Strawberry Kiwi", "Power Water Tropical Pineapple", "Power Water Watermelon", "Xtra Sour Green Apple", "Xtra Sour Peach Pucker"]],
+  ["BODYARMOR", ["Blackout Berry", "Pineapple Coconut", "Strawberry Grape", "Tropical Passionfruit", "Zero Sugar Cherry Berry Lemonade", "Zero Sugar Cherry Lime", "Zero Sugar Fruit Punch", "Zero Sugar Lemon Lime", "Zero Sugar Orange", "Zero Sugar Watermelon Strawberry",
+    "Fit Citrus Grapefruit", "Fit Mixed Berry", "Fit Orange Mango", "Fit Tropical Passionfruit", "Fit Watermelon Lime", "Flash IV Cucumber Lime", "Flash IV Grape", "Flash IV Lemon Lime", "Flash IV Orange", "Flash IV Strawberry Kiwi", "Flash IV Tropical Punch"]],
+  ["BODYARMOR LYTE", ["Dragonfruit Berry", "Strawberry Banana"]],
+  ["Core Power Elite", ["Strawberry"]],
+  ["Monster Energy", ["Zero Sugar", "Strawberry Shot", "Zero Sugar Strawberry Shot", "Electric Blue", "Orange Dreamsicle", "Reserve Orange Dreamsicle", "Reserve Peaches n' Crème", "Nitro Super Dry", "Red White Blue Razz", "Punk Punch", "Blue Hawaiian", "Vice Guava", "Wild Passion",
+    "Ultra Strawberry Dreams", "Ultra Peachy Keen", "Ultra Fantasy Ruby Red", "Ultra Fiesta Mango", "Ultra Watermelon", "Ultra Rosá", "Ultra Black",
+    "Java Dubai Chocolate", "Java Loca Moca", "Java Salted Caramel", "Java Café Latte", "Java Irish Crème", "Juice Voodoo Grape", "Juice Strawberry Lemonade", "Juice Viking Berry", "Juice Bad Apple", "Juice Rio Punch", "Rehab Peach Tea", "Rehab Wild Berry Tea", "Rehab Green Tea"]],
+  ["Reign", ["Watermelon Sour Gummy", "White Gummy Bear", "Sour Gummy Worm", "White Haze", "REIGNbow Sherbet", "Lilikoi Lychee"]],
+  ["Dr Pepper", ["Caffeine Free", "Cherry Zero Sugar", "Cream Soda Zero Sugar", "Strawberries and Cream", "Strawberries and Cream Zero Sugar", "Creamy Coconut", "Creamy Coconut Zero Sugar", "Blackberry", "Blackberry Zero Sugar", "Vanilla Float", "Dark Berry", "Cherry Vanilla", "Made with Real Sugar"]],
+];
+
+// Records left over from earlier imports that duplicate a real product (kept, but no longer recognized).
+const RETIRED_VARIATIONS = new Set(["bodyarmor|lyte sports drink peach mango", "fairlife|core power", "gold peak|raspberry tea"]);
 // ---------- State ----------
 let state;
 // note.status: "queued" (voice clip waiting to be transcribed) → "heard" (has text, waiting to be read by the
@@ -675,6 +710,7 @@ function migrate() {
   const have = new Set(state.products.map(p => p.id));
   for (const p of buildSeedProducts()) if (!have.has(p.id) && !state.deleted.products[p.id]) state.products.push(p);
   canonicalize(state.products);
+  for (const p of state.products) if (!p.updated && RETIRED_VARIATIONS.has(vKey(p))) p.retired = true;
   for (const id of DISCONTINUED) { const p = productById(id); if (p && !p.retired && !p.updated) p.retired = true; }
   state.version = 4;
 }
@@ -924,6 +960,325 @@ function cameraPhoto() {
   });
 }
 
+// ---------- How Whisper writes flavors ----------
+// [brand, flavor, [other ways the flavor may be said or written]]: sound-alikes, plurals, dropped words, spoken forms.
+// Brand misspellings live in BRAND_SPOKEN (resolve.js). Built from checking Whisper's output on every flavor (see .claude/lab/catalog).
+const FLAVOR_ALIASES = [
+  ["Coca-Cola", "Zero Sugar", ["zero", "zero sugar", "zero calorie", "no sugar", "zero sugar coke"]],
+  ["Coca-Cola", "Caffeine-Free", ["caffeine free", "decaf", "no caffeine", "caffeinefree"]],
+  ["Coca-Cola", "Zero Sugar Caffeine-Free", ["zero caffeine free", "caffeine free zero", "caffeine free zero sugar", "decaf zero"]],
+  ["Coca-Cola", "Cherry", ["cherry", "cherry coke", "cherries"]],
+  ["Coca-Cola", "Cherry Zero Sugar", ["cherry zero", "cherry zero sugar", "zero cherry", "zero sugar cherry"]],
+  ["Coca-Cola", "Vanilla", ["vanilla", "vanilla coke"]],
+  ["Coca-Cola", "Vanilla Zero Sugar", ["vanilla zero", "zero vanilla", "zero sugar vanilla"]],
+  ["Coca-Cola", "Cherry Float", ["cherry float", "cherry floats"]],
+  ["Coca-Cola", "Zero Sugar Cherry Float", ["cherry float zero", "zero cherry float", "cherry float zero sugar"]],
+  ["Coca-Cola", "Original (Mexican)", ["mexican", "mexican coke", "mexico", "glass bottle", "mexican coca cola"]],
+  ["Coca-Cola", "Georgia Peach", ["georgia peach", "peach", "georgia"]],
+  ["Coca-Cola", "California Raspberry", ["california raspberry", "raspberry", "california"]],
+  ["Coca-Cola", "Y3000", ["y 3000", "y three thousand", "why 3000", "y3000", "y thirty hundred"]],
+  ["Coca-Cola", "Y3000 Zero Sugar", ["y 3000 zero", "y three thousand zero"]],
+  ["Coca-Cola", "K-Wave Zero Sugar", ["k wave", "kwave", "k wave zero", "k wave zero sugar"]],
+  ["Coca-Cola", "Oreo Zero Sugar", ["oreo", "oreo zero", "oreo coke"]],
+  ["Coca-Cola", "Marshmello's", ["marshmello", "marshmallow", "marshmellow", "marshmello s"]],
+  ["Coca-Cola", "Marshmello's Zero Sugar", ["marshmello zero", "marshmallow zero"]],
+  ["Coca-Cola", "Happy Tears Zero Sugar", ["happy tears", "happy tears zero"]],
+  ["Coca-Cola", "Byte Zero Sugar", ["byte", "bite zero", "byte zero", "by zero", "by zero sugar", "buy zero", "bite zero sugar", "byte zero sugar"]],
+  ["Diet Coke", "Caffeine-Free", ["caffeine free", "decaf", "no caffeine"]],
+  ["Diet Coke", "Cherry", ["cherry", "diet cherry", "cherries"]],
+  ["Sprite", "Zero Sugar", ["zero", "zero sugar", "zero calorie"]],
+  ["Sprite", "Chill", ["chill", "chilled", "chills"]],
+  ["Sprite", "Zero Sugar Chill", ["chill zero", "zero chill", "chill zero sugar", "zero sugar chill"]],
+  ["Sprite", "Chill Mango Citrus", ["chill mango", "mango citrus", "mango chill", "chill mango citrus"]],
+  ["Sprite", "Tropical Mix", ["tropical mix", "tropical", "tropic mix", "tropical mixed"]],
+  ["Sprite", "Lymonade", ["lymonade", "lemonade", "lime and lemonade", "limonade", "lymon aid"]],
+  ["Sprite", "Cherry", ["cherry", "cherries"]],
+  ["Sprite", "+ Tea", ["plus tea", "and tea", "with tea", "tea", "sprite tea"]],
+  ["Sprite", "+ Tea Zero Sugar", ["plus tea zero", "tea zero", "tea zero sugar", "zero tea"]],
+  ["Sprite", "+ Tea Peach", ["plus tea peach", "tea peach", "peach tea", "peach"]],
+  ["Sprite", "(Mexican)", ["mexican", "mexico", "glass bottle"]],
+  ["Fanta", "Orange", ["orange", "oranges", "orange soda"]],
+  ["Fanta", "Zero Sugar Orange", ["zero orange", "orange zero", "zero sugar orange", "orange zero sugar"]],
+  ["Fanta", "Strawberry", ["strawberry", "strawberries", "straw berry"]],
+  ["Fanta", "Grape", ["grape", "grapes"]],
+  ["Fanta", "Peach", ["peach", "peaches"]],
+  ["Fanta", "Pineapple", ["pineapple", "pine apple", "pineapples"]],
+  ["Fanta", "Piña Colada", ["pina colada", "pena colada", "peña colada", "pineapple colada", "pina colata", "colada"]],
+  ["Fanta", "Berry", ["berry", "berries", "blue berry"]],
+  ["Fanta", "Orange (Mexican)", ["mexican orange", "orange mexican", "mexico orange", "mexican"]],
+  ["Fresca", "Grapefruit Citrus", ["grapefruit", "grape fruit", "grapefruit citrus", "citrus", "grapefruits"]],
+  ["Fresca", "Black Cherry Citrus", ["black cherry", "black cherry citrus", "cherry"]],
+  ["Fresca", "Peach Citrus", ["peach", "peach citrus", "peaches"]],
+  ["Barq's", "Root Beer", ["root beer", "rootbeer", "root bear", "root beers", "root beer original"]],
+  ["Barq's", "Zero Sugar Root Beer", ["zero root beer", "zero sugar root beer", "root beer zero", "diet root beer", "zero"]],
+  ["Barq's", "Creme Soda French Vanilla", ["cream soda french vanilla", "creme soda", "cream soda", "french vanilla", "french vanilla cream soda"]],
+  ["Barq's", "Red Creme Soda", ["red cream soda", "red creme soda", "red soda"]],
+  ["Mr. Pibb", "Zero Sugar", ["zero", "zero sugar", "zero calorie"]],
+  ["Mr. Pibb", "Thrillin' Vanilla", ["thrilling vanilla", "thrillin vanilla", "thrillin' vanilla", "thrill in vanilla", "thriller vanilla", "vanilla"]],
+  ["Mr. Pibb", "Punchin' Peach", ["punching peach", "punchin peach", "punchin' peach", "punch in peach", "punchy peach", "peach"]],
+  ["Mello Yello", "Zero Sugar", ["zero", "zero sugar", "zero calorie"]],
+  ["Seagram's", "Ginger Ale", ["ginger ale", "ginger ail", "ginger", "ginger aisle", "ginger al"]],
+  ["Seagram's", "Zero Sugar Ginger Ale", ["zero ginger ale", "zero sugar ginger ale", "diet ginger ale", "ginger ale zero", "zero ginger"]],
+  ["Seagram's", "Club Soda", ["club soda", "club sodas", "soda water", "club"]],
+  ["Seagram's", "Seltzer Water", ["seltzer", "selzer", "seltzer water", "seltzers", "sell tzer"]],
+  ["Seagram's", "Tonic", ["tonic", "tonic water", "tonics"]],
+  ["Moxie", "Diet", ["diet", "diet moxie", "zero"]],
+  ["Simply Pop", "Strawberry", ["strawberry", "strawberries"]],
+  ["Simply Pop", "Orange", ["orange", "oranges"]],
+  ["Simply Pop", "Pineapple Mango", ["pineapple mango", "mango pineapple", "pineapple and mango"]],
+  ["Simply Pop", "Cherry Pomegranate", ["cherry pomegranate", "cherry pomegranite", "cherry pom", "pomegranate cherry", "cherry pomegranates"]],
+  ["Simply Pop", "Raspberry", ["raspberry", "raspberries", "rasp berry"]],
+  ["Simply Pop", "Fruit Punch", ["fruit punch", "fruit punches"]],
+  ["Simply Pop", "Citrus Punch", ["citrus punch", "citrus punches", "citrus"]],
+  ["Simply", "Orange", ["orange", "orange juice", "oj", "original orange"]],
+  ["Simply", "Orange Pulp Free", ["pulp free", "no pulp", "pulpfree", "orange pulp free", "pulp-free", "without pulp"]],
+  ["Simply", "Orange High Pulp", ["high pulp", "extra pulp", "lots of pulp", "orange high pulp", "most pulp"]],
+  ["Simply", "Orange Low Acid", ["low acid", "orange low acid", "low acidity"]],
+  ["Simply", "Orange Calcium", ["calcium", "orange calcium", "with calcium"]],
+  ["Simply", "Orange Medium Pulp Calcium and Vitamin D", ["medium pulp", "calcium and vitamin d", "vitamin d", "calcium vitamin d"]],
+  ["Simply", "Orange Mango", ["orange mango", "mango orange", "with mango"]],
+  ["Simply", "Orange Pineapple", ["orange pineapple", "pineapple orange", "with pineapple"]],
+  ["Simply", "Lemonade Raspberry", ["lemonade raspberry", "raspberry lemonade", "lemonade with raspberry"]],
+  ["Simply", "Lemonade Blueberry", ["lemonade blueberry", "blueberry lemonade", "lemonade with blueberry"]],
+  ["Simply", "Limeade Cherry", ["limeade cherry", "cherry limeade", "limeade with cherry"]],
+  ["Simply", "Cranberry Cocktail", ["cranberry cocktail", "cranberry", "cranberry juice"]],
+  ["Simply", "Apple", ["apple", "apple juice"]],
+  ["Simply", "Grape", ["grape", "grape juice"]],
+  ["Simply", "Light Orange Pulp Free", ["light orange", "light pulp free", "light orange pulp free", "simply light orange"]],
+  ["Simply", "Light Lemonade", ["light lemonade", "lite lemonade", "simply light lemonade"]],
+  ["Minute Maid", "Orange Juice", ["orange juice", "orange", "oj", "orange juices"]],
+  ["Minute Maid", "Orange Juice Pulp Free", ["pulp free", "no pulp", "orange juice pulp free", "pulpfree", "pulp-free orange"]],
+  ["Minute Maid", "100% Apple Juice", ["apple juice", "apple", "100 apple", "hundred percent apple juice", "100 percent apple"]],
+  ["Minute Maid", "Cranberry Apple Raspberry", ["cranberry apple raspberry", "cranberry apple", "cran apple raspberry", "cran raspberry"]],
+  ["Minute Maid", "Cranberry Grape", ["cranberry grape", "cran grape", "grape cranberry"]],
+  ["Minute Maid", "Cranberry Cocktail", ["cranberry cocktail", "cranberry", "cran cocktail", "cranberry juice"]],
+  ["Minute Maid", "Pineapple Orange", ["pineapple orange", "orange pineapple"]],
+  ["Minute Maid", "Peach Mango", ["peach mango", "mango peach"]],
+  ["Minute Maid", "Tropical Blend", ["tropical blend", "tropical", "tropical blends"]],
+  ["Minute Maid", "Fruit Punch", ["fruit punch", "fruit punches"]],
+  ["Minute Maid", "Lemonade", ["lemonade", "lemonades", "lemon aid"]],
+  ["Minute Maid", "Tropical Punch", ["tropical punch", "tropical punches"]],
+  ["Minute Maid", "Berry Punch", ["berry punch", "berries punch"]],
+  ["Minute Maid", "Watermelon Punch", ["watermelon punch", "watermelon", "water melon punch"]],
+  ["Minute Maid", "Pink Lemonade", ["pink lemonade", "pink lemon aid", "pink lemonades"]],
+  ["Minute Maid", "Kiwi Strawberry", ["kiwi strawberry", "strawberry kiwi"]],
+  ["Minute Maid", "Blue Raspberry", ["blue raspberry", "blue rasberry", "blue razz"]],
+  ["Minute Maid", "Pineapple Burst", ["pineapple burst", "pineapple bursts"]],
+  ["Minute Maid", "Zero Sugar Lemonade", ["zero lemonade", "zero sugar lemonade", "lemonade zero", "diet lemonade"]],
+  ["Minute Maid", "Zero Sugar Fruit Punch", ["zero fruit punch", "zero sugar fruit punch", "fruit punch zero"]],
+  ["Minute Maid", "Zero Sugar Pink Lemonade", ["zero pink lemonade", "zero sugar pink lemonade", "pink lemonade zero"]],
+  ["Minute Maid", "Zero Sugar Mango Passion Fruit", ["zero mango passion fruit", "mango passion fruit", "mango passionfruit", "zero sugar mango passionfruit"]],
+  ["Minute Maid", "Zero Sugar Orange Pineapple", ["zero orange pineapple", "orange pineapple zero", "zero sugar orange pineapple"]],
+  ["Hi-C", "Flashin' Fruit Punch", ["flashing fruit punch", "flashin fruit punch", "flashin' fruit punch", "flash in fruit punch", "fruit punch"]],
+  ["Hi-C", "Orange Lavaburst", ["orange lava burst", "orange lavaburst", "orange lava brust", "lava burst", "lavaburst", "orange"]],
+  ["Hi-C", "Torrential Tropical Punch", ["torrential tropical punch", "torrential tropic punch", "tropical punch", "torrential"]],
+  ["Hi-C", "Boppin' Strawberry", ["bopping strawberry", "boppin strawberry", "boppin' strawberry", "bop in strawberry", "strawberry"]],
+  ["Hi-C", "Grabbin' Grape", ["grabbing grape", "grabbin grape", "grabbin' grape", "grab in grape", "grape"]],
+  ["Hi-C", "Strawberry Kiwi Kraze", ["strawberry kiwi craze", "strawberry kiwi kraze", "kiwi craze", "strawberry kiwi"]],
+  ["Hi-C", "Mashin' Mango Melon", ["mashing mango melon", "mashin mango melon", "mashin' mango melon", "mash in mango melon", "mango melon"]],
+  ["Honest Kids", "Appley Ever After", ["apple ever after", "appley ever after", "apply ever after", "happily ever after", "appley", "apple"]],
+  ["Honest Kids", "Super Fruit Punch", ["super fruit punch", "fruit punch"]],
+  ["Honest Kids", "Goodness Grapeness", ["goodness grapeness", "goodness grape ness", "goodness grapes", "grapeness", "grape"]],
+  ["Honest Kids", "Bananas About Strawberries", ["bananas about strawberries", "banana about strawberry", "bananas about strawberry", "bananas", "strawberry banana"]],
+  ["Honest Kids", "Strawberry Peachy Keen", ["strawberry peachy keen", "peachy keen", "strawberry peach"]],
+  ["Honest Kids", "Berry Good Lemonade", ["berry good lemonade", "very good lemonade", "berry good", "lemonade"]],
+  ["Tum-e Yummies", "Edgy Orange Burst", ["edgy orange burst", "edgy orange", "orange burst", "orange"]],
+  ["Tum-e Yummies", "Epic Apple Flip", ["epic apple flip", "epic apple", "apple flip", "apple"]],
+  ["Tum-e Yummies", "Big Berry Blast", ["big berry blast", "big berry", "berry blast"]],
+  ["Tum-e Yummies", "Fruit Punch Party", ["fruit punch party", "fruit punch", "punch party"]],
+  ["Tum-e Yummies", "Rad Raspberry Zing", ["rad raspberry zing", "rad raspberry", "raspberry zing", "red raspberry zing"]],
+  ["Hubert's", "Blackberry Basil", ["blackberry basil", "black berry basil", "blackberry basel"]],
+  ["Hubert's", "Lavender Blueberry Mint", ["lavender blueberry mint", "lavender blueberry", "lavender"]],
+  ["Hubert's", "Pomegranate Limeade", ["pomegranate limeade", "pomegranate lime aid", "pomegranite limeade", "pomegranate lime"]],
+  ["Hubert's", "Strawberry Guava", ["strawberry guava", "strawberry guava lemonade", "guava"]],
+  ["Hubert's", "Tangerine Passionfruit", ["tangerine passionfruit", "tangerine passion fruit", "tangerine"]],
+  ["Peace Tea", "Just Peachy", ["just peachy", "just peach", "peachy", "georgia peach"]],
+  ["Peace Tea", "Razzleberry", ["razzleberry", "razzle berry", "razzle berries", "razzleberries", "raspberry"]],
+  ["Peace Tea", "Sno-Berry", ["snoberry", "sno berry", "snow berry", "snowberry", "snow berries"]],
+  ["Peace Tea", "Caddy Shack", ["caddy shack", "caddyshack", "caddy shak", "caddie shack"]],
+  ["Gold Peak", "Sweet Tea", ["sweet tea", "sweetened tea", "sweetened", "sweet", "sweet teas"]],
+  ["Gold Peak", "Zero Sugar Sweet Tea", ["zero sweet tea", "zero sugar sweet tea", "sweet tea zero", "zero sugar tea"]],
+  ["Gold Peak", "Unsweetened Tea", ["on sweetened", "un sweetened", "unsweetened", "unsweet", "un sweet", "unsweetened tea", "unsweetened black tea", "no sugar tea"]],
+  ["Gold Peak", "Green Tea", ["green tea", "sweetened green tea", "green"]],
+  ["Gold Peak", "Extra Sweet Tea", ["extra sweet", "extra sweet tea", "extra sweetened"]],
+  ["Gold Peak", "Slightly Sweet Tea", ["slightly sweet", "slightly sweet tea", "lightly sweet", "lightly sweetened"]],
+  ["Gold Peak", "Georgia Peach Tea", ["georgia peach", "georgia peach tea", "peach tea", "peach"]],
+  ["Gold Peak", "California Raspberry Tea", ["california raspberry", "california raspberry tea", "raspberry tea", "raspberry"]],
+ ["Gold Peak", "Lemon Tea", ["lemon tea", "lemon", "tea with lemon"]],
+  ["Gold Peak", "Lemonade Tea", ["lemonade tea", "tea and lemonade", "tea lemonade", "tea & lemonade", "half and half"]],
+  ["Gold Peak", "Diet Tea", ["diet tea", "diet", "zero tea"]],
+  ["Gold Peak", "Black Tea with Simply Lemonade", ["simply lemonade", "tea with simply lemonade", "black tea simply lemonade"]],
+  ["Gold Peak", "Tea with Simply Raspberry", ["simply raspberry", "tea with simply raspberry"]],
+  ["Gold Peak", "Black Tea with Simply Peach", ["simply peach", "tea with simply peach", "black tea simply peach"]],
+  ["FUZE", "Lemon + Sweet Tea", ["lemon sweet tea", "lemon and sweet tea", "lemon plus sweet tea", "lemon tea", "lemon"]],
+  ["FUZE", "Pineapple + Mango", ["pineapple mango", "mango pineapple", "pineapple and mango", "mango and pineapple"]],
+  ["FUZE", "Strawberry + Peach", ["strawberry peach", "strawberry and peach", "strawberry plus peach", "peach strawberry"]],
+  ["FUZE", "Watermelon + Lime", ["watermelon lime", "watermelon and lime", "water melon lime"]],
+  ["FUZE", "Blueberry + Lemonade", ["blueberry lemonade", "blueberry and lemonade", "blue berry lemonade"]],
+  ["vitaminwater", "XXX", ["triple x", "triple ex", "three x", "x x x", "xxx", "triple eggs", "acai blueberry pomegranate"]],
+  ["vitaminwater", "Zero XXX", ["zero triple x", "zero x x x", "triple x zero", "zero xxx"]],
+  ["vitaminwater", "Power-C", ["power c", "power see", "power sea", "powerc", "power-c", "dragonfruit"]],
+  ["vitaminwater", "Zero Power-C", ["zero power c", "power c zero", "zero power see"]],
+  ["vitaminwater", "Zero Re-hydrate", ["rehydrate", "re hydrate", "rehydrate zero", "zero rehydrate", "re-hydrate", "hydrate"]],
+  ["vitaminwater", "Zero Squeezed", ["squeezed", "zero squeezed", "squeeze", "zero squeeze"]],
+  ["vitaminwater", "Zero Shine", ["shine", "zero shine"]],
+  ["vitaminwater", "Zero Rise", ["rise", "zero rise", "rise zero"]],
+  ["vitaminwater", "Elevate", ["elevate", "elevated", "a levate", "elevate blue raspberry"]],
+  ["vitaminwater", "Refresh", ["refresh", "refreshed"]],
+  ["vitaminwater", "Focus", ["focus", "focused"]],
+  ["vitaminwater", "Essential", ["essential", "essentials"]],
+  ["vitaminwater", "Energy", ["energy", "energize"]],
+  ["Topo Chico", "Mineral Water", ["mineral water", "mineral", "original", "plain", "regular", "topo chico mineral"]],
+  ["Topo Chico", "Twist of Lime", ["twist of lime", "lime", "twist lime", "lime twist", "twist of lyme"]],
+  ["Topo Chico", "Grapefruit", ["grapefruit", "twist of grapefruit", "grape fruit", "grapefruit twist"]],
+  ["Topo Chico Sabores", "Passionfruit", ["passion fruit", "passionfruit", "passion"]],
+  ["Topo Chico Sabores", "Tangerine with Ginger", ["tangerine with ginger", "tangerine ginger", "tangerine and ginger", "tangerine"]],
+  ["Topo Chico Sabores", "Lime with Mint", ["lime with mint", "lime mint", "lime and mint"]],
+  ["Topo Chico Sabores", "Blueberry with Hibiscus", ["blueberry with hibiscus", "blueberry hibiscus", "blueberry and hibiscus", "hibiscus"]],
+  ["Topo Chico Sabores", "Raspberry with Lemon", ["raspberry with lemon", "raspberry lemon", "raspberry and lemon"]],
+  ["Topo Chico Sabores", "Tropical Mango", ["tropical mango", "mango", "tropical"]],
+  ["smartwater", "Alkaline with Antioxidant", ["alkaline", "alkaline with antioxidant", "alkaline water", "antioxidant", "alkaline antioxidant", "alkalized"]],
+  ["AHA", "Blackberry Lemon", ["blackberry lemon", "blackberry and lemon", "blackberry plus lemon", "black berry lemon"]],
+  ["AHA", "Blueberry Pomegranate", ["blueberry pomegranate", "blueberry pomegranite", "blue berry pomegranate"]],
+  ["AHA", "Lime Watermelon", ["lime watermelon", "lime and watermelon", "watermelon lime"]],
+  ["AHA", "Orange Grapefruit", ["orange grapefruit", "orange and grapefruit", "grapefruit orange"]],
+  ["AHA", "Peach Honey", ["peach honey", "peach and honey", "honey peach"]],
+  ["AHA", "Pineapple Passionfruit", ["pineapple passionfruit", "pineapple passion fruit", "pineapple and passionfruit", "pineapple plus passionfruit"]],
+  ["Powerade", "Mountain Berry Blast", ["mountain berry blast", "mountain berry", "mountain berries blast", "berry blast", "mbb", "mountain blast"]],
+  ["Powerade", "Fruit Punch", ["fruit punch", "fruit punches"]],
+  ["Powerade", "Lemon Lime", ["lemon lime", "lemon and lime", "lemon-lime", "lemon line"]],
+  ["Powerade", "Strawberry Lemonade", ["strawberry lemonade", "strawberry lemon aid"]],
+  ["Powerade", "Island Burst", ["island burst", "island bursts", "eye land burst"]],
+  ["Powerade", "Glacier Cherry", ["glacier cherry", "glacial cherry", "glacier cherries"]],
+  ["Powerade", "Zero Mixed Berry", ["zero mixed berry", "mixed berry zero", "mixed berry", "zero mix berry"]],
+  ["Powerade", "Zero Fruit Punch", ["zero fruit punch", "fruit punch zero"]],
+  ["Powerade", "Zero Grape", ["zero grape", "grape zero"]],
+  ["Powerade", "Zero Orange", ["zero orange", "orange zero"]],
+  ["Powerade", "Zero Lemon Lime", ["zero lemon lime", "lemon lime zero"]],
+  ["Powerade", "Zero Strawberry Smash", ["zero strawberry smash", "strawberry smash", "strawberry smash zero"]],
+  ["Powerade", "Zero Strawberry Lemonade", ["zero strawberry lemonade", "strawberry lemonade zero"]],
+  ["Powerade", "Xtra Sour Green Apple", ["extra sour green apple", "xtra sour green apple", "extra sour apple", "sour green apple", "green apple", "x tra sour green apple"]],
+  ["Powerade", "Xtra Sour Peach Pucker", ["extra sour peach pucker", "xtra sour peach pucker", "peach pucker", "sour peach", "extra sour peach"]],
+  ["Powerade", "Power Water Mountain Berry Blast", ["power water mountain berry blast", "power water mountain berry"]],
+  ["Powerade", "Power Water Strawberry Kiwi", ["power water strawberry kiwi", "power water strawberry", "strawberry kiwi power water"]],
+  ["Powerade", "Power Water Tropical Pineapple", ["power water tropical pineapple", "power water tropical", "power water pineapple"]],
+  ["Powerade", "Power Water Watermelon", ["power water watermelon", "power water water melon"]],
+  ["BODYARMOR", "Fruit Punch", ["fruit punch", "fruit punches"]],
+  ["BODYARMOR", "Strawberry Banana", ["strawberry banana", "banana strawberry", "strawberry bananas"]],
+  ["BODYARMOR", "Tropical Punch", ["tropical punch", "tropical punches"]],
+  ["BODYARMOR", "Orange Mango", ["orange mango", "mango orange", "orange and mango"]],
+  ["BODYARMOR", "Blue Raspberry", ["blue raspberry", "blue rasberry", "blue razz"]],
+  ["BODYARMOR", "Mixed Berry", ["mixed berry", "mix berry", "mixed berries", "berry mix"]],
+  ["BODYARMOR", "Watermelon Strawberry", ["watermelon strawberry", "strawberry watermelon", "water melon strawberry"]],
+  ["BODYARMOR", "Cherry Lime", ["cherry lime", "cherry and lime", "cherry lyme"]],
+  ["BODYARMOR", "Kiwi Strawberry", ["kiwi strawberry", "strawberry kiwi"]],
+  ["BODYARMOR", "Blackout Berry", ["blackout berry", "black out berry", "blackout berries", "black berry"]],
+  ["BODYARMOR", "Pineapple Coconut", ["pineapple coconut", "pineapple and coconut", "pina colada"]],
+  ["BODYARMOR", "Strawberry Grape", ["strawberry grape", "grape strawberry"]],
+  ["BODYARMOR", "Tropical Passionfruit", ["tropical passionfruit", "tropical passion fruit", "passion fruit", "passionfruit"]],
+  ["BODYARMOR", "SportWater", ["sport water", "sports water", "sportwater", "sport waters", "water"]],
+  ["BODYARMOR", "Zero Sugar Cherry Berry Lemonade", ["cherry berry lemonade", "zero cherry berry lemonade", "zero sugar cherry berry lemonade"]],
+  ["BODYARMOR", "Zero Sugar Cherry Lime", ["zero cherry lime", "zero sugar cherry lime", "cherry lime zero"]],
+  ["BODYARMOR", "Zero Sugar Fruit Punch", ["zero fruit punch", "zero sugar fruit punch", "fruit punch zero"]],
+  ["BODYARMOR", "Zero Sugar Lemon Lime", ["zero lemon lime", "zero sugar lemon lime", "lemon lime zero"]],
+  ["BODYARMOR", "Zero Sugar Orange", ["zero orange", "zero sugar orange", "orange zero"]],
+  ["BODYARMOR", "Zero Sugar Watermelon Strawberry", ["zero watermelon strawberry", "zero sugar watermelon strawberry", "watermelon strawberry zero"]],
+  ["BODYARMOR", "Fit Citrus Grapefruit", ["fit citrus grapefruit", "fit grapefruit", "fit citrus", "body armor fit grapefruit"]],
+  ["BODYARMOR", "Fit Mixed Berry", ["fit mixed berry", "fit berry"]],
+  ["BODYARMOR", "Fit Orange Mango", ["fit orange mango", "fit mango"]],
+  ["BODYARMOR", "Fit Tropical Passionfruit", ["fit tropical passionfruit", "fit passionfruit", "fit passion fruit"]],
+  ["BODYARMOR", "Fit Watermelon Lime", ["fit watermelon lime", "fit watermelon"]],
+  ["BODYARMOR", "Flash IV Cucumber Lime", ["flash iv cucumber lime", "flash i v cucumber lime", "flash four cucumber lime", "flash cucumber lime", "cucumber lime"]],
+  ["BODYARMOR", "Flash IV Grape", ["flash iv grape", "flash i v grape", "flash four grape", "flash grape"]],
+  ["BODYARMOR", "Flash IV Lemon Lime", ["flash iv lemon lime", "flash i v lemon lime", "flash four lemon lime", "flash lemon lime"]],
+  ["BODYARMOR", "Flash IV Orange", ["flash iv orange", "flash i v orange", "flash four orange", "flash orange"]],
+  ["BODYARMOR", "Flash IV Strawberry Kiwi", ["flash iv strawberry kiwi", "flash i v strawberry kiwi", "flash four strawberry kiwi", "flash strawberry kiwi"]],
+  ["BODYARMOR", "Flash IV Tropical Punch", ["flash iv tropical punch", "flash i v tropical punch", "flash four tropical punch", "flash tropical punch"]],
+  ["BODYARMOR LYTE", "Blueberry Pomegranate", ["blueberry pomegranate", "blueberry pomegranite", "blue berry pomegranate"]],
+  ["BODYARMOR LYTE", "Peach Mango", ["peach mango", "mango peach"]],
+  ["BODYARMOR LYTE", "Tropical Coconut", ["tropical coconut", "coconut", "tropical cocoanut"]],
+  ["BODYARMOR LYTE", "Berry Punch", ["berry punch", "berries punch"]],
+  ["BODYARMOR LYTE", "Dragonfruit Berry", ["dragonfruit berry", "dragon fruit berry", "dragon fruit", "dragonfruit"]],
+  ["BODYARMOR LYTE", "Strawberry Banana", ["strawberry banana", "banana strawberry"]],
+  ["Core Power", "Strawberry Banana", ["strawberry banana", "banana strawberry", "strawberry"]],
+  ["Core Power Elite", "Strawberry", ["strawberry", "strawberries"]],
+  ["Dr Pepper", "Zero Sugar", ["zero", "zero sugar", "zero calorie"]],
+  ["Dr Pepper", "Cherry", ["cherry", "cherries"]],
+  ["Dr Pepper", "Cherry Zero Sugar", ["cherry zero", "zero cherry", "cherry zero sugar", "zero sugar cherry"]],
+  ["Dr Pepper", "Cream Soda", ["cream soda", "and cream soda", "creme soda"]],
+  ["Dr Pepper", "Cream Soda Zero Sugar", ["cream soda zero", "zero cream soda", "zero sugar cream soda", "and cream soda zero"]],
+  ["Dr Pepper", "Strawberries and Cream", ["strawberries and cream", "strawberries & cream", "strawberry and cream", "strawberries n cream", "strawberry cream", "strawberries cream"]],
+  ["Dr Pepper", "Strawberries and Cream Zero Sugar", ["strawberries and cream zero", "zero strawberries and cream", "strawberry cream zero", "strawberries cream zero"]],
+  ["Dr Pepper", "Creamy Coconut", ["creamy coconut", "cream coconut", "coconut", "creamy cocoanut"]],
+  ["Dr Pepper", "Creamy Coconut Zero Sugar", ["creamy coconut zero", "coconut zero", "zero creamy coconut", "zero coconut"]],
+  ["Dr Pepper", "Blackberry", ["blackberry", "black berry", "blackberries"]],
+  ["Dr Pepper", "Blackberry Zero Sugar", ["blackberry zero", "zero blackberry", "black berry zero"]],
+  ["Dr Pepper", "Vanilla Float", ["vanilla float", "vanilla floats", "float"]],
+  ["Dr Pepper", "Dark Berry", ["dark berry", "dark berries", "darkberry"]],
+  ["Dr Pepper", "Cherry Vanilla", ["cherry vanilla", "vanilla cherry"]],
+  ["Dr Pepper", "Caffeine Free", ["caffeine free", "decaf", "no caffeine"]],
+  ["Dr Pepper", "Made with Real Sugar", ["real sugar", "made with real sugar", "made with sugar", "cane sugar"]],
+  ["Monster Energy", "Original", ["original", "regular", "og", "o g"]],
+  ["Monster Energy", "Zero Sugar", ["zero sugar", "zero", "zero calorie"]],
+  ["Monster Energy", "Zero Ultra", ["zero ultra", "ultra white", "white monster", "white", "ultra zero"]],
+  ["Monster Energy", "Strawberry Shot", ["strawberry shot", "strawberry shots"]],
+  ["Monster Energy", "Zero Sugar Strawberry Shot", ["zero strawberry shot", "zero sugar strawberry shot", "strawberry shot zero"]],
+  ["Monster Energy", "Electric Blue", ["electric blue", "electric blues"]],
+  ["Monster Energy", "Orange Dreamsicle", ["orange dreamsicle", "orange dream sickle", "orange dream sicle", "orange dreamsicles", "dreamsicle"]],
+  ["Monster Energy", "Reserve Orange Dreamsicle", ["reserve orange dreamsicle", "reserve dreamsicle"]],
+  ["Monster Energy", "Reserve Peaches n' Crème", ["peaches and cream", "peaches n cream", "peaches and creme", "peaches n creme", "reserve peaches and cream", "peaches cream"]],
+  ["Monster Energy", "Nitro Super Dry", ["nitro super dry", "nitro superdry", "nitro", "super dry"]],
+  ["Monster Energy", "Lo-Carb", ["lo carb", "low carb", "locarb", "lo-carb", "low carbs"]],
+  ["Monster Energy", "Red White Blue Razz", ["red white blue razz", "red white and blue razz", "red white blue", "rwb razz", "red white and blue"]],
+  ["Monster Energy", "Punk Punch", ["punk punch", "punk punches"]],
+  ["Monster Energy", "Blue Hawaiian", ["blue hawaiian", "blue hawaii", "blue hawaiians"]],
+  ["Monster Energy", "Vice Guava", ["vice guava", "vise guava", "vice guave", "guava"]],
+  ["Monster Energy", "Wild Passion", ["wild passion", "wild passions"]],
+  ["Monster Energy", "Mango Loco", ["mango loco", "mango local", "mango low co", "mango loko", "mango crazy"]],
+  ["Monster Energy", "Pipeline Punch", ["pipeline punch", "pipe line punch", "pipeline punches"]],
+  ["Monster Energy", "Pacific Punch", ["pacific punch", "pacific punches"]],
+  ["Monster Energy", "Ultra Strawberry Dreams", ["ultra strawberry dreams", "strawberry dreams", "strawberry dream"]],
+  ["Monster Energy", "Ultra Sunrise", ["ultra sunrise", "sunrise", "sun rise"]],
+  ["Monster Energy", "Ultra Violet", ["ultra violet", "violet", "ultraviolet"]],
+  ["Monster Energy", "Ultra Peachy Keen", ["ultra peachy keen", "peachy keen", "peachy keen ultra"]],
+  ["Monster Energy", "Ultra Fantasy Ruby Red", ["ultra fantasy ruby red", "fantasy ruby red", "ruby red", "fantasy ruby"]],
+  ["Monster Energy", "Ultra Paradise", ["ultra paradise", "paradise", "ultra paradise zero"]],
+  ["Monster Energy", "Ultra Fiesta Mango", ["ultra fiesta mango", "fiesta mango", "fiesta"]],
+  ["Monster Energy", "Ultra Watermelon", ["ultra watermelon", "watermelon", "ultra water melon"]],
+  ["Monster Energy", "Ultra Rosá", ["ultra rosa", "rosa", "rose", "rosé", "ultra rose"]],
+  ["Monster Energy", "Ultra Red", ["ultra red"]],
+  ["Monster Energy", "Ultra Blue", ["ultra blue"]],
+  ["Monster Energy", "Ultra Black", ["ultra black"]],
+  ["Monster Energy", "Java Mean Bean", ["mean bean", "java mean bean", "mean been", "meme bean", "mean beans"]],
+  ["Monster Energy", "Java Dubai Chocolate", ["dubai chocolate", "java dubai chocolate", "dubai", "dubai chocolates"]],
+  ["Monster Energy", "Java Loca Moca", ["loca moca", "loco moca", "local moca", "java loca moca", "loca moka", "low co moca"]],
+  ["Monster Energy", "Java Salted Caramel", ["salted caramel", "java salted caramel", "salt caramel", "salted caramels"]],
+  ["Monster Energy", "Java Café Latte", ["cafe latte", "café latte", "java cafe latte", "coffee latte", "caffe latte", "cafe late"]],
+  ["Monster Energy", "Java Irish Crème", ["irish creme", "irish cream", "java irish creme", "irish crème", "irish cream coffee"]],
+  ["Monster Energy", "Juice Voodoo Grape", ["voodoo grape", "voodoo", "voodoo grapes", "juice voodoo grape"]],
+  ["Monster Energy", "Juice Strawberry Lemonade", ["juice strawberry lemonade", "monster strawberry lemonade"]],
+  ["Monster Energy", "Juice Viking Berry", ["viking berry", "viking berries", "juice viking berry", "viking"]],
+  ["Monster Energy", "Juice Bad Apple", ["bad apple", "bad apples", "juice bad apple"]],
+  ["Monster Energy", "Juice Rio Punch", ["rio punch", "juice rio punch", "reo punch"]],
+  ["Monster Energy", "Rehab Tea + Lemonade", ["rehab tea and lemonade", "rehab tea lemonade", "rehab lemonade", "tea and lemonade", "tea lemonade"]],
+  ["Monster Energy", "Rehab Peach Tea", ["rehab peach tea", "rehab peach", "peach tea"]],
+  ["Monster Energy", "Rehab Wild Berry Tea", ["rehab wild berry tea", "rehab wild berry", "wild berry tea", "wild berry"]],
+  ["Monster Energy", "Rehab Green Tea", ["rehab green tea", "rehab green", "green tea"]],
+  ["Reign", "Melon Mania", ["melon mania", "melon manea", "watermelon mania"]],
+  ["Reign", "Orange Dreamsicle", ["orange dreamsicle", "orange dream sickle", "dreamsicle"]],
+  ["Reign", "Watermelon Sour Gummy", ["watermelon sour gummy", "sour gummy watermelon", "watermelon gummy", "water melon sour gummy"]],
+  ["Reign", "White Gummy Bear", ["white gummy bear", "white gummy bears", "white gummy", "gummy bear"]],
+  ["Reign", "Sour Gummy Worm", ["sour gummy worm", "sour gummy worms", "gummy worm", "gummy worms"]],
+  ["Reign", "White Haze", ["white haze", "white hay s", "white haze energy"]],
+  ["Reign", "REIGNbow Sherbet", ["reignbow sherbet", "rainbow sherbet", "reign bow sherbet", "rainbow sherbert", "sherbet", "sherbert"]],
+  ["Reign", "Lilikoi Lychee", ["lilikoi lychee", "lilikoi lichee", "lily koi lychee", "lilikoi lychee", "lychee", "lichee", "lilikoi"]],
+  ["Reign", "Razzle Berry", ["razzle berry", "razzleberry", "razz berry"]],
+  ["Coca-Cola", "Starlight", ["starlight", "star light"]],
+  ["Coca-Cola", "Dreamworld", ["dreamworld", "dream world"]],
+  ["Coca-Cola", "Ultimate", ["ultimate", "ultimates"]],
+  ["Coca-Cola", "Move", ["move", "moves"]],
+  ["Dasani", "Purified Water", ["purified", "purified water", "water", "plain water"]],
+];
 // ---------- Turning what was said into catalog products ----------
 // The language model splits a note into items ("diet coke 12 pack" x 3); this code finds the closest real product.
 // Ported from the benchmark lab (.claude/lab/bench), where this combination read 36 to 42 of 49 test notes fully right.
@@ -936,24 +1291,48 @@ function lev(a, b) {
   return d[a.length][b.length];
 }
 // Spoken / misheard forms of each brand → catalog brand.
-const BRAND_ALIASES = {
-  "coke": "Coca-Cola", "coca cola": "Coca-Cola", "cocacola": "Coca-Cola", "coke classic": "Coca-Cola",
-  "diet coke": "Diet Coke", "diet cola": "Diet Coke",
-  "mellow yellow": "Mello Yello", "mello yello": "Mello Yello", "mello": "Mello Yello",
-  "mr pibb": "Mr. Pibb", "mister pibb": "Mr. Pibb", "pibb": "Mr. Pibb", "pibb xtra": "Mr. Pibb",
-  "seagrams": "Seagram's", "sea grams": "Seagram's", "seagram": "Seagram's", "seagram s": "Seagram's",
-  "barqs": "Barq's", "barks": "Barq's", "bark s": "Barq's", "barq": "Barq's",
-  "dr pepper": "Dr Pepper", "doctor pepper": "Dr Pepper", "dr. pepper": "Dr Pepper",
-  "power aid": "Powerade", "powerade": "Powerade",
-  "body armor": "BODYARMOR", "bodyarmor": "BODYARMOR", "body armour": "BODYARMOR",
-  "vitamin water": "vitaminwater", "vitaminwater": "vitaminwater",
-  "smart water": "smartwater", "smartwater": "smartwater",
-  "topo chico": "Topo Chico", "topochico": "Topo Chico",
-  "monster": "Monster Energy", "monster energy": "Monster Energy",
-  "peace tea": "Peace Tea", "gold peak": "Gold Peak", "minute maid": "Minute Maid",
-  "hi c": "Hi-C", "hic": "Hi-C", "full throttle": "Full Throttle", "core power": "Core Power",
+const BRAND_SPOKEN = {
+  "Coca-Cola": ["coke", "coca cola", "cocacola", "coke classic", "coco cola", "cocoa cola", "coca coal", "regular coke", "classic coke"],
+  "Diet Coke": ["diet coke", "diet cola", "diet coat", "diet cope", "diet cook", "diet cokes"],
+  "Mello Yello": ["mellow yellow", "mello yello", "mello", "mellow yello", "melo yellow", "mello yellow", "melo yelo"],
+  "Mr. Pibb": ["mr pibb", "mister pibb", "pibb", "pibb xtra", "mr pib", "mr pip", "mister pib", "mr pibs", "mr bib", "mister pip"],
+  "Seagram's": ["seagrams", "sea grams", "seagram", "seagram s", "sea gram", "see grams", "seagrams s", "sea gram s", "see graham s", "see grahams", "see gram", "see gram s", "c grams", "c gram", "seed grams", "sea graham s"],
+  "Barq's": ["barqs", "barks", "bark s", "barq", "bark", "barkes", "barques", "bar ks"],
+  "Dr Pepper": ["dr pepper", "doctor pepper", "drpepper", "dr pepa", "doctor peppa", "dr peppers", "doctor peppers"],
+  "Diet Dr Pepper": ["diet dr pepper", "diet doctor pepper", "diet dr pepa"],
+  "Powerade": ["powerade", "power aid", "power ade", "powerate", "power aide", "powerade s", "power raid", "power rate", "power water", "powerwater", "power aides", "power raids"],
+  "BODYARMOR": ["body armor", "bodyarmor", "body armour", "bodyarmour", "body arm or", "buddy armor", "body armors"],
+  "BODYARMOR LYTE": ["body armor", "body armour", "bodyarmor", "bodyarmour"].flatMap(b => ["lyte", "light", "lite"].map(s => `${b} ${s}`)),
+  "vitaminwater": ["vitamin water", "vitaminwater", "vitamin waters", "vitamin wader", "vitamin waiter"],
+  "smartwater": ["smart water", "smartwater", "smart waters", "smart wader"],
+  "Topo Chico": ["topo chico", "topochico", "topo chicco", "tulo chico", "topo cheeko", "toppo chico", "topo chica", "topo chicos", "topo chico s"],
+  "Topo Chico Sabores": ["topo chico sabores", "topo chico savores", "topo chico sabors", "sabores"],
+  "Minute Maid": ["minute maid", "minute made", "minute mate", "minute maids", "minutemaid"],
+  "Peace Tea": ["peace tea", "piece tea", "peas tea", "peace t", "peace teas", "piece t", "piece to", "peace to", "peace tee", "piece tee", "pease tea", "peas t"],
+  "Gold Peak": ["gold peak", "gold pique", "gold peek", "goldpeak", "gold peaks"],
+  "Hi-C": ["hi c", "high c", "hic", "hi see", "high see", "hy c", "hi-c", "high sea", "hi sea", "hy sea", "high seed", "hi seed", "high c s"],
+  "Hubert's": ["huberts", "hubert s", "hubert", "hugh berts", "hubberts", "hubbert s"],
+  "Honest Kids": ["honest kids", "honest kid", "honesty kids", "honest tea kids"],
+  "Tum-e Yummies": ["tum e yummies", "tummy yummies", "tumi yummies", "tum e yummy", "tumeyummies", "tummy yummy", "tum yummies"],
+  "Moxie": ["moxie", "moxy", "maxie", "moxi"],
+  "Fresca": ["fresca", "fresco", "frescas", "fresh ca", "fresk a"],
+  "Fanta": ["fanta", "fonta", "phanta", "fantah", "fantas", "fanta s", "font a", "font of", "fonda", "fonte", "fontah"],
+  "Sprite": ["sprite", "spright", "sprites", "sprit"],
+  "Simply": ["simply", "simply s"],
+  "Simply Pop": ["simply pop", "simple pop", "simply pap", "simply pops"],
+  "FUZE": ["fuze", "fuse", "fews", "fuze tea", "fuse tea", "few", "few tea", "fuze s"],
+  "AHA": ["aha", "a ha", "ah ha", "ahah", "aha sparkling", "ah ah"],
+  "Dasani": ["dasani", "da sani", "dazani", "dassani", "desani", "dasanny", "da zanny", "dasanis"],
+  "Core Power": ["core power", "corepower", "core powers"],
+  "Core Power Elite": ["core power elite", "corepower elite"],
+  "fairlife": ["fairlife", "fair life", "fair lives"],
+  "Reign": ["reign", "reign energy", "reign total body fuel", "rain", "rain energy", "rein", "rain total body fuel"],
+  "NOS": ["nos", "n o s", "n.o.s", "nos energy", "an os", "an o s", "nose", "nos s"],
+  "Monster Energy": ["monster", "monster energy", "monsters"],
+  "Full Throttle": ["full throttle", "full throttel", "full throttles"],
 };
-let brandIdx = null, brandIdxFor = -1;
+const BRAND_ALIASES = {};
+for (const [brand, list] of Object.entries(BRAND_SPOKEN)) for (const a of list) BRAND_ALIASES[a] = brand;let brandIdx = null, brandIdxFor = -1;
 function brandIndex() {
   if (brandIdx && brandIdxFor === state.products.length) return brandIdx;
   brandIdx = new Map(); brandIdxFor = state.products.length;
@@ -970,7 +1349,7 @@ function resolveBrand(text) {
   for (const [k, v] of idx) { const d = lev(n, k); if (d < bestD) { bestD = d; best = v; } }
   // A small typo (about 1 letter in 5) is fine; a wholly different word (Gatorade vs Dasani) is not.
   // Short words must match exactly (otherwise "bare" becomes Barq's).
-  return bestD <= (n.length < 6 ? 0 : Math.max(1, Math.floor(n.length / 5))) ? best : null;
+  return bestD <= (n.length < 6 ? 0 : 1) ? best : null;
 }
 
 const ONES = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19 };
@@ -987,8 +1366,9 @@ function speechToDigits(text) {
   }
   return out.join(" ").replace(/\b(\d+) and a half\b/g, (_, n) => `${n}.5`).replace(/\b(\d+)\s+point\s+(\d+)\b/g, "$1.$2");
 }
-const FLAVOR_SYN = [[/\bzero( sugar| calorie)?\b/g, "zero"], [/\bgeorgia peach\b/g, "just peachy"], [/\b(regular|classic|original|plain)\b/g, "original"],
-  [/\bgrape fruit\b/g, "grapefruit"], [/\bmellow yellow\b/g, "mello yello"]];
+const FLAVOR_SYN = [[/\b(?:zero|0)(?:[ -]sugar|[ -]calorie)?\b/g, "zero"], [/\bgeorgia peach\b/g, "just peachy"], [/\b(regular|classic|original|plain)\b/g, "original"],
+  [/\bgrape fruit\b/g, "grapefruit"], [/\bpassion fruit\b/g, "passionfruit"], [/\bdragon fruit\b/g, "dragonfruit"], [/\bwater melon\b/g, "watermelon"], [/\bblack berry\b/g, "blackberry"], [/\bblue berry\b/g, "blueberry"], [/\bstraw berry\b/g, "strawberry"], [/\brasp berry\b/g, "raspberry"], [/\bpine apple\b/g, "pineapple"], [/\bdream world\b/g, "dreamworld"], [/\bstar light\b/g, "starlight"], [/\by ?3000\b/g, "y3000"], [/\bmarshmall?(?:o|e)ws?\b|\bmarshmellos?\b/g, "marshmellos"], [/\bmellow yellow\b/g, "mello yello"]];
+FLAVOR_SYN.push([/\b(y3000|ultimate|starlight|dreamworld|move) sugar\b/g, "$1 zero"], [/\bdream sickles?\b/g, "dreamsicle"], [/\bplus t0\b/g, "plus tea zero"], [/\bplus t\b/g, "plus tea"]);   // heard-as fixes that need regex, not an alias list
 const FLAVOR_STOP = new Set(["just", "the", "a", "of", "and", "with"]);
 const flavorTokens = f => { let n = sNorm(f); for (const [re, to] of FLAVOR_SYN) n = n.replace(re, to); return n.split(" ").filter(w => w && !FLAVOR_STOP.has(w)); };
 
@@ -999,7 +1379,7 @@ function brandSpans(tokens) {
   for (let n = 3; n >= 1; n--) for (let i = 0; i + n <= tokens.length; i++) {
     if (taken.slice(i, i + n).some(Boolean)) continue;
     const g = tokens.slice(i, i + n).join(" ");
-    const b = idx.has(g) ? idx.get(g) : (g.length >= 4 ? resolveBrand(g) : null);
+    const b = idx.has(g) ? idx.get(g) : (n === 1 && g.length >= 4 ? resolveBrand(g) : null);   // typos are only forgiven in single words; misheard phrases are listed in BRAND_SPOKEN
     if (b) { spans.push({ start: i, end: i + n, brand: b }); for (let k = i; k < i + n; k++) taken[k] = true; }
   }
   return spans.sort((x, y) => x.start - y.start);
@@ -1028,25 +1408,49 @@ function vmap() {
 const variations = ({ includeRetired = false } = {}) => [...vmap().values()].filter(v => includeRetired || !v.retired);
 
 const BASE_WORDS = new Set(["original", "purified", "mineral", "water", "classic", "regular"]);
+// Aliases: [brand, flavor, [other ways it gets written]] from aliases.js, looked up by variation.
+let aliasCache = null; const aliasRaw = new Map();
+function flavorAliases() {
+  if (aliasCache) return aliasCache;
+  aliasCache = new Map();
+  for (const [brand, flavor, list] of FLAVOR_ALIASES) {
+    const k = vKey({ brand, flavor });
+    const norm = list.map(a => { let t = sNorm(a); for (const [re, to] of FLAVOR_SYN) t = t.replace(re, to); return t; }).filter(Boolean);
+    aliasCache.set(k, [...(aliasCache.get(k) || []), ...norm]);
+    aliasRaw.set(k, [...(aliasRaw.get(k) || []), ...list.map(a => sNorm(a)).filter(Boolean)]);
+  }
+  return aliasCache;
+}// Are all of a flavor's words said right next to each other (in any order)?
+function adjacent(ft, ptoks) {
+  const want = [...ft].sort().join(" ");
+  for (let i = 0; i + ft.length <= ptoks.length; i++) if (ptoks.slice(i, i + ft.length).sort().join(" ") === want) return true;
+  return false;
+}
 // Scored brand + flavor candidates for a phrase, best first.
 function rankPhrase(phrase) {
-  const s = sNorm(phrase), tokens = s.split(" ");
-  let n = s; for (const [re, to] of FLAVOR_SYN) n = n.replace(re, to);
-  const tset = new Set(n.split(" "));
-  const brands = detectBrands(tokens);
+  const s = sNorm(phrase).replace(/\.+(?=\s|$)/g, "").replace(/^need(?=[a-z]{3,})(?!(ed|s|le|les|y|ier|iest)\b)/, "need "), tokens = s.split(" ");   // a period ending a word is punctuation ("Dr. Pepper")
+  const spans = brandSpans(tokens), brands = new Set(spans.map(sp => sp.brand));
   if (!brands.size) return [];
-  const all = variations(), out = [];
+  // The brand's own words ("coke" in "cherry coke zero sugar") don't count as flavor words and don't break up the flavor.
+  const inBrand = new Set(); for (const sp of spans) for (let k = sp.start; k < sp.end; k++) inBrand.add(k);
+  let n = tokens.filter((t, i) => !inBrand.has(i)).join(" "); for (const [re, to] of FLAVOR_SYN) n = n.replace(re, to);
+  const ptoks = n.split(" "), tset = new Set(ptoks);  const all = variations(), out = [], phrase2 = ` ${n} `;
   for (const b of brands) {
     const pool = all.filter(v => v.brand === b);
+    // How Whisper tends to write a flavor (see aliases.js): saying any of them counts as saying the flavor.
+    // The score is how many words the longest matching alias used, so a longer flavor beats a shorter one nested inside it.
+    const aliasWords = v => Math.max(0, ...(flavorAliases().get(v.key) || []).filter(a => phrase2.includes(` ${a} `)).map(a => a.split(" ").length));
+    const am = new Map(pool.map(v => [v.key, aliasWords(v)]));
     // Did the speaker name any flavor at all for this brand? If not, the plain one is the answer.
-    const named = pool.some(v => flavorTokens(v.flavor).some(w => !BASE_WORDS.has(w) && tset.has(w)));
+    const named = pool.some(v => am.get(v.key) > 0 || flavorTokens(v.flavor).some(w => !BASE_WORDS.has(w) && tset.has(w)));
     for (const v of pool) {
-      const ft = flavorTokens(v.flavor), hit = ft.filter(t => tset.has(t)).length;
-      const plain = !ft.length || ft.every(w => BASE_WORDS.has(w));   // "Purified Water" is just Dasani, "Mineral Water" is just Topo Chico
-      out.push({ v, sc: plain ? (named ? (hit ? 3 : 0) : 3) : hit ? 3 * hit / ft.length : -1 });
+      const ft = flavorTokens(v.flavor), viaAlias = am.get(v.key) > 0;
+      const hit = Math.max(viaAlias ? am.get(v.key) : 0, ft.filter(t => tset.has(t)).length);
+      const plain = !ft.length || ft.every(w => BASE_WORDS.has(w));
+      const whole = viaAlias || (hit === ft.length && adjacent(ft, ptoks));
+      out.push({ v, hit, full: !plain && whole && hit > 0, sc: plain ? (named ? (hit ? 3 : 0) : 3) : viaAlias ? 3 : hit ? 3 * hit / ft.length : -1 });
     }
-  }
-  return out.sort((a, b) => b.sc - a.sc);
+  }  return out.sort((a, b) => b.sc - a.sc || b.hit - a.hit);
 }
 // A phrase ("diet coke twelve packs") -> { v, clear, why } or null when no brand we carry is named.
 // clear is false when the top two candidates are too close to call (no flavor said for a brand that has several).
@@ -1055,14 +1459,16 @@ function resolvePhrase(phrase) {
   if (!r.length) return null;
   const top = r[0], next = r.find(x => x.v.key !== top.v.key);
   const gap = next ? top.sc - next.sc : 9;
-  return { v: top.v, clear: gap >= 1 && top.sc >= 1.5, why: gap < 1 ? "which flavor?" : top.sc < 1.5 ? "weak match" : "" };
+  // "Powerade power water mountain berry blast" fits both Mountain Berry Blast and Power Water Mountain Berry Blast fully: the one that uses more of the words wins.
+  const dominates = top.full && next && (!next.full || top.hit > next.hit);
+  return { v: top.v, clear: (gap >= 1 || dominates) && top.sc >= 1.5, why: gap < 1 && !dominates ? "which flavor?" : top.sc < 1.5 ? "weak match" : "" };
 }
 
 // ---------- Reading a blurb (organizing only) ----------
 // Works out which products (brand + flavor) a blurb mentions so blurbs about the same product can sit together on the list.
 // It never changes the words: the list shows exactly what was said.
 const UNIT_WORDS = new Set(["oz", "ounce", "ounces", "l", "liter", "liters", "litre", "litres", "leader", "leaders", "litter", "litters", "ml", "pack", "packs", "pk", "ct", "count", "fl"]);
-const FILLER_WORDS = new Set(["of", "the", "a", "an", "and", "or", "more", "need", "needs", "needed", "like", "about", "maybe", "case", "cases", "we", "i", "just", "some", "them", "those", "these", "that", "this", "each", "too", "please", "it", "is", "are", "to", "get", "got", "bottle", "bottles", "can", "cans", "single", "singles", "also", "plus", "out", "empty", "bare", "low", "shelf", "here", "there", "yeah", "okay", "um", "uh", "so", "then", "for", "with", "in", "on", "at", "no", "not", "any", "one", "ones", "back", "check", "extra", "full", "all", "make", "actually", "sorry", "wait", "mean", "think", "guess", "ill", "thats", "lets", "see", "say", "will", "would", "could", "should", "have", "has", "had", "be", "been", "was", "were", "my", "your", "their", "they", "you", "what", "when", "where", "which", "who", "how", "why", "now", "still", "again", "only", "even", "really", "very", "much", "many", "lot", "lots", "flat", "flats", "tray", "trays", "pallet", "pallets", "box", "boxes", "going", "gonna", "let", "know", "idea", "goes"]);
+const FILLER_WORDS = new Set(["of", "the", "a", "an", "and", "or", "more", "need", "needs", "needed", "like", "about", "maybe", "case", "cases", "we", "i", "just", "some", "them", "those", "these", "that", "this", "each", "too", "please", "it", "is", "are", "to", "get", "got", "bottle", "bottles", "can", "cans", "single", "singles", "also", "plus", "out", "empty", "bare", "low", "shelf", "here", "there", "yeah", "okay", "um", "uh", "so", "then", "for", "with", "in", "on", "at", "no", "not", "any", "one", "ones", "back", "check", "extra", "full", "all", "make", "actually", "sorry", "wait", "mean", "think", "guess", "ill", "thats", "lets", "see", "say", "will", "would", "could", "should", "have", "has", "had", "be", "been", "was", "were", "my", "your", "their", "they", "you", "what", "when", "where", "which", "who", "how", "why", "now", "still", "again", "only", "even", "really", "very", "much", "many", "lot", "lots", "flat", "flats", "tray", "trays", "pallet", "pallets", "box", "boxes", "going", "gonna", "let", "know", "idea", "goes", "mini", "big", "small", "large", "tall", "little", "giant", "huge", "double", "glass", "plastic", "bottled", "canned", "kind"]);
 const TRAIL_NEXT = new RegExp("[\\s,;.]*\\b(?:and|plus|also)\\b(?:[\\s,;.]+(?:a|an|of|the|couple|pair|dozen|\\d+|" + [...Object.keys(ONES), ...Object.keys(TENS)].join("|") + "))*[\\s,;.]*$", "i");
 // Lowercase letter/number words with their positions in the original text. Apostrophes join (barq's -> barqs); anything else splits.
 function tokenize(text) {
@@ -1074,23 +1480,49 @@ function tokenize(text) {
     else if (cur) { out.push(cur); cur = null; }
   }
   if (cur) out.push(cur);
+  // Whisper sometimes glues the opening word onto the brand ("Needbark's", "Needcore power"): split it back off.
+  if (out.length && /^need.{3,}$/.test(out[0].t) && !/^need(ed|s|le|les|y|ier|iest)$/.test(out[0].t)) { const f = out[0]; out.splice(0, 1, { t: "need", s: f.s, e: f.s + 4 }, { t: f.t.slice(4), s: f.s + 4, e: f.e }); }
   return out;
 }
-// -> { parts: [{ vk, s, e }], flag }. Each part is one brand + flavor and the stretch of the text about it.
+// Words we recognize for a brand: its flavors (as written and as normalized), their aliases, and everyday filler.
+const knownCache = new Map();
+function knownWords(brand) {
+  const sig = state.products.length + ":" + brand, hit = knownCache.get(brand);
+  if (hit && hit.sig === sig) return hit.set;
+  const set = new Set();
+  const add = s => { for (const w of sNorm(s).split(" ")) if (w) set.add(w); };
+  for (const v of variations({ includeRetired: true })) if (v.brand === brand) { add(v.flavor); flavorTokens(v.flavor).forEach(w => set.add(w)); flavorAliases(); for (const a of aliasRaw.get(v.key) || []) add(a); }
+  for (const w of ["zero", "sugar", "diet", "free", "caffeine", "calorie", "with", "and", "plus", "of"]) set.add(w);
+  knownCache.set(brand, { sig, set });
+  return set;
+}
+// Is one of the (up to) two words right after the brand something we don't recognize? That's how a misheard flavor shows up,
+// and it shouldn't quietly turn into the plain product.
+function oddWordAfter(toks, sp, brand) {
+  const known = knownWords(brand);
+  for (let k = sp.end; k < Math.min(toks.length, sp.end + 2); k++) {
+    const w = toks[k].t;
+    if (/^\d+$/.test(w) || ONES[w] != null || TENS[w] != null || UNIT_WORDS.has(w) || FILLER_WORDS.has(w) || w === "dozen" || w === "couple") return false;
+    if (!known.has(w)) return true;
+  }
+  return false;
+}// -> { parts: [{ vk, s, e }], flag }. Each part is one brand + flavor and the stretch of the text about it.
 // flag = "check the text": nothing was recognized, or a clause with a number mentions something we didn't recognize.
 function readBlurb(text) {
   text = String(text || "");
   const toks = tokenize(text), spans = brandSpans(toks.map(x => x.t));
-  const parts = []; let unsure = false;
+  const parts = [], named = new Set(); let unsure = false;
   spans.forEach((sp, k) => {
     const from = k === 0 ? 0 : toks[sp.start].s, to = k + 1 < spans.length ? toks[spans[k + 1].start].s : text.length;
     const r = resolvePhrase(text.slice(from, to));
     if (!r) return;
     if (!r.clear) unsure = true;
+    if (oddWordAfter(toks, sp, r.v.brand)) unsure = true;   // e.g. "coca cola ariasiro sugar": something was said that we don't know
     if (r.why === "which flavor?") return;   // a brand with several flavors and none said ("Fanta"): leave it for a person to place
     // The part about this product ends before "and two ..." (that quantity belongs to the next product).
     const s = toks[sp.start].s, seg = text.slice(s, to).replace(TRAIL_NEXT, "").replace(/[\s,;.]+$/, "");
     parts.push({ vk: r.v.key, s, e: s + seg.length });
+    for (const w of tokenize(vName(r.v)).map(x => x.t)) named.add(w);
   });
   let flag = !parts.length || unsure;
   if (!flag) {
@@ -1100,7 +1532,7 @@ function readBlurb(text) {
       if (spans.some(sp => toks[sp.start].s >= cs && toks[sp.start].s < ce)) continue;
       if (!/\d/.test(speechToDigits(clause))) continue;
       const words = tokenize(clause).map(x => x.t).filter(w => w.length > 2 && !/^\d+$/.test(w) && !ONES[w] && !TENS[w] && !UNIT_WORDS.has(w) && !FILLER_WORDS.has(w) && w !== "dozen" && w !== "couple");
-      if (words.length) { flag = true; break; }
+      if (words.length && !words.every(w => named.has(w))) { flag = true; break; }   // "Coke, cherry 4": the comma split the flavor off its brand
     }
   }
   return { parts, flag };
@@ -2104,7 +2536,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 5.1.4 (voice notes) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan Beta 5.1.5 (voice notes) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
