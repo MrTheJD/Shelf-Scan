@@ -192,7 +192,10 @@ body.kb-open .dock { display: none; }
 #view-ba.mode-display .cam-chip { background: var(--ink); color: var(--on-ink); }
 .cam-stop { position: absolute; top: 8px; right: 8px; z-index: 3; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, .5); color: #fff; display: flex; align-items: center; justify-content: center; }
 .cam-stop svg.i { width: 18px; height: 18px; }
-.queue-line { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 3; margin: 0; padding: 7px 14px; border-radius: 999px; background: rgba(0, 0, 0, .62); color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; display: flex; align-items: center; gap: 8px; max-width: calc(100% - 24px); }
+.cam-lens { position: absolute; left: 12px; bottom: 12px; z-index: 4; display: flex; gap: 4px; padding: 4px; border-radius: 999px; background: rgba(0, 0, 0, .5); }
+.cam-lens button { min-width: 42px; height: 36px; padding: 0 8px; border: 0; border-radius: 999px; background: none; color: #fff; font-size: 14px; font-weight: 700; transition: background-color .2s ease, color .2s ease; }
+.cam-lens button.active { background: #FFD60A; color: #111; }
+.queue-line { position: absolute; right: 12px; bottom: 12px; z-index: 3; margin: 0; padding: 7px 14px; border-radius: 999px; background: rgba(0, 0, 0, .62); color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; display: flex; align-items: center; gap: 8px; max-width: calc(100% - 140px); overflow: hidden; text-overflow: ellipsis; }
 .queue-line:not(.busy) .spin { display: none; }
 .deck { display: flex; flex-direction: column; gap: 12px; flex: none; }
 .cap-seg { background: var(--chip); }
@@ -342,6 +345,7 @@ body[data-view="ba"] #view-ba.active { max-width: 640px; margin: 0 auto; }
         <button class="btn quiet" id="btn-phonecam" hidden><span data-icon="image"></span>Use phone camera instead</button>
       </div>
       <span class="cam-chip" id="cap-band">AISLE</span>
+      <div class="cam-lens" hidden><button data-lens="ultra" aria-label="Wide angle, 0.5 times">.5</button><button data-lens="wide" aria-label="Normal, 1 times">1×</button></div>
       <button class="cam-stop" id="btn-cam-stop" aria-label="Turn the camera off" hidden><span data-icon="x"></span></button>
       <p class="queue-line" id="queue-line" hidden><span class="spin"></span><span id="queue-text"></span></p>
     </div>
@@ -373,6 +377,7 @@ body[data-view="ba"] #view-ba.active { max-width: 640px; margin: 0 auto; }
         <button class="btn quiet" id="ba-phonecam" hidden><span data-icon="image"></span>Use phone camera instead</button>
       </div>
       <span class="cam-chip" id="ba-band">BEFORE · AISLE</span>
+      <div class="cam-lens" hidden><button data-lens="ultra" aria-label="Wide angle, 0.5 times">.5</button><button data-lens="wide" aria-label="Normal, 1 times">1×</button></div>
       <button class="cam-stop" id="ba-cam-stop" aria-label="Turn the camera off" hidden><span data-icon="x"></span></button>
     </div>
     <div class="deck">
@@ -753,7 +758,7 @@ function freshState() {
     recents: [],
     stores: ["", "", "", "", ""],            // the five store slots on the Before/After tab: the store number in each
     shots: [],                              // Before/After photos: { id, at, slot:0-5, when:"before"|"after", kind:"aisle"|"display", photo }
-    settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", baWhen: "before", baKind: "aisle", baSlot: 0, wordTiming: false, asrId: "tiny", models: { asr: false } },   // models: which downloads finished
+    settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", baWhen: "before", baKind: "aisle", baSlot: 0, lens: "wide", wordTiming: false, asrId: "tiny", models: { asr: false } },   // models: which downloads finished
     sync: { lastPull: 0, lastPush: 0, error: "" },
     team: { key: "", name: "", repo: "", hidden: {}, tick: {}, seen: {}, rt: {} },   // Beta 6: shared Needed list (see team.js)
   };
@@ -953,6 +958,7 @@ function openLayer(node, { center = false, onClose, sticky = false } = {}) {
   ov.addEventListener("click", e => { if (e.target === ov && !sticky) close(); });
   $("#layer").appendChild(ov);
   modalDepth++;
+  if (!sticky && node.classList && node.classList.contains("sheet")) attachSheetDrag(node, () => close());   // swipe down to close
   ov.querySelectorAll(".seg").forEach(c => syncIndicator(c, false));
   let closed = false;
   function close() {
@@ -2209,6 +2215,47 @@ function renderSyncIndicator() {
   b.setAttribute("aria-label", s.text);
 }
 
+// ---------- Swipe a bottom sheet down to close it ----------
+// Like pushing a drawer shut: drag the sheet down from anywhere that isn't a control (the handle, the title, empty space) while it is
+// scrolled to the top, and let go. Far enough, or fast enough, and it slides away; otherwise it springs back. Sheets that must stay
+// (the recorder) are not given this. Dragging on the photo zoom area, sliders and text boxes still does what it did.
+function attachSheetDrag(sheet, close) {
+  const SKIP = "input, textarea, select, .zoom-stage, .pbar";
+  let y0 = 0, lastY = 0, lastT = 0, dy = 0, vel = 0, ok = false, drag = false;
+  sheet.addEventListener("touchstart", e => {
+    drag = false; dy = 0; vel = 0;
+    if (e.touches.length !== 1) { ok = false; return; }
+    const t = e.touches[0];
+    y0 = lastY = t.clientY; lastT = e.timeStamp;
+    ok = !e.target.closest(SKIP) && sheet.scrollTop <= 0;
+  }, { passive: true });
+  sheet.addEventListener("touchmove", e => {
+    if (!ok) return;
+    const t = e.touches[0]; dy = t.clientY - y0;
+    if (!drag) {
+      if (dy < -6) { ok = false; return; }   // swiping up: the sheet scrolls as usual
+      if (dy < 8) return;
+      drag = true; sheet.style.animation = "none"; sheet.style.transition = "none";
+    }
+    e.preventDefault();
+    const dt = e.timeStamp - lastT; if (dt > 0) vel = (t.clientY - lastY) / dt;
+    lastY = t.clientY; lastT = e.timeStamp;
+    sheet.style.transform = `translateY(${Math.max(0, dy)}px)`;
+  }, { passive: false });
+  const end = () => {
+    if (!drag) return;
+    drag = false; ok = false;
+    if (dy > Math.max(60, Math.min(140, sheet.offsetHeight * 0.3)) || vel > 0.6) {
+      sheet.style.transition = ""; sheet.style.animation = "";   // the closing animation carries on from where the finger left it
+      close();
+    } else {
+      sheet.style.transition = "transform .28s var(--ease-out)"; sheet.style.transform = "";
+      setTimeout(() => { sheet.style.transition = ""; }, 300);
+    }
+  };
+  sheet.addEventListener("touchend", end);
+  sheet.addEventListener("touchcancel", end);
+}
 // ============================================================
 // Team sync (Beta 6): phones that use the same team key share one Needed list through the GitHub repo.
 // ============================================================
@@ -2461,18 +2508,24 @@ async function teamTest() {
 }
 // ---------- Camera, microphone and making a note ----------
 const MAX_NOTE_SECS = 30;     // Whisper reads 30 seconds at a time
-const cam = { hold: false, stream: null, starting: false, sleepTimer: null, audioTrack: null, error: "" };
+const cam = { hold: false, stream: null, starting: false, sleepTimer: null, audioTrack: null, error: "", ultraId: "", lens: "wide" };
 
 async function startCamera() {
   if (cam.stream || cam.starting || cam.hold) return;
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { cam.error = "This browser can't use the camera here."; return renderCapture(); }
   cam.starting = true; cam.error = ""; renderCapture();
-  const video = { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }   // photos are saved at 1280px anyway; a smaller live feed leaves the speech model more memory;
-  try {
-    let stream;
+  // photos are saved at 1280px anyway; a smaller live feed leaves the speech model more memory
+  const wanted = useUltra => ({ ...(useUltra && cam.ultraId ? { deviceId: { exact: cam.ultraId } } : { facingMode: { ideal: "environment" } }), width: { ideal: 1280 }, height: { ideal: 720 } });
+  const open = async useUltra => {
     // Ask for the microphone together with the camera so the phone only asks once.
-    try { stream = await navigator.mediaDevices.getUserMedia({ video, audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
-    catch (e) { if (e && e.name === "NotAllowedError") throw e; stream = await navigator.mediaDevices.getUserMedia({ video }); }
+    try { return await navigator.mediaDevices.getUserMedia({ video: wanted(useUltra), audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+    catch (e) { if (e && e.name === "NotAllowedError") throw e; return await navigator.mediaDevices.getUserMedia({ video: wanted(useUltra) }); }
+  };
+  try {
+    let stream = await open(state.settings.lens === "ultra");
+    await findLenses(stream);
+    // The wide-angle camera's id is only known once the phone has allowed the camera, so the first start may need a second go.
+    if (state.settings.lens === "ultra" && cam.ultraId && cam.lens !== "ultra") { stream.getTracks().forEach(t => t.stop()); stream = await open(true); await findLenses(stream); }
     cam.stream = stream;
     cam.audioTrack = stream.getAudioTracks()[0] || null;
     if (cam.audioTrack) cam.audioTrack.enabled = false;   // only listening while recording
@@ -2482,6 +2535,29 @@ async function startCamera() {
     cam.error = e && e.name === "NotAllowedError" ? "Camera access is blocked. Allow it in Settings, or use the phone camera instead." : "Couldn't start the camera.";
   }
   cam.starting = false; renderCapture();
+}
+// Which camera is this stream from, and does the phone have an ultra-wide (0.5x) one? (Its name says "Ultra Wide".)
+async function findLenses(stream) {
+  try {
+    const devs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "videoinput");
+    const ultra = devs.find(d => /ultra/i.test(d.label) && !/front/i.test(d.label));
+    if (ultra) cam.ultraId = ultra.deviceId;
+    const cur = stream.getVideoTracks()[0], id = cur && cur.getSettings && cur.getSettings().deviceId;
+    cam.lens = ultra && id === ultra.deviceId ? "ultra" : "wide";
+  } catch (e) { cam.lens = "wide"; }
+}
+async function setLens(l) {
+  if (recorder || cam.starting || state.settings.lens === l) return;
+  state.settings.lens = l; save();
+  if (cam.stream) { stopCamera(); await startCamera(); } else renderLens();
+}
+// The 0.5 / 1x switch on each viewfinder: only shown when the camera is on and the phone has a wide-angle camera.
+function renderLens() {
+  const show = !!cam.stream && !!cam.ultraId;
+  document.querySelectorAll(".cam-lens").forEach(box => {
+    box.hidden = !show;
+    box.querySelectorAll("button").forEach(b => b.classList.toggle("active", b.dataset.lens === cam.lens));
+  });
 }
 function stopCamera() {
   clearTimeout(cam.sleepTimer);
@@ -2860,6 +2936,7 @@ function renderCapture() {
   } else if (cs.dataset.mode !== "start") cs.textContent = "Starting the camera…";
   cs.dataset.mode = cam.hold ? "hold" : "start";
   $("#cam-error").textContent = cam.error;
+  renderLens();
   $("#btn-phonecam").hidden = !cam.error;   // the fallback only shows when the live camera isn't working
   $("#btn-cam-stop").hidden = !on;
   $("#btn-shutter").disabled = cam.starting || cam.hold;
@@ -3117,6 +3194,7 @@ function renderBA() {
   $("#ba-video").hidden = !on;
   $("#ba-starting").hidden = !cam.starting;
   $("#ba-error").textContent = cam.error;
+  renderLens();
   $("#ba-phonecam").hidden = !cam.error;
   $("#ba-cam-stop").hidden = !on;
   $("#ba-shutter").disabled = cam.starting;
@@ -3522,7 +3600,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 7 (before/after) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan Beta 7.1 (before/after) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
@@ -3648,6 +3726,7 @@ document.querySelectorAll("#cap-seg button").forEach(b => (b.onclick = () => { s
 $("#btn-shutter").onclick = () => onShutter(false, captureKind());
 $("#btn-phonecam").onclick = () => onShutter(true, captureKind());
 wireBA();
+document.querySelectorAll(".cam-lens button").forEach(b => (b.onclick = () => setLens(b.dataset.lens)));
 $("#sync-ind").onclick = () => showView("more");
 renderAll();
 save();
