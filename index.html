@@ -2502,7 +2502,7 @@ async function startRecording(base) {
   if (recorder) return;
   const sheet = el(`<div class="sheet rec-sheet"><div class="handle"></div>
     <h2>What do you need ${base.kind === "display" ? "on this display" : base.note && base.note.kind === "display" ? "on this display" : "here"}?</h2>
-    <p class="hint center" id="rec-hint">Say what you need, like “three Diet Coke twelve packs”.</p>
+    <p class="hint center" id="rec-hint">Say just the brand and flavor, like “Diet Coke” or “Dr Pepper Cherry”.</p>
     <div class="rec-meter"><i id="rec-level"></i></div>
     <div class="rec-time" id="rec-time">0:00</div>
     <button class="btn primary block rec-done" data-a="done">${icon("check")}Done</button>
@@ -2611,7 +2611,7 @@ let lastNoteId = null;
 function textPrompt(title, value = "", { ok = "Save" } = {}) {
   return new Promise(resolve => {
     const d = el(`<div class="dialog"><p><b></b></p>
-      <textarea class="field" rows="4" autocapitalize="sentences" placeholder="For example: three Diet Coke twelve packs"></textarea>
+      <textarea class="field" rows="4" autocapitalize="sentences" placeholder="For example: Diet Coke"></textarea>
       <div class="btns" style="margin-top:14px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="ok">${esc(ok)}</button></div></div>`);
     d.querySelector("b").textContent = title;
     const ta = d.querySelector("textarea"); ta.value = value;
@@ -3180,7 +3180,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 6.3.5 (team list) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan Beta 6.3.6 (team list) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
