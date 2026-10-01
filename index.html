@@ -13,478 +13,283 @@
 <link rel="icon" href="icon-192.png">
 <title>Shelf Scan</title>
 <style>
-/* Layout: one-thumb phone tool. Coke-red header, warm-grey ground, white surfaces, fixed icon tab bar. */
+/* Shelf Scan: one-handed iPhone tool.
+   Rules: Coke red is reserved for the brand bar, primary actions and "selected"; everything else is warm neutrals.
+   Controls that get used constantly sit in the bottom third (thumb reach); the top of the screen is for reading.
+   Spacing steps: 4 / 8 / 12 / 16 / 24. Radii: 12 controls, 16 cards, 22 sheets. Touch targets are at least 44pt. */
 :root {
-  --red: #F40009; --red-press: #C80008; --on-red: #FFFFFF;
-  --bg: #F4F2F0; --surface: #FFFFFF; --surface-2: #FAF9F8; --text: #111111; --muted: #6F6A66; --faint: #A39E99;
-  --line: #E8E4E0; --chip: #EEEAE6;
-  --ok: #1E8E3E; --ok-soft: #E3F4E8; --warn: #A85F00; --warn-soft: #FFF1DC;
-  --scrim: rgba(12, 8, 8, .48); --toast: #111111; --on-toast: #FFFFFF; --toast-action: #FF6B70;
-  --cam: #000000; --cam-edge: #000000; --on-cam: #D9D6D3; --img-bg: #FFFFFF; --thumb-ink: #FFFFFF; --thumb-fallback: #8A8480;
-  --shadow: 0 1px 2px rgba(40, 20, 20, .06), 0 2px 8px rgba(40, 20, 20, .05);
-  --sheet-shadow: 0 -8px 30px rgba(0, 0, 0, .18);
+  --red: #F40009; --red-press: #C80008; --on-red: #FFFFFF; --ink: #1B1B1B; --on-ink: #FFFFFF;
+  --bg: #F3F1EF; --surface: #FFFFFF; --surface-2: #F9F8F6; --text: #151311; --muted: #6B6560; --faint: #A39E99;
+  --line: #E7E3DF; --chip: #EDE9E5;
+  --ok: #1E8E3E; --ok-soft: #E3F4E8; --warn: #A85F00; --warn-soft: #FFF0D8;
+  --scrim: rgba(12, 8, 8, .5); --toast: #151311; --on-toast: #FFFFFF; --toast-action: #FF6B70;
+  --shadow: 0 1px 2px rgba(40, 20, 20, .05), 0 6px 18px rgba(40, 20, 20, .06);
+  --sheet-shadow: 0 -10px 34px rgba(0, 0, 0, .2);
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-  --r: 14px;
-  /* Motion: a gentle spring (~3% overshoot) and a soft ease-out. */
-  --spring: cubic-bezier(.2, .9, .3, 1.04);
-  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --r: 16px; --tab-h: 56px; --safe-b: env(safe-area-inset-bottom, 0px); --safe-t: env(safe-area-inset-top, 0px);
+  --spring: cubic-bezier(.2, .9, .3, 1.04); --ease-out: cubic-bezier(.22, 1, .36, 1);
 }
 @supports (transition-timing-function: linear(0, 1)) {
-  :root { --spring: linear(0, 0.034 1.6%, 0.132 3.4%, 0.285 5.6%, 0.498 8.4%, 0.702 11.6%, 0.846 14.8%, 0.943 18.2%,
-    1.003 21.9%, 1.03 25.7%, 1.036 29.4%, 1.028 34.2%, 1.012 40.9%, 1.001 49.5%, 0.997 60%, 1); }
+  :root { --spring: linear(0, 0.034 1.6%, 0.132 3.4%, 0.285 5.6%, 0.498 8.4%, 0.702 11.6%, 0.846 14.8%, 0.943 18.2%, 1.003 21.9%, 1.03 25.7%, 1.036 29.4%, 1.028 34.2%, 1.012 40.9%, 1.001 49.5%, 0.997 60%, 1); }
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #000000; --surface: #141312; --surface-2: #1B1A19; --text: #F5F3F1; --muted: #9C9692; --faint: #6B6662;
-    --line: #262423; --chip: #221F1E; --cam: #0B0B0B; --cam-edge: #2A2827;
+    --ink: #F5F3F1; --on-ink: #111111;
+    --bg: #000000; --surface: #151413; --surface-2: #1C1B1A; --text: #F5F3F1; --muted: #9C9692; --faint: #6B6662; --line: #272524; --chip: #232120;
     --ok: #4CC36E; --ok-soft: #13301D; --warn: #F2A742; --warn-soft: #3A2A10;
-    --shadow: none; --sheet-shadow: 0 -8px 30px rgba(0, 0, 0, .6);
-    color-scheme: dark;
+    --shadow: none; --sheet-shadow: 0 -10px 34px rgba(0, 0, 0, .65); color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #000000; --surface: #141312; --surface-2: #1B1A19; --text: #F5F3F1; --muted: #9C9692; --faint: #6B6662;
-  --line: #262423; --chip: #221F1E; --cam: #0B0B0B; --cam-edge: #2A2827;
+  --ink: #F5F3F1; --on-ink: #111111;
+  --bg: #000000; --surface: #151413; --surface-2: #1C1B1A; --text: #F5F3F1; --muted: #9C9692; --faint: #6B6662; --line: #272524; --chip: #232120;
   --ok: #4CC36E; --ok-soft: #13301D; --warn: #F2A742; --warn-soft: #3A2A10;
-  --shadow: none; --sheet-shadow: 0 -8px 30px rgba(0, 0, 0, .6);
-  color-scheme: dark;
+  --shadow: none; --sheet-shadow: 0 -10px 34px rgba(0, 0, 0, .65); color-scheme: dark;
 }
 
+/* ---------- Base ---------- */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-/* Feel like an app: no double-tap zoom, no rubber-band scrolling past the top or bottom. */
-html, body { margin: 0; min-height: 100%; overscroll-behavior: none; touch-action: manipulation; -webkit-text-size-adjust: 100%; }
-/* iPhone home-screen apps size the window short of the real screen when a page doesn't fill it, which lifts
-   the fixed tab bar off the bottom (seen on Scan and List; long pages like Products were fine). Making every
-   page at least the full screen height keeps the tab bar on the bottom edge. */
-html, body { min-height: 100vh; min-height: 100lvh; }
-body {
-  background: var(--bg); color: var(--text); font: 16px/1.4 var(--font);
-  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-  -webkit-font-smoothing: antialiased;
-}
+html, body { margin: 0; min-height: 100vh; min-height: 100lvh; overscroll-behavior: none; touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+body { background: var(--bg); color: var(--text); font: 16px/1.4 var(--font); -webkit-font-smoothing: antialiased; padding-bottom: calc(var(--tab-h) + var(--safe-b)); }
 button { font: inherit; color: inherit; cursor: pointer; }
 input, select, textarea { font: inherit; color: var(--text); }
 svg.i { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 [hidden] { display: none !important; }
 :focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
-
-/* Header */
-header.top {
-  position: sticky; top: 0; z-index: 20;
-  background: var(--red); color: var(--on-red);
-  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
-  display: flex; align-items: center; gap: 10px;
-}
-header.top h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
-.tagline { font-size: 10px; font-weight: 700; letter-spacing: .12em; border: 1.5px solid rgba(255,255,255,.75); border-radius: 5px; padding: 1px 5px; }
-header.top .spacer { flex: 1; }
-.store { font-size: 13px; font-weight: 600; opacity: .92; }
-.sync-ind { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; background: none; border: 0; color: var(--on-red); padding: 4px; }
-.sync-ind svg.i { width: 20px; height: 20px; }
-
-main { padding: 12px 16px 8px; max-width: 640px; margin: 0 auto; }
-.view { display: none; }
-.view.active { display: block; }
-.view > * + * { margin-top: 12px; }
-
-/* Tab bar */
-nav.tabs {
-  position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
-  display: flex; background: var(--surface); border-top: 1px solid var(--line);
-  padding: 4px 0 env(safe-area-inset-bottom, 0px);
-}
-nav.tabs button {
-  flex: 1; border: 0; background: none; padding: 6px 0 8px; font-size: 11px; font-weight: 600; color: var(--faint);
-  display: flex; flex-direction: column; align-items: center; gap: 3px; position: relative;
-}
-nav.tabs button.active { color: var(--red); }
-.badge {
-  position: absolute; top: 2px; left: calc(50% + 6px); min-width: 18px; height: 18px; border-radius: 9px;
-  background: var(--red); color: var(--on-red); font-size: 11px; font-weight: 700; line-height: 18px; padding: 0 5px;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Building blocks */
-.card { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); padding: 14px; }
-.card h3 { margin: 0 0 4px; font-size: 16px; }
-.muted { color: var(--muted); }
-.small { font-size: 13px; }
-.hint { font-size: 13px; color: var(--muted); margin: 0; }
-.center { text-align: center; }
-.row { display: flex; align-items: center; gap: 10px; }
+.muted { color: var(--muted); } .small { font-size: 13px; } .center { text-align: center; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.35; }
+.row { display: flex; align-items: center; gap: 12px; }
 .grow { flex: 1; min-width: 0; }
 .stack > * + * { margin-top: 8px; }
+code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
 
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  border: 1px solid var(--line); background: var(--surface); color: var(--text);
-  border-radius: 12px; padding: 11px 16px; font-weight: 650; font-size: 15px; text-decoration: none;
-  transition: transform .08s ease, background .15s ease;
+/* ---------- Brand bar ---------- */
+header.top {
+  position: sticky; top: 0; z-index: 20; background: var(--red); color: var(--on-red);
+  padding: calc(6px + var(--safe-t)) 16px 6px; min-height: calc(44px + var(--safe-t));
+  display: flex; align-items: center; gap: 10px;
 }
-.btn:active { transform: scale(.98); }
+header.top h1 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -.02em; }
+header.top .spacer { flex: 1; }
+.store { font-size: 13px; font-weight: 650; opacity: .9; }
+.sync-ind { display: flex; align-items: center; gap: 4px; min-width: 44px; height: 44px; justify-content: center; margin: -6px -10px -6px 0; font-size: 12px; font-weight: 700; background: none; border: 0; color: var(--on-red); padding: 0; }
+.sync-ind svg.i { width: 20px; height: 20px; }
+
+main { padding: 16px 16px 24px; max-width: 640px; margin: 0 auto; }
+.view { display: none; }
+.view.active { display: block; animation: viewIn .3s var(--ease-out) both; }
+.view > * + * { margin-top: 12px; }
+
+/* ---------- Tab bar ---------- */
+nav.tabs { position: fixed; bottom: 0; left: 0; right: 0; z-index: 20; display: flex; background: var(--surface); border-top: 1px solid var(--line); padding: 0 0 var(--safe-b); isolation: isolate; transition: transform .35s var(--ease-out); }
+nav.tabs button { flex: 1; position: relative; z-index: 1; height: var(--tab-h); border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 10.5px; font-weight: 650; color: var(--faint); transition: color .25s ease; }
+nav.tabs button.active { color: var(--red); }
+nav.tabs.has-ind::before { content: ""; position: absolute; z-index: 0; left: 0; top: 6px; height: calc(var(--tab-h) - 12px); width: var(--ind-w, 0); transform: translateX(var(--ind-x, 0)); background: var(--chip); border-radius: 16px; pointer-events: none; transition: transform .5s var(--spring), width .5s var(--spring); }
+nav.tabs.no-anim::before { transition: none; }
+body.kb-open nav.tabs { transform: translateY(110%); visibility: hidden; transition: transform .2s ease, visibility 0s .2s; }
+.badge { position: absolute; top: 5px; left: calc(50% + 7px); min-width: 18px; height: 18px; border-radius: 9px; background: var(--red); color: var(--on-red); font-size: 11px; font-weight: 800; line-height: 18px; padding: 0 5px; font-variant-numeric: tabular-nums; }
+
+/* ---------- Controls ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); font-weight: 650; font-size: 15px; text-decoration: none; transition: transform .45s var(--spring), background-color .2s ease; }
+.btn:active { transform: scale(.97); transition-duration: .1s; }
 .btn.primary { background: var(--red); border-color: var(--red); color: var(--on-red); }
 .btn.primary:active { background: var(--red-press); }
 .btn.quiet { background: var(--chip); border-color: transparent; }
 .btn.danger { color: var(--red); }
 .btn.block { display: flex; width: 100%; }
-.btn.sm { padding: 7px 12px; font-size: 14px; border-radius: 10px; }
-.btn:disabled { opacity: .5; }
-.icon-btn { width: 40px; height: 40px; padding: 0; border-radius: 12px; }
-
-.seg { display: flex; background: var(--chip); border-radius: 12px; padding: 3px; }
-.seg button { flex: 1; border: 0; background: none; padding: 9px 4px; border-radius: 10px; font-weight: 650; font-size: 14px; color: var(--muted); }
-.seg button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
-
-input.field, select.field, textarea.field {
-  width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); outline: none;
-}
-input.field:focus, textarea.field:focus, select.field:focus { border-color: var(--red); }
+.btn.sm { min-height: 38px; padding: 0 14px; font-size: 14px; border-radius: 10px; }
+.btn:disabled { opacity: .45; }
+.icon-btn { width: 44px; padding: 0; }
+.seg { display: flex; position: relative; isolation: isolate; background: var(--chip); border-radius: 14px; padding: 3px; }
+.seg button { position: relative; z-index: 1; flex: 1; min-height: 42px; border: 0; background: none; border-radius: 11px; font-weight: 700; font-size: 15px; color: var(--muted); display: flex; align-items: center; justify-content: center; gap: 6px; transition: color .25s ease; }
+.seg button.active { color: var(--text); }
+.seg.has-ind::before { content: ""; position: absolute; z-index: 0; left: 0; top: 3px; bottom: 3px; width: var(--ind-w, 0); transform: translateX(var(--ind-x, 0)); background: var(--surface); border-radius: 11px; box-shadow: 0 1px 3px rgba(0, 0, 0, .14); pointer-events: none; transition: transform .5s var(--spring), width .5s var(--spring); }
+.seg.no-anim::before { transition: none; }
+input.field, select.field, textarea.field { width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); outline: none; }
+input.field:focus, textarea.field:focus { border-color: var(--red); }
 .search-wrap { position: relative; }
-.search-wrap svg.i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--faint); width: 18px; height: 18px; }
-.search-wrap input.field { padding-left: 38px; }
-label.f { display: block; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; }
+.search-wrap svg.i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--faint); width: 18px; height: 18px; }
+.search-wrap input.field { padding-left: 42px; }
+label.f { display: block; font-size: 12px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); margin: 16px 0 6px; }
 
-.chips { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0; scrollbar-width: none; }
-.chips::-webkit-scrollbar { display: none; }
-.chip { flex: none; border: 0; background: var(--chip); color: var(--text); border-radius: 999px; padding: 7px 13px; font-size: 13px; font-weight: 600; }
-.chip.active { background: var(--text); color: var(--bg); }
-
-.camera { position: relative; background: var(--cam); border-radius: 18px; overflow: hidden; border: 1px solid var(--cam-edge);
-  aspect-ratio: 1 / 1; max-height: 52dvh; margin-inline: auto; }
-.cam-off { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 34px 16px; color: var(--on-cam); text-align: center; }
-.cam-off svg.i { width: 34px; height: 34px; opacity: .7; }
-.cam-stop { position: absolute; top: 10px; right: 10px; z-index: 3; width: 34px; height: 34px; border-radius: 50%; border: 0; background: rgba(0,0,0,.55); color: #fff; display: flex; align-items: center; justify-content: center; }
-.cam-stop svg.i { width: 18px; height: 18px; }
-
-.banner { display: flex; align-items: center; gap: 8px; background: var(--warn-soft); color: var(--text); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
-.banner .grow { font-weight: 650; }
-
-.last { display: flex; align-items: center; gap: 12px; }
-.last .label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
-
-/* Lists */
-.list { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
-.item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; position: relative; min-height: 60px; }
-.item + .item::before { content: ""; position: absolute; top: 0; left: 66px; right: 0; border-top: 1px solid var(--line); }
-.item.tap { cursor: pointer; }
-.item.tap:active { background: var(--surface-2); }
-.item .name { font-weight: 650; font-size: 15.5px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; line-height: 1.25; }
-.item .sub { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
-.group-h { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 20px 4px 8px; }
-.view > .group-h:first-child { margin-top: 4px; }
-
-.thumb {
-  width: 44px; height: 44px; border-radius: 10px; flex: none; overflow: hidden;
-  display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; color: var(--thumb-ink);
-  background: var(--thumb-fallback); letter-spacing: -.02em;
-}
-.thumb img { width: 100%; height: 100%; object-fit: contain; background: var(--img-bg); }
-.thumb.lg { width: 76px; height: 76px; font-size: 22px; border-radius: 14px; }
-.thumb.art { padding: 3px; }
-.thumb.art svg { display: block; filter: drop-shadow(0 1px 1px rgba(0,0,0,.18)); }
-
-.check {
-  width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); background: none; flex: none; padding: 0;
-  display: flex; align-items: center; justify-content: center; color: var(--on-red); transition: background .15s ease, border-color .15s ease;
-}
-.check svg.i { width: 16px; height: 16px; stroke-width: 3; }
-.check.on { background: var(--red); border-color: var(--red); }
-.item.done .name { text-decoration: line-through; text-decoration-thickness: 2px; color: var(--muted); }
-.item.done .thumb { opacity: .45; }
-.qty-tap {
-  border: 0; background: var(--chip); border-radius: 12px; min-width: 50px; min-height: 44px; padding: 5px 8px; flex: none;
-  display: flex; flex-direction: column; align-items: center; line-height: 1.1;
-}
-.qty-tap b { font-size: 21px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.qty-tap span { font-size: 11px; color: var(--muted); font-weight: 600; }
-.item.done .qty-tap { opacity: .5; }
-.more-btn { border: 0; background: none; color: var(--faint); width: 26px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; padding: 0; }
-
-.pill { font-size: 11px; font-weight: 700; letter-spacing: .04em; padding: 3px 8px; border-radius: 999px; background: var(--chip); color: var(--muted); white-space: nowrap; }
-.pill.ok { background: var(--ok-soft); color: var(--ok); }
-.pill.warn { background: var(--warn-soft); color: var(--warn); }
-
-.list-head { display: flex; align-items: baseline; gap: 10px; }
-.list-head h2 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
-.empty { text-align: center; padding: 48px 16px; color: var(--muted); }
+/* ---------- Building blocks ---------- */
+.card { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); padding: 16px; }
+.card h3 { margin: 0 0 4px; font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
+.pill { display: inline-block; font-size: 11px; font-weight: 750; letter-spacing: .04em; padding: 3px 9px; border-radius: 999px; background: var(--chip); color: var(--muted); white-space: nowrap; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); } .pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.kind.aisle { background: var(--chip); color: var(--text); } .pill.kind.display { background: var(--ink); color: var(--on-ink); }
+.kcount { display: inline-block; min-width: 20px; padding: 0 6px; border-radius: 10px; background: var(--red); color: var(--on-red); font-size: 12px; font-weight: 800; line-height: 20px; font-variant-numeric: tabular-nums; }
+.banner { display: flex; align-items: center; gap: 10px; background: var(--warn-soft); border-radius: 14px; padding: 12px 14px; font-size: 14px; font-weight: 600; }
+.banner.busy { background: var(--chip); font-weight: 500; }
+.banner svg.i { color: var(--warn); }
+.empty { text-align: center; padding: 56px 24px; color: var(--muted); }
 .empty svg.i { width: 40px; height: 40px; color: var(--faint); }
-.empty h3 { color: var(--text); margin: 12px 0 4px; }
+.empty h3 { color: var(--text); margin: 12px 0 4px; font-size: 17px; }
 .empty p { margin: 0; font-size: 14px; }
+.spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--red); border-radius: 50%; animation: spin .8s linear infinite; flex: none; }
+.list-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+.list-head h2 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
+.foot { text-align: center; color: var(--faint); font-size: 12px; margin: 24px 0 8px; }
 
-/* Sheets & dialogs */
-.overlay { position: fixed; inset: 0; background: var(--scrim); z-index: 50; display: flex; align-items: flex-end; justify-content: center; animation: fade .28s var(--ease-out) both; }
-.overlay.closing { animation: fadeOut .24s ease forwards; pointer-events: none; }
-.sheet {
-  background: var(--bg); width: 100%; max-width: 640px; overflow-y: auto; overscroll-behavior: contain;
-  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 12px);
-  /* Extra 40px below the fold so the spring's small overshoot never shows a gap at the bottom. */
-  border-radius: 22px 22px 0 0; padding: 10px 16px calc(58px + env(safe-area-inset-bottom, 0px)); margin-bottom: -40px;
-  box-shadow: var(--sheet-shadow); animation: sheetIn .6s var(--spring) both;
-}
-.overlay.closing .sheet { animation: sheetOut .26s cubic-bezier(.4, 0, .9, .6) forwards; }
-.sheet > * + * { margin-top: 10px; }
+/* ---------- Lists ---------- */
+.list { background: var(--surface); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
+.item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; min-height: 64px; position: relative; }
+.item + .item::before { content: ""; position: absolute; top: 0; left: 14px; right: 0; border-top: 1px solid var(--line); }
+.item.tap { cursor: pointer; transition: background-color .2s ease; }
+.item.tap:active { background: var(--surface-2); }
+.item .name { font-weight: 650; font-size: 16px; line-height: 1.25; }
+.item > svg.i { color: var(--faint); width: 18px; height: 18px; }
+.group-h { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 24px 4px 8px; display: flex; align-items: center; gap: 8px; }
+.group-h .muted { font-weight: 700; letter-spacing: 0; }
+.view > .group-h:first-child { margin-top: 8px; }
+.cluster-h { display: flex; align-items: baseline; gap: 8px; font-size: 17px; font-weight: 800; letter-spacing: -.01em; margin: 24px 4px 8px; }
+.cluster-h .n { font-size: 13px; font-weight: 700; color: var(--faint); }
+.check { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--faint); background: none; flex: none; padding: 0; display: flex; align-items: center; justify-content: center; color: var(--on-red); transition: background-color .15s ease, border-color .15s ease; }
+.check svg.i { width: 17px; height: 17px; stroke-width: 3; }
+.check.on { background: var(--red); border-color: var(--red); }
+.shelf-thumb { position: relative; width: 52px; height: 52px; flex: none; border: 0; padding: 0; border-radius: 12px; overflow: hidden; background: var(--chip); display: flex; align-items: center; justify-content: center; color: var(--faint); }
+.shelf-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.shelf-thumb.missing img { display: none; }
+.item.done .shelf-thumb { opacity: .45; }
+.blurb { font-size: 16px; line-height: 1.35; }
+.blurb .hl { font-weight: 800; background: color-mix(in srgb, var(--red) 12%, transparent); border-radius: 4px; padding: 0 2px; }
+.item.done .blurb { text-decoration: line-through; text-decoration-thickness: 2px; color: var(--muted); }
+.chips-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chip-sm { font-size: 12px; font-weight: 650; padding: 3px 9px; border-radius: 999px; background: var(--chip); color: var(--muted); }
+.flag-tag { font-size: 12px; font-weight: 750; padding: 3px 9px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); }
+.need.flagged { box-shadow: inset 3px 0 0 var(--warn); }
+
+/* ---------- Docked controls (bottom third, above the tab bar) ---------- */
+.dock { position: fixed; left: 0; right: 0; bottom: calc(var(--tab-h) + var(--safe-b) + 10px); z-index: 15; padding: 0 16px; pointer-events: none; display: flex; justify-content: center; gap: 10px; }
+.dock > * { pointer-events: auto; max-width: 608px; }
+.dock.solid { bottom: calc(var(--tab-h) + var(--safe-b)); padding: 10px 16px; background: var(--bg); border-top: 1px solid var(--line); pointer-events: auto; }
+.dock.solid .seg { max-width: 608px; width: 100%; }
+.dock .fab { box-shadow: 0 8px 22px rgba(0, 0, 0, .22); }
+.dock-space { height: 84px; }
+.fab { min-height: 52px; padding: 0 20px; border-radius: 26px; background: var(--red); border: 0; color: var(--on-red); font-weight: 750; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
+.fab:active { background: var(--red-press); }
+body.kb-open .dock { display: none; }
+
+/* ---------- Capture: a viewfinder with the controls under the thumb ---------- */
+#view-capture { padding: 0; }
+#view-capture.active { display: flex; flex-direction: column; gap: 12px; height: calc(100dvh - 44px - var(--safe-t) - var(--tab-h) - var(--safe-b)); min-height: 440px; padding: 12px 16px 12px; }
+#view-capture > * + * { margin-top: 0; }
+.camera { position: relative; flex: 1 1 auto; min-height: 220px; border-radius: 24px; overflow: hidden; background: #000; border: 3px solid var(--red); transition: border-color .3s ease; }
+#view-capture.mode-display .camera { border-color: var(--ink); }
+.camera video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; animation: fade .4s ease both; }
+.camera.flash::after { content: ""; position: absolute; inset: 0; z-index: 6; background: #fff; animation: fadeOut .35s ease forwards; pointer-events: none; }
+.cam-off, .cam-wait { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; color: #D9D6D3; }
+.cam-wait { font-size: 14px; }
+.cam-off svg.i { width: 36px; height: 36px; opacity: .6; }
+.cam-off p { margin: 0; font-size: 13px; max-width: 32ch; line-height: 1.4; }
+.cam-off .btn.quiet { background: rgba(255, 255, 255, .14); color: #fff; }
+.cam-chip { position: absolute; top: 12px; left: 12px; z-index: 3; padding: 6px 12px; border-radius: 999px; background: var(--red); color: var(--on-red); font-size: 11px; font-weight: 800; letter-spacing: .16em; transition: background-color .3s ease; }
+#view-capture.mode-display .cam-chip { background: var(--ink); color: var(--on-ink); }
+.cam-stop { position: absolute; top: 8px; right: 8px; z-index: 3; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgba(0, 0, 0, .5); color: #fff; display: flex; align-items: center; justify-content: center; }
+.cam-stop svg.i { width: 18px; height: 18px; }
+.queue-line { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 3; margin: 0; padding: 7px 14px; border-radius: 999px; background: rgba(0, 0, 0, .62); color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; display: flex; align-items: center; gap: 8px; max-width: calc(100% - 24px); }
+.queue-line:not(.busy) .spin { display: none; }
+.deck { display: flex; flex-direction: column; gap: 12px; flex: none; }
+.cap-seg { background: var(--chip); }
+.deck-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+.deck-side { width: 56px; height: 56px; border-radius: 16px; border: 0; padding: 0; background: var(--chip); color: var(--text); position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.deck-side.left { justify-self: start; } .deck-side.right { justify-self: end; }
+.deck-side img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.deck-side .badge { top: -2px; left: auto; right: -2px; }
+.shutter-big { width: 80px; height: 80px; border-radius: 50%; border: 4px solid var(--red); background: var(--surface); padding: 5px; transition: transform .45s var(--spring), border-color .3s ease; }
+.shutter-big span { display: block; width: 100%; height: 100%; border-radius: 50%; background: var(--red); transition: background-color .3s ease; }
+.shutter-big:active { transform: scale(.9); transition-duration: .1s; }
+.shutter-big:disabled { opacity: .4; }
+#view-capture.mode-display .shutter-big { border-color: var(--ink); }
+#view-capture.mode-display .shutter-big span { background: var(--ink); }
+.cap-hint { margin: 0; text-align: center; font-size: 13px; color: var(--muted); }
+#model-banner { flex: none; }
+
+/* ---------- Sheets and dialogs ---------- */
+.overlay { position: fixed; inset: 0; background: var(--scrim); z-index: 50; display: flex; align-items: flex-end; justify-content: center; animation: fade .25s var(--ease-out) both; }
+.overlay.closing { animation: fadeOut .22s ease forwards; pointer-events: none; }
+.sheet { background: var(--bg); width: 100%; max-width: 640px; overflow-y: auto; overscroll-behavior: contain; max-height: calc(100dvh - var(--safe-t) - 12px); border-radius: 24px 24px 0 0; padding: 10px 16px calc(56px + var(--safe-b)); margin-bottom: -40px; box-shadow: var(--sheet-shadow); animation: sheetIn .55s var(--spring) both; }
+.overlay.closing .sheet { animation: sheetOut .24s cubic-bezier(.4, 0, .9, .6) forwards; }
+.sheet > * + * { margin-top: 12px; }
 .sheet h2 { margin: 4px 0 0; font-size: 20px; font-weight: 800; letter-spacing: -.01em; }
-.sheet .handle { width: 38px; height: 5px; background: var(--line); border-radius: 3px; margin: 0 auto 8px; }
+.sheet .handle { width: 38px; height: 5px; background: var(--line); border-radius: 3px; margin: 0 auto 6px; }
 .overlay.center { align-items: center; padding: 16px; }
-.dialog { background: var(--surface); border-radius: 22px; padding: 20px; width: 100%; max-width: 380px; animation: dialogIn .5s var(--spring) both; }
+.dialog { background: var(--surface); border-radius: 22px; padding: 22px; width: 100%; max-width: 380px; animation: dialogIn .45s var(--spring) both; }
 .overlay.closing .dialog { animation: dialogOut .2s ease forwards; }
 .dialog p { margin: 0 0 16px; line-height: 1.45; }
 .dialog .btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 .menu-list { background: var(--surface); border-radius: var(--r); overflow: hidden; }
-.menu-list button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 15px 16px; font-size: 16px; font-weight: 550; }
+.menu-list button { display: block; width: 100%; min-height: 52px; text-align: left; border: 0; background: none; padding: 0 16px; font-size: 16px; font-weight: 550; transition: background-color .15s ease; }
 .menu-list button + button { border-top: 1px solid var(--line); }
+.menu-list button:active { background: var(--chip); }
 .menu-list button.danger { color: var(--red); }
-.qty { display: flex; align-items: center; gap: 8px; }
-.qty button { width: 52px; height: 52px; border-radius: 14px; border: 0; background: var(--chip); font-size: 26px; font-weight: 600; display: flex; align-items: center; justify-content: center; }
-.qty input { width: 80px; text-align: center; font-size: 28px; font-weight: 800; padding: 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); font-variant-numeric: tabular-nums; }
-.qty .unit { color: var(--muted); font-weight: 600; }
-#toast {
-  position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom, 0px));
-  background: var(--toast); color: var(--on-toast); border-radius: 16px; padding: 11px 16px; z-index: 100;
-  display: flex; align-items: center; gap: 14px; max-width: calc(100% - 32px); font-size: 14px; font-weight: 550; box-shadow: 0 6px 24px rgba(0,0,0,.25);
-  opacity: 0; transform: translate(-50%, 18px) scale(.94); pointer-events: none;
-  transition: opacity .2s ease, transform .5s var(--spring);
-}
-#toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); pointer-events: auto; }
 .update-dialog { text-align: center; }
-.update-dialog h3 { margin: 10px 0 6px; font-size: 19px; font-weight: 800; }
+.update-dialog h3 { margin: 12px 0 6px; font-size: 19px; font-weight: 800; }
 .update-dialog p { color: var(--muted); font-size: 15px; }
 .update-dialog .btns { justify-content: stretch; }
 .update-dialog .btns .btn { flex: 1; }
-.update-icon { width: 52px; height: 52px; margin: 0 auto; border-radius: 16px; background: var(--red); color: var(--on-red);
-  display: flex; align-items: center; justify-content: center; }
-.update-icon svg.i { width: 26px; height: 26px; }
+.update-icon { width: 52px; height: 52px; margin: 0 auto; border-radius: 16px; background: var(--red); color: var(--on-red); display: flex; align-items: center; justify-content: center; }
+#toast { position: fixed; left: 50%; bottom: calc(var(--tab-h) + var(--safe-b) + 16px); z-index: 100; background: var(--toast); color: var(--on-toast); border-radius: 16px; padding: 12px 18px; display: flex; align-items: center; gap: 16px; max-width: calc(100% - 32px); font-size: 14px; font-weight: 550; box-shadow: 0 8px 28px rgba(0, 0, 0, .28); opacity: 0; transform: translate(-50%, 16px) scale(.96); pointer-events: none; transition: opacity .2s ease, transform .45s var(--spring); }
+#toast.show { opacity: 1; transform: translate(-50%, 0) scale(1); pointer-events: auto; }
+#toast button { background: none; border: 0; color: var(--toast-action); font-weight: 800; letter-spacing: .04em; padding: 8px 0 8px 4px; }
 
-/* ---------- Motion ----------
-   Fluid, spring-based movement in the spirit of iOS 26: controls glide between states,
-   sheets spring into place, presses give a soft squeeze and settle back. Small overshoot,
-   short durations, nothing bouncy or translucent. All of it turns off with Reduce Motion. */
-.seg { position: relative; isolation: isolate; }
-nav.tabs { isolation: isolate; }   /* stays position: fixed (set above); fixed already anchors the sliding pill */
-.seg button, nav.tabs button { position: relative; z-index: 1; transition: color .25s ease; }
-/* Sliding selection pill (position set from JS on the element as --ind-x / --ind-w). */
-.seg.has-ind::before, nav.tabs.has-ind::before {
-  content: ""; position: absolute; z-index: 0; left: 0; width: var(--ind-w, 0);
-  transform: translateX(var(--ind-x, 0)); pointer-events: none;
-  transition: transform .55s var(--spring), width .55s var(--spring);
-}
-.seg.has-ind::before { top: 3px; bottom: 3px; background: var(--surface); border-radius: 10px; box-shadow: var(--shadow); }
-.seg.has-ind button.active { background: none; box-shadow: none; }
-nav.tabs.has-ind::before { top: 4px; height: 50px; background: var(--chip); border-radius: 18px; }
-.seg.no-anim::before, nav.tabs.no-anim::before { transition: none; }
-/* While the keyboard is open, the tab bar gets out of the way (like native iOS apps) instead of riding on top of it. */
-nav.tabs { transition: transform .35s var(--ease-out), visibility 0s; }
-body.kb-open nav.tabs { transform: translateY(110%); visibility: hidden; transition: transform .2s ease, visibility 0s .2s; }
-/* Every tab keeps the same icon and label position; the active one is shown by color and the pill only. */
-nav.tabs button { height: 54px; justify-content: center; line-height: 1.2; }
-nav.tabs button svg.i { display: block; transform: none; }
+/* ---------- Recorder, note sheet, photo ---------- */
+.rec-sheet { text-align: center; }
+.rec-sheet h2 { text-align: center; }
+.rec-meter { height: 12px; border-radius: 6px; background: var(--chip); overflow: hidden; margin: 16px 4px 0; }
+.rec-meter i { display: block; height: 100%; width: 100%; background: var(--red); transform: scaleX(0); transform-origin: left; transition: transform .08s linear; }
+.rec-time { font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.rec-done { min-height: 60px; font-size: 18px; }
+.rec-alt .btn { font-size: 14px; }
+.transcript { font-size: 16px; line-height: 1.4; background: var(--surface); border-radius: 14px; padding: 12px 14px; }
+.zoom-stage { position: relative; height: 34dvh; background: #000; border-radius: 16px; overflow: hidden; display: flex; align-items: center; justify-content: center; touch-action: none; }
+.zoom-stage img { max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center; will-change: transform; user-select: none; -webkit-user-drag: none; }
+.zoom-stage.empty-photo::after { content: "No photo for this note"; color: #aaa; font-size: 13px; position: absolute; }
+.zoom-hint { position: absolute; left: 12px; bottom: 8px; font-size: 11px; color: rgba(255, 255, 255, .7); pointer-events: none; }
+.viewer-dots { display: flex; justify-content: center; gap: 8px; min-height: 12px; }
+.viewer-dots:empty { display: none; }
+.viewer-dots .dot { width: 9px; height: 9px; border-radius: 50%; border: 0; padding: 0; background: var(--line); }
+.viewer-dots .dot.on { background: var(--text); }
 
-/* Press: quick squeeze, springy release. */
-.btn, .chip, .qty-tap, .check, .more-btn, .qty button, .menu-list button, nav.tabs button, .seg button, .cam-stop, .sync-ind {
-  transition: transform .5s var(--spring), background-color .2s ease, color .2s ease, border-color .2s ease, opacity .2s ease;
-}
-.btn:active, .chip:active, .qty-tap:active, .qty button:active, .more-btn:active, .cam-stop:active, .sync-ind:active { transform: scale(.94); transition-duration: .12s; transition-timing-function: ease-out; }
-.check:active { transform: scale(.88); transition-duration: .12s; }
-.seg button:active { transform: scale(.95); transition-duration: .12s; }
-nav.tabs button, nav.tabs button:active { transform: none; }   /* no squeeze: Safari can leave tapped tabs looking pressed */
-.menu-list button:active { background: var(--chip); transform: scale(.985); transition-duration: .1s; }
-.item.tap { transition: transform .5s var(--spring), background-color .2s ease; }
-.item.tap:active { transform: scale(.985); transition-duration: .12s; }
-
-/* Things arriving. */
-.view.active { animation: viewIn .42s var(--ease-out) both; }
-.item.enter { animation: rowIn .55s var(--spring) both; }
-.banner { animation: bannerIn .5s var(--spring) both; }
-.check.on.pop svg.i { animation: checkIn .45s var(--spring) both; }   /* only when just crossed off */
-.item .name, .item .thumb { transition: color .3s ease, opacity .3s ease; }
-.bump { animation: bump .45s var(--spring); }
-
-@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes fadeOut { to { opacity: 0; } }
-@keyframes sheetIn { from { transform: translateY(100%); } to { transform: none; } }
-@keyframes sheetOut { to { transform: translateY(100%); } }
-@keyframes dialogIn { from { transform: scale(.9); opacity: 0; } 40% { opacity: 1; } to { transform: none; opacity: 1; } }
-@keyframes dialogOut { to { transform: scale(.95); opacity: 0; } }
-@keyframes viewIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@keyframes rowIn { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
-@keyframes bannerIn { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
-@keyframes checkIn { from { transform: scale(.3); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes bump { 0% { transform: scale(1); } 35% { transform: scale(1.12); } 100% { transform: scale(1); } }
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
-}
-#toast button { background: none; border: 0; color: var(--toast-action); font-weight: 800; letter-spacing: .04em; padding: 0; }
-
-/* More */
+/* ---------- Settings ---------- */
 .set-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
 .set-row + .set-row { border-top: 1px solid var(--line); }
 .status-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--faint); flex: none; }
 .status-dot.ok { background: var(--ok); } .status-dot.warn { background: var(--warn); } .status-dot.bad { background: var(--red); }
-details.owner summary { cursor: pointer; font-weight: 650; color: var(--muted); font-size: 14px; list-style: none; }
-details.owner summary::-webkit-details-marker { display: none; }
-code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
-.foot { text-align: center; color: var(--faint); font-size: 12px; margin: 20px 0 8px; }
-/* Photo thumbnails and the full-screen viewer */
-.shelf-thumb { position: relative; width: 56px; height: 56px; flex: none; border: 0; padding: 0; border-radius: 12px; overflow: hidden; background: var(--chip); }
-.shelf-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.item.done .shelf-thumb { opacity: .45; }
-.viewer-overlay { padding: 0 !important; background: #000 !important; }
-.viewer { position: fixed; inset: 0; display: flex; flex-direction: column; background: #000; color: #fff; animation: fade .25s ease both; }
-.viewer-top { display: flex; align-items: center; gap: 10px; padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px; }
-.viewer-top .small { opacity: .75; }
-.viewer-x { width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255,255,255,.14); color: #fff; display: flex; align-items: center; justify-content: center; }
-.viewer-stage { flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-.viewer-stage img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.viewer-dots { display: flex; justify-content: center; gap: 8px; min-height: 20px; padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
-.viewer-dots .dot { width: 8px; height: 8px; border-radius: 50%; border: 0; padding: 0; background: rgba(255,255,255,.35); }
-.viewer-dots .dot.on { background: #fff; }
-.last .label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
-.camera.flash::after { content: ""; position: absolute; inset: 0; z-index: 5; background: #fff; animation: fadeOut .35s ease forwards; pointer-events: none; }
-
-/* ---------- Beta 4: voice notes ---------- */
-.camera { aspect-ratio: auto; width: 100%; height: 40dvh; }
-.camera video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; animation: fade .45s ease both; }
-.camera .cam-off, .camera .cam-wait { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px; color: var(--on-cam); text-align: center; }
-.camera .cam-wait { font-size: 14px; }
-.camera .cam-off p { margin: 0; font-size: 13px; max-width: 30ch; }
-.camera .cam-off .btn.quiet { background: rgba(255,255,255,.14); color: #fff; }
-#view-capture > * + * { margin-top: 10px; }
-.cap-bar { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.shutter-big { width: 82px; height: 82px; border-radius: 50%; border: 4px solid var(--red); background: var(--surface); padding: 5px; transition: transform .45s var(--spring); }
-.shutter-big span { display: block; width: 100%; height: 100%; border-radius: 50%; background: var(--red); }
-.shutter-big:active { transform: scale(.9); transition-duration: .1s; }
-.shutter-big:disabled { opacity: .4; }
-.cap-hint { font-size: 13px; color: var(--muted); text-align: center; margin: 0; }
-.cap-links { display: flex; gap: 8px; }
-.cap-links .btn { flex: 1; }
-.queue-line { font-size: 13px; color: var(--muted); text-align: center; margin: 0; }
-.queue-line.busy::before, .spin { content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; border: 2px solid var(--line); border-top-color: var(--red); border-radius: 50%; animation: spin .8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.card.last, #last-note { display: flex; align-items: center; gap: 12px; cursor: pointer; }
-.last-text { font-size: 14px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-#last-note svg.i { color: var(--faint); }
-.banner.warn { background: var(--warn-soft); }
-.banner.busy { background: var(--chip); }
-.banner svg.i { color: var(--warn); }
-
-/* Recorder sheet */
-.rec-sheet { text-align: center; }
-.rec-sheet h2 { text-align: center; }
-.rec-meter { height: 12px; border-radius: 6px; background: var(--chip); overflow: hidden; margin: 14px 4px 0; }
-.rec-meter i { display: block; height: 100%; width: 100%; background: var(--red); transform: scaleX(0); transform-origin: left; transition: transform .08s linear; }
-.rec-time { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
-.rec-done { padding: 16px; font-size: 18px; }
-.rec-alt .btn { font-size: 14px; }
-
-/* Needed list */
-.need .check { margin-right: 0; }
-.jump-btn { border: 0; background: var(--chip); color: var(--muted); width: 40px; height: 44px; border-radius: 12px; flex: none; display: flex; align-items: center; justify-content: center; padding: 0; transition: transform .5s var(--spring), background-color .2s ease; }
-.jump-btn:active { transform: scale(.92); transition-duration: .12s; }
-.item.need { padding-right: 10px; }
-.item.done .jump-btn { opacity: .5; }
-.pill.warn { white-space: nowrap; }
-.src-row { padding: 12px; }
-.src-text { font-size: 14px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
-.src-row .qty button { width: 44px; height: 44px; font-size: 22px; }
-.src-row .qty input { width: 64px; font-size: 22px; padding: 6px; }
-
-/* Notes */
-.note-photo { position: relative; width: 84px; height: 84px; flex: none; border: 0; padding: 0; border-radius: 14px; overflow: hidden; background: var(--chip); }
-.note-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.note-photo.missing::after, .shelf-thumb.missing::after { content: "No photo"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--muted); }
-.note-photo .count { position: absolute; right: 4px; bottom: 4px; min-width: 18px; height: 18px; border-radius: 9px; background: rgba(0,0,0,.65); color: #fff; font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; }
-.card.note { padding: 12px; transition: box-shadow .3s ease, background-color .4s ease; }
-.card.note > * + * { margin-top: 10px; }
-.transcript { font-size: 15px; line-height: 1.35; color: var(--text); background: var(--surface-2); border-radius: 12px; padding: 10px 12px; cursor: text; }
-.note-items { border-radius: 12px; overflow: hidden; background: var(--surface-2); }
-.note-items .item { min-height: 56px; }
-.note-items .item + .item::before { left: 66px; }
-.note-item .qty-tap { pointer-events: none; }
-@keyframes flashNote { 0% { box-shadow: 0 0 0 3px var(--red); } 70% { box-shadow: 0 0 0 3px var(--red); } 100% { box-shadow: var(--shadow); } }
-@keyframes flashItem { 0%, 70% { background: var(--warn-soft); } 100% { background: transparent; } }
-.card.note.flash { animation: flashNote 2.2s ease both; }
-.note-item.flash { animation: flashItem 2.2s ease both; }
-
-/* More: model download */
 .mprog { height: 10px; border-radius: 5px; background: var(--chip); overflow: hidden; margin-top: 12px; }
 .mprog i { display: block; height: 100%; width: 0; background: var(--red); transition: width .3s ease; }
+details.owner summary { cursor: pointer; font-weight: 650; color: var(--muted); font-size: 14px; list-style: none; min-height: 32px; display: flex; align-items: center; }
+details.owner summary::-webkit-details-marker { display: none; }
 
-.item.need .sub, .note-item .sub { white-space: normal; overflow: visible; }
+/* ---------- Motion ---------- */
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { to { opacity: 0; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes viewIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sheetIn { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes sheetOut { to { transform: translateY(100%); } }
+@keyframes dialogIn { from { transform: scale(.92); opacity: 0; } 40% { opacity: 1; } to { transform: none; opacity: 1; } }
+@keyframes dialogOut { to { transform: scale(.95); opacity: 0; } }
+@keyframes bump { 0% { transform: scale(1); } 35% { transform: scale(1.14); } 100% { transform: scale(1); } }
+.bump { animation: bump .45s var(--spring); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 
-/* Beta 5: status dots, reasons, photo check */
-.sdot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; background: #E5322D; transition: background-color .6s ease; }
-.sdot.yellow { background: #F2B01E; }
-.sdot.green { background: #2EAA4E; }
-.why { font-size: 12px; font-weight: 650; color: var(--warn); margin-top: 1px; }
-.viewer-stage, .zoom-stage { touch-action: none; }
-.viewer-stage img, .zoom-stage img { transform-origin: center; will-change: transform; user-select: none; -webkit-user-drag: none; }
-.zoom-stage { position: relative; height: 32dvh; background: #000; border-radius: 14px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
-.zoom-stage img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.zoom-stage.empty-photo::after { content: "No photo"; color: #aaa; font-size: 13px; position: absolute; }
-.zoom-hint { position: absolute; left: 10px; bottom: 8px; font-size: 11px; color: rgba(255,255,255,.7); pointer-events: none; }
-.check-sheet > * + * { margin-top: 10px; }
-.note-item.focus { background: var(--warn-soft); }
-.note-items .item { cursor: pointer; }.check-sheet .viewer-dots:empty { display: none; }
-
-/* Beta 5.1: aisle / display */
-.shutters { display: flex; gap: 28px; justify-content: center; }
-.shutter-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.shutter-col b { font-size: 13px; font-weight: 750; letter-spacing: .02em; }
-.shutter-big.display { border-color: #1B1B1B; }
-.shutter-big.display span { background: #1B1B1B; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .shutter-big.display { border-color: #F5F3F1; } :root:not([data-theme="light"]) .shutter-big.display span { background: #F5F3F1; } }
-:root[data-theme="dark"] .shutter-big.display { border-color: #F5F3F1; }
-:root[data-theme="dark"] .shutter-big.display span { background: #F5F3F1; }
-.kcount { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--red); color: var(--on-red); font-size: 11px; font-weight: 800; line-height: 18px; }
-#note-seg .kcount { background: var(--chip); color: var(--muted); }
-#view-needed > .seg, #view-notes > .seg { margin-top: 10px; }
-.pill.kind.aisle { background: var(--chip); color: var(--text); }
-.pill.kind.display { background: #1B1B1B; color: #fff; }
-
-/* Beta 5.1: capture mode switch. The whole page changes color so the mode is obvious. */
-.cap-seg { margin-bottom: 0; }
-.cap-band { text-align: center; font-size: 12px; font-weight: 800; letter-spacing: .24em; padding: 6px 0; border-radius: 10px; background: var(--red); color: var(--on-red); transition: background-color .35s ease; }
-#view-capture.mode-display .cap-band { background: #1B1B1B; color: #fff; }
-#view-capture.mode-display .camera { border-color: #1B1B1B; box-shadow: 0 0 0 3px #1B1B1B; }
-#view-capture.mode-aisle .camera { border-color: var(--red); box-shadow: 0 0 0 3px var(--red); }
-#view-capture.mode-display .shutter-big { border-color: #1B1B1B; }
-#view-capture.mode-display .shutter-big span { background: #1B1B1B; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #view-capture.mode-display .cap-band { background: #F5F3F1; color: #111; } :root:not([data-theme="light"]) #view-capture.mode-display .camera { border-color: #F5F3F1; box-shadow: 0 0 0 3px #F5F3F1; } :root:not([data-theme="light"]) #view-capture.mode-display .shutter-big { border-color: #F5F3F1; } :root:not([data-theme="light"]) #view-capture.mode-display .shutter-big span { background: #F5F3F1; } }
-:root[data-theme="dark"] #view-capture.mode-display .cap-band { background: #F5F3F1; color: #111; }
-:root[data-theme="dark"] #view-capture.mode-display .camera { border-color: #F5F3F1; box-shadow: 0 0 0 3px #F5F3F1; }
-:root[data-theme="dark"] #view-capture.mode-display .shutter-big { border-color: #F5F3F1; }
-:root[data-theme="dark"] #view-capture.mode-display .shutter-big span { background: #F5F3F1; }
-
-/* Beta 5.1.2: blurb rows, clusters, chips */
-.cluster-h { font-size: 15px; font-weight: 800; margin: 14px 4px 6px; letter-spacing: -.01em; }
-.cluster-h span { font-weight: 600; font-size: 13px; color: var(--muted); }
-.cluster-h:first-of-type { margin-top: 4px; }
-.group-h + .cluster-h { margin-top: 2px; }
-.blurb { font-size: 15.5px; line-height: 1.35; }
-.blurb .hl { font-weight: 800; background: color-mix(in srgb, var(--red) 12%, transparent); border-radius: 4px; padding: 0 2px; }
-.item.done .blurb { text-decoration: line-through; text-decoration-thickness: 2px; color: var(--muted); }
-.item.need > svg.i { color: var(--faint); }
-.chips-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
-.chip-sm { font-size: 11.5px; font-weight: 650; padding: 3px 8px; border-radius: 999px; background: var(--chip); color: var(--muted); }
-.flag-tag { font-size: 11.5px; font-weight: 750; padding: 3px 8px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); }
-.cap-seg { margin-top: 2px; }
-#view-capture > .cap-seg + .cap-bar { margin-top: 12px; }
-.cam-off .btn.quiet { margin-top: 2px; }
+body[data-view="capture"] main { padding: 0; max-width: none; }
+body[data-view="capture"] #view-capture.active { max-width: 640px; margin: 0 auto; }
+.item.compact { min-height: 52px; padding-top: 8px; padding-bottom: 8px; }
 </style>
 </head>
-<body>
+<body data-view="capture">
 <header class="top">
-  <h1>Shelf Scan</h1><span class="tagline">BETA 5.1.2</span>
+  <h1>Shelf Scan</h1>
   <span class="spacer"></span>
   <span class="store" id="hdr-store"></span>
   <button class="sync-ind" id="sync-ind" hidden></button>
 </header>
 
 <main>
-  <!-- CAPTURE -->
-  <section class="view active" id="view-capture">
-    <div class="cap-band" id="cap-band"></div>
+  <!-- CAPTURE: a big viewfinder, with everything you tap sitting in the bottom third -->
+  <section class="view active mode-aisle" id="view-capture">
     <div class="camera" id="camera">
       <video id="cam-video" playsinline muted autoplay hidden></video>
       <div class="cam-wait" id="cam-starting" hidden>Starting the camera…</div>
@@ -494,19 +299,23 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
         <p id="cam-error"></p>
         <button class="btn quiet" id="btn-phonecam" hidden><span data-icon="image"></span>Use phone camera instead</button>
       </div>
+      <span class="cam-chip" id="cap-band">AISLE</span>
       <button class="cam-stop" id="btn-cam-stop" aria-label="Turn the camera off" hidden><span data-icon="x"></span></button>
-    </div>
-    <div class="seg cap-seg" id="cap-seg">
-      <button data-k="aisle" class="active">Aisle</button>
-      <button data-k="display">Display</button>
-    </div>
-    <div class="cap-bar">
-      <button class="shutter-big" id="btn-shutter" aria-label="Take a photo, then say what you need"><span></span></button>
-      <p class="cap-hint" id="shutter-label">Snap the aisle, then say what you need.</p>
+      <p class="queue-line" id="queue-line" hidden><span class="spin"></span><span id="queue-text"></span></p>
     </div>
     <div id="model-banner" hidden></div>
-    <p class="queue-line" id="queue-line" hidden></p>
-    <div class="card last" id="last-note" hidden></div>
+    <div class="deck">
+      <div class="seg cap-seg" id="cap-seg">
+        <button data-k="aisle" class="active">Aisle</button>
+        <button data-k="display">Display</button>
+      </div>
+      <div class="deck-row">
+        <button class="deck-side left" id="last-note" aria-label="Open the last note" style="visibility:hidden"></button>
+        <button class="shutter-big" id="btn-shutter" aria-label="Take a photo, then say what you need"><span></span></button>
+        <button class="deck-side right" id="btn-open-needed" aria-label="Open the Needed list"><span data-icon="list"></span><span class="badge" id="deck-badge" hidden></span></button>
+      </div>
+      <p class="cap-hint" id="shutter-label">Snap the aisle, then say what you need.</p>
+    </div>
   </section>
 
   <section class="view" id="view-needed"></section>
@@ -571,10 +380,6 @@ function fillIcons(root = document) {
 // ---------- Starter product list ----------
 // Brand/flavor/format combos only. No UPCs are pre-filled: barcodes are
 // learned the first time they're scanned. Verify against the bottler order guide.
-const CATEGORY_ORDER = [
-  "12oz Cans", "Mini Cans", "16oz Cans", "20oz", "Bottle Multipacks", "2L & 1L", "Glass",
-  "Water", "Sports Drinks", "Tea & Juice", "Energy", "Other"
-];
 const FORMATS = {
   c12_12:  { size: "12oz can",    pack: "12pk",   category: "12oz Cans",         unit: "pack" },
   c12_24:  { size: "12oz can",    pack: "24pk",   category: "12oz Cans",         unit: "pack" },
@@ -826,7 +631,7 @@ function freshState() {
     products: buildSeedProducts(),
     deleted: { products: {} },              // tombstones: id -> time deleted
     outbox: { products: {} },               // changed since last upload
-    notes: [],                              // newest first: { id, at, photos:[id], audio:id|null, secs, text, status, parts:[{pid, s, e}] (products found in the text), flag, ticks:{pid: true}, err }
+    notes: [],                              // newest first: { id, at, photos:[id], audio:id|null, secs, text, status, parts:[{vk, s, e}] (brand + flavor found in the text), flag, ticks:{pid: true}, err }
     recents: [],
     settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", models: { asr: false } },   // models: which downloads finished
     sync: { lastPull: 0, lastPush: 0, error: "" },
@@ -859,6 +664,11 @@ function migrate() {
     // Beta 5.1.2: a note is its words plus the products the matcher found in them (no quantities or dots).
     delete n.items; delete n.rev; delete n.edited;
     n.ticks = n.ticks || {};
+    if ((n.parts || []).some(p => p.pid)) {   // Beta 5.1.2 notes pointed at exact products: re-read them, keeping their ticks
+      const t = {};
+      for (const k in n.ticks) { if (!n.ticks[k]) continue; const p = k === "?" ? null : productById(k); t[p ? vKey(p) : k] = true; }
+      n.ticks = t; n.parts = undefined;
+    }
     if (n.status === "done" && n.text && !n.parts) { try { const r = readBlurb(n.text); n.parts = r.parts; n.flag = r.flag; } catch (e) { n.parts = []; n.flag = true; } }
   }
   // New starter products added to the app show up for existing users.
@@ -876,8 +686,6 @@ function snapshot() { return JSON.stringify(state); }
 
 const productById = id => state.products.find(p => p.id === id);
 function pName(p) { return p.flavor ? `${p.brand} ${p.flavor}` : p.brand; }
-function pSub(p) { return `${p.size} · ${p.pack}`; }
-function pFull(p) { return `${pName(p)} — ${pSub(p)}`; }
 
 // ---------- Change tracking (what needs uploading) ----------
 function markProduct(id) {
@@ -921,93 +729,6 @@ function restore(snap) {
 const $ = sel => document.querySelector(sel);
 function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
 function el(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content.firstElementChild; }
-function initials(brand) {
-  return brand.replace(/[^A-Za-z ]/g, "").split(/\s+/).filter(Boolean).map(w => w[0]).join("").slice(0, 2).toUpperCase() || "?";
-}
-function thumbHtml(p, lg) {
-  const cls = "thumb" + (lg ? " lg" : "");
-  const src = p && p.img;
-  if (src) return `<div class="${cls}"><img src="${esc(src)}" alt="" loading="lazy" onerror="this.parentNode.textContent='${esc(initials(p.brand))}'"></div>`;
-  if (!p) return `<div class="${cls}">?</div>`;
-  return `<div class="${cls} art" style="background:${artColors(p).bg}">${productArt(p)}</div>`;
-}
-
-// ---------- Illustrated product tiles ----------
-// Package silhouette (can, bottle, 2L, glass, fridge pack…) on the brand color,
-// with a label band in the flavor's color and a count badge for multipacks.
-const FLAVOR_COLORS = [
-  [/zero|black/i, "#111111"], [/diet/i, "#C9CCD1"], [/cherry/i, "#7E0A1C"], [/vanilla/i, "#F1E3BD"],
-  [/caffeine/i, "#D4AF37"], [/root beer/i, "#4A2A18"], [/ginger/i, "#D9B44A"], [/tonic|club/i, "#A9CDEB"],
-  [/blue/i, "#1E73BE"], [/grape|violet/i, "#6A2C91"], [/strawberry/i, "#E8384F"], [/pineapple|lemon(?!ade)/i, "#F7D117"],
-  [/peach|mango/i, "#F6A04D"], [/orange/i, "#F58220"], [/lime|green/i, "#7AC143"], [/raspberry|razz/i, "#C2185B"],
-  [/berry|pomegranate/i, "#7B2E8E"], [/punch|fruit/i, "#E03A3E"], [/tropical|paradise/i, "#FF8A00"],
-  [/pink/i, "#F48FB1"], [/lemonade/i, "#F4E04D"], [/unsweet/i, "#D9C9A3"], [/sweet/i, "#B8860B"],
-  [/grapefruit|citrus/i, "#F28C6B"],
-];
-function flavorColor(p) {
-  for (const [re, c] of FLAVOR_COLORS) if (re.test(p.flavor)) return c;
-  return null;
-}
-function packageShape(p) {
-  const s = (p.size || "").toLowerCase();
-  const oz = parseFloat(s) || 0;
-  if (/glass/.test(s)) return "glass";
-  if (/carton|box|pouch/.test(s)) return "carton";
-  if (/can/.test(s)) return oz && oz < 9 ? "mini" : oz >= 15 ? "tall" : "can";
-  if (/\d(\.\d+)?\s*l\b|liter|litre/.test(s) || oz >= 24) return "big";
-  return "bottle";
-}
-const SHAPES = {
-  carton: { body: "M16 12h16a1.5 1.5 0 0 1 1.5 1.5V39a1.5 1.5 0 0 1-1.5 1.5H16a1.5 1.5 0 0 1-1.5-1.5V13.5A1.5 1.5 0 0 1 16 12zM27 12V6.5h2V12", band: [14.5, 22, 19, 9] },
-  can:    { body: "M17 11h14a2 2 0 0 1 2 2v24a2 2 0 0 1-2 2H17a2 2 0 0 1-2-2V13a2 2 0 0 1 2-2zM18 8.5h12", band: [15, 20, 18, 8] },
-  mini:   { body: "M18.5 15h11a2 2 0 0 1 2 2v18a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2V17a2 2 0 0 1 2-2zM19.5 12.5h9", band: [16.5, 22, 15, 7] },
-  tall:   { body: "M18 7h12a2 2 0 0 1 2 2v30a2 2 0 0 1-2 2H18a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z", band: [16, 18, 16, 10] },
-  bottle: { body: "M21.5 5h5v4c0 2.5 4.5 3.5 4.5 8v4.5c0 2-1 2.5-1 4.5s1 2.5 1 4.5V38a3 3 0 0 1-3 3h-8a3 3 0 0 1-3-3v-11.5c0-2 1-2.5 1-4.5s-1-2.5-1-4.5V17c0-4.5 4.5-5.5 4.5-8z", band: [17, 16.5, 14, 6] },
-  big:    { body: "M20.5 4h7v4c0 2.5 6.5 3.5 6.5 9v5c0 2.5-1.5 3-1.5 5s1.5 2.5 1.5 5V39a3 3 0 0 1-3 3H17a3 3 0 0 1-3-3V28c0-2.5 1.5-3 1.5-5s-1.5-2.5-1.5-5v-1c0-5.5 6.5-6.5 6.5-9z", band: [14, 15.5, 20, 7] },
-  glass:  { body: "M22.5 4h3v9c0 3 4 3.5 4 8.5 0 3-1.5 4-1.5 7s1.5 4 1.5 7V39a3 3 0 0 1-3 3h-5a3 3 0 0 1-3-3v-3.5c0-3 1.5-4 1.5-7s-1.5-4-1.5-7c0-5 4-5.5 4-8.5z", band: [18.5, 24, 11, 7] },
-};
-const isLight = hex => {
-  const n = parseInt(hex.slice(1), 16), r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255;
-  return 0.299 * r + 0.587 * g + 0.114 * b > 170;
-};
-// Tile takes the flavor's color; the brand color moves to the label band.
-function artColors(p) {
-  const brand = BRAND_COLORS[p.brand] || "#8A8480";
-  const flavor = flavorColor(p);
-  const bg = flavor || brand;
-  const band = flavor && flavor.toLowerCase() !== brand.toLowerCase() ? brand : null;
-  return { bg, band, ink: isLight(bg) ? "#1B1B1B" : "#FFFFFF" };
-}
-const artCache = new Map();
-function productArt(p) {
-  const key = `${p.brand}|${p.flavor}|${p.size}|${p.pack}`;
-  if (artCache.has(key)) return artCache.get(key);
-  const { bg: brand, band, ink: W } = artColors(p);   // "brand" = tile color below (outlines, badge text)
-  const shape = packageShape(p);
-  const n = parseInt(p.pack, 10) || 1;
-  let g = "";
-  let clipN = 0;
-  const one = (sh, tx = 0, ty = 0, k = 1, outline = false) => {
-    const S = SHAPES[sh], [bx, by, bw, bh] = S.band, id = `c${artCache.size}-${clipN++}`;
-    // In a multipack each item gets a brand-colored outline so overlapping shapes stay distinct.
-    return `<g transform="translate(${tx} ${ty}) scale(${k})"><clipPath id="${id}"><path d="${S.body}"/></clipPath>` +
-      (outline ? `<path d="${S.body}" fill="none" stroke="${brand}" stroke-width="${(3.2 / k).toFixed(2)}" stroke-linejoin="round"/>` : "") +
-      `<path d="${S.body}" fill="${W}"/>` +
-      (band ? `<rect x="${bx - 4}" y="${by}" width="${bw + 8}" height="${bh}" fill="${band}" clip-path="url(#${id})"/>` : "") + `</g>`;
-  };
-  if (n > 1) {
-    // Three of the package side by side (back two smaller), plus a count badge.
-    const k = 0.72;
-    g = one(shape, -4.5, 9, k, true) + one(shape, 17.5, 9, k, true) + one(shape, 3.5, 3, 0.86, true) +
-        `<rect x="${n >= 10 ? 27 : 30}" y="32" width="${n >= 10 ? 20 : 16}" height="14" rx="7" fill="${W}" stroke="${brand}" stroke-width="1.5"/>` +
-        `<text x="${n >= 10 ? 37 : 38}" y="42.5" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="10" font-weight="800" fill="${brand}">${n}</text>`;
-  } else {
-    g = one(shape);
-  }
-  const svg = `<svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden="true">${g}</svg>`;
-  artCache.set(key, svg);
-  return svg;
-}
 function fmtDate(ts) { return new Date(ts).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); }
 function ago(ts) {
   if (!ts) return "never";
@@ -1130,83 +851,6 @@ function menu(title, options) {
     }
     s.querySelector('[data-a="cancel"]').onclick = () => { done = true; close(); resolve(null); };
   });
-}
-
-// ---------- Search ----------
-const ALIASES = {
-  cz: "coke zero", dc: "diet coke", cf: "caffeine free", coke: "coca cola", coca: "coca",
-  "2liter": "2l", "2litre": "2l", pack: "pk", liter: "l", litre: "l", ounce: "oz",
-  bb: "bodyarmor", pwr: "powerade", mm: "minute maid", vw: "vitaminwater",
-};
-function normText(s) {
-  return s.toLowerCase()
-    .replace(/coca[\s-]?cola/g, "coca cola coke")
-    .replace(/diet coke/g, "diet coke coca cola")
-    .replace(/['’`]/g, "")
-    .replace(/(\d)\s*-?\s*(liter|litre|ltr)s?\b/g, "$1l")
-    .replace(/(\d)\s*-?\s*(ounce|ounces)\b/g, "$1oz")
-    .replace(/(\d)\s*-?\s*(oz|l|pk|pack|ct)\b/g, "$1$2")
-    .replace(/(\d+)\s*pack\b/g, "$1pk")
-    .replace(/[^a-z0-9. ]+/g, " ")
-    .replace(/\s+/g, " ").trim();
-}
-// Search text: the product's own name/size/pack, plus its list group (which only counts as a weaker match,
-// so "sprite 2l" ranks the 2L above the 1L even though both sit in the "2L & 1L" group).
-function searchText(p) {
-  if (!p._st) Object.defineProperty(p, "_st", { value: normText(`${p.brand} ${p.flavor} ${p.size} ${p.pack}`) + " | " + normText(p.category), writable: true, enumerable: false, configurable: true });
-  return p._st;
-}
-function queryTokens(q) {
-  const toks = [];
-  for (let t of normText(q).split(" ").filter(Boolean)) {
-    const a = ALIASES[t];
-    if (a) toks.push(...a.split(" ")); else toks.push(t.replace(/pack$/, "pk"));
-  }
-  return toks;
-}
-function searchProducts(q, { category = "", includeRetired = false } = {}) {
-  let pool = state.products.filter(p => (includeRetired || !p.retired) && (!category || p.category === category));
-  const toks = queryTokens(q || "");
-  if (!toks.length) return pool;
-  const scored = [];
-  for (const p of pool) {
-    const [own, group] = searchText(p).split(" | ");
-    const words = own.split(" ");
-    let hits = 0, ownHits = 0, prefix = 0, exact = 0;
-    for (const t of toks) {
-      const inOwn = own.includes(t);
-      if (inOwn || group.includes(t)) {
-        hits++;
-        if (inOwn) ownHits++;
-        if (words.some(w => w.startsWith(t))) prefix++;
-        if (words.includes(t)) exact++;
-      }
-    }
-    if (hits) scored.push({ p, hits, ownHits, prefix, exact });
-  }
-  const full = scored.filter(s => s.hits === toks.length);
-  const use = full.length ? full : scored.filter(s => s.hits >= Math.max(1, toks.length - 1));
-  use.sort((a, b) => b.hits - a.hits || b.ownHits - a.ownHits || b.exact - a.exact || b.prefix - a.prefix);
-  return use.map(s => s.p);
-}
-function bumpRecent(pid) { state.recents = [pid, ...state.recents.filter(x => x !== pid)].slice(0, 12); }
-function catSort(a, b) {
-  const ia = CATEGORY_ORDER.indexOf(a), ib = CATEGORY_ORDER.indexOf(b);
-  return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b);
-}
-function allCategories() { return [...new Set(state.products.map(p => p.category))].sort(catSort); }
-
-// ---------- Product picker ----------
-function searchBox(placeholder) {
-  return `<div class="search-wrap">${icon("search")}<input class="field" type="search" placeholder="${esc(placeholder)}" autocomplete="off" autocorrect="off" spellcheck="false"></div>`;
-}
-// Builds the whole list in one parse, with a single tap handler (much faster than 200 separate rows).
-function listOf(products, onTap, extra) {
-  const wrap = el(`<div class="list">${products.map(p =>
-    `<div class="item tap" data-pid="${esc(p.id)}">${thumbHtml(p)}<div class="grow"><div class="name">${esc(pName(p))}</div>` +
-    `<div class="sub">${esc(pSub(p))}</div></div>${extra ? extra(p) : ""}</div>`).join("")}</div>`);
-  wrap.addEventListener("click", e => { const r = e.target.closest(".item[data-pid]"); if (r) onTap(r.dataset.pid); });
-  return wrap;
 }
 
 // ---------- Photos and voice clips ----------
@@ -1343,25 +987,10 @@ function speechToDigits(text) {
   }
   return out.join(" ").replace(/\b(\d+) and a half\b/g, (_, n) => `${n}.5`).replace(/\b(\d+)\s+point\s+(\d+)\b/g, "$1.$2");
 }
-function sizeCandidates(s) {
-  const out = new Set();
-  for (const m of s.matchAll(/(\d+(?:\.\d+)?)\s*(ounces?|oz|liters?|litres?|l)\b/g)) out.add(`${parseFloat(m[1])}${/^o/.test(m[2]) ? "oz" : "l"}`);
-  if (/\bmini\b/.test(s)) out.add("7.5oz");
-  return out;
-}
-function packCandidates(s) {
-  const out = new Set();
-  for (const m of s.matchAll(/(\d+)\s*(?:packs?|pk|count|ct)\b/g)) out.add(`${parseInt(m[1], 10)}pk`);
-  // "cans" or "bottles" on their own mean singles; next to a pack count ("12 pack cans") they only name the container.
-  if (/\bsingles?\b/.test(s) || (!out.size && /\b(bottles?|cans?)\b/.test(s))) out.add("single");
-  return out;
-}
 const FLAVOR_SYN = [[/\bzero( sugar| calorie)?\b/g, "zero"], [/\bgeorgia peach\b/g, "just peachy"], [/\b(regular|classic|original|plain)\b/g, "original"],
   [/\bgrape fruit\b/g, "grapefruit"], [/\bmellow yellow\b/g, "mello yello"]];
 const FLAVOR_STOP = new Set(["just", "the", "a", "of", "and", "with"]);
 const flavorTokens = f => { let n = sNorm(f); for (const [re, to] of FLAVOR_SYN) n = n.replace(re, to); return n.split(" ").filter(w => w && !FLAVOR_STOP.has(w)); };
-const pSizeKey = p => { const m = (p.size || "").match(/^(\d+(?:\.\d+)?)(oz|L)/); return m ? `${parseFloat(m[1])}${m[2].toLowerCase()}` : ""; };
-const pPackKey = p => (p.pack === "Single" ? "single" : String(p.pack || "").toLowerCase());
 
 // Longest brand names win ("diet coke" is not also "coke"); a separate "coke" later in the note still counts.
 // Returns where each brand was said: [{ start, end, brand }] in speaking order (end is exclusive).
@@ -1375,45 +1004,62 @@ function brandSpans(tokens) {
   }
   return spans.sort((x, y) => x.start - y.start);
 }
-const detectBrands = tokens => new Set(brandSpans(tokens).map(s => s.brand));// Scored candidates for a phrase, best first.
+const detectBrands = tokens => new Set(brandSpans(tokens).map(s => s.brand));
+
+// ---------- Variations: a brand and a flavor ----------
+// The product list holds one record per size and pack, but everything here works on brand + flavor ("variations").
+const vKey = p => `${sNorm(p.brand)}|${sNorm(p.flavor)}`;
+const vName = v => (v.flavor ? `${v.brand} ${v.flavor}` : v.brand);
+let vCache = null, vSig = "";
+function vmap() {
+  const sig = state.products.length + ":" + state.products.reduce((t, p) => t + (p.updated || 0) + (p.retired ? 1 : 0), 0);
+  if (vCache && sig === vSig) return vCache;
+  const m = new Map();
+  for (const p of state.products) {
+    const k = vKey(p);
+    let v = m.get(k);
+    if (!v) m.set(k, v = { key: k, brand: p.brand, flavor: p.flavor || "", records: [], retired: true, custom: true });
+    v.records.push(p);
+    if (!p.retired) v.retired = false;
+    if (!p.custom) v.custom = false;
+  }
+  vSig = sig; return (vCache = m);
+}
+const variations = ({ includeRetired = false } = {}) => [...vmap().values()].filter(v => includeRetired || !v.retired);
+
+const BASE_WORDS = new Set(["original", "purified", "mineral", "water", "classic", "regular"]);
+// Scored brand + flavor candidates for a phrase, best first.
 function rankPhrase(phrase) {
-  const s = speechToDigits(phrase), tokens = s.split(" ");
+  const s = sNorm(phrase), tokens = s.split(" ");
   let n = s; for (const [re, to] of FLAVOR_SYN) n = n.replace(re, to);
   const tset = new Set(n.split(" "));
-  const sizes = sizeCandidates(s), packs = packCandidates(s);
   const brands = detectBrands(tokens);
   if (!brands.size) return [];
-  const wantCan = /\bcans?\b/.test(s), wantBottle = /\bbottles?\b/.test(s);
-  const out = [];
+  const all = variations(), out = [];
   for (const b of brands) {
-    const pool = state.products.filter(p => p.brand === b && !p.retired);
-    // Did the speaker name any flavor at all for this brand? If not, the plain/original product is the answer.
-    const named = pool.some(p => flavorTokens(p.flavor).some(w => w !== "original" && tset.has(w)));
-    for (const p of pool) {
-      const ft = flavorTokens(p.flavor), fHit = ft.filter(t => tset.has(t)).length;
-      const isPlain = ft.length === 1 && ft[0] === "original";
-      const fs = isPlain ? (named ? (fHit ? 3 : 0) : 3) : ft.length ? 3 * fHit / ft.length : (named ? 0.3 : 0.9);
-      const pen = ft.length && !isPlain && fHit === 0 ? -1 : 0;   // a flavored product shouldn't win when no flavor was named
-      // Small tie-breakers: a named container (cans / bottles), and a bare bottle size ("diet coke 20 ounce") means a single bottle.
-      const isCan = /can/i.test(p.size || ""), isBottle = /bottle/i.test(p.size || "");
-      const box = (wantCan && isCan) || (wantBottle && isBottle) ? 0.5 : 0;
-      const dflt = !packs.size && isBottle && pPackKey(p) === "single" ? 1 : 0;
-      out.push({ p, sc: fs + pen + (sizes.has(pSizeKey(p)) ? 2 : 0) + (packs.has(pPackKey(p)) ? 2 : 0) + box + dflt });
+    const pool = all.filter(v => v.brand === b);
+    // Did the speaker name any flavor at all for this brand? If not, the plain one is the answer.
+    const named = pool.some(v => flavorTokens(v.flavor).some(w => !BASE_WORDS.has(w) && tset.has(w)));
+    for (const v of pool) {
+      const ft = flavorTokens(v.flavor), hit = ft.filter(t => tset.has(t)).length;
+      const plain = !ft.length || ft.every(w => BASE_WORDS.has(w));   // "Purified Water" is just Dasani, "Mineral Water" is just Topo Chico
+      out.push({ v, sc: plain ? (named ? (hit ? 3 : 0) : 3) : hit ? 3 * hit / ft.length : -1 });
     }
   }
   return out.sort((a, b) => b.sc - a.sc);
 }
-// A product phrase ("diet coke 12 pack") -> { p, clear, why } or null when no brand we carry is named.
-// clear is false when the top two candidates are too close to call, or the best one matched too few words.
+// A phrase ("diet coke twelve packs") -> { v, clear, why } or null when no brand we carry is named.
+// clear is false when the top two candidates are too close to call (no flavor said for a brand that has several).
 function resolvePhrase(phrase) {
   const r = rankPhrase(phrase);
   if (!r.length) return null;
-  const top = r[0], next = r.find(x => x.p.id !== top.p.id);
+  const top = r[0], next = r.find(x => x.v.key !== top.v.key);
   const gap = next ? top.sc - next.sc : 9;
-  return { p: top.p, clear: gap >= 1 && top.sc >= 2, why: gap < 1 ? "close call" : top.sc < 2 ? "weak match" : "" };
+  return { v: top.v, clear: gap >= 1 && top.sc >= 1.5, why: gap < 1 ? "which flavor?" : top.sc < 1.5 ? "weak match" : "" };
 }
+
 // ---------- Reading a blurb (organizing only) ----------
-// Works out which products a blurb mentions so blurbs about the same product can sit together on the list.
+// Works out which products (brand + flavor) a blurb mentions so blurbs about the same product can sit together on the list.
 // It never changes the words: the list shows exactly what was said.
 const UNIT_WORDS = new Set(["oz", "ounce", "ounces", "l", "liter", "liters", "litre", "litres", "leader", "leaders", "litter", "litters", "ml", "pack", "packs", "pk", "ct", "count", "fl"]);
 const FILLER_WORDS = new Set(["of", "the", "a", "an", "and", "or", "more", "need", "needs", "needed", "like", "about", "maybe", "case", "cases", "we", "i", "just", "some", "them", "those", "these", "that", "this", "each", "too", "please", "it", "is", "are", "to", "get", "got", "bottle", "bottles", "can", "cans", "single", "singles", "also", "plus", "out", "empty", "bare", "low", "shelf", "here", "there", "yeah", "okay", "um", "uh", "so", "then", "for", "with", "in", "on", "at", "no", "not", "any", "one", "ones", "back", "check", "extra", "full", "all", "make", "actually", "sorry", "wait", "mean", "think", "guess", "ill", "thats", "lets", "see", "say", "will", "would", "could", "should", "have", "has", "had", "be", "been", "was", "were", "my", "your", "their", "they", "you", "what", "when", "where", "which", "who", "how", "why", "now", "still", "again", "only", "even", "really", "very", "much", "many", "lot", "lots", "flat", "flats", "tray", "trays", "pallet", "pallets", "box", "boxes", "going", "gonna", "let", "know", "idea", "goes"]);
@@ -1430,21 +1076,23 @@ function tokenize(text) {
   if (cur) out.push(cur);
   return out;
 }
-// -> { parts: [{ pid, s, e }], flag }. Each part is one product and the stretch of the text about it.
+// -> { parts: [{ vk, s, e }], flag }. Each part is one brand + flavor and the stretch of the text about it.
 // flag = "check the text": nothing was recognized, or a clause with a number mentions something we didn't recognize.
 function readBlurb(text) {
   text = String(text || "");
   const toks = tokenize(text), spans = brandSpans(toks.map(x => x.t));
-  const parts = [];
+  const parts = []; let unsure = false;
   spans.forEach((sp, k) => {
     const from = k === 0 ? 0 : toks[sp.start].s, to = k + 1 < spans.length ? toks[spans[k + 1].start].s : text.length;
     const r = resolvePhrase(text.slice(from, to));
     if (!r) return;
+    if (!r.clear) unsure = true;
+    if (r.why === "which flavor?") return;   // a brand with several flavors and none said ("Fanta"): leave it for a person to place
     // The part about this product ends before "and two ..." (that quantity belongs to the next product).
     const s = toks[sp.start].s, seg = text.slice(s, to).replace(TRAIL_NEXT, "").replace(/[\s,;.]+$/, "");
-    parts.push({ pid: r.p.id, s, e: s + seg.length });
+    parts.push({ vk: r.v.key, s, e: s + seg.length });
   });
-  let flag = !parts.length;
+  let flag = !parts.length || unsure;
   if (!flag) {
     // A clause with a number and unfamiliar words but no brand ("two of the cherry ones") might be a product we missed.
     for (const clause of text.split(/,|;|\band\b|\bplus\b/i)) {
@@ -1846,110 +1494,6 @@ function renderSyncIndicator() {
   b.setAttribute("aria-label", s.text);
 }
 
-// ---------- Add / edit product ----------
-function editProduct(pid, { prefillName = "" } = {}) {
-  const isNew = !pid;
-  const p = isNew
-    ? { id: "", brand: "", flavor: "", size: "", pack: "Single", category: "12oz Cans", unit: "pack", img: "", custom: true, retired: false, updated: 0 }
-    : JSON.parse(JSON.stringify(productById(pid)));
-  if (isNew && prefillName) {
-    const brand = [...new Set(state.products.map(x => x.brand))].sort((a, b) => b.length - a.length)
-      .find(b => prefillName.toLowerCase().startsWith(b.toLowerCase()));
-    if (brand) { p.brand = brand; p.flavor = prefillName.slice(brand.length).trim(); }
-    else p.flavor = prefillName;
-  }
-  const cats = allCategories();
-  return new Promise(resolve => {
-    const s = el(`<div class="sheet"><div class="handle"></div><h2>${isNew ? "Add product" : "Edit product"}</h2>
-      <div class="row"><div id="ep-thumb"></div><div class="grow row" style="flex-wrap:wrap;gap:8px">
-        <label class="btn sm">${icon("camera")}Photo<input type="file" accept="image/*" capture="environment" hidden></label>
-        <button class="btn sm quiet" data-a="clearimg">Remove photo</button></div></div>
-      <label class="f" for="ep-brand">Brand</label><input class="field" id="ep-brand" data-k="brand" list="dl-brands" placeholder="Coca-Cola">
-      <label class="f" for="ep-flavor">Flavor / variety</label><input class="field" id="ep-flavor" data-k="flavor" placeholder="Zero Sugar">
-      <div class="row" style="align-items:flex-start">
-        <div class="grow"><label class="f" for="ep-size">Size</label><input class="field" id="ep-size" data-k="size" placeholder="12oz can"></div>
-        <div class="grow"><label class="f" for="ep-pack">Pack</label><input class="field" id="ep-pack" data-k="pack" placeholder="12pk"></div>
-      </div>
-      <label class="f" for="ep-cat">List group</label><input class="field" id="ep-cat" data-k="category" list="dl-cats">
-      <label class="f" for="ep-unit">Count by</label><input class="field" id="ep-unit" data-k="unit" list="dl-units" placeholder="pack, case, tray, bottle">
-      <datalist id="dl-brands">${[...new Set(state.products.map(x => x.brand))].map(b => `<option value="${esc(b)}">`).join("")}</datalist>
-      <datalist id="dl-cats">${cats.map(c => `<option value="${esc(c)}">`).join("")}</datalist>
-      <datalist id="dl-units"><option value="pack"><option value="case"><option value="tray"><option value="bottle"><option value="can"></datalist>
-      <button class="btn primary block" data-a="save" style="margin-top:18px;padding:14px">${isNew ? "Add product" : "Save"}</button>
-      ${isNew ? "" : `<button class="btn block" data-a="retire">${p.retired ? "Show in lists again" : "Retire (hide from lists)"}</button>`}
-      ${!isNew && p.custom ? `<button class="btn block danger" data-a="delete">Delete product</button>` : ""}
-      <button class="btn block quiet" data-a="cancel">Cancel</button></div>`);
-    let done = false;
-    const close = openLayer(s, { onClose: () => { if (!done) resolve(null); } });
-    s.querySelectorAll("[data-k]").forEach(inp => (inp.value = p[inp.dataset.k] || ""));
-    const readForm = () => s.querySelectorAll("[data-k]").forEach(inp => (p[inp.dataset.k] = inp.value.trim()));
-    const renderThumb = () => (s.querySelector("#ep-thumb").innerHTML = thumbHtml({ ...p, brand: p.brand || "?" }, true));
-    renderThumb();
-    s.querySelector('input[type="file"]').onchange = async e => {
-      const f = e.target.files[0]; if (!f) return;
-      p.img = await shrinkImage(f, 240); renderThumb();
-    };
-    s.querySelector('[data-a="clearimg"]').onclick = () => { p.img = ""; renderThumb(); };
-    s.querySelector('[data-a="save"]').onclick = async () => {
-      readForm();
-      if (!p.brand) return toast("Enter a brand");
-      if (!p.category) p.category = "Other";
-      if (!p.unit) p.unit = "pack";
-      const dupName = state.products.find(x => x.id !== p.id && normText(pFull(x)) === normText(pFull(p)));
-      if (dupName) {
-        const use = await confirmDialog(`<b>${esc(pFull(dupName))}</b> already exists. Use that one instead?`, { ok: "Use existing", cancel: "Keep editing" });
-        if (use) { done = true; close(); resolve(dupName.id); }
-        return;
-      }
-      const snap = snapshot();
-      if (isNew) {
-        let id = slug(pFull(p)) || "product", n = 2;
-        while (productById(id) || state.deleted.products[id]) id = slug(pFull(p)) + "-" + n++;
-        p.id = id;
-        state.products.push(p);
-      } else {
-        const i = state.products.findIndex(x => x.id === p.id);
-        state.products[i] = p;
-      }
-      markProduct(p.id);
-      save(); done = true; close(); renderAll();
-      toast(isNew ? `Added ${pName(p)}` : "Saved", snap);
-      resolve(p.id);
-    };
-    const retireBtn = s.querySelector('[data-a="retire"]');
-    if (retireBtn) retireBtn.onclick = () => {
-      const snap = snapshot();
-      const real = productById(p.id); real.retired = !real.retired;
-      markProduct(real.id);
-      save(); done = true; close(); renderAll();
-      toast(real.retired ? "Retired" : "Restored", snap); resolve(p.id);
-    };
-    const delBtn = s.querySelector('[data-a="delete"]');
-    if (delBtn) delBtn.onclick = async () => {
-      if (!(await confirmDialog(`Delete <b>${esc(pFull(p))}</b>?`, { ok: "Delete", danger: true }))) return;
-      const snap = snapshot();
-      dropProduct(p.id);
-      save(); done = true; close(); renderAll(); toast("Deleted", snap); resolve(null);
-    };
-    s.querySelector('[data-a="cancel"]').onclick = () => { done = true; close(); resolve(null); };
-  });
-}
-function shrinkImage(file, max) {
-  return new Promise(resolve => {
-    const img = new Image();
-    img.onload = () => {
-      const k = Math.min(1, max / Math.max(img.width, img.height));
-      const c = document.createElement("canvas");
-      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-      URL.revokeObjectURL(img.src);
-      resolve(c.toDataURL("image/jpeg", 0.72));
-    };
-    img.onerror = () => resolve("");
-    img.src = URL.createObjectURL(file);
-  });
-}
-
 // ---------- Camera, microphone and making a note ----------
 const MAX_NOTE_SECS = 30;     // Whisper reads 30 seconds at a time
 const cam = { stream: null, starting: false, sleepTimer: null, audioTrack: null, error: "" };
@@ -1970,7 +1514,7 @@ async function startCamera() {
     const v = $("#cam-video"); v.srcObject = stream; await v.play().catch(() => {});
     state.settings.camOK = true; save();
   } catch (e) {
-    cam.error = e && e.name === "NotAllowedError" ? "Camera access is blocked. Allow it in Settings, or use the phone camera button below." : "Couldn't start the camera.";
+    cam.error = e && e.name === "NotAllowedError" ? "Camera access is blocked. Allow it in Settings, or use the phone camera instead." : "Couldn't start the camera.";
   }
   cam.starting = false; renderCapture();
 }
@@ -2046,7 +1590,7 @@ async function startRecording(base) {
   if (recorder) return;
   const sheet = el(`<div class="sheet rec-sheet"><div class="handle"></div>
     <h2>What do you need ${base.kind === "display" ? "on this display" : base.note && base.note.kind === "display" ? "on this display" : "here"}?</h2>
-    <p class="hint center" id="rec-hint">Say the product and how many, like â€œthree Diet Coke twelve packsâ€.</p>
+    <p class="hint center" id="rec-hint">Say what you need, like “three Diet Coke twelve packs”.</p>
     <div class="rec-meter"><i id="rec-level"></i></div>
     <div class="rec-time" id="rec-time">0:00</div>
     <button class="btn primary block rec-done" data-a="done">${icon("check")}Done</button>
@@ -2174,6 +1718,7 @@ async function playNote(n) {
 let view = "capture";
 function showView(v) {
   view = v;
+  document.body.dataset.view = v;
   document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.id === "view-" + v));
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.view === v));
   syncIndicator($("#tabs"));
@@ -2220,18 +1765,21 @@ function renderCapture() {
     vb.innerHTML = `<div class="banner">${icon("download")}<span class="grow">Voice notes need a one-time download.</span><button class="btn sm primary" data-a="go">Set up</button></div>`;
     vb.querySelector("button").onclick = () => showView("more");
   } else vb.hidden = true;
+  // Under the thumb: the last note on the left (like the camera roll), the Needed list on the right.
   const last = state.notes.find(n => n.id === lastNoteId) || state.notes[0];
-  const card = $("#last-note");
-  card.hidden = !last;
+  const lb = $("#last-note");
+  lb.style.visibility = last ? "visible" : "hidden";
   if (last) {
-    card.innerHTML = `<button class="shelf-thumb" data-photo-wrap><img data-photo="${esc(last.photos[0] || "")}" alt=""></button>
-      <div class="grow"><div class="label">Last note · ${KIND_LABEL[noteKind(last)]} · ${timeOf(last.at)}</div><div class="last-text">${esc(noteSummary(last))}</div></div>${icon("jump")}`;
-    card.onclick = () => { showView("needed"); setTimeout(() => openCheck(last), 60); };
-    hydratePhotos(card);
+    lb.innerHTML = last.photos[0] ? `<img data-photo="${esc(last.photos[0])}" alt="">` : icon("note");
+    lb.onclick = () => openCheck(last);
+    hydratePhotos(lb);
   }
+  const open = KINDS.reduce((t, k) => t + openCount(k), 0), db = $("#deck-badge");
+  db.hidden = !open; db.textContent = open;
+  $("#btn-open-needed").onclick = () => showView("needed");
   const line = $("#queue-line");
   line.hidden = !q.text;
-  line.textContent = q.text;
+  $("#queue-text").textContent = q.text;
   line.classList.toggle("busy", !!q.busy);
 }
 function noteSummary(n) {
@@ -2251,27 +1799,22 @@ const KIND_LABEL = { aisle: "Aisle", display: "Display" };
 const captureKind = () => (state.settings.captureKind === "display" ? "display" : "aisle");
 const curKind = () => (state.settings.needKind === "display" ? "display" : "aisle");
 const CHECK_GROUP = "Check the text";
-// The products a blurb is listed under: one appearance per distinct product, or a single "?" one when none were recognized.
+// The products (brand + flavor) a blurb is listed under: one appearance each, or a single "?" one when none were recognized.
 function appearances(n) {
-  const pids = [...new Set((n.parts || []).map(p => p.pid).filter(pid => productById(pid)))];
-  return pids.length ? pids.map(pid => ({ key: pid, pid })) : [{ key: "?", pid: null }];
+  const vm = vmap(), vks = [...new Set((n.parts || []).map(p => p.vk).filter(k => vm.has(k)))];
+  return vks.length ? vks.map(vk => ({ key: vk, vk })) : [{ key: "?", vk: null }];
 }
 const noteDone = n => appearances(n).every(a => (n.ticks || {})[a.key]);
 const listed = kind => state.notes.filter(n => noteKind(n) === kind && n.status === "done" && n.text);
 const openCount = kind => listed(kind).filter(n => !noteDone(n)).length;
+// Blurbs are clustered by brand and flavor (Coca-Cola and Diet Coke first, then alphabetical); the ones nothing was recognized in come first.
 function neededGroups(kind) {
-  const cats = new Map();
-  for (const n of listed(kind)) for (const a of appearances(n)) {
-    const p = a.pid && productById(a.pid), cat = p ? p.category : CHECK_GROUP;
-    const cl = cats.get(cat) || cats.set(cat, new Map()).get(cat);
-    (cl.get(a.key) || cl.set(a.key, []).get(a.key)).push({ n, a });
-  }
-  const order = [...cats.keys()].sort((x, y) => (x === CHECK_GROUP ? -1 : y === CHECK_GROUP ? 1 : catSort(x, y)));
-  return order.map(cat => ({
-    cat,
-    clusters: [...cats.get(cat).entries()].map(([key, rows]) => ({ key, p: key === "?" ? null : productById(key), rows: rows.sort((r1, r2) => r1.n.at - r2.n.at) }))
-      .sort((c1, c2) => (c1.p ? pName(c1.p) : "").localeCompare(c2.p ? pName(c2.p) : "") || (c1.p ? pSub(c1.p) : "").localeCompare(c2.p ? pSub(c2.p) : "")),
-  }));
+  const vm = vmap(), clusters = new Map();
+  for (const n of listed(kind)) for (const a of appearances(n)) (clusters.get(a.key) || clusters.set(a.key, []).get(a.key)).push({ n, a });
+  const rank = v => { const i = BRAND_FIRST.indexOf(v.brand); return i < 0 ? 99 : i; };
+  const list = [...clusters.entries()].map(([key, rows]) => ({ key, v: key === "?" ? null : vm.get(key), rows: rows.sort((r1, r2) => r1.n.at - r2.n.at) }));
+  list.sort((c1, c2) => (!c1.v ? -1 : !c2.v ? 1 : rank(c1.v) - rank(c2.v) || c1.v.brand.localeCompare(c2.v.brand) || c1.v.flavor.localeCompare(c2.v.flavor)));
+  return list;
 }
 function wireKindSeg(v) {
   const seg = v.querySelector("#kind-seg"); if (!seg) return;
@@ -2282,22 +1825,20 @@ function renderNeeded() {
   const v = $("#view-needed");
   const kind = curKind(), q = queueState();
   const notes = listed(kind), open = notes.filter(n => !noteDone(n)).length;
-  let html = `<div class="list-head"><h2>Needed</h2><span class="muted small">${notes.length ? `${open} to go` : ""}</span><span class="grow"></span></div>
-    <div class="seg" id="kind-seg">${KINDS.map(k => `<button data-k="${k}" class="${k === kind ? "active" : ""}">${KIND_LABEL[k]}${openCount(k) ? ` <span class="kcount">${openCount(k)}</span>` : ""}</button>`).join("")}</div>`;
+  // The Aisle | Display switch is docked at the bottom, where a thumb can reach it.
+  const dock = `<div class="dock-space"></div><div class="dock solid"><div class="seg" id="kind-seg">${KINDS.map(k => `<button data-k="${k}" class="${k === kind ? "active" : ""}">${KIND_LABEL[k]}${openCount(k) ? ` <span class="kcount">${openCount(k)}</span>` : ""}</button>`).join("")}</div></div>`;
+  let html = `<div class="list-head"><h2>Needed</h2><span class="muted small">${notes.length ? `${open} to go` : ""}</span></div>`;
   if (q.text) html += `<div class="banner ${q.busy ? "busy" : ""}"><span class="spin"></span><span class="grow">${esc(q.text)}</span></div>`;
   if (!notes.length) {
     html += `<div class="empty">${icon("list")}<h3>Nothing needed ${kind === "display" ? "on displays" : "in aisles"} yet</h3><p>Snap a ${kind === "display" ? "display" : "shelf"} and say what's missing. It lands here.</p></div>`;
-    v.innerHTML = html; wireKindSeg(v); v.onclick = null; return;
+    v.innerHTML = html + dock; wireKindSeg(v); v.onclick = null; return;
   }
-  for (const g of neededGroups(kind)) {
-    html += `<div class="group-h">${esc(g.cat)}</div>`;
-    for (const c of g.clusters) {
-      if (c.p) html += `<div class="cluster-h">${esc(pName(c.p))} <span>${esc(pSub(c.p))}</span></div>`;
-      html += `<div class="list">${c.rows.map(r => needRow(r.n, r.a)).join("")}</div>`;
-    }
+  for (const c of neededGroups(kind)) {
+    html += c.v ? `<div class="cluster-h">${esc(vName(c.v))}<span class="n">${c.rows.length}</span></div>` : `<div class="group-h">${icon("warn")}Check the text</div>`;
+    html += `<div class="list">${c.rows.map(r => needRow(r.n, r.a)).join("")}</div>`;
   }
-  html += `<button class="btn block quiet" id="btn-clear-all" style="margin-top:22px">Clear the whole list</button>`;
-  v.innerHTML = html; wireKindSeg(v);
+  html += `<button class="btn block quiet" id="btn-clear-all" style="margin-top:24px">Clear the whole list</button>`;
+  v.innerHTML = html + dock; wireKindSeg(v);
   hydratePhotos(v);
   v.onclick = e => {
     if (e.target.closest("#btn-clear-all")) return clearAllNotes();
@@ -2310,19 +1851,19 @@ function renderNeeded() {
 // The blurb with the part about this product in bold.
 function markText(n, pid) {
   const t = n.text || "";
-  const ranges = (n.parts || []).filter(p => p.pid === pid).map(p => [p.s, p.e]).sort((a, b) => a[0] - b[0]);
+  const ranges = (n.parts || []).filter(p => p.vk === pid).map(p => [p.s, p.e]).sort((a, b) => a[0] - b[0]);
   let html = "", i = 0;
   for (const [s, e] of ranges) { if (s < i) continue; html += esc(t.slice(i, s)) + `<b class="hl">${esc(t.slice(s, e))}</b>`; i = e; }
   return html + esc(t.slice(i));
 }
-const chipsFor = (n, exceptPid) => [...new Set((n.parts || []).map(p => p.pid))].filter(pid => pid !== exceptPid && productById(pid))
-  .map(pid => `<span class="chip-sm">${esc(pName(productById(pid)))}</span>`).join("");
+const chipsFor = (n, exceptVk) => { const vm = vmap(); return [...new Set((n.parts || []).map(p => p.vk))].filter(k => k !== exceptVk && vm.has(k))
+  .map(k => `<span class="chip-sm">${esc(vName(vm.get(k)))}</span>`).join(""); };
 function needRow(n, a) {
-  const done = !!(n.ticks || {})[a.key], chips = chipsFor(n, a.pid);
-  return `<div class="item need tap${done ? " done" : ""}" data-n="${esc(n.id)}" data-k="${esc(a.key)}">
+  const done = !!(n.ticks || {})[a.key], chips = chipsFor(n, a.vk);
+  return `<div class="item need tap${done ? " done" : ""}${n.flag ? " flagged" : ""}" data-n="${esc(n.id)}" data-k="${esc(a.key)}">
     <button class="check${done ? " on" : ""}" data-a="toggle" aria-label="Mark as pulled">${icon("check")}</button>
-    <div class="shelf-thumb" data-photo-wrap><img data-photo="${esc(n.photos[0] || "")}" alt=""></div>
-    <div class="grow"><div class="blurb">${markText(n, a.pid)}</div>${chips || n.flag ? `<div class="chips-row">${chips}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}</div>` : ""}</div>
+    <div class="shelf-thumb" data-photo-wrap>${n.photos[0] ? `<img data-photo="${esc(n.photos[0])}" alt="">` : icon("note")}</div>
+    <div class="grow"><div class="blurb">${markText(n, a.vk)}</div>${chips || n.flag ? `<div class="chips-row">${chips}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}</div>` : ""}</div>
     ${icon("jump")}</div>`;
 }
 function clearAllNotes() {
@@ -2337,10 +1878,10 @@ function clearAllNotes() {
 // ---------- A note: photo, words, and everything you can do with it ----------
 function openCheck(n, focusPid) {
   let photoIdx = 0;
-  const s = el(`<div class="sheet check-sheet"><div class="handle"></div><div class="row"><h2 class="grow">Check against the photo</h2><button class="btn sm quiet" data-a="close">Done</button></div>
+  const s = el(`<div class="sheet check-sheet"><div class="handle"></div><h2>Check against the photo</h2>
     <div class="zoom-stage" id="ck-stage"><img alt=""><span class="zoom-hint">Pinch to zoom</span></div><div class="viewer-dots" id="ck-dots" style="padding:0"></div>
     <div class="transcript" id="ck-text"></div><div class="chips-row" id="ck-chips"></div>
-    <div class="row" id="ck-actions"></div></div>`);
+    <div class="row" id="ck-actions"></div><button class="btn primary block" data-a="close">Done</button></div>`);
   const close = openLayer(s, { onClose: () => renderAll() });
   const img = s.querySelector("img");
   zoomStage(img, s.querySelector("#ck-stage"));
@@ -2409,43 +1950,98 @@ function zoomStage(img, stage) {
   const up = e => { pts.delete(e.pointerId); if (scale <= 1.02) reset(); last = null; };
   stage.addEventListener("pointerup", up); stage.addEventListener("pointercancel", up);
 }
-// Products
-let prodQuery = "", prodCat = "";
+// ---------- Products: the brand + flavor combinations the list recognizes ----------
+// Size and pack don't matter here: they stay in the words you read. Edits apply to every size of a combination
+// and upload to the shared product list like before.
+let prodQuery = "", showRetired = false;
+const BRAND_FIRST = ["Coca-Cola", "Diet Coke"];
 function renderProducts() {
   const v = $("#view-products");
   if (!v.querySelector("input")) {
-    v.innerHTML = `<div class="list-head"><h2>Products</h2><span class="grow"></span><button class="btn sm primary" data-a="add">${icon("plus")}Add</button></div>
-      ${searchBox("Search products")}<div class="chips"></div>
-      <p class="hint" id="prod-count"></p><div id="prod-results"></div>`;
+    v.innerHTML = `<div class="list-head"><h2>Products</h2></div>
+      <p class="hint">What the list recognizes when you talk: a brand and a flavor. Add one if people say something it doesn't know.</p>
+      ${searchBox("Search brands and flavors")}<div id="prod-results"></div>
+      <div class="dock-space"></div><div class="dock"><button class="fab" data-a="add">${icon("plus")}Add product</button></div>`;
     v.querySelector("input").addEventListener("input", debounce(e => { prodQuery = e.target.value; renderProductResults(); }));
-    v.querySelector('[data-a="add"]').onclick = () => editProduct(null, { prefillName: prodQuery });
-  }
-  const chips = v.querySelector(".chips");
-  chips.innerHTML = "";
-  for (const c of ["", ...allCategories(), "Retired"]) {
-    const b = el(`<button class="chip${c === prodCat ? " active" : ""}"></button>`);
-    b.textContent = c || "All";
-    b.onclick = () => { prodCat = c; renderProducts(); };
-    chips.appendChild(b);
+    v.querySelector('[data-a="add"]').onclick = () => editVariation(null, { prefill: prodQuery });
   }
   renderProductResults();
 }
-function renderProductResults() {
-  const v = $("#view-products");
-  let items = prodCat === "Retired"
-    ? searchProducts(prodQuery, { includeRetired: true }).filter(p => p.retired)
-    : searchProducts(prodQuery, { category: prodCat });
-  if (!prodQuery) items = [...items].sort((a, b) => catSort(a.category, b.category) || pName(a).localeCompare(pName(b)));
-  v.querySelector("#prod-count").textContent = `${items.length} product${items.length === 1 ? "" : "s"}`;
-  const box = v.querySelector("#prod-results");
-  box.innerHTML = "";
-  const shown = items.slice(0, 200);
-  if (shown.length) box.appendChild(listOf(shown, pid => editProduct(pid), p =>
-    (p.custom ? ` <span class="pill">CUSTOM</span>` : "")));
-  else box.appendChild(el(`<div class="empty"><p>No products match.</p></div>`));
-  if (items.length > shown.length) box.appendChild(el(`<p class="hint center" style="padding:10px">${items.length - shown.length} more. Search to narrow it down.</p>`));
+function searchBox(placeholder) {
+  return `<div class="search-wrap">${icon("search")}<input class="field" type="search" placeholder="${esc(placeholder)}" autocomplete="off" autocorrect="off" spellcheck="false"></div>`;
 }
-
+function renderProductResults() {
+  const box = $("#view-products #prod-results"); if (!box) return;
+  const q = sNorm(prodQuery).split(" ").filter(Boolean);
+  let shown = variations({ includeRetired: true }).filter(v => !q.length || q.every(t => sNorm(vName(v)).includes(t)));
+  const retired = shown.filter(v => v.retired).length;
+  if (!showRetired) shown = shown.filter(v => !v.retired);
+  const byBrand = new Map();
+  for (const v of shown) (byBrand.get(v.brand) || byBrand.set(v.brand, []).get(v.brand)).push(v);
+  const brands = [...byBrand.keys()].sort((a, b) => { const ia = BRAND_FIRST.indexOf(a), ib = BRAND_FIRST.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b); });
+  let html = "";
+  for (const b of brands) {
+    const rows = byBrand.get(b).sort((x, y) => x.flavor.localeCompare(y.flavor));
+    html += `<div class="group-h">${esc(b)} <span class="muted">${rows.length}</span></div><div class="list">` + rows.map(v =>
+      `<div class="item tap compact" data-vk="${esc(v.key)}"><div class="grow"><div class="name">${esc(v.flavor || "No flavor")}</div></div>${v.retired ? `<span class="pill">RETIRED</span>` : ""}${v.custom ? `<span class="pill">CUSTOM</span>` : ""}</div>`).join("") + `</div>`;
+  }
+  if (!brands.length) html = `<div class="empty"><p>Nothing matches.</p></div>`;
+  if (retired || showRetired) html += `<button class="btn block quiet" id="btn-retired" style="margin-top:16px">${showRetired ? "Hide retired" : `Show retired (${retired})`}</button>`;
+  box.innerHTML = html;
+  box.onclick = e => {
+    if (e.target.closest("#btn-retired")) { showRetired = !showRetired; return renderProductResults(); }
+    const row = e.target.closest(".item[data-vk]"); if (row) editVariation(vmap().get(row.dataset.vk));
+  };
+}
+function editVariation(v, { prefill = "" } = {}) {
+  const isNew = !v;
+  const brands = [...new Set(state.products.map(p => p.brand))].sort();
+  let brand = v ? v.brand : "", flavor = v ? v.flavor : "";
+  if (isNew && prefill) {
+    const toks = tokenize(prefill), sp = brandSpans(toks.map(x => x.t))[0];
+    if (sp) { brand = sp.brand; flavor = prefill.slice(toks[sp.end - 1].e).replace(/^[\s,.\-]+/, ""); }
+    else flavor = prefill;
+  }
+  const s = el(`<div class="sheet"><div class="handle"></div><h2>${isNew ? "Add product" : "Edit product"}</h2>
+    <p class="hint">Say the brand and flavor the way people say them. Leave the flavor blank for the plain one.</p>
+    <label class="f" for="ep-brand">Brand</label><input class="field" id="ep-brand" list="dl-brands" placeholder="Coca-Cola" autocapitalize="words">
+    <label class="f" for="ep-flavor">Flavor</label><input class="field" id="ep-flavor" placeholder="Zero Sugar" autocapitalize="words">
+    <datalist id="dl-brands">${brands.map(b => `<option value="${esc(b)}">`).join("")}</datalist>
+    <button class="btn primary block" data-a="save" style="margin-top:18px;padding:14px">${isNew ? "Add product" : "Save"}</button>
+    ${isNew ? "" : `<button class="btn block" data-a="retire">${v.retired ? "Show it again" : "Retire (stop recognizing it)"}</button>`}
+    ${!isNew && v.custom ? `<button class="btn block danger" data-a="delete">Delete</button>` : ""}
+    <button class="btn block quiet" data-a="cancel">Cancel</button></div>`);
+  const close = openLayer(s);
+  s.querySelector("#ep-brand").value = brand; s.querySelector("#ep-flavor").value = flavor;
+  s.querySelector('[data-a="cancel"]').onclick = close;
+  s.querySelector('[data-a="save"]').onclick = () => {
+    const b = s.querySelector("#ep-brand").value.trim(), f = s.querySelector("#ep-flavor").value.trim();
+    if (!b) return toast("Enter a brand");
+    const key = vKey({ brand: b, flavor: f }), clash = vmap().get(key);
+    if (clash && (!v || clash.key !== v.key)) return toast(`${vName(clash)} is already in the list`);
+    const snap = snapshot();
+    if (isNew) {
+      let id = slug(`${b} ${f || "plain"}`) || "product", n = 2;
+      while (productById(id) || state.deleted.products[id]) id = slug(`${b} ${f || "plain"}`) + "-" + n++;
+      state.products.push({ id, brand: b, flavor: f, size: "", pack: "", category: "Other", unit: "pack", img: "", custom: true, retired: false, updated: 0 });
+      markProduct(id);
+    } else for (const p of v.records) { p.brand = b; p.flavor = f; markProduct(p.id); }
+    save(); close(); renderAll(); toast(isNew ? `Added ${vName({ brand: b, flavor: f })}` : "Saved", snap);
+  };
+  const rb = s.querySelector('[data-a="retire"]');
+  if (rb) rb.onclick = () => {
+    const snap = snapshot(), to = !v.retired;
+    for (const p of v.records) { p.retired = to; markProduct(p.id); }
+    save(); close(); renderAll(); toast(to ? "Retired" : "Restored", snap);
+  };
+  const db = s.querySelector('[data-a="delete"]');
+  if (db) db.onclick = async () => {
+    if (!(await confirmDialog(`Delete <b>${esc(vName(v))}</b>?`, { ok: "Delete", danger: true }))) return;
+    const snap = snapshot();
+    for (const p of v.records) dropProduct(p.id);
+    save(); close(); renderAll(); toast("Deleted", snap);
+  };
+}
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -2476,7 +2072,7 @@ function renderMore() {
       <div class="set-row"><span class="grow small muted">Last updated from GitHub: ${ago(state.sync.lastPull)}</span></div>
       <div class="stack">
         ${on ? `<button class="btn block" id="btn-upload-now">${icon("upload")}Upload now</button>`
-             : `<button class="btn primary block" id="btn-enable">${icon("upload")}Enable uploads</button>`}
+             : `<button class="btn block" id="btn-enable">${icon("upload")}Enable uploads</button>`}
         <button class="btn block" id="btn-sync">${icon("refresh")}Sync from GitHub</button>
         ${on ? `<button class="btn block quiet" id="btn-disable">Turn off uploads on this phone</button>` : ""}
       </div>
@@ -2508,7 +2104,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 5.1.2 (voice notes) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan Beta 5.1.4 (voice notes) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
@@ -2624,6 +2220,7 @@ async function restoreBackupText(text) {
 // ---------- Wire up ----------
 fillIcons();
 load();
+document.body.dataset.view = view;   // the layout keys off this (it also works where the page is wrapped by another document)
 document.querySelectorAll("#tabs button").forEach(b => (b.onclick = () => showView(b.dataset.view)));
 $("#btn-cam-start").onclick = startCamera;
 $("#btn-cam-stop").onclick = () => { state.settings.camOK = false; save(); stopCamera(); };
