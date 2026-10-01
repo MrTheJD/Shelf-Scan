@@ -8,14 +8,18 @@ env.useBrowserCache = true;
 // Keep memory low on phones: one thread, and no big pre-reserved memory pool.
 try { env.backends.onnx.wasm.numThreads = 1; } catch (e) {}
 
-const ASR = { id: "Xenova/whisper-base.en", dtype: "q8" };
-let asr = null, loading = null;
+const MODELS = { tiny: "Xenova/whisper-tiny.en", base: "Xenova/whisper-base.en" };
+const DTYPE = "q8";
+let asr = null, asrFor = "", loading = null, loadingFor = "";
 
 const post = (type, data = {}) => self.postMessage({ type, ...data });
 
-function load() {
-  if (asr) return Promise.resolve(asr);
-  return loading || (loading = (async () => {
+function load(model) {
+  model = MODELS[model] ? model : "tiny";
+  if (asr && asrFor === model) return Promise.resolve(asr);
+  if (loading && loadingFor === model) return loading;
+  asr = null; asrFor = ""; loadingFor = model;   // a different size was asked for: let go of the old one
+  return (loading = (async () => {
     const track = {};
     const progress_callback = p => {
       if (p.status === "progress" && p.file) {
@@ -24,8 +28,9 @@ function load() {
         post("progress", { key: "asr", loaded: l, total: t });
       }
     };
-    asr = await pipeline("automatic-speech-recognition", ASR.id, { device: "wasm", dtype: ASR.dtype, progress_callback, session_options: { enableCpuMemArena: false, enableMemPattern: false, graphOptimizationLevel: "basic" } });
-    return asr;
+    const p = await pipeline("automatic-speech-recognition", MODELS[model], { device: "wasm", dtype: DTYPE, progress_callback, session_options: { enableCpuMemArena: false, enableMemPattern: false, graphOptimizationLevel: "basic" } });
+    asr = p; asrFor = model;
+    return p;
   })().finally(() => { loading = null; }));
 }
 
@@ -35,10 +40,10 @@ self.onmessage = async e => {
     if (m.type === "probe") {
       post("probe", { threads: self.crossOriginIsolated ? "multi" : "single" });
     } else if (m.type === "load") {
-      await load(); post("ready", { key: "asr", device: "wasm" });
+      await load(m.model); post("ready", { key: "asr", device: "wasm" });
     } else if (m.type === "transcribe") {
       const t0 = Date.now();
-      const pipe = await load();
+      const pipe = await load(m.model);
       const r = await pipe(m.pcm, { return_timestamps: false });
       post("text", { id: m.id, text: String(r.text || "").trim(), ms: Date.now() - t0 });
     }

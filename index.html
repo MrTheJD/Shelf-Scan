@@ -671,7 +671,7 @@ function freshState() {
     outbox: { products: {} },               // changed since last upload
     notes: [],                              // newest first: { id, at, photos:[id], audio:id|null, secs, text, status, parts:[{vk, s, e}] (brand + flavor found in the text), flag, ticks:{pid: true}, err }
     recents: [],
-    settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", models: { asr: false } },   // models: which downloads finished
+    settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", asrId: "tiny", models: { asr: false } },   // models: which downloads finished
     sync: { lastPull: 0, lastPush: 0, error: "" },
     team: { key: "", name: "", repo: "", hidden: {}, tick: {}, seen: {}, rt: {} },   // Beta 6: shared Needed list (see team.js)
   };
@@ -688,6 +688,7 @@ function migrate() {
   const f = freshState();
   for (const k of ["deleted", "outbox", "sync", "settings"]) state[k] = Object.assign(f[k], state[k] || {});
   state.settings.models = { asr: !!(state.settings.models && state.settings.models.asr) };
+  if (!state.settings.asrId) { state.settings.asrId = "tiny"; state.settings.models.asr = false; }   // Beta 6: the small speech model is the default; phones that had the bigger one download it again when they choose
   delete state.settings.smart; delete state.settings.smartV; delete state.settings.smartId;   // smart reading was removed in Beta 5.1.1
   state.deleted = { products: state.deleted.products || {} };
   state.outbox = { products: state.outbox.products || {} };
@@ -941,6 +942,8 @@ function hydratePhotos(root) {
 async function sweepMedia() {
   try {
     const keepP = new Set(state.notes.flatMap(n => n.photos || [])), keepA = new Set(state.notes.map(n => n.audio).filter(Boolean));
+    keepA.add("_recovery");   // a recording in progress (see capture.js)
+    const rec = await getAudio("_recovery").catch(() => null); if (rec && rec.photos) rec.photos.forEach(p => keepP.add(p));
     const ps = await mediaTx("photos", "readonly", s => s.getAllKeys()), as = await mediaTx("audio", "readonly", s => s.getAllKeys());
     for (const k of ps) if (!keepP.has(k)) await delPhoto(k);
     for (const k of as) if (!keepA.has(k)) await delAudio(k);
@@ -1376,7 +1379,7 @@ function speechToDigits(text) {
 }
 const FLAVOR_SYN = [[/\b(?:zero|0)(?:[ -]sugar|[ -]calorie)?\b/g, "zero"], [/\bgeorgia peach\b/g, "just peachy"], [/\b(regular|classic|original|plain)\b/g, "original"],
   [/\bgrape fruit\b/g, "grapefruit"], [/\bpassion fruit\b/g, "passionfruit"], [/\bdragon fruit\b/g, "dragonfruit"], [/\bwater melon\b/g, "watermelon"], [/\bblack berry\b/g, "blackberry"], [/\bblue berry\b/g, "blueberry"], [/\bstraw berry\b/g, "strawberry"], [/\brasp berry\b/g, "raspberry"], [/\bpine apple\b/g, "pineapple"], [/\bdream world\b/g, "dreamworld"], [/\bstar light\b/g, "starlight"], [/\by ?3000\b/g, "y3000"], [/\bmarshmall?(?:o|e)ws?\b|\bmarshmellos?\b/g, "marshmellos"], [/\bmellow yellow\b/g, "mello yello"]];
-FLAVOR_SYN.push([/\b(y3000|ultimate|starlight|dreamworld|move) sugar\b/g, "$1 zero"], [/\bdream sickles?\b/g, "dreamsicle"], [/\bplus t0\b/g, "plus tea zero"], [/\bplus t\b/g, "plus tea"]);   // heard-as fixes that need regex, not an alias list
+FLAVOR_SYN.push([/\bcaffeine (?:for|fear|pre|free of)\b/g, "caffeine free"], [/\bcaf(?:f)?ein(?:e)? free\b/g, "caffeine free"], [/\b(y3000|ultimate|starlight|dreamworld|move) sugar\b/g, "$1 zero"], [/\bdream sickles?\b/g, "dreamsicle"], [/\bplus t0\b/g, "plus tea zero"], [/\bplus t\b/g, "plus tea"]);   // heard-as fixes that need regex, not an alias list
 const FLAVOR_STOP = new Set(["just", "the", "a", "of", "and", "with"]);
 const flavorTokens = f => { let n = sNorm(f); for (const [re, to] of FLAVOR_SYN) n = n.replace(re, to); return n.split(" ").filter(w => w && !FLAVOR_STOP.has(w)); };
 
@@ -1547,10 +1550,13 @@ function readBlurb(text) {
 }// ---------- On-device speech model and the note queue ----------
 // A note goes: queued (voice clip waiting) → heard (words) → done (items on the list from the quick read).
 // The queue runs in the background so you can keep snapping shelves, or walk to the back room, while the phone works.
+// Two sizes of the same speech model: Tiny (default, lighter on memory) and Base (more accurate).
+const asrId = () => (state.settings.asrId === "base" ? "base" : "tiny");
 const MODEL_INFO = {
-  asr: { name: "Speech to text", detail: "Whisper Base", size: "about 80 MB" },
+  get asr() { return asrId() === "base" ? { name: "Speech to text", detail: "Whisper Base", size: "about 80 MB" } : { name: "Speech to text", detail: "Whisper Tiny", size: "about 40 MB" }; },
 };
-const MODEL_CACHE_HINT = { asr: "whisper-base.en" };
+const MODEL_CACHE_HINT = { get asr() { return `whisper-${asrId()}.en`; } };
+const loadMsg = () => ({ type: "load", key: "asr", model: asrId() });
 const ai = {
   worker: null, ready: {}, device: {}, probe: null,
   dl: { key: null, loaded: 0, total: 0, error: "" },   // the download in progress, if any
@@ -1604,7 +1610,7 @@ async function downloadModels(keys) {
       if (haveModel(key)) continue;
       ai.dl = { key, loaded: 0, total: 0, error: "" };
       if (view === "more") renderMore();
-      await workerCall({ type: "load", key });     // no timeout: it's a download
+      await workerCall(loadMsg());     // no timeout: it's a download
       state.settings.models[key] = true; save();
     }
     ai.dl = { key: null, loaded: 0, total: 0, error: "" };
@@ -1640,6 +1646,7 @@ async function verifyModels() {
     for (const name of await caches.keys()) if (name.startsWith("webllm")) await caches.delete(name);
     const c = await caches.open("transformers-cache");
     for (const req of await c.keys()) if (req.url.includes("Qwen2.5-0.5B-Instruct")) await c.delete(req);
+    for (const req of await c.keys()) if (/whisper-(tiny|base)\.en/.test(req.url) && !req.url.includes(MODEL_CACHE_HINT.asr)) await c.delete(req);   // the size that isn't selected
     const urls = (await c.keys()).map(r => r.url);
     let changed = false;
     for (const key of Object.keys(MODEL_CACHE_HINT)) {
@@ -1647,6 +1654,14 @@ async function verifyModels() {
     }
     if (changed) { save(); renderAll(); }
   } catch (e) { /* ignore */ }
+}
+
+// Choose Tiny or Base. The other size's files are removed; the chosen one downloads when the person taps Download.
+async function setAsrChoice(id) {
+  if (ai.dl.key || id === asrId()) return;
+  if (haveModel("asr") && !(await confirmDialog("Switch the speech model? The current one is removed and the other downloads again.", { ok: "Switch" }))) return;
+  await deleteModels();
+  state.settings.asrId = id === "base" ? "base" : "tiny"; save(); renderAll();
 }
 
 // ---- The queue ----
@@ -1702,8 +1717,8 @@ async function listenTo(n) {
     if (!rec) throw new Error("The recording is missing.");
     const i16 = new Int16Array(rec.pcm), f32 = new Float32Array(i16.length);
     for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
-    if (!ai.ready.asr) { await workerCall({ type: "load", key: "asr" }, 120000); ai.ready.asr = true; }
-    const r = await workerCall({ type: "transcribe", pcm: f32 }, 120000, [f32.buffer]);
+    if (!ai.ready.asr) { await workerCall(loadMsg(), 120000); ai.ready.asr = true; }
+    const r = await workerCall({ type: "transcribe", model: asrId(), pcm: f32 }, 120000, [f32.buffer]);
     n.text = cleanTranscript(r.text);
     n.status = n.text ? "heard" : "empty"; n.err = "";
   } catch (e) { n.status = "error"; n.err = e.message || "Couldn't listen to this"; }
@@ -1726,7 +1741,7 @@ function quickRead(n) {
 function warmUp() {
   if (!haveModel("asr") || state.settings.voiceHold || ai.ready.asr || ai.pending.has("load:asr")) return;
   busyMark("load");
-  workerCall({ type: "load", key: "asr" }, 0).then(() => (ai.ready.asr = true), () => {}).then(() => busyClear("load"));
+  workerCall(loadMsg(), 0).then(() => (ai.ready.asr = true), () => {}).then(() => busyClear("load"));
 }
 // Put a note back in line: to be listened to again, or read again.
 function requeue(n) {
@@ -2273,6 +2288,22 @@ function box_flash() { const b = $("#camera"); b.classList.remove("flash"); void
 
 // ---- Recording ----
 let recorder = null;
+const clearRecovery = () => delAudio("_recovery").catch(() => {});
+// At launch: a note whose recording was cut off by a restart comes back with its photo (and the audio so far, if any).
+async function recoverRecording() {
+  let rec; try { rec = await getAudio("_recovery"); } catch (e) { return; }
+  if (!rec) return;
+  const photos = rec.photos || [];
+  const already = state.notes.some(n => (n.photos || []).some(p => photos.includes(p)));
+  const hasPhoto = photos.length && (await getPhoto(photos[0]).catch(() => null));
+  if (already || !hasPhoto) { clearRecovery(); return; }
+  let audioId = null;
+  if (rec.pcm && rec.pcm.byteLength > 16000 * 2 * 0.6) { audioId = newId("a"); await putAudio(audioId, { pcm: rec.pcm, rate: 16000 }).catch(() => { audioId = null; }); }
+  const n = { id: newId("n"), at: rec.at || Date.now(), kind: rec.kind === "display" ? "display" : "aisle", photos, audio: audioId, secs: rec.secs || 0, text: "", status: audioId ? "queued" : "error", parts: [], flag: false, ticks: {},
+    err: audioId ? "" : "The app restarted while you were recording. Tap to record it again." };
+  state.notes.unshift(n); await delAudio("_recovery").catch(() => {});
+  save(); renderAll(); toast(audioId ? "Recovered your last note" : "Your last photo was saved. Record it again from Needed.");
+}
 async function micTrack() {
   if (cam.audioTrack) return cam.audioTrack;
   const s = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
@@ -2319,7 +2350,11 @@ async function startRecording(base) {
   const discard = async () => {
     if (finished) return; finished = true; cleanup(); r.closeSheet();
     if (base.photos) for (const id of base.photos) delPhoto(id).catch(() => {});
+    clearRecovery();
   };
+  // A new note keeps a recovery copy (the photo and the audio so far) in storage, so if the phone restarts the app mid-sentence nothing is lost.
+  const keepSafe = () => { if (base.photos && r.chunks.length) { const x = resampleTo16k(r.chunks.slice(), r.rate); putAudio("_recovery", { photos: base.photos, kind: base.kind, at: r.t0, secs: r.secs, pcm: x.pcm }).catch(() => {}); } };
+  if (base.photos) putAudio("_recovery", { photos: base.photos, kind: base.kind, at: Date.now(), secs: 0, pcm: null }).catch(() => {});
   r.closeSheet = openLayer(sheet, { sticky: true });
   // Start the audio pipeline (this runs inside the tap that took the photo, which iOS requires).
   try {
@@ -2342,6 +2377,7 @@ async function startRecording(base) {
       r.secs = (Date.now() - r.t0) / 1000;
       const t = sheet.querySelector("#rec-time"); if (t) t.textContent = `${Math.floor(r.secs / 60)}:${String(Math.floor(r.secs % 60)).padStart(2, "0")}`;
       if (r.secs > 3 && r.peak < 0.004) { const h = sheet.querySelector("#rec-hint"); if (h) h.textContent = "I can't hear anything. Is the microphone covered?"; }
+      if (base.photos && Math.floor(r.secs / 3) > (r.saved || 0)) { r.saved = Math.floor(r.secs / 3); keepSafe(); }
       if (r.secs >= MAX_NOTE_SECS) done();
     }, 200);
   } catch (e) {
@@ -2356,11 +2392,13 @@ async function startRecording(base) {
     if (!chunks.length || secs < 0.6 || tooQuiet) {
       // Nothing usable was said: keep the photo, and let the person choose what to do.
       const note = await saveNote({ ...base, audioRec: null, secs: 0, text: "", status: "empty" });
+      clearRecovery();
       toast("Didn't hear anything. Open the note to record again.");
       return note;
     }
     const rec = resampleTo16k(chunks, rate);
     await saveNote({ ...base, audioRec: { pcm: rec.pcm, rate: rec.rate }, secs, text: "", status: "queued" });
+    clearRecovery();
     pump();
   };
   sheet.querySelector('[data-a="done"]').onclick = done;
@@ -2372,8 +2410,9 @@ async function startRecording(base) {
   sheet.querySelector('[data-a="type"]').onclick = async () => {
     finished = true; cleanup(); r.closeSheet();
     const text = await textPrompt("Type what you need", base.note ? base.note.text : "");
-    if (text == null) { if (base.note) return; if (base.photos) for (const id of base.photos) delPhoto(id).catch(() => {}); return; }
+    if (text == null) { if (base.note) return; if (base.photos) for (const id of base.photos) delPhoto(id).catch(() => {}); clearRecovery(); return; }
     await saveNote({ ...base, audioRec: null, secs: 0, text, status: text.trim() ? "heard" : "empty" });
+    clearRecovery();
     pump();
   };
 }
@@ -2544,10 +2583,12 @@ function renderNeeded() {
   const dock = `<div class="dock-space"></div><div class="dock solid"><div class="seg" id="kind-seg">${KINDS.map(k => `<button data-k="${k}" class="${k === kind ? "active" : ""}">${KIND_LABEL[k]}${openCount(k) ? ` <span class="kcount">${openCount(k)}</span>` : ""}</button>`).join("")}</div></div>`;
   let html = `<div class="list-head"><h2>Needed</h2><span class="muted small">${notes.length ? `${open} to go` : ""}</span></div>`;
   if (q.text) html += `<div class="banner ${q.busy ? "busy" : ""}"><span class="spin"></span><span class="grow">${esc(q.text)}</span></div>`;
-  if (!notes.length) {
+  const waiting = state.notes.filter(n => noteKind(n) === kind && (n.status === "empty" || n.status === "error"));   // a photo with no words yet
+  if (!notes.length && !waiting.length) {
     html += `<div class="empty">${icon("list")}<h3>Nothing needed ${kind === "display" ? "on displays" : "in aisles"} yet</h3><p>Snap a ${kind === "display" ? "display" : "shelf"} and say what's missing. It lands here.</p></div>`;
     v.innerHTML = html + dock; wireKindSeg(v); v.onclick = null; return;
   }
+  if (waiting.length) html += `<div class="group-h">${icon("mic")}Needs a recording</div><div class="list">${waiting.map(waitRow).join("")}</div>`;
   for (const c of neededGroups(kind)) {
     html += c.v ? `<div class="cluster-h">${esc(vName(c.v))}<span class="n">${c.rows.length}</span></div>` : `<div class="group-h">${icon("warn")}Check the text</div>`;
     html += `<div class="list">${c.rows.map(r => needRow(r.n, r.a)).join("")}</div>`;
@@ -2563,6 +2604,9 @@ function renderNeeded() {
     else openCheck(n, row.dataset.k);
   };
 }
+// A photo that has no words yet (nothing was heard, or the app restarted while recording): tap to record it again.
+const waitRow = n => `<div class="item need tap flagged" data-n="${esc(n.id)}" data-k="?"><div class="shelf-thumb" data-photo-wrap>${n.photos[0] ? `<img data-photo="${esc(n.photos[0])}" alt="">` : icon("note")}</div>
+  <div class="grow"><div class="blurb">${esc(n.status === "error" ? (n.err || "Couldn't read this note") : "Nothing was heard. Tap to record it again.")}</div>${teamTags(n) ? `<div class="chips-row">${teamTags(n)}</div>` : ""}</div>${icon("jump")}</div>`;
 // The blurb with the part about this product in bold.
 function markText(n, pid) {
   const t = n.text || "";
@@ -2779,6 +2823,7 @@ function renderMore() {
     <div class="card">
       <h3>Voice</h3>
       <p class="hint">Listening runs on this phone, so it works with no signal. The speech model downloads once (use Wi-Fi), then stays on the phone.</p>
+      <div class="set-row"><label class="grow" for="asr-base">More accurate: Base model<br><span class="hint">80 MB and needs more memory. Try it only if Tiny misses too many words.</span></label><input type="checkbox" id="asr-base" ${asrId() === "base" ? "checked" : ""} ${dl ? "disabled" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
       ${modelRow("asr")}
       <p class="hint" style="margin:-4px 0 6px 21px">Turns your recording into words and gives you a list right away.</p>
       ${dl ? `<div class="mprog" data-mprog><i></i></div><p class="hint" data-mprog-label style="margin-top:6px">Starting…</p>` : ""}
@@ -2836,6 +2881,7 @@ function renderMore() {
   v.querySelector("#team-key").onchange = e => teamSetKey(e.target.value);
   v.querySelector("#team-name").onchange = e => { state.team.name = e.target.value.trim(); save(); teamSoon(300); };
   v.querySelector("#btn-team-test").onclick = teamTest;
+  v.querySelector("#asr-base").onchange = async e => { await setAsrChoice(e.target.checked ? "base" : "tiny"); renderMore(); };
   v.querySelector("#beep").onchange = e => { state.settings.beep = e.target.checked; save(); };
   v.querySelectorAll("[data-dl]").forEach(b => (b.onclick = () => downloadModels([b.dataset.dl])));
   const del = v.querySelector("#btn-del-models"); if (del) del.onclick = async () => {
@@ -2960,6 +3006,8 @@ syncAllIndicators(false);
 setTimeout(sweepMedia, 3000);   // tidy photos and recordings left over from deleted notes
 if (state.settings.camOK) startCamera();
 checkLastCrash();
+recoverRecording();
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}   // ask iOS not to clear saved photos and recordings when space is low
 verifyModels().then(() => { setTimeout(warmUp, 3000); pump(); });   // the model loads a moment after the camera starts, not at the same instant   // get the models ready, and pick up anything still waiting from last time
 
 // Pull everyone's latest product list on open, then upload anything waiting.
