@@ -1556,6 +1556,12 @@ const MODEL_INFO = {
   get asr() { return asrId() === "base" ? { name: "Speech to text", detail: "Whisper Base", size: "about 80 MB" } : { name: "Speech to text", detail: "Whisper Tiny", size: "about 40 MB" }; },
 };
 const MODEL_CACHE_HINT = { get asr() { return `whisper-${asrId()}.en`; } };
+// Base is the bigger speech model. It only works while the camera is off (so the two never share the phone's memory), one note at a time,
+// and the model is unloaded after each note. Notes wait in the queue until you leave the camera or tap "Listen now".
+const deferVoice = () => asrId() === "base";
+const queuedCount = () => state.notes.filter(n => n.status === "queued").length;
+const canListen = () => !deferVoice() || (!cam.stream && !cam.starting && !recorder);
+function releaseWorker() { if (ai.worker) { try { ai.worker.terminate(); } catch (e) {} ai.worker = null; } ai.ready = {}; }
 const loadMsg = () => ({ type: "load", key: "asr", model: asrId() });
 const ai = {
   worker: null, ready: {}, device: {}, probe: null,
@@ -1672,6 +1678,7 @@ function queueState() {
   const left = pendingNotes();
   if (left.length && !haveModel("asr")) return { busy: false, blocked: true, text: `${left.length} note${left.length === 1 ? "" : "s"} saved. Download the speech model in More to read ${left.length === 1 ? "it" : "them"}.` };
   if (left.length && state.settings.voiceHold) return { busy: false, blocked: true, text: `${left.length} note${left.length === 1 ? "" : "s"} waiting. Voice is paused.` };
+  if (left.length && deferVoice() && !cam.hold && !ai.pumping) return { busy: false, text: `${left.length} note${left.length === 1 ? "" : "s"} waiting. They're listened to when you leave the camera.` };
   if (left.length) return { busy: true, text: `Listening to ${left.length} note${left.length === 1 ? "" : "s"}…` };
   return { busy: false, text: "" };
 }
@@ -1689,10 +1696,19 @@ async function pump() {
       let n = nextNote("heard");              // a heard note becomes list items at once
       if (n) { quickRead(n); continue; }
       n = nextNote("queued");
-      if (n && haveModel("asr") && !state.settings.voiceHold) { await listenTo(n); continue; }
+      if (n && haveModel("asr") && !state.settings.voiceHold && !ai.stopBatch && canListen()) {
+        if (deferVoice() && !cam.hold) { cam.hold = true; renderAll(); }   // the camera stays off until the batch is done
+        await listenTo(n);
+        if (deferVoice()) releaseWorker();
+        continue;
+      }
       break;
     }
-  } finally { ai.pumping = false; releaseScreen(); renderAll(); }
+  } finally {
+    ai.pumping = false; ai.stopBatch = false; releaseScreen();
+    if (cam.hold) { cam.hold = false; if (view === "capture") wakeCamera(); }
+    renderAll();
+  }
 }
 // If the phone runs out of memory the page is simply reloaded, with no error to catch. So before the heavy steps a note is
 // left in storage; finding it at the next launch means the last attempt was killed, and voice is paused rather than retried in a loop.
@@ -1739,7 +1755,7 @@ function quickRead(n) {
 }
 // At startup: get the speech model ready in the background so the first note isn't waiting on it.
 function warmUp() {
-  if (!haveModel("asr") || state.settings.voiceHold || ai.ready.asr || ai.pending.has("load:asr")) return;
+  if (deferVoice() || !haveModel("asr") || state.settings.voiceHold || ai.ready.asr || ai.pending.has("load:asr")) return;
   busyMark("load");
   workerCall(loadMsg(), 0).then(() => (ai.ready.asr = true), () => {}).then(() => busyClear("load"));
 }
@@ -2222,10 +2238,10 @@ async function teamTest() {
 }
 // ---------- Camera, microphone and making a note ----------
 const MAX_NOTE_SECS = 30;     // Whisper reads 30 seconds at a time
-const cam = { stream: null, starting: false, sleepTimer: null, audioTrack: null, error: "" };
+const cam = { hold: false, stream: null, starting: false, sleepTimer: null, audioTrack: null, error: "" };
 
 async function startCamera() {
-  if (cam.stream || cam.starting) return;
+  if (cam.stream || cam.starting || cam.hold) return;
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { cam.error = "This browser can't use the camera here."; return renderCapture(); }
   cam.starting = true; cam.error = ""; renderCapture();
   const video = { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }   // photos are saved at 1280px anyway; a smaller live feed leaves the speech model more memory;
@@ -2472,7 +2488,7 @@ function showView(v) {
   document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.id === "view-" + v));
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.view === v));
   syncIndicator($("#tabs"));
-  if (v !== "capture") sleepCameraSoon(); else wakeCamera();
+  if (v !== "capture") { if (deferVoice() && queuedCount()) { stopCamera(); pump(); } else sleepCameraSoon(); } else wakeCamera();   // Base listens while the camera is off
   renderAll();
   window.scrollTo(0, 0);
 }
@@ -2493,13 +2509,20 @@ const timeOf = ts => new Date(ts).toLocaleTimeString([], { hour: "numeric", minu
 // ---------- Capture ----------
 function renderCapture() {
   const on = !!cam.stream;
-  $("#cam-off").hidden = on || cam.starting;
+  $("#cam-off").hidden = on || cam.starting || cam.hold;
   $("#cam-video").hidden = !on;
-  $("#cam-starting").hidden = !cam.starting;
+  const cs = $("#cam-starting");
+  cs.hidden = !(cam.starting || cam.hold);
+  if (cam.hold) {
+    const n = queuedCount();
+    cs.innerHTML = `<span class="spin"></span><span>${n ? `Listening to ${n} note${n === 1 ? "" : "s"}…` : "Finishing up…"}</span><span class="small">The camera is off while the speech model works, so the phone doesn't run out of memory.</span><button class="btn sm quiet" id="btn-stop-batch">Stop and use the camera</button>`;
+    cs.querySelector("#btn-stop-batch").onclick = () => { ai.stopBatch = true; };
+  } else if (cs.dataset.mode !== "start") cs.textContent = "Starting the camera…";
+  cs.dataset.mode = cam.hold ? "hold" : "start";
   $("#cam-error").textContent = cam.error;
   $("#btn-phonecam").hidden = !cam.error;   // the fallback only shows when the live camera isn't working
   $("#btn-cam-stop").hidden = !on;
-  $("#btn-shutter").disabled = cam.starting;
+  $("#btn-shutter").disabled = cam.starting || cam.hold;
   const ck = captureKind();
   document.querySelectorAll("#cap-seg button").forEach(b => b.classList.toggle("active", b.dataset.k === ck));
   syncIndicator($("#cap-seg"), false);
@@ -2514,6 +2537,11 @@ function renderCapture() {
     vb.hidden = false;
     vb.innerHTML = `<div class="banner">${icon("warn")}<span class="grow">The phone ran out of memory while ${esc(state.settings.voiceHold.phase)}. Voice is paused so it doesn't keep restarting the app.</span><button class="btn sm primary" data-a="go">Try again</button></div>`;
     vb.querySelector("button").onclick = resumeVoice;
+  } else if (deferVoice() && voiceReady() && on && queuedCount() && !cam.hold) {
+    vb.hidden = false;
+    const n = queuedCount();
+    vb.innerHTML = `<div class="banner">${icon("mic")}<span class="grow">${n} note${n === 1 ? "" : "s"} waiting. Listened to when you leave the camera.</span><button class="btn sm primary" data-a="go">Listen now</button></div>`;
+    vb.querySelector("button").onclick = () => { stopCamera(); pump(); };
   } else if (!voiceReady()) {
     vb.hidden = false;
     vb.innerHTML = `<div class="banner">${icon("download")}<span class="grow">Voice notes need a one-time download.</span><button class="btn sm primary" data-a="go">Set up</button></div>`;
@@ -2823,7 +2851,7 @@ function renderMore() {
     <div class="card">
       <h3>Voice</h3>
       <p class="hint">Listening runs on this phone, so it works with no signal. The speech model downloads once (use Wi-Fi), then stays on the phone.</p>
-      <div class="set-row"><label class="grow" for="asr-base">More accurate: Base model<br><span class="hint">80 MB and needs more memory. Try it only if Tiny misses too many words.</span></label><input type="checkbox" id="asr-base" ${asrId() === "base" ? "checked" : ""} ${dl ? "disabled" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
+      <div class="set-row"><label class="grow" for="asr-base">More accurate: Base model<br><span class="hint">Hears better, but it needs more memory. So it listens one note at a time while the camera is off: when you leave the camera or tap Listen now.</span></label><input type="checkbox" id="asr-base" ${asrId() === "base" ? "checked" : ""} ${dl ? "disabled" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
       ${modelRow("asr")}
       <p class="hint" style="margin:-4px 0 6px 21px">Turns your recording into words and gives you a list right away.</p>
       ${dl ? `<div class="mprog" data-mprog><i></i></div><p class="hint" data-mprog-label style="margin-top:6px">Starting…</p>` : ""}
