@@ -352,6 +352,13 @@ nav.tabs button.active svg.i { animation: tabPop .5s var(--spring); }
 @keyframes recPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(.65); opacity: .45; } }
 .shot { transition: transform .4s var(--spring); }
 .shot:active { transform: scale(.95); }
+
+/* Shutter haptic: an invisible switch laid over the shutter (see feel.js) */
+.shutter-wrap { position: relative; width: 80px; height: 80px; border-radius: 50%; }
+.shutter-wrap:active .shutter-big:not(:disabled) { transform: scale(.9); transition-duration: .1s; }
+.hap { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; z-index: 3; cursor: pointer; }
+.no-shutter-haptic .hap, .hap:disabled { pointer-events: none; }
+#toast { touch-action: none; }
 </style>
 </head>
 <body data-view="capture">
@@ -388,7 +395,7 @@ nav.tabs button.active svg.i { animation: tabPop .5s var(--spring); }
       </div>
       <div class="deck-row">
         <button class="deck-side left" id="last-note" aria-label="Open the last note" style="visibility:hidden"></button>
-        <button class="shutter-big" id="btn-shutter" aria-label="Take a photo, then say what you need"><span></span></button>
+        <div class="shutter-wrap"><button class="shutter-big" id="btn-shutter" aria-label="Take a photo, then say what you need"><span></span></button><input class="hap" type="checkbox" switch tabindex="-1" aria-hidden="true"></div>
         <button class="deck-side right" id="btn-open-needed" aria-label="Open the Needed list"><span data-icon="list"></span><span class="badge" id="deck-badge" hidden></span></button>
       </div>
       <p class="cap-hint" id="shutter-label">Snap the aisle, then say what you need.</p>
@@ -423,7 +430,7 @@ nav.tabs button.active svg.i { animation: tabPop .5s var(--spring); }
       </div>
       <div class="deck-row">
         <button class="deck-side left" id="ba-last" aria-label="Open the last photo" style="visibility:hidden"></button>
-        <button class="shutter-big" id="ba-shutter" aria-label="Take a photo"><span></span></button>
+        <div class="shutter-wrap"><button class="shutter-big" id="ba-shutter" aria-label="Take a photo"><span></span></button><input class="hap" type="checkbox" switch tabindex="-1" aria-hidden="true"></div>
         <button class="deck-side right" id="ba-gallery" aria-label="Open the gallery"><span data-icon="image"></span><span class="badge" id="ba-count" hidden></span></button>
       </div>
       <p class="cap-hint" id="ba-hint"></p>
@@ -792,7 +799,7 @@ function freshState() {
     recents: [],
     stores: ["", "", "", "", ""],            // the five store slots on the Before/After tab: the store number in each
     shots: [],                              // Before/After photos: { id, at, slot:0-5, when:"before"|"after", kind:"aisle"|"display", photo }
-    settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", baWhen: "before", baKind: "aisle", baSlot: 0, lens: "wide", haptics: true, wordTiming: false, asrId: "tiny", models: { asr: false } },   // models: which downloads finished
+    settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", baWhen: "before", baKind: "aisle", baSlot: 0, lens: "wide", hapticShutter: true, hapticTaps: true, wordTiming: false, asrId: "tiny", models: { asr: false } },   // models: which downloads finished
     sync: { lastPull: 0, lastPush: 0, error: "" },
     team: { key: "", name: "", repo: "", hidden: {}, tick: {}, seen: {}, rt: {} },   // Beta 6: shared Needed list (see team.js)
   };
@@ -810,6 +817,8 @@ function migrate() {
   for (const k of ["deleted", "outbox", "sync", "settings"]) state[k] = Object.assign(f[k], state[k] || {});
   state.settings.models = { asr: !!(state.settings.models && state.settings.models.asr) };
   if (state.settings.asrId !== "tiny") { state.settings.asrId = "tiny"; state.settings.models.asr = false; }   // Beta 6: the small speech model is the default; phones that had the bigger one download it again when they choose
+  if (state.settings.haptics === false) { state.settings.hapticShutter = false; state.settings.hapticTaps = false; }   // the single haptics switch of 1.0.0 became two
+  delete state.settings.haptics;
   if (state.settings.wordTiming === undefined) state.settings.wordTiming = false;   // lighting up words while a note plays needs more memory; off unless chosen
   delete state.settings.smart; delete state.settings.smartV; delete state.settings.smartId;   // smart reading was removed in Beta 5.1.1
   state.deleted = { products: state.deleted.products || {} };
@@ -2313,11 +2322,16 @@ function attachSheetDrag(sheet, close) {
   sheet.addEventListener("touchend", end);
   sheet.addEventListener("touchcancel", end);
 }
-// ---------- How the app feels: haptics, tap ripples and small pulses ----------
-// Haptics: Android buzzes with navigator.vibrate. iPhones don't have that, but Safari (iOS 17.4 and later) gives a tiny haptic tick
-// whenever a hidden switch control is toggled, so a hidden switch is clicked from inside the tap that asked for it. Older iPhones
-// simply feel nothing. The choice is settings.haptics (on by default, remembered).
-const hapticOn = () => state.settings.haptics !== false;
+// ---------- How the app feels: shutter haptic, tap ripples, small pulses, swipe-away notices ----------
+// Haptics: Android buzzes with navigator.vibrate. iPhones don't have that. Safari (iOS 17.4 and later) gives a tiny haptic tick when
+// the person themselves toggles an <input type="checkbox" switch>; since iOS 26.5 a switch toggled by script no longer does. So the
+// shutter has an invisible switch laid over it: the finger lands on the switch (a real touch, so the phone gives its tick), and the
+// tap is then passed on to the shutter button. Two choices, both on by default and remembered: settings.hapticShutter (the shutter blip) and settings.hapticTaps (the light taps everywhere else).
+const hapticShutterOn = () => state.settings.hapticShutter !== false;
+const hapticTapsOn = () => state.settings.hapticTaps !== false;
+// Older iPhones (17.4 to 26.4) also tick when script clicks a hidden switch from inside a tap, so the other controls give a light tap there.
+// iOS 26.5 and later ignore that, so on those only the shutter (through the overlay below) is felt. The version can't be told apart,
+// so the shutter uses just the overlay, which works on every version that has switches, and never ticks twice.
 let hapticLabel = null;
 function hapticTick() {
   try {
@@ -2328,18 +2342,25 @@ function hapticTick() {
     hapticLabel.click();
   } catch (e) { /* no haptics is fine */ }
 }
-// tick: a light tap. shutter: a quick double click. ok: something finished. warn: something is about to be removed.
+// tick: a light tap on a control. shutter: Android only (iPhones get theirs from the overlay). ok: something finished.
 function haptic(kind = "tick") {
-  if (!hapticOn()) return;
-  try {
-    if (navigator.vibrate) { navigator.vibrate({ tick: 8, shutter: [14, 35, 22], ok: [10, 40, 10], warn: [20, 40, 20, 40, 20] }[kind] || 8); return; }
-  } catch (e) {}
-  const at = { tick: [0], shutter: [0, 70], ok: [0, 90], warn: [0, 70, 140] }[kind] || [0];
-  for (const ms of at) ms ? setTimeout(hapticTick, ms) : hapticTick();
+  if (!(kind === "shutter" ? hapticShutterOn() : hapticTapsOn())) return;
+  try { if (navigator.vibrate) { navigator.vibrate({ tick: 8, shutter: 12, ok: [10, 40, 10] }[kind] || 8); return; } } catch (e) {}
+  if (kind !== "shutter") hapticTick();
 }
-// Every control that is a switch, tab, slot or tick gives a light tap (the shutter, rows and big buttons have their own).
 const HAPTIC_SEL = ".seg button, nav.tabs button, .slot, .cam-lens button, .cam-sound, .menu-list button, .check, .deck-side, .pbtn";
-document.addEventListener("click", e => { if (e.target.closest && e.target.closest(HAPTIC_SEL)) haptic("tick"); }, true);
+document.addEventListener("click", e => { if (e.isTrusted && e.target.closest && e.target.closest(HAPTIC_SEL)) haptic("tick"); }, true);// Pass a tap on the invisible switch to the button under it, and keep the switch in step with the button (disabled together) and the setting.
+function wireHaptics() {
+  document.querySelectorAll(".shutter-wrap").forEach(w => {
+    const b = w.querySelector(".shutter-big"), h = w.querySelector(".hap");
+    if (b && h) h.addEventListener("click", () => b.click());
+  });
+  syncHaptics();
+}
+function syncHaptics() {
+  document.body.classList.toggle("no-shutter-haptic", !hapticShutterOn());
+  document.querySelectorAll(".shutter-wrap").forEach(w => { const b = w.querySelector(".shutter-big"), h = w.querySelector(".hap"); if (b && h) h.disabled = b.disabled; });
+}
 
 // A soft circle spreads from the finger on every button (a tap indicator). The buttons listed get position/overflow from the CSS.
 const RIPPLE_SEL = ".btn, .fab, .menu-list button, .slot, .deck-side, .seg button, .cam-lens button, .cam-sound, .cam-stop, .pbtn, .check, nav.tabs button";
@@ -2357,6 +2378,53 @@ function pulse(node, cls = "pop", ms = 520) {
   if (!node) return;
   node.classList.remove(cls); void node.offsetWidth; node.classList.add(cls);
   setTimeout(() => node.classList.remove(cls), ms);
+}
+
+// The notices at the bottom (Undo, "Saved" and the rest) can be flicked away sideways or downwards. Letting go short of that springs
+// them back; while a finger is on one it stays up.
+function wireToastSwipe() {
+  const t = document.getElementById("toast"); if (!t) return;
+  let id = null, x0 = 0, y0 = 0, dx = 0, dy = 0, axis = "", lastX = 0, lastY = 0, lastT = 0, v = 0, drag = false;
+  const restartTimer = () => { clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), $("#toast-undo").style.display === "none" ? 2600 : 6000); };
+  t.addEventListener("pointerdown", e => {
+    if (!t.classList.contains("show")) return;
+    id = e.pointerId; x0 = lastX = e.clientX; y0 = lastY = e.clientY; lastT = e.timeStamp; dx = dy = v = 0; axis = ""; drag = false;
+  });
+  t.addEventListener("pointermove", e => {
+    if (e.pointerId !== id) return;
+    dx = e.clientX - x0; dy = e.clientY - y0;
+    if (!drag) {
+      if (Math.hypot(dx, dy) < 8) return;
+      if (dy < 0 && -dy > Math.abs(dx)) { id = null; return; }   // upwards isn't a way to dismiss
+      drag = true; axis = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
+      try { t.setPointerCapture(id); } catch (err) {}
+      clearTimeout(toastTimer); t.style.transition = "none";
+    }
+    const dt = e.timeStamp - lastT; if (dt > 0) v = axis === "x" ? (e.clientX - lastX) / dt : (e.clientY - lastY) / dt;
+    lastX = e.clientX; lastY = e.clientY; lastT = e.timeStamp;
+    const tx = axis === "x" ? dx : 0, ty = axis === "y" ? Math.max(0, dy) : 0, dist = axis === "x" ? Math.abs(dx) : Math.max(0, dy);
+    t.style.transform = `translate(calc(-50% + ${tx}px), ${ty}px) scale(1)`;
+    t.style.opacity = String(Math.max(0.15, 1 - dist / 220));
+  });
+  const end = e => {
+    if (e.pointerId !== id) return;
+    id = null;
+    if (!drag) return;
+    drag = false;
+    const dist = axis === "x" ? Math.abs(dx) : Math.max(0, dy), fast = axis === "x" ? Math.abs(v) > 0.5 : v > 0.5;
+    if (dist > 70 || fast) {   // away it goes, the way it was pushed
+      const to = axis === "x" ? `translate(calc(-50% + ${(dx < 0 ? -1 : 1) * innerWidth}px), 0) scale(1)` : "translate(-50%, 140px) scale(1)";
+      t.style.transition = "transform .22s ease-in, opacity .22s ease-in"; t.style.transform = to; t.style.opacity = "0";
+      clearTimeout(toastTimer);
+      setTimeout(() => { t.classList.remove("show"); t.style.transition = "none"; t.style.transform = ""; t.style.opacity = ""; requestAnimationFrame(() => { t.style.transition = ""; }); }, 230);
+    } else {   // not far enough: back into place
+      t.style.transition = "transform .3s var(--spring), opacity .2s ease"; t.style.transform = ""; t.style.opacity = "";
+      setTimeout(() => { t.style.transition = ""; }, 320);
+      restartTimer();
+    }
+  };
+  t.addEventListener("pointerup", end);
+  t.addEventListener("pointercancel", end);
 }
 // ---------- Shutter sound ----------
 // A real camera click ("Camera shutter click", mixkit.co, Mixkit License, about 14 KB) is built into the page, so it works offline.
@@ -2387,6 +2455,7 @@ async function playShutter() {
 }
 // The speaker button at the bottom right of both viewfinders.
 function renderSoundBtn() {
+  syncHaptics();
   const on = shutterOn();
   document.querySelectorAll(".cam-sound").forEach(b => { b.innerHTML = icon(on ? "vol" : "volx"); b.setAttribute("aria-pressed", on ? "true" : "false"); b.setAttribute("aria-label", on ? "Shutter sound on. Tap to turn off" : "Shutter sound off. Tap to turn on"); });
 }
@@ -3819,7 +3888,7 @@ function editVariation(v, { prefill = "" } = {}) {
   };
 }
 // The running count of releases since the project began (every pushed update that is not a phone's automatic sync). Add one with each push.
-const REVISION = 58;
+const REVISION = 59;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -3848,7 +3917,8 @@ function renderMore() {
     </div>
     <div class="card">
       <h3>Feedback</h3>
-      <div class="set-row"><label class="grow" for="haptics">Haptic feedback<br><span class="hint">A light tap on buttons and a click on the shutter. Needs an iPhone with iOS 17.4 or later.</span></label><input type="checkbox" id="haptics" ${hapticOn() ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
+      <div class="set-row"><label class="grow" for="haptic-shutter">Shutter feedback<br><span class="hint">A tiny blip when you press the shutter. Needs an iPhone with iOS 17.4 or later.</span></label><input type="checkbox" id="haptic-shutter" ${hapticShutterOn() ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
+      <div class="set-row"><label class="grow" for="haptic-taps">Button feedback<br><span class="hint">A light tap on buttons, tabs and switches. iPhones on iOS 26.5 or later don't allow this one, so it only works on older ones.</span></label><input type="checkbox" id="haptic-taps" ${hapticTapsOn() ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
     </div>
     <div class="card">
       <h3>Team network</h3>
@@ -3891,13 +3961,14 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan 1.0.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan 1.0.1 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#team-key").onchange = e => teamSetKey(e.target.value);
   v.querySelector("#team-name").onchange = e => { state.team.name = e.target.value.trim(); save(); teamSoon(300); };
   v.querySelector("#btn-team-test").onclick = teamTest;
-  v.querySelector("#haptics").onchange = e => { state.settings.haptics = e.target.checked; save(); if (e.target.checked) haptic("ok"); };
+  v.querySelector("#haptic-shutter").onchange = e => { state.settings.hapticShutter = e.target.checked; save(); syncHaptics(); };
+  v.querySelector("#haptic-taps").onchange = e => { state.settings.hapticTaps = e.target.checked; save(); };
   v.querySelector("#word-timing").onchange = e => { state.settings.wordTiming = e.target.checked; save(); };
   v.querySelectorAll("[data-dl]").forEach(b => (b.onclick = () => downloadModels([b.dataset.dl])));
   const del = v.querySelector("#btn-del-models"); if (del) del.onclick = async () => {
@@ -4019,6 +4090,8 @@ $("#btn-shutter").onclick = () => onShutter(false, captureKind());
 $("#btn-phonecam").onclick = () => onShutter(true, captureKind());
 wireBA();
 wireSoundBtn();
+wireHaptics();
+wireToastSwipe();
 document.querySelectorAll(".cam-lens button").forEach(b => (b.onclick = () => { pulse(b); setLens(b.dataset.lens); }));
 $("#sync-ind").onclick = () => showView("more");
 renderAll();
