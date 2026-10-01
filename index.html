@@ -308,6 +308,9 @@ body[data-view="ba"] #view-ba.active { max-width: 640px; margin: 0 auto; }
 .slot b { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .slot small { height: 11px; font-size: 10px; font-weight: 700; line-height: 11px; opacity: .8; }
 .slot.active { background: var(--ink); color: var(--on-ink); }
+.slot.act { background: var(--red); color: var(--on-red); }
+.slot.act:active { background: var(--red-press); }
+.slot.act svg.i { width: 20px; height: 20px; }
 .shot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .shot { position: relative; aspect-ratio: 1; border: 0; padding: 0; border-radius: 12px; overflow: hidden; background: var(--chip); }
 .shot img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -745,7 +748,7 @@ function freshState() {
     outbox: { products: {} },               // changed since last upload
     notes: [],                              // newest first: { id, at, photos:[id], audio:id|null, secs, text, status, parts:[{vk, s, e}] (brand + flavor found in the text), flag, ticks:{pid: true}, err }
     recents: [],
-    stores: ["", "", "", "", "", ""],        // the six store slots on the Before/After tab: the store number in each
+    stores: ["", "", "", "", ""],            // the five store slots on the Before/After tab: the store number in each
     shots: [],                              // Before/After photos: { id, at, slot:0-5, when:"before"|"after", kind:"aisle"|"display", photo }
     settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", baWhen: "before", baKind: "aisle", baSlot: 0, wordTiming: false, asrId: "tiny", models: { asr: false } },   // models: which downloads finished
     sync: { lastPull: 0, lastPush: 0, error: "" },
@@ -774,7 +777,9 @@ function migrate() {
   for (const k of ["hidden", "tick", "seen", "rt"]) state.team[k] = state.team[k] || {};
   state.recents = state.recents || [];
   state.shots = (Array.isArray(state.shots) ? state.shots : []).filter(s => s && s.photo);
-  state.stores = Array.from({ length: 6 }, (_, i) => String((Array.isArray(state.stores) && state.stores[i]) || ""));
+  { const old = Array.isArray(state.stores) ? state.stores : [];   // Beta 7 had six slots; a number in the sixth moves to the fifth when that one is free
+    state.stores = Array.from({ length: 5 }, (_, i) => String(old[i] || ""));
+    if (old[5] && !state.stores[4]) { state.stores[4] = String(old[5]); for (const s of state.shots) if (s.slot === 5) s.slot = 4; } }
   if (!state.stores.some(Boolean) && state.storeName) state.stores[0] = String(state.storeName);   // the store already set in More becomes the first slot
   for (const s of state.shots) { if (s.when !== "after") s.when = "before"; if (s.kind !== "display") s.kind = "aisle"; if (!(s.slot >= 0 && s.slot < 6)) s.slot = 0; }
   state.notes = Array.isArray(state.notes) ? state.notes : [];
@@ -3082,10 +3087,10 @@ function zoomStage(img, stage) {
   stage.addEventListener("pointerup", up); stage.addEventListener("pointercancel", up);
 }
 // ---------- Before / After photos ----------
-// A photo-only twin of the Stocking tab: same camera, no voice. Six store slots sit across the top, so a shift's photos from up to
-// six stores can be kept apart and reviewed until the end of the shift. Two switches (Before | After, Aisle | Display) decide where
+// A photo-only twin of the Stocking tab: same camera, no voice. Five store slots sit across the top, so a shift's photos from up to
+// five stores can be kept apart and reviewed until the end of the shift. The sixth button saves everything to the phone and clears it. Two switches (Before | After, Aisle | Display) decide where
 // each shot is filed inside the open store. Photos stay on this phone.
-const SLOTS = 6;
+const SLOTS = 5;
 const baWhen = () => (state.settings.baWhen === "after" ? "after" : "before");
 const baKind = () => (state.settings.baKind === "display" ? "display" : "aisle");
 const baSlot = () => { const n = +state.settings.baSlot; return n >= 0 && n < SLOTS ? n : 0; };
@@ -3094,12 +3099,13 @@ const slotCount = i => state.shots.filter(s => s.slot === i).length;
 const WHEN_LABEL = { before: "Before", after: "After" };
 let lastShotId = null;
 
-// The six store buttons: the store number (or + when the slot is empty) and how many photos it holds.
+// The store buttons: the store number (or + when the slot is empty) and how many photos it holds, then the Save and clear button.
 function slotsHTML(active) {
+  const act = `<button class="slot act" data-act="save" aria-label="Save every photo to this phone, then clear the stores and photos">${icon("download")}<small>Save</small></button>`;
   return Array.from({ length: SLOTS }, (_, i) => {
     const st = storeOf(i), n = slotCount(i);
     return `<button class="slot${i === active ? " active" : ""}" data-slot="${i}" aria-label="${st ? `Store ${esc(st)}` : `Empty store slot ${i + 1}`}${n ? `, ${n} photo${n === 1 ? "" : "s"}` : ""}"><b>${st ? esc(st) : "+"}</b><small>${n || ""}</small></button>`;
-  }).join("");
+  }).join("") + act;
 }
 
 function renderBA() {
@@ -3176,7 +3182,7 @@ function wireBA() {
   $("#ba-cam-stop").onclick = () => { state.settings.camOK = false; save(); stopCamera(); };
   $("#ba-shutter").onclick = () => onShutterBA(false);
   $("#ba-phonecam").onclick = () => onShutterBA(true);
-  $("#ba-slots").onclick = e => { const b = e.target.closest("[data-slot]"); if (b) pickSlot(+b.dataset.slot); };
+  $("#ba-slots").onclick = e => { if (e.target.closest("[data-act]")) return saveAndClear(); const b = e.target.closest("[data-slot]"); if (b) pickSlot(+b.dataset.slot); };
   document.querySelectorAll("#ba-when-seg button").forEach(b => (b.onclick = () => { state.settings.baWhen = b.dataset.w; save(); renderBA(); }));
   document.querySelectorAll("#ba-kind-seg button").forEach(b => (b.onclick = () => { state.settings.baKind = b.dataset.k; save(); renderBA(); }));
   $("#ba-gallery").onclick = () => openGallery();
@@ -3210,7 +3216,10 @@ function openGallery(startKind = baKind(), startSlot = baSlot()) {
     s.querySelector("#gal-body").innerHTML = html;
     hydratePhotos(s);
   };
-  s.querySelector("#gal-slots").onclick = e => { const b = e.target.closest("[data-slot]"); if (b) { slot = +b.dataset.slot; draw(); } };
+  s.querySelector("#gal-slots").onclick = e => {
+    if (e.target.closest("[data-act]")) { saveAndClear().then(done => { if (done) close(); }); return; }
+    const b = e.target.closest("[data-slot]"); if (b) { slot = +b.dataset.slot; draw(); }
+  };
   s.querySelector("#gal-seg").onclick = e => { const b = e.target.closest("button[data-k]"); if (b) { kind = b.dataset.k; draw(); } };
   s.querySelector("#gal-share").onclick = e => { const sh = e.target.closest("[data-share]"); if (sh && !sh.disabled) shareBatch(slot, sh.dataset.share); };
   s.querySelector("#gal-body").onclick = e => {
@@ -3240,6 +3249,33 @@ async function shareBatch(slot, w) {
     if (navigator.canShare && navigator.canShare({ files, text })) { await navigator.share({ files, text }); return; }
   } catch (e) { if (e && e.name === "AbortError") return; }
   toast("Sharing isn't available here. Open a photo and use Save to Photos.");
+}
+// End of shift: hand every photo to the phone's share sheet (choose Save Images) with names like
+// store1234_Before_Aisle_1_2026-10-01.jpg, and only once that has gone through, forget the store numbers and clear the photos.
+const pad2 = n => String(n).padStart(2, "0");
+async function saveAndClear() {
+  if (!state.shots.length) { toast("No photos to save"); return false; }
+  const n = state.shots.length;
+  if (!(await confirmDialog(`Save ${n} photo${n === 1 ? "" : "s"} to this phone, then clear every store number and all Before/After photos from the app?`, { ok: "Save and clear", danger: true }))) return false;
+  const list = [...state.shots].sort((a, b) => a.slot - b.slot || a.when.localeCompare(b.when) || a.kind.localeCompare(b.kind) || a.at - b.at), count = {}, files = [];
+  for (const x of list) {
+    const d = new Date(x.at), key = `${x.slot}|${x.when}|${x.kind}`; count[key] = (count[key] || 0) + 1;
+    const blob = await getPhoto(x.photo).catch(() => null);
+    if (blob) files.push(new File([blob], `store${(storeOf(x.slot) || "none").replace(/[^A-Za-z0-9-]/g, "")}_${WHEN_LABEL[x.when]}_${KIND_LABEL[x.kind]}_${count[key]}_${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}.jpg`, { type: "image/jpeg" }));
+  }
+  if (files.length < list.length) { toast("Some photos are missing, so nothing was cleared"); return false; }
+  try {
+    if (!(navigator.canShare && navigator.canShare({ files }))) throw new Error("no share");
+    await navigator.share({ files });
+  } catch (e) {
+    toast(e && e.name === "AbortError" ? "Not saved, so nothing was cleared" : "Saving isn't available here, so nothing was cleared");
+    return false;
+  }
+  const snap = snapshot();
+  state.shots = []; state.stores = Array(SLOTS).fill(""); state.storeName = ""; state.settings.baSlot = 0; lastShotId = null;
+  save(); renderAll(); scheduleSweep();
+  toast("Saved and cleared", snap);
+  return true;
 }
 // slot = a store number to clear, or null for every store.
 function clearShots(slot) {
