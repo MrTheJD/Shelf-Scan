@@ -459,7 +459,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 </head>
 <body>
 <header class="top">
-  <h1>Shelf Scan</h1><span class="tagline">BETA 5.1</span>
+  <h1>Shelf Scan</h1><span class="tagline">BETA 5.2</span>
   <span class="spacer"></span>
   <span class="store" id="hdr-store"></span>
   <button class="sync-ind" id="sync-ind" hidden></button>
@@ -833,6 +833,7 @@ function migrate() {
   const f = freshState();
   for (const k of ["deleted", "outbox", "sync", "settings"]) state[k] = Object.assign(f[k], state[k] || {});
   state.settings.models = Object.assign({ asr: false, fast: false }, state.settings.models || {});
+  if (state.settings.smartV !== 2) { state.settings.models.fast = false; state.settings.smartV = 2; }   // smart reading changed engines in Beta 5.2
   state.deleted = { products: state.deleted.products || {} };
   state.outbox = { products: state.outbox.products || {} };
   delete state.tags; delete state.config;   // left over from the scanning app
@@ -1511,22 +1512,27 @@ function quickItems(text) {
 }
 
 // ---------- Review: compare the language model's reading with the quick read ----------
-// Pairs items by product (then by brand), keeps your crossed-off items as they are, and sets each item's dot:
-// green when the model verified it (product clear, quantity present), yellow when something is still missing.
+// The model is only a second opinion, and a small one (on its own it got 36 of 49 test notes right, the quick read 44),
+// so it can confirm an item but never overrule the quick read:
+// - same product and quantity, and the quick read had no doubts: green (verified);
+// - the model supplies a quantity the quick read lacked, for a clear product: green;
+// - anything else (a close call it can't settle, a different product or number, an item only one of them heard): yellow, with the reason.
+// Crossed-off items are left as they are.
 function mergeReview(oldItems, modelItems) {
   const kept = oldItems.filter(it => it.done), open = oldItems.filter(it => !it.done);
-  const brandOf = it => { const p = it.pid && productById(it.pid); return p ? p.brand : null; };
   const used = new Set(), out = [];
-  const take = (m, pred) => { const i = open.findIndex((q, k) => !used.has(k) && pred(q)); if (i >= 0) used.add(i); return i >= 0 ? open[i] : null; };
+  const take = pred => { const i = open.findIndex((q, k) => !used.has(k) && pred(q)); if (i >= 0) used.add(i); return i >= 0 ? open[i] : null; };
+  const item = (q, why, qty = q.qty) => ({ pid: q.pid, phrase: q.phrase, qty, why, rev: why ? "warn" : "ok", done: false });
   for (const m of modelItems) {
-    const q = (m.pid && take(m, q => q.pid === m.pid)) || (m.pid && take(m, q => brandOf(q) && brandOf(q) === brandOf(m))) || null;
-    const qty = m.qty != null ? m.qty : q ? q.qty : null;
-    const pid = m.pid || (q && q.pid) || null;
-    const why = !pid ? "no match" : (!m.pid || (m.why && m.why !== "how many?" && m.why !== "no match")) ? (m.why || "model unsure") : qty == null ? "how many?" : "";
-    out.push({ pid, phrase: m.phrase, qty, why, rev: why ? "warn" : "ok", done: false });
+    const q = (m.pid && take(q => q.pid === m.pid)) || (m.pid && take(q => q.pid && productById(q.pid) && m.pid && productById(m.pid) && productById(q.pid).brand === productById(m.pid).brand)) || null;
+    if (!q) { out.push({ pid: m.pid, phrase: m.phrase, qty: m.qty, why: m.pid ? "only heard on review" : "no match", rev: "warn", done: false }); continue; }
+    if (q.pid !== m.pid) { out.push(item(q, "model read it differently")); continue; }
+    if (q.qty != null && m.qty != null && q.qty !== m.qty) { out.push(item(q, `quantity unsure (${q.qty} or ${m.qty}?)`)); continue; }
+    if (q.why === "close call" || q.why === "weak match") { out.push(item(q, q.why)); continue; }   // a small model can't settle that
+    const qty = q.qty != null ? q.qty : m.qty;
+    out.push(item(q, qty == null ? "how many?" : "", qty));
   }
-  // Quick-read items the model didn't mention: it couldn't confirm them.
-  open.forEach((q, k) => { if (!used.has(k)) out.push({ ...q, why: q.why || "not confirmed", rev: "warn" }); });
+  open.forEach((q, k) => { if (!used.has(k)) out.push(item(q, q.why || "not confirmed")); });
   return [...kept, ...out];
 }// ---------- On-device voice models and the note queue ----------
 // A note goes: queued (voice clip waiting) → heard (text waiting for the language model) → reading → done.
@@ -1534,17 +1540,17 @@ function mergeReview(oldItems, modelItems) {
 // shelves, or walk to the back room, while the phone works through it.
 const MODEL_INFO = {
   asr: { name: "Speech to text (required)", detail: "Whisper Base", size: "about 80 MB" },
-  fast: { name: "Smart reading (optional)", detail: "Qwen 2.5 0.5B", size: "about 0.8 GB" },
+  fast: { name: "Smart reading (optional)", detail: "Qwen 2.5 0.5B · needs iOS 26 or newer", size: "about 300 MB" },
 };
-const MODEL_CACHE_HINT = { asr: "whisper-base.en", fast: "Qwen2.5-0.5B-Instruct" };
+const MODEL_CACHE_HINT = { asr: "whisper-base.en" };
 const ai = {
   worker: null, ready: {}, device: {}, probe: null,
   dl: { key: null, loaded: 0, total: 0, error: "" },   // the download in progress, if any
   pumping: false, pending: new Map(), seq: 0, wake: null,
 };
 const haveModel = key => !!state.settings.models[key];
-// The language model in use (Qwen 0.5B: Llama 1B was 1.7 GB, too much memory for an iPhone 13).
-function activeLLM() { return haveModel("fast") ? "fast" : null; }
+// Smart reading is available only where WebGPU exists and passed its accuracy check (see smart.js).
+function activeLLM() { return haveModel("fast") && smart.supported && !smart.bad ? "fast" : null; }
 const voiceReady = () => haveModel("asr");   // the quick read needs only the speech model
 const smartOn = () => state.settings.smart !== false && !!activeLLM();
 
@@ -1593,8 +1599,9 @@ async function downloadModels(keys) {
       if (haveModel(key)) continue;
       ai.dl = { key, loaded: 0, total: 0, error: "" };
       if (view === "more") renderMore();
-      await workerCall({ type: "load", key });     // no timeout: it's a big download
-      state.settings.models[key] = true; save();
+      if (key === "fast") await smartEngine(p => { ai.dl.pct = Math.round((p.progress || 0) * 100); ai.dl.text = p.text || ""; updateModelProgress(); });
+      else await workerCall({ type: "load", key });     // no timeout: it's a big download
+      state.settings.models[key] = true; if (key === "fast") state.settings.smartId = smart.modelId; save();
     }
     ai.dl = { key: null, loaded: 0, total: 0, error: "" };
     toast("Voice models ready");
@@ -1607,9 +1614,10 @@ async function downloadModels(keys) {
 function updateModelProgress() {
   const bar = document.querySelector("[data-mprog]");
   if (!bar || !ai.dl.key) return;
-  const t = ai.dl.total, pct = t ? Math.min(100, Math.round(ai.dl.loaded / t * 100)) : 0;
+  const t = ai.dl.total, pct = ai.dl.key === "fast" ? (ai.dl.pct || 0) : t ? Math.min(100, Math.round(ai.dl.loaded / t * 100)) : 0;
   bar.querySelector("i").style.width = pct + "%";
   const lab = document.querySelector("[data-mprog-label]");
+  if (ai.dl.key === "fast") { if (lab) lab.textContent = `${MODEL_INFO.fast.name}: ${pct}%${ai.dl.text ? " · " + ai.dl.text.replace(/^.*?(\d+MB fetched)/, "$1").slice(0, 60) : ""}`; return; }
   if (lab) lab.textContent = t ? `${MODEL_INFO[ai.dl.key].name}: ${(ai.dl.loaded / 1e6).toFixed(0)} of ${(t / 1e6).toFixed(0)} MB` : `${MODEL_INFO[ai.dl.key].name}: starting…`;
 }
 async function deleteModels() {
@@ -1618,6 +1626,7 @@ async function deleteModels() {
     const c = await caches.open("transformers-cache");
     for (const req of await c.keys()) await c.delete(req);
   } catch (e) { /* nothing cached */ }
+  await smartDelete();
   state.settings.models = { asr: false, fast: false };
   ai.ready = {}; save(); renderAll();
 }
@@ -1631,6 +1640,9 @@ async function verifyModels() {
     for (const key of Object.keys(MODEL_CACHE_HINT)) {
       if (state.settings.models[key] && !urls.some(u => u.includes(MODEL_CACHE_HINT[key]))) { state.settings.models[key] = false; changed = true; }
     }
+    // The first smart-reading model (a 786 MB file that crashed iPhone Safari) is no longer used: free its space.
+    for (const req of await c.keys()) if (req.url.includes("Qwen2.5-0.5B-Instruct")) await c.delete(req);
+    if (state.settings.models.fast && !(await smartHasModel())) { state.settings.models.fast = false; changed = true; }
     if (changed) { save(); renderAll(); }
   } catch (e) { /* ignore */ }
 }
@@ -1649,7 +1661,7 @@ function nextReview() {
 function pendingNotes() { return state.notes.filter(n => n.status === "queued" || n.status === "heard"); }
 // What's happening, for display.
 function queueState() {
-  const left = pendingNotes(), rv = smartOn() ? reviewQueue().length : 0;
+  const left = pendingNotes(), rv = smartOn() ? reviewQueue().length : 0;   // reviews wait on the model, not on you
   if (left.length && !haveModel("asr")) return { busy: false, blocked: true, text: `${left.length} note${left.length === 1 ? "" : "s"} saved. Download the speech model in More to read ${left.length === 1 ? "it" : "them"}.` };
   if (left.length) return { busy: true, text: `Listening to ${left.length} note${left.length === 1 ? "" : "s"}…` };
   if (rv) return { busy: true, text: ai.llmWarm ? `Reviewing ${rv} note${rv === 1 ? "" : "s"}…` : "Smart reading is warming up…" };
@@ -1663,6 +1675,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden && ai
 
 async function pump() {
   if (ai.pumping) return;
+  if (!smartOn()) finalizeUnreviewed();
   ai.pumping = true; holdScreenOn(); renderQueueStatus();
   try {
     for (;;) {
@@ -1697,8 +1710,17 @@ function cleanTranscript(t) {
 // The instant read: items on the list the moment a note is heard (dots start red).
 function quickRead(n) {
   try { n.items = quickItems(n.text); } catch (e) { n.items = []; }
-  n.status = "done"; n.err = ""; n.edited = false; n.rev = "pending";
+  n.status = "done"; n.err = ""; n.edited = false;
+  if (smartOn()) n.rev = "pending";
+  else { n.rev = "done"; settleItems(n); }   // no model to wait for: the quick read's own flags decide the dots
   save(); renderAll();
+}
+// Without smart reading an item is green when it's clear and complete, yellow when something is missing or unsure.
+function settleItems(n) { for (const it of n.items) if (!it.done && !it.rev) it.rev = it.why ? "warn" : "ok"; }
+function finalizeUnreviewed() {
+  let any = false;
+  for (const n of state.notes) if (n.status === "done" && n.rev === "pending") { n.rev = "done"; settleItems(n); any = true; }
+  if (any) { save(); renderAll(); }
 }
 // Smart review: the model re-reads the words and its answer is compared with the quick read.
 async function reviewNote(n) {
@@ -1706,10 +1728,10 @@ async function reviewNote(n) {
   ai.reviewing = n.id; renderAll();
   try {
     await warmLLM();
-    const r = await workerCall({ type: "extract", key, text: n.text }, 120000);
+    const items = await Promise.race([smartExtract(n.text), new Promise((_, rej) => setTimeout(() => rej(new Error("Took too long")), 120000))]);
     if (n.edited) { n.rev = "done"; }
-    else if (!r.items) { n.rev = "failed"; n.items.forEach(it => { if (!it.done && !it.rev) { it.rev = "warn"; it.why = it.why || "couldn't be verified"; } }); }
-    else { n.items = mergeReview(n.items, itemsFromModel(r.items)); n.rev = "done"; }
+    else if (!items) { n.rev = "failed"; n.items.forEach(it => { if (!it.done && !it.rev) { it.rev = "warn"; it.why = it.why || "couldn't be verified"; } }); }
+    else { n.items = mergeReview(n.items, itemsFromModel(items)); n.rev = "done"; }
   } catch (e) { n.rev = "failed"; }
   ai.reviewing = null;
   save(); renderAll();
@@ -1717,15 +1739,13 @@ async function reviewNote(n) {
 // Load the language model once; a crash while loading (low memory) switches smart reading off next time.
 let llmLoading = null;
 function warmLLM() {
-  const key = activeLLM();
-  if (!key || ai.ready[key]) return Promise.resolve();
+  if (!activeLLM() || smart.engine) return Promise.resolve();
   if (llmLoading) return llmLoading;
   try { localStorage.setItem("shelfscan.b5.loading", "1"); } catch (e) {}
-  llmLoading = workerCall({ type: "load", key }, 240000).then(() => {
-    ai.ready[key] = true; ai.llmWarm = true;
+  llmLoading = smartEngine().then(() => {
     try { localStorage.removeItem("shelfscan.b5.loading"); } catch (e) {}
     llmLoading = null; renderAll();
-  }, e => { try { localStorage.removeItem("shelfscan.b5.loading"); } catch (x) {} llmLoading = null; throw e; });
+  }, e => { try { localStorage.removeItem("shelfscan.b5.loading"); } catch (x) {} llmLoading = null; renderAll(); throw e; });
   return llmLoading;
 }
 // At startup: get the models ready in the background so the first note isn't waiting on them.
@@ -1737,7 +1757,7 @@ function warmUp() {
     setTimeout(() => toast("Smart reading stopped the app last time, so it's off. You can turn it back on in More."), 1500);
   }
   if (haveModel("asr")) workerCall({ type: "load", key: "asr" }, 0).then(() => (ai.ready.asr = true), () => {});
-  if (smartOn()) warmLLM().then(() => pump(), () => {});
+  if (smartOn()) warmLLM().then(() => pump(), e => { if (smart.bad) toast(e.message); finalizeUnreviewed(); });
 }
 // Put a note back in line: to be listened to again, or read again.
 function requeue(n) {
@@ -1746,6 +1766,83 @@ function requeue(n) {
   save(); renderAll(); pump();
 }
 function renderQueueStatus() { if (view === "needed" || view === "notes" || view === "capture") renderAll(); }
+// ---------- Smart reading (language model on the graphics chip, via WebLLM) ----------
+// Optional and iOS 26+ only (needs WebGPU). The model is fetched and loaded piece by piece, which keeps
+// memory low enough for an iPhone 13. It double-checks the quick read; it never has to be there for the app to work.
+const WEBLLM_URL = "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.79/+esm";
+const smart = { lib: null, engine: null, loading: null, supported: null, f16: false, modelId: "", bad: false };
+
+// Is there a graphics chip we can use? Also picks the model build to match it.
+async function detectSmart() {
+  try {
+    const ad = navigator.gpu ? await navigator.gpu.requestAdapter() : null;
+    smart.supported = !!ad; smart.f16 = !!ad && ad.features.has("shader-f16");
+  } catch (e) { smart.supported = false; }
+  smart.modelId = smart.f16 ? "Qwen2.5-0.5B-Instruct-q4f16_1-MLC" : "Qwen2.5-0.5B-Instruct-q4f32_1-MLC";
+  if (view === "more") renderMore();
+  return smart.supported;
+}
+const smartLib = async () => smart.lib || (smart.lib = await import(WEBLLM_URL));
+
+const SMART_SYSTEM = `A store merchandiser left a short voice note about one empty or low shelf spot. List each product they need restocked, and how many.
+Reply with JSON only: {"items":[{"product":"","qty":null}]}
+- product: the brand, flavor, size and pack the speaker said, in their own words (for example "diet coke 12 pack" or "sprite 2 liter").
+- qty: how many they need, as a number. A pack size like "twelve pack" is NOT the quantity. Use null if they give no amount. If they change their mind, use the last number. A couple is 2.
+- If no product is named, reply {"items":[]}.`;
+const SMART_SHOTS = [
+  ["Need like three Barq's root beer twelve packs, shelf is bare.", { items: [{ product: "barq's root beer 12 pack", qty: 3 }] }],
+  ["Sprite Zero twenty ounce, four, and Powerade orange twenty ounce, six of those.", { items: [{ product: "sprite zero 20 ounce", qty: 4 }, { product: "powerade orange 20 ounce", qty: 6 }] }],
+  ["Um, the Fanta pineapple two liter, I'd say maybe five, no, six.", { items: [{ product: "fanta pineapple 2 liter", qty: 6 }] }],
+  ["We're out of the Fresca grapefruit cans.", { items: [{ product: "fresca grapefruit cans", qty: null }] }],
+  ["Nothing here but dust, honestly.", { items: [] }],
+];
+const SMART_SCHEMA = JSON.stringify({
+  type: "object",
+  properties: { items: { type: "array", items: { type: "object", properties: { product: { type: "string" }, qty: { anyOf: [{ type: "integer" }, { type: "null" }] } }, required: ["product", "qty"] } } },
+  required: ["items"],
+});
+const smartMessages = note => [
+  { role: "system", content: SMART_SYSTEM },
+  ...SMART_SHOTS.flatMap(([u, a]) => [{ role: "user", content: u }, { role: "assistant", content: JSON.stringify(a) }]),
+  { role: "user", content: note },
+];
+
+// The engine: downloads on first use (progress reported), then loads from the phone's cache.
+function smartEngine(onProgress) {
+  if (smart.engine) return Promise.resolve(smart.engine);
+  if (smart.loading) return smart.loading;
+  smart.loading = (async () => {
+    const lib = await smartLib();
+    const engine = await lib.CreateWebWorkerMLCEngine(new Worker("llm-worker.js", { type: "module" }), smart.modelId,
+      { initProgressCallback: p => onProgress && onProgress(p) });
+    // Some graphics chips quietly give wrong answers with small models: check with a known phrase before trusting it.
+    const t = await smartAsk(engine, "Four of the Sprite two liters please.");
+    const it = t && t[0];
+    if (!(t && t.length === 1 && /sprite/i.test(String(it.product)) && Number(it.qty) === 4)) {
+      smart.bad = true; try { await engine.unload(); } catch (e) {}
+      throw new Error("This phone's graphics chip didn't pass the accuracy check, so smart reading is off.");
+    }
+    smart.engine = engine; ai.device.fast = "webgpu"; ai.llmWarm = true;
+    return engine;
+  })().finally(() => { smart.loading = null; });
+  return smart.loading;
+}
+async function smartAsk(engine, text) {
+  const r = await engine.chat.completions.create({
+    messages: smartMessages(text), temperature: 0, max_tokens: 160,
+    response_format: { type: "json_object", schema: SMART_SCHEMA },
+  });
+  try { const j = JSON.parse(r.choices[0].message.content); return Array.isArray(j.items) ? j.items : null; } catch (e) { return null; }
+}
+async function smartExtract(text) { return smartAsk(await smartEngine(), text); }
+async function smartHasModel() {
+  try { return await (await smartLib()).hasModelInCache(smart.modelId); } catch (e) { return false; }
+}
+async function smartDelete() {
+  try { if (smart.engine) { await smart.engine.unload(); } } catch (e) {}
+  smart.engine = null; ai.llmWarm = false;
+  try { await (await smartLib()).deleteModelAllInfoInCache(smart.modelId); } catch (e) {}
+}
 // ============================================================
 // Shared data on GitHub
 // ============================================================
@@ -2748,7 +2845,7 @@ function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
   const dot = have ? "ok" : busy ? "warn" : "";
   return `<div class="set-row"><span class="status-dot ${dot}"></span><div class="grow"><b>${esc(i.name)}</b><br><span class="hint">${esc(i.detail)} · ${esc(i.size)}</span></div>
-    ${have ? `<span class="small muted">Ready</span>` : busy ? `<span class="small muted">Downloading</span>` : `<button class="btn sm primary" data-dl="${key}" ${ai.dl.key ? "disabled" : ""}>${icon("download")}Download</button>`}</div>`;
+    ${key === "fast" && smart.supported === false ? `<span class="small muted">Not on this phone</span>` : key === "fast" && smart.bad ? `<span class="small muted">Failed check</span>` : have ? `<span class="small muted">Ready</span>` : busy ? `<span class="small muted">Downloading</span>` : `<button class="btn sm primary" data-dl="${key}" ${ai.dl.key ? "disabled" : ""}>${icon("download")}Download</button>`}</div>`;
 }
 function renderMore() {
   const v = $("#view-more");
@@ -2765,7 +2862,7 @@ function renderMore() {
       ${modelRow("asr")}
       <p class="hint" style="margin:-4px 0 6px 21px">Turns your recording into words and gives you a list right away.</p>
       ${modelRow("fast")}
-      <p class="hint" style="margin:-4px 0 6px 21px">Double-checks each note in the background and turns its dot green or yellow. Best on a newer iPhone (iOS 26).</p>
+      <p class="hint" style="margin:-4px 0 6px 21px">${smart.supported === false ? "Needs iOS 26 or newer. Your list still works without it: items are green when clear and complete, yellow when something is missing or unsure." : "Double-checks each note in the background and turns its dot green or yellow. Needs iOS 26 or newer."}</p>
       ${haveModel("fast") ? `<div class="set-row"><label class="grow" for="smart"><b>Use smart reading</b><br><span class="hint">${ai.llmWarm ? `Ready. Running on the phone's ${dev === "webgpu" ? "graphics chip" : "processor"}.` : "Warms up in the background when the app opens."}</span></label><input type="checkbox" id="smart" ${state.settings.smart !== false ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>` : ""}
       ${dl ? `<div class="mprog" data-mprog><i></i></div><p class="hint" data-mprog-label style="margin-top:6px">Starting…</p>` : ""}
       ${ai.dl.error ? `<div class="banner warn" style="margin-top:8px">${icon("warn")}<span class="grow">${esc(ai.dl.error)}</span></div>` : ""}
@@ -2809,7 +2906,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelf Scan Beta 5.1 (voice notes) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelf Scan Beta 5.2 (voice notes) · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   v.querySelector("#store-name").onchange = e => { state.storeName = e.target.value.trim(); save(); renderAll(); };
@@ -2945,7 +3042,7 @@ save();
 syncAllIndicators(false);
 setTimeout(sweepMedia, 3000);   // tidy photos and recordings left over from deleted notes
 if (state.settings.camOK) startCamera();
-verifyModels().then(() => { warmUp(); pump(); });   // get the models ready, and pick up anything still waiting from last time
+detectSmart().then(() => verifyModels()).then(() => { warmUp(); pump(); });   // get the models ready, and pick up anything still waiting from last time
 
 // Pull everyone's latest product list on open, then upload anything waiting.
 if (navigator.onLine) pullShared().catch(() => {}).finally(() => scheduleUpload(1000));
