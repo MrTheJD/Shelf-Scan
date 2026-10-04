@@ -4891,11 +4891,29 @@ function galSelected() {
 async function galMove() {
   const sel = galSelected(); if (!sel.length) return galSelectEnd();
   const hasNotes = sel.some(x => x.notes.length), n = sel.length, cur = gsel.slot;
-  const opts = [];
-  for (let i = 0; i < SLOTS; i++) if (i !== cur) opts.push({ label: storeOf(i) ? `To store #${storeOf(i)}` : `To empty slot ${i + 1}…`, value: "slot:" + i });
-  for (const k of KINDS) if (!(k === "backstock" && hasNotes)) opts.push({ label: `Make ${KIND_LABEL[k]}`, value: "kind:" + k });
-  if (!hasNotes) for (const w of ["before", "after"]) opts.push({ label: `Make ${WHEN_LABEL[w]}`, value: "when:" + w });
-  const pick = await menu(`Move ${n} photo${n === 1 ? "" : "s"}`, opts); if (!pick) return;
+  const whens = new Set(sel.map(x => x.w)), oneWhen = whens.size === 1 ? [...whens][0] : null;
+  const kinds = new Set(sel.flatMap(x => [...x.notes.map(r => noteKind(r)), ...x.shots.map(r => normKind(r.kind))]));
+  // step 2: the short list for one kind of change
+  const subs = {
+    store: () => ({ title: "Change store", opts: Array.from({ length: SLOTS }, (_, i) => i).filter(i => i !== cur)
+      .map(i => ({ label: storeOf(i) ? `Move to store #${storeOf(i)}` : `Move to empty slot ${i + 1}…`, value: "slot:" + i })) }),
+    type: () => ({ title: "Change type", opts: KINDS.filter(k => !(k === "backstock" && hasNotes) && !(kinds.size === 1 && kinds.has(k)))
+      .map(k => ({ label: `Move to ${KIND_LABEL[k]}`, value: "kind:" + k })) }),
+    disp: () => ({ title: "Change display", opts: [...displayGroups(cur, oneWhen).map((g, i) => ({ label: `Move to display ${i + 1} (${g.items.length} photo${g.items.length === 1 ? "" : "s"})`, value: "disp:" + i })),
+      { label: "Move to a new display", value: "disp:new" }] }),
+    when: () => ({ title: "Before or After", opts: ["before", "after"].filter(w => w !== oneWhen).map(w => ({ label: `Move to ${WHEN_LABEL[w]}`, value: "when:" + w })) }),
+  };
+  // step 1: what to change (displays first when the Gallery is showing displays)
+  const top = [{ label: "Change store ›", value: "store" }, { label: "Change type ›", value: "type" }];
+  if (oneWhen) top[gal.kind === "display" ? "unshift" : "push"]({ label: "Change display ›", value: "disp" });   // displays are counted per Before / After
+  if (!hasNotes) top.push({ label: "Before or After ›", value: "when" });
+  let pick = null;
+  for (;;) {
+    const t = await menu(`Move ${n} photo${n === 1 ? "" : "s"}`, top); if (!t) return;
+    const sub = subs[t]();
+    pick = await menu(sub.title, [...sub.opts, { label: "‹ Back", value: "back" }]); if (!pick) return;
+    if (pick !== "back") break;
+  }
   const [what, val] = pick.split(":");
   const snap = snapshot();
   if (what === "slot") {
@@ -4906,9 +4924,16 @@ async function galMove() {
     save(); galSelectEnd(true); gal.slot = to; renderAll();
     toast(`Moved ${n} photo${n === 1 ? "" : "s"} to #${storeOf(to)}`, snap);
   } else if (what === "kind") {
-    for (const x of sel) { for (const r of x.notes) r.kind = val; for (const r of x.shots) r.kind = val; }
+    for (const x of sel) for (const r of [...x.notes, ...x.shots]) { r.kind = val; if (val !== "display") delete r.dg; }   // out of a display: its link goes
     save(); galSelectEnd(true); gal.kind = val; renderAll();
     toast(`Now ${KIND_LABEL[val]}`, snap);
+  } else if (what === "disp") {
+    const gs = displayGroups(cur, oneWhen), anchor = val === "new" ? "g" + newId("d") : gs[+val] && gs[+val].anchor;
+    if (!anchor) return;
+    for (const x of sel) for (const r of [...x.notes, ...x.shots]) { r.kind = "display"; r.dg = anchor; }
+    save(); galSelectEnd(true); gal.kind = "display"; renderAll();
+    const num = displayGroups(cur, oneWhen).findIndex(g => g.anchor === anchor) + 1;
+    toast(val === "new" ? `Made display ${num}` : `Moved to display ${num}`, snap);
   } else if (what === "when") {
     for (const x of sel) for (const r of x.shots) { r.when = val; delete r.dg; }
     save(); galSelectEnd(true); renderAll();
@@ -5039,7 +5064,7 @@ function editVariation(v, { prefill = "" } = {}) {
   };
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 80;
+const REVISION = 81;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -5081,7 +5106,7 @@ function renderMore() {
     </div>
     <p class="sec-foot">One small file with the product list, settings and store numbers. Keep it in Files or send it to yourself. Notes and photos aren't included.</p>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
-    <p class="foot">Shelfie 2.10.1 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 2.10.2 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
