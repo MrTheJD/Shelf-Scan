@@ -666,6 +666,15 @@ nav.tabs button:active svg.i { transform: scale(.82); }
 .pick-fhead b { font-size: 18px; }
 /* 2.7.0: long brand names (BODYARMOR) stay whole */
 .pick-btn { overflow-wrap: normal; word-break: normal; font-size: 14px; letter-spacing: -.01em; padding: 6px 4px; }
+
+/* ---------- 2.7.1: brand → variation → flavor ---------- */
+.pick-page[data-p="l"], .pick-page[data-p="f"] { transform: translateX(105%); }
+.pick-stage[data-at="l"] .pick-page[data-p="b"], .pick-stage[data-at="f"] .pick-page[data-p="b"], .pick-stage[data-at="f"] .pick-page[data-p="l"] { transform: translateX(-30%); opacity: 0; pointer-events: none; }
+.pick-stage[data-at="l"] .pick-page[data-p="l"], .pick-stage[data-at="f"] .pick-page[data-p="f"] { transform: none; opacity: 1; }
+.pick-grid.l { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pick-grid.l .pick-btn { min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 15px; }
+.pick-btn small { font-size: 11px; font-weight: 700; opacity: .7; letter-spacing: 0; }
+.pick-fhead b span { color: var(--muted); font-weight: 750; }
 </style>
 </head>
 <body data-view="capture">
@@ -1137,7 +1146,9 @@ function migrate() {
   delete state.team; delete state.received;
   try { localStorage.removeItem(PASS_KEY); localStorage.removeItem("shelfscan.dev"); } catch (e) {}
   state.recents = state.recents || [];
-  state.pickUse = { b: Object.assign({}, state.pickUse && state.pickUse.b), f: Object.assign({}, state.pickUse && state.pickUse.f) };
+  state.pickUse = { b: Object.assign({}, state.pickUse && state.pickUse.b), l: Object.assign({}, state.pickUse && state.pickUse.l), f: Object.assign({}, state.pickUse && state.pickUse.f) };
+  for (const [from, to] of [["diet coke", "coca cola"], ["diet dr pepper", "dr pepper"], ["bodyarmor lyte", "bodyarmor"], ["core power elite", "core power"], ["topo chico sabores", "topo chico"]])
+    if (state.pickUse.b[from]) { state.pickUse.b[to] = (state.pickUse.b[to] || 0) + state.pickUse.b[from]; delete state.pickUse.b[from]; }
   state.recentStores = (Array.isArray(state.recentStores) ? state.recentStores : []).map(String).filter(Boolean).slice(0, 8);
   state.shots = (Array.isArray(state.shots) ? state.shots : []).filter(s => s && s.photo);
   { const old = Array.isArray(state.stores) ? state.stores : [];   // Beta 7 had six slots; a number in the sixth moves to the fifth when that one is free
@@ -3359,28 +3370,66 @@ function renderHoldBar() {
   if (s) $("#hold-text").textContent = s.count ? `${s.count} item${s.count === 1 ? "" : "s"} for this shelf. Hold to say the next, or tap to pick.` : "Keep holding and say the product.";
 }
 
-// ---------- Tap to pick: brand, then flavor (no voice) ----------
-// Most common first until the picks say otherwise; each pick moves that brand and flavor up for next time.
-const PICK_ORDER = ["Coca-Cola", "Diet Coke", "Sprite", "Dr Pepper", "Fanta", "Powerade", "Dasani", "smartwater", "BODYARMOR", "Minute Maid",
-  "Monster Energy", "vitaminwater", "Simply", "Gold Peak", "Diet Dr Pepper", "Topo Chico", "Fresca", "Barq's", "Seagram's", "Mello Yello",
-  "Core Power", "Hi-C", "Reign", "NOS", "Peace Tea", "FUZE", "AHA", "BODYARMOR LYTE", "Simply Pop", "Topo Chico Sabores", "Honest Kids",
-  "Hubert's", "Mr. Pibb", "Core Power Elite", "Full Throttle", "Moxie", "Tum-e Yummies"];
-const pickUse = () => { const u = (state.pickUse = state.pickUse || {}); u.b = u.b || {}; u.f = u.f || {}; return u; };
-function pickBrands() {
-  const u = pickUse(), by = new Map();
-  for (const v of variations()) (by.get(v.brand) || by.set(v.brand, []).get(v.brand)).push(v);
-  // score = picks + a head start from the usual order (a quarter of a pick per place), so each pick moves a brand up about four places
-  const rank = b => { const i = PICK_ORDER.indexOf(b); return i < 0 ? 999 : i; };
-  const score = b => (u.b[b.key] || 0) + Math.max(0, PICK_ORDER.length - rank(b.brand)) * 0.25;
-  return [...by.entries()].map(([brand, vs]) => ({ brand, key: sNorm(brand), vs }))
-    .sort((a, b) => score(b) - score(a) || rank(a.brand) - rank(b.brand) || a.brand.localeCompare(b.brand));
+// ---------- Tap to pick: brand, then variation, then flavor (no voice) ----------
+// Most common first until the picks say otherwise; each pick moves that brand, variation and flavor up a few places for next time.
+const PICK_ORDER = ["Coca-Cola", "Sprite", "Dr Pepper", "Fanta", "Powerade", "Dasani", "smartwater", "BODYARMOR", "Minute Maid",
+  "Monster Energy", "vitaminwater", "Simply", "Gold Peak", "Topo Chico", "Fresca", "Barq's", "Seagram's", "Mello Yello",
+  "Core Power", "Hi-C", "Reign", "NOS", "Peace Tea", "FUZE", "AHA", "Simply Pop", "Honest Kids",
+  "Hubert's", "Mr. Pibb", "Full Throttle", "Moxie", "Tum-e Yummies"];
+// Brands that are really a variation of another one
+const PICK_FAMILY = { "Diet Coke": ["Coca-Cola", "Diet"], "Diet Dr Pepper": ["Dr Pepper", "Diet"], "BODYARMOR LYTE": ["BODYARMOR", "Lyte"],
+  "Core Power Elite": ["Core Power", "Elite"], "Topo Chico Sabores": ["Topo Chico", "Sabores"] };
+// Product lines that start the flavor name
+const PICK_LINES = { "Monster Energy": ["Ultra", "Java", "Juice", "Rehab", "Reserve", "Nitro"], "Powerade": ["Power Water", "Xtra Sour"],
+  "BODYARMOR": ["Flash IV", "Fit", "SportWater"], "Sprite": ["Chill", "+ Tea"], "NOS": ["Active"] };
+// The usual order of variations (others follow in the order they're listed in the product list)
+const VAR_ORDER = ["Regular", "Diet", "Zero Sugar", "Lyte", "Caffeine-Free", "Diet Caffeine-Free", "Caffeine-Free Zero Sugar", "Light"];
+// Products that don't split by the rules
+const PICK_FIX = { "Monster Energy|Zero Ultra": ["Ultra", "Zero Ultra (White)"] };
+const reEsc = t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// A product as brand family, variation ("Regular", "Diet", "Zero Sugar", "Diet Caffeine-Free"...) and flavor ("Original", "Cherry"...)
+function splitVariation(v) {
+  const fix = PICK_FIX[v.brand + "|" + (v.flavor || "")];
+  if (fix) return { fam: (PICK_FAMILY[v.brand] || [v.brand])[0], line: fix[0], flavor: fix[1] };
+  const [fam, famTag] = PICK_FAMILY[v.brand] || [v.brand, ""];
+  let f = (v.flavor || "").trim(); const tags = famTag ? [famTag] : [];
+  const take = (re, tag) => { if (!re.test(f)) return false; f = f.replace(re, " ").replace(/\s+/g, " ").trim(); if (!tags.includes(tag)) tags.push(tag); return true; };
+  for (const l of PICK_LINES[fam] || []) if (take(new RegExp("^" + reEsc(l) + "(?=\\s|$)", "i"), l)) break;
+  take(/^diet\b|\bdiet$/i, "Diet");
+  take(/\bcaffeine[- ]free\b/i, "Caffeine-Free");
+  take(/\bzero sugar\b/i, "Zero Sugar") || take(/^zero\b/i, "Zero Sugar");
+  take(/^light\b/i, "Light");
+  take(/\(mexican\)/i, "Mexican");
+  take(/^made with real sugar$/i, "Real Sugar");
+  f = f.replace(/^\((.*)\)$/, "$1").trim();
+  if (!f || /^original$/i.test(f)) f = "Original";
+  return { fam, line: tags.join(" ") || "Regular", flavor: f };
 }
-const pickFlavors = br => {
-  const u = pickUse(), n = br.vs.length, score = x => (u.f[x.v.key] || 0) + (n - x.i) * 0.25;
-  return br.vs.map((v, i) => ({ v, i })).sort((a, b) => score(b) - score(a) || a.i - b.i).map(x => x.v);
+const pickUse = () => { const u = (state.pickUse = state.pickUse || {}); u.b = u.b || {}; u.l = u.l || {}; u.f = u.f || {}; return u; };
+// order a list by uses plus a head start from its usual order (a quarter of a use per place)
+const byUse = (items, uses, first = () => false) => {
+  const n = items.length, score = (x, i) => (uses(x) || 0) + (n - i) * 0.25 + (first(x) ? 100 : 0);
+  return items.map((x, i) => ({ x, i, s: score(x, i) })).sort((a, b) => b.s - a.s || a.i - b.i).map(o => o.x);
 };
+function pickTree() {
+  const u = pickUse(), fams = new Map();
+  for (const v of variations()) {
+    const sp = splitVariation(v);
+    const fam = fams.get(sp.fam) || fams.set(sp.fam, { brand: sp.fam, key: sNorm(sp.fam), lines: new Map() }).get(sp.fam);
+    const line = fam.lines.get(sp.line) || fam.lines.set(sp.line, { name: sp.line, key: fam.key + "|" + sNorm(sp.line), items: [] }).get(sp.line);
+    line.items.push({ v, flavor: sp.flavor });
+  }
+  const rank = b => { const i = PICK_ORDER.indexOf(b); return i < 0 ? 999 : i; };
+  const score = f => (u.b[f.key] || 0) + Math.max(0, PICK_ORDER.length - rank(f.brand)) * 0.25;
+  return [...fams.values()].sort((a, b) => score(b) - score(a) || rank(a.brand) - rank(b.brand) || a.brand.localeCompare(b.brand));
+}
+const pickLines = fam => {
+  const vr = n => { const i = VAR_ORDER.indexOf(n); return i < 0 ? 99 : i; };
+  const usual = [...fam.lines.values()].map((l, i) => ({ l, i })).sort((a, b) => vr(a.l.name) - vr(b.l.name) || a.i - b.i).map(o => o.l);
+  return byUse(usual, l => pickUse().l[l.key], l => l.name === "Regular");
+};
+const pickFlavors = line => byUse(line.items, it => pickUse().f[it.v.key], it => it.flavor === "Original");
 const isBaseFlavor = v => { const f = (v.flavor || "").trim(); return !f || /^original$/i.test(f); };
-const flavorLabel = v => (isBaseFlavor(v) ? "Original" : v.flavor.replace(/^\((.*)\)$/, "$1"));
 const pickText = v => (isBaseFlavor(v) ? v.brand : `${v.brand} ${v.flavor.replace(/[()]/g, "")}`);   // read like a spoken note
 
 let picking = false;
@@ -3403,37 +3452,54 @@ async function tapToPick() {
 }
 function openPicker(s) {
   return new Promise(resolve => {
-    const brands = pickBrands(), added = [], pickOf = new Map();   // note id → what was picked (kept here, not saved with the note)   // the order is fixed while the picker is open, so nothing jumps under a finger
+    const fams = pickTree(), added = [], pickOf = new Map();   // the order is fixed while the picker is open, so nothing jumps under a finger; pickOf: note id → what was picked
+    let fam = null, line = null, lines = [], flavors = [];
     const sh = el(`<div class="sheet pick-sheet"><div class="handle"></div>
       <div class="pick-top"><h2>What's needed?</h2><span class="pick-where">${esc(KIND_LABEL[s.kind])}${storeOf(s.slot) ? ` · #${esc(storeOf(s.slot))}` : ""}</span></div>
       <div class="pick-added"></div>
-      <div class="pick-stage"><div class="pick-page" data-p="b"><div class="pick-grid b">${brands.map((b, i) => `<button class="pick-btn${i < 3 ? " top" : ""}" data-b="${i}">${esc(b.brand)}</button>`).join("")}</div></div><div class="pick-page" data-p="f"></div></div>
+      <div class="pick-stage" data-at="b"><div class="pick-page" data-p="b"><div class="pick-grid b">${fams.map((f, i) => `<button class="pick-btn${i < 3 ? " top" : ""}" data-b="${i}">${esc(f.brand)}</button>`).join("")}</div></div><div class="pick-page" data-p="l"></div><div class="pick-page" data-p="f"></div></div>
       <button class="btn primary block" data-a="done">Done</button></div>`);
-    const stage = sh.querySelector(".pick-stage"), fpage = sh.querySelector('[data-p="f"]'), tray = sh.querySelector(".pick-added");
+    const stage = sh.querySelector(".pick-stage"), lpage = sh.querySelector('[data-p="l"]'), fpage = sh.querySelector('[data-p="f"]'), tray = sh.querySelector(".pick-added");
+    const go = at => { stage.dataset.at = at; };
     const drawTray = () => {
       tray.innerHTML = added.length ? added.map(n => `<button class="pick-chip" data-n="${esc(n.id)}" aria-label="Remove ${esc(n.text)}">${esc(n.text)}${icon("x")}</button>`).join("")
-        : `<p class="hint">Tap a brand, then the flavor.</p>`;
+        : `<p class="hint">Tap a brand, then the kind, then the flavor.</p>`;
       tray.scrollLeft = tray.scrollWidth;
     };
-    const showBrands = () => { stage.classList.remove("flav"); };
-    const count = (v, d) => { const u = pickUse(), bk = sNorm(v.brand); u.b[bk] = Math.max(0, (u.b[bk] || 0) + d); u.f[v.key] = Math.max(0, (u.f[v.key] || 0) + d); };
-    const add = async v => {
-      count(v, 1);
+    const count = (p, d) => {
+      const u = pickUse(), bump = (m, k) => { m[k] = Math.max(0, (m[k] || 0) + d); };
+      bump(u.b, p.fam.key); bump(u.l, p.line.key); bump(u.f, p.v.key);
+    };
+    const add = async it => {
+      const p = { fam, line, v: it.v }; count(p, 1);
       haptic("tick");
-      const n = await saveNote({ photos: [s.photo], kind: s.kind, slot: s.slot, secs: 0, text: pickText(v), status: "heard", at: s.at + s.count });
-      pickOf.set(n.id, v); s.count++; added.push(n); drawTray(); renderHoldBar(); pump();
-      showBrands();
+      const n = await saveNote({ photos: [s.photo], kind: s.kind, slot: s.slot, secs: 0, text: pickText(it.v), status: "heard", at: s.at + s.count });
+      pickOf.set(n.id, p); s.count++; added.push(n); drawTray(); renderHoldBar(); pump();
+      go("b");
     };
-    const showFlavors = br => {
-      const fl = pickFlavors(br);
-      if (fl.length === 1) return add(fl[0]);   // one flavor: the brand tap is enough
-      fpage.innerHTML = `<div class="pick-fhead"><button class="pick-back" aria-label="Back to brands">‹ Brands</button><b>${esc(br.brand)}</b></div>
-        <div class="pick-grid f">${fl.map((v, i) => `<button class="pick-btn${i < 2 ? " top" : ""}" data-v="${i}">${esc(flavorLabel(v))}</button>`).join("")}</div>`;
-      fpage.scrollTop = 0; stage.classList.add("flav");
-      fpage.querySelector(".pick-back").onclick = showBrands;
-      fpage.querySelectorAll("[data-v]").forEach(b => (b.onclick = () => add(fl[+b.dataset.v])));
+    const head = (back, title) => `<div class="pick-fhead"><button class="pick-back" data-back="${back}">‹ ${back === "b" ? "Brands" : esc(fam.brand)}</button><b>${title}</b></div>`;
+    const showFlavors = l => {
+      line = l; flavors = pickFlavors(l);
+      if (flavors.length === 1) return add(flavors[0]);   // one flavor: nothing more to ask
+      const back = lines.length > 1 ? "l" : "b";
+      fpage.innerHTML = head(back, `${esc(fam.brand)}${l.name !== "Regular" ? ` <span>${esc(l.name)}</span>` : ""}`) +
+        `<div class="pick-grid f">${flavors.map((it, i) => `<button class="pick-btn${i < 2 ? " top" : ""}" data-f="${i}">${esc(it.flavor)}</button>`).join("")}</div>`;
+      fpage.scrollTop = 0; go("f");
     };
-    sh.querySelectorAll("[data-b]").forEach(b => (b.onclick = () => showFlavors(brands[+b.dataset.b])));
+    const showLines = f => {
+      fam = f; lines = pickLines(f);
+      if (lines.length === 1) return showFlavors(lines[0]);   // one variation: straight to the flavors
+      lpage.innerHTML = head("b", esc(f.brand)) +
+        `<div class="pick-grid l">${lines.map((l, i) => `<button class="pick-btn${i < 2 ? " top" : ""}" data-l="${i}">${esc(l.name)}<small>${l.items.length} flavor${l.items.length === 1 ? "" : "s"}</small></button>`).join("")}</div>`;
+      lpage.scrollTop = 0; go("l");
+    };
+    stage.onclick = e => {
+      const t = e.target.closest("button"); if (!t) return;
+      if (t.dataset.back) return go(t.dataset.back);
+      if (t.dataset.b != null) return showLines(fams[+t.dataset.b]);
+      if (t.dataset.l != null) return showFlavors(lines[+t.dataset.l]);
+      if (t.dataset.f != null) return add(flavors[+t.dataset.f]);
+    };
     tray.onclick = e => {
       const c = e.target.closest("[data-n]"); if (!c) return;
       const i = added.findIndex(n => n.id === c.dataset.n); if (i < 0) return;
@@ -4423,7 +4489,7 @@ function editVariation(v, { prefill = "" } = {}) {
   };
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 72;
+const REVISION = 73;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -4473,7 +4539,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelfie 2.7.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 2.7.1 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
