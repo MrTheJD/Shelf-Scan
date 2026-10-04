@@ -366,6 +366,19 @@ header.top h1 img.brand { display: block; height: 24px; width: auto; }
 
 .deck-side .badge.new { left: -2px; right: auto; background: var(--ok); }
 .shot span { max-width: calc(100% - 8px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 2.0: several products per shelf photo */
+.rec-items { margin: 4px 0 0; text-align: center; font-size: 14px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rec-next { min-height: 64px; font-size: 19px; }
+
+/* 2.0: hold the shutter to talk */
+.shutter-wrap, .shutter-wrap * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.hold-live { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); z-index: 5; display: flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 999px; background: rgba(0, 0, 0, .65); color: #fff; font-weight: 800; font-variant-numeric: tabular-nums; }
+.hold-live .rec-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); animation: recPulse 1.1s ease-in-out infinite; }
+.hold-meter { width: 70px; height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .25); overflow: hidden; }
+.hold-meter b { display: block; height: 100%; width: 100%; background: #fff; transform: scaleX(0); transform-origin: left; transition: transform .08s linear; }
+.camera.holding { box-shadow: 0 0 0 3px var(--red), 0 0 0 9px color-mix(in srgb, var(--red) 35%, transparent); }
+.hold-bar { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 14px; border-radius: 14px; background: var(--chip); font-size: 14px; font-weight: 650; }
 </style>
 </head>
 <body data-view="capture">
@@ -373,7 +386,6 @@ header.top h1 img.brand { display: block; height: 24px; width: auto; }
   <h1><img class="brand" src="data:image/png;base64,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" alt="Shelfie" width="97" height="24"></h1>
   <span class="spacer"></span>
   <span class="store" id="hdr-store"></span>
-  <button class="sync-ind" id="sync-ind" hidden></button>
 </header>
 
 <main>
@@ -392,6 +404,7 @@ header.top h1 img.brand { display: block; height: 24px; width: auto; }
       <button class="cam-sound" aria-label="Shutter sound"></button>
       <div class="cam-lens" hidden><button data-lens="ultra" aria-label="Wide angle, 0.5 times">.5</button><button data-lens="wide" aria-label="Normal, 1 times">1×</button></div>
       <button class="cam-stop" id="btn-cam-stop" aria-label="Turn the camera off" hidden><span data-icon="x"></span></button>
+      <div class="hold-live" id="hold-live" hidden><span class="rec-dot"></span><span id="hold-time">0:00</span><i class="hold-meter"><b id="hold-level"></b></i></div>
       <p class="queue-line" id="queue-line" hidden><span class="spin"></span><span id="queue-text"></span></p>
     </div>
     <div id="model-banner" hidden></div>
@@ -405,6 +418,7 @@ header.top h1 img.brand { display: block; height: 24px; width: auto; }
         <div class="shutter-wrap"><button class="shutter-big" id="btn-shutter" aria-label="Take a photo, then say what you need"><span></span></button></div>
         <button class="deck-side right" id="btn-open-needed" aria-label="Open the Needed list"><span data-icon="list"></span><span class="badge" id="deck-badge" hidden></span></button>
       </div>
+      <div class="hold-bar" id="hold-bar" hidden><span class="grow" id="hold-text"></span><button class="btn sm primary" id="hold-done">Done</button></div>
       <p class="cap-hint" id="shutter-label">Snap the aisle, then say what you need.</p>
     </div>
   </section>
@@ -438,7 +452,7 @@ header.top h1 img.brand { display: block; height: 24px; width: auto; }
       <div class="deck-row">
         <button class="deck-side left" id="ba-last" aria-label="Open the last photo" style="visibility:hidden"></button>
         <div class="shutter-wrap"><button class="shutter-big" id="ba-shutter" aria-label="Take a photo"><span></span></button></div>
-        <button class="deck-side right" id="ba-gallery" aria-label="Open the gallery"><span data-icon="image"></span><span class="badge" id="ba-count" hidden></span><span class="badge new" id="ba-new" hidden></span></button>
+        <button class="deck-side right" id="ba-gallery" aria-label="Open the gallery"><span data-icon="image"></span><span class="badge" id="ba-count" hidden></span></button>
       </div>
       <p class="cap-hint" id="ba-hint"></p>
     </div>
@@ -466,13 +480,11 @@ header.top h1 img.brand { display: block; height: 24px; width: auto; }
    Shelfie (formerly Shelf Scan): voice notes
    Snap a shelf, say what you need. Speech is turned into text and then into a short
    list by small language models that run on the phone itself.
-   Everything stays on this phone except the shared product list (data/shared.json in the GitHub repo).
+   Everything stays on this phone. (Sync through GitHub was removed in 2.0.)
    ============================================================ */
 
 const STORAGE_KEY = "shelfscan.b4";
-const PASS_KEY = "shelfscan.b4.uploadPass";   // kept outside state so backups never carry it
-const GITHUB = { owner: "MrTheJD", repo: "Shelf-Scan", branch: "main", dataPath: "data/shared.json", keyPath: "data/key.json" };
-const UPLOAD_DELAY_MS = 4000;
+const PASS_KEY = "shelfscan.b4.uploadPass";   // where 1.x kept the database key; 2.0 deletes it from the phone (see migrate)
 
 // ---------- Icons ----------
 const ICONS = {
@@ -805,11 +817,9 @@ function freshState() {
     notes: [],                              // newest first: { id, at, photos:[id], audio:id|null, secs, text, status, parts:[{vk, s, e}] (brand + flavor found in the text), flag, ticks:{pid: true}, err }
     recents: [],
     stores: ["", "", "", "", ""],            // the five store slots on the Before/After tab: the store number in each
-    received: [],                           // photos teammates sent: { id, dev, by, store, when, kind, photo, at, sent, seen }
-    shots: [],                              // Before/After photos: { id, at, slot:0-4, when:"before"|"after", kind:"aisle"|"display", photo, shared?: time the button was pressed, pushed?: time it reached GitHub }
-    settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", baWhen: "before", baKind: "aisle", baSlot: 0, lens: "wide", hapticShutter: true, hapticTaps: true, wordTiming: false, asrId: "tiny", models: { asr: false } },   // models: which downloads finished
+    shots: [],                              // Before/After photos: { id, at, slot:0-4, when:"before"|"after", kind:"aisle"|"display", photo }
+    settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", baWhen: "before", baKind: "aisle", baSlot: 0, lens: "wide", hapticShutter: true, hapticTaps: true, wordTiming: false, liveListen: false, asrId: "tiny", models: { asr: false } },   // models: which downloads finished
     sync: { lastPull: 0, lastPush: 0, error: "" },
-    team: { key: "", name: "", repo: "", hidden: {}, tick: {}, seen: {}, rt: {} },   // Beta 6: shared Needed list (see team.js)
   };
 }
 function load() {
@@ -832,17 +842,19 @@ function migrate() {
   state.deleted = { products: state.deleted.products || {} };
   state.outbox = { products: state.outbox.products || {} };
   delete state.tags; delete state.config;   // left over from the scanning app
-  state.team = Object.assign(f.team, state.team || {});
-  for (const k of ["hidden", "tick", "seen", "rt"]) state.team[k] = state.team[k] || {};
+  // 2.0: no sync. Teammates' notes and photos, the team settings and the saved database key leave this phone.
+  delete state.team; delete state.received;
+  try { localStorage.removeItem(PASS_KEY); localStorage.removeItem("shelfscan.dev"); } catch (e) {}
   state.recents = state.recents || [];
   state.shots = (Array.isArray(state.shots) ? state.shots : []).filter(s => s && s.photo);
   { const old = Array.isArray(state.stores) ? state.stores : [];   // Beta 7 had six slots; a number in the sixth moves to the fifth when that one is free
     state.stores = Array.from({ length: 5 }, (_, i) => String(old[i] || ""));
     if (old[5] && !state.stores[4]) { state.stores[4] = String(old[5]); for (const s of state.shots) if (s.slot === 5) s.slot = 4; } }
-  state.received = (Array.isArray(state.received) ? state.received : []).filter(r => r && r.id && r.photo && r.dev);
   if (!state.stores.some(Boolean) && state.storeName) state.stores[0] = String(state.storeName);   // the store already set in More becomes the first slot
   for (const s of state.shots) { if (s.when !== "after") s.when = "before"; if (s.kind !== "display") s.kind = "aisle"; if (!(s.slot >= 0 && s.slot < 6)) s.slot = 0; }
-  state.notes = Array.isArray(state.notes) ? state.notes : [];
+  state.notes = (Array.isArray(state.notes) ? state.notes : []).filter(n => !n.dev);   // notes that came from other phones
+  for (const n of state.notes) { delete n.mod; delete n.pushed; delete n._sig; delete n.by; delete n.team; }
+  for (const s of state.shots || []) { delete s.shared; delete s.pushed; }
   for (const p of state.products) if (p.updated === undefined) p.updated = 0;
   // Work that was interrupted (app closed, phone ran low on memory) goes back in the queue.
   for (const n of state.notes) {
@@ -877,10 +889,8 @@ function migrate() {
   state.version = 4;
 }
 function save() {
-  const touched = typeof teamTrack === "function" && teamTrack();   // notes or ticks changed: tell the team soon
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
   catch (e) { toast("Couldn't save. Phone storage is full or blocked."); }
-  if (touched) teamSoon();
 }
 function snapshot() { return JSON.stringify(state); }
 
@@ -893,13 +903,13 @@ function markProduct(id) {
   p.updated = Date.now(); p._st = undefined;
   delete state.deleted.products[id];
   state.outbox.products[id] = 1;
-  scheduleUpload();
+  
 }
 function dropProduct(id) {
   state.products = state.products.filter(p => p.id !== id);
   state.deleted.products[id] = Date.now();
   state.outbox.products[id] = 1;
-  scheduleUpload();
+  
 }
 const shareable = p => { const { _st, ...rest } = p; return rest; };
 function pendingCount() { return Object.keys(state.outbox.products).length; }
@@ -922,7 +932,7 @@ function restore(snap) {
   }
   for (const id in prev.outbox.products) state.outbox.products[id] = 1;
   state.sync = prev.sync;
-  save(); renderAll(); scheduleUpload();
+  save(); renderAll(); 
 }
 
 // ---------- Utilities ----------
@@ -1077,9 +1087,24 @@ async function mediaTx(store, mode, fn) {
 const photoURLs = new Map();
 const putPhoto = (id, blob) => mediaTx("photos", "readwrite", s => s.put(blob, id));
 const getPhoto = id => mediaTx("photos", "readonly", s => s.get(id));
-const delPhoto = id => { const u = photoURLs.get(id); if (u) { URL.revokeObjectURL(u); photoURLs.delete(id); } return mediaTx("photos", "readwrite", s => s.delete(id)); };
+const dropURL = id => { const u = photoURLs.get(id); if (u) { URL.revokeObjectURL(u); photoURLs.delete(id); } };
+// A photo is stored twice: the full picture under its id, and a small thumbnail under id + "~t" (lists and grids show the thumbnail).
+const thumbId = id => id + "~t";
+const delPhoto = async id => {
+  dropURL(id); await mediaTx("photos", "readwrite", s => s.delete(id));
+  if (!String(id).endsWith("~t")) { dropURL(thumbId(id)); await mediaTx("photos", "readwrite", s => s.delete(thumbId(id))).catch(() => {}); }
+};
+async function savePhoto(id, blob) {
+  await putPhoto(id, blob);
+  makeThumb(blob).then(t => t && putPhoto(thumbId(id), t)).catch(() => {});   // in the background, so the shutter isn't held up (lists fall back to the full photo until it's there)
+}
+async function makeThumb(blob) {
+  const bmp = await createImageBitmap(blob), k = Math.min(1, 360 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement("canvas"); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height); bmp.close && bmp.close();
+  return new Promise(r => c.toBlob(r, "image/jpeg", 0.7));
+}
 const hasPhoto = id => mediaTx("photos", "readonly", s => s.count(id)).then(n => n > 0, () => false);
-const hasAudio = id => mediaTx("audio", "readonly", s => s.count(id)).then(n => n > 0, () => false);
 const putAudio = (id, rec) => mediaTx("audio", "readwrite", s => s.put(rec, id));
 const getAudio = id => mediaTx("audio", "readonly", s => s.get(id));
 const delAudio = id => mediaTx("audio", "readwrite", s => s.delete(id));
@@ -1090,32 +1115,33 @@ async function photoURL(id) {
   if (!blob) return null;
   const u = URL.createObjectURL(blob); photoURLs.set(id, u); return u;
 }
-// Fill <img data-photo="id"> placeholders after a render.
+// Fill <img data-photo="id"> placeholders after a render, with the thumbnail when there is one (photos from before 2.0 have none).
 function hydratePhotos(root) {
   root.querySelectorAll("img[data-photo]").forEach(async img => {
-    const u = await photoURL(img.dataset.photo);
+    const u = (await photoURL(thumbId(img.dataset.photo))) || (await photoURL(img.dataset.photo));
     if (u) img.src = u; else img.closest("[data-photo-wrap]")?.classList.add("missing");
   });
 }
 // Remove photos and clips no note points to (runs after deletes once the undo window has passed).
 async function sweepMedia() {
   try {
-    const keepP = new Set([...state.notes.flatMap(n => n.photos || []), ...(state.shots || []).map(s => s.photo), ...(state.received || []).map(r => r.photo)]), keepA = new Set(state.notes.map(n => n.audio).filter(Boolean));
-    keepA.add("_recovery");   // a recording in progress (see capture.js)
+    const keepP = new Set([...state.notes.flatMap(n => n.photos || []), ...(state.shots || []).map(s => s.photo)]), keepA = new Set(state.notes.map(n => n.audio).filter(Boolean));
     const rec = await getAudio("_recovery").catch(() => null); if (rec && rec.photos) rec.photos.forEach(p => keepP.add(p));
     const ps = await mediaTx("photos", "readonly", s => s.getAllKeys()), as = await mediaTx("audio", "readonly", s => s.getAllKeys());
-    for (const k of ps) if (!keepP.has(k)) await delPhoto(k);
-    for (const k of as) if (!keepA.has(k)) await delAudio(k);
+    for (const k of ps) { const base = String(k).endsWith("~t") ? String(k).slice(0, -2) : k; if (!keepP.has(base)) await delPhoto(k); }
+    for (const k of as) if (!keepA.has(k) && !String(k).startsWith("_recovery")) await delAudio(k);   // _recovery*: a recording in progress (see capture.js)
   } catch (e) { /* storage unavailable */ }
 }
 function scheduleSweep() { clearTimeout(scheduleSweep.t); scheduleSweep.t = setTimeout(sweepMedia, 10000); }
 
-// Resize an image or video frame to at most 1280px on the long side and encode it as JPEG (~150 KB).
+// Resize an image or video frame to at most PHOTO_MAX px on the long side and encode it as JPEG. 2400 px keeps a whole shelf readable
+// when zoomed in (about 0.6 to 1 MB a photo; 1.x kept 1280 px).
+const PHOTO_MAX = 2400;
 function frameToBlob(source, sw, sh, sx = 0, sy = 0, cw = sw, ch = sh) {
-  const k = Math.min(1, 1280 / Math.max(cw, ch));
+  const k = Math.min(1, PHOTO_MAX / Math.max(cw, ch));
   const c = document.createElement("canvas"); c.width = Math.round(cw * k); c.height = Math.round(ch * k);
   c.getContext("2d").drawImage(source, sx, sy, cw, ch, 0, 0, c.width, c.height);
-  return new Promise(r => c.toBlob(r, "image/jpeg", 0.72));
+  return new Promise(r => c.toBlob(r, "image/jpeg", 0.8));
 }
 async function fileToBlob(file) {
   const bmp = await createImageBitmap(file);
@@ -1839,7 +1865,7 @@ const MODEL_CACHE_HINT = { get asr() { return `whisper-${asrId()}.en`; } };
 // and the model is unloaded after each note. Notes wait in the queue until you leave the camera or tap "Listen now".
 const deferVoice = () => asrId() === "base";
 const queuedCount = () => state.notes.filter(n => n.status === "queued").length;
-const canListen = () => !deferVoice() || (!cam.stream && !cam.starting && !recorder);
+const canListen = () => (!deferVoice() || (!cam.stream && !cam.starting && !recorder)) && (liveListenOn() || (!recorder && !hold.session));
 function releaseWorker() { if (ai.worker) { try { ai.worker.terminate(); } catch (e) {} ai.worker = null; } ai.ready = {}; }
 const loadMsg = () => ({ type: "load", key: "asr", model: asrId() });
 const ai = {
@@ -2070,226 +2096,6 @@ function requeue(n) {
   save(); renderAll(); pump();
 }
 function renderQueueStatus() { if (view === "needed" || view === "capture") renderAll(); }
-// ============================================================
-// Shared data on GitHub
-// ============================================================
-// data/shared.json also holds shelf-tag links from the old scanning app. This app doesn't use them, but it
-// reads and writes the whole file, so those parts are passed through untouched.
-function b64encode(str) { return btoa(unescape(encodeURIComponent(str))); }
-function b64decode(b64) { return decodeURIComponent(escape(atob(b64.replace(/\s/g, "")))); }
-const bytesToB64 = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes)));
-const b64ToBytes = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-const apiBase = `https://api.github.com/repos/${GITHUB.owner}/${GITHUB.repo}`;
-
-function emptyShared() { return { version: 1, updated: 0, products: {}, tags: {}, deleted: { products: {}, tags: {} } }; }
-function normShared(d) {
-  const s = emptyShared();
-  if (!d || typeof d !== "object") return s;
-  s.updated = d.updated || 0;
-  s.products = d.products || {}; s.tags = d.tags || {};
-  s.deleted.products = (d.deleted && d.deleted.products) || {}; s.deleted.tags = (d.deleted && d.deleted.tags) || {};
-  if (d.config) s.config = d.config;
-  if (d.tagsResetAt) s.tagsResetAt = d.tagsResetAt;
-  return s;
-}
-
-// Read a repo file. With a token: GitHub API (fresh, gives the sha needed to write).
-// Without: public API first, then the Pages copy next to the app.
-async function readRepoFile(path, token) {
-  const headers = { Accept: "application/vnd.github+json" };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  try {
-    const r = await fetch(`${apiBase}/contents/${path}?ref=${GITHUB.branch}&t=${Date.now()}`, { headers, cache: "no-store" });
-    if (r.status === 404) return { text: null, sha: null };
-    if (r.ok) {
-      const j = await r.json();
-      if (j.content) return { text: b64decode(j.content), sha: j.sha };
-      // Files over 1MB come back without content; fetch the raw bytes.
-      const raw = await fetch(`${apiBase}/contents/${path}?ref=${GITHUB.branch}`, { headers: { ...headers, Accept: "application/vnd.github.raw" }, cache: "no-store" });
-      if (raw.ok) return { text: await raw.text(), sha: j.sha };
-    }
-    if (token) throw new Error(`GitHub said ${r.status}`);
-  } catch (e) { if (token) throw e; }
-  const r = await fetch(`${path}?t=${Date.now()}`, { cache: "no-store" });   // Pages copy (may lag a minute)
-  if (r.status === 404) return { text: null, sha: null };
-  if (!r.ok) throw new Error(`Couldn't load shared data (${r.status})`);
-  return { text: await r.text(), sha: null };
-}
-async function writeRepoFile(path, text, sha, token, message) {
-  const r = await fetch(`${apiBase}/contents/${path}`, {
-    method: "PUT",
-    headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ message, content: b64encode(text), branch: GITHUB.branch, ...(sha ? { sha } : {}) }),
-  });
-  if (r.status === 409 || r.status === 422) { const e = new Error("conflict"); e.conflict = true; throw e; }
-  if (r.status === 401 || r.status === 403) { const e = new Error("GitHub rejected the saved key"); e.auth = true; throw e; }
-  if (!r.ok) throw new Error(`GitHub said ${r.status}`);
-  return (await r.json()).content.sha;
-}
-
-// Merge shared data into this phone. Newest change wins, product by product.
-function applyShared(remote, { overwrite = false } = {}) {
-  remote = normShared(remote);
-  if (overwrite) {
-    const map = new Map(buildSeedProducts().map(p => [p.id, p]));
-    for (const id in remote.products) map.set(id, { ...remote.products[id] });
-    for (const id in remote.deleted.products) map.delete(id);
-    state.products = [...map.values()];
-    state.deleted = { products: {} };
-    state.outbox = { products: {} };
-  } else {
-    const localTs = id => { const p = productById(id); return Math.max(p ? p.updated || 0 : 0, state.deleted.products[id] || 0); };
-    for (const id in remote.products) {
-      const rp = remote.products[id];
-      if ((rp.updated || 0) <= localTs(id)) continue;
-      const i = state.products.findIndex(p => p.id === id);
-      if (i >= 0) state.products[i] = { ...rp }; else state.products.push({ ...rp });
-      delete state.deleted.products[id]; delete state.outbox.products[id];
-    }
-    for (const id in remote.deleted.products) {
-      const ts = remote.deleted.products[id];
-      if (ts <= localTs(id)) continue;
-      state.products = state.products.filter(p => p.id !== id);
-      state.deleted.products[id] = ts; delete state.outbox.products[id];
-    }
-  }
-  state.products.forEach(p => (p._st = undefined));
-  canonicalize(state.products);
-}
-
-async function pullShared({ overwrite = false, quiet = true } = {}) {
-  let token = null;
-  if (uploadsEnabled()) { try { token = await getToken(); } catch (e) { /* read without it */ } }
-  const { text } = await readRepoFile(GITHUB.dataPath, token);
-  const remote = text ? JSON.parse(text) : emptyShared();
-  applyShared(remote, { overwrite });
-  state.sync.lastPull = Date.now();
-  if (!uploadsEnabled()) state.sync.error = "";
-  save(); renderAll();
-  if (!quiet) toast(overwrite ? "Replaced with the shared data" : "Up to date");
-}
-
-// ---------- Database key (unlocks the saved GitHub access token) ----------
-const KDF_ITER = 250000;
-async function deriveAesKey(password, salt, iter) {
-  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
-  return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: iter, hash: "SHA-256" }, base,
-    { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
-}
-async function encryptToken(token, password) {
-  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
-  const key = await deriveAesKey(password, salt, KDF_ITER);
-  const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(token));
-  return { v: 1, kdf: "PBKDF2-SHA256", iter: KDF_ITER, salt: bytesToB64(salt), iv: bytesToB64(iv), ct: bytesToB64(ct) };
-}
-async function decryptToken(blob, password) {
-  const key = await deriveAesKey(password, b64ToBytes(blob.salt), blob.iter);
-  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64ToBytes(blob.iv) }, key, b64ToBytes(blob.ct));
-  return new TextDecoder().decode(pt);
-}
-function getPass() { try { return localStorage.getItem(PASS_KEY) || ""; } catch (e) { return ""; } }
-function setPass(p) { try { if (p) localStorage.setItem(PASS_KEY, p); else localStorage.removeItem(PASS_KEY); } catch (e) {} }
-const uploadsEnabled = () => !!getPass();
-let cachedToken = null;
-async function loadKeyBlob() {
-  const { text } = await readRepoFile(GITHUB.keyPath, null);
-  if (!text) throw new Error("Uploads haven't been set up for this app yet.");
-  return JSON.parse(text);
-}
-async function getToken() {
-  if (cachedToken) return cachedToken;
-  const pass = getPass();
-  if (!pass) throw new Error("Uploads are off");
-  const blob = await loadKeyBlob();
-  try { cachedToken = await decryptToken(blob, pass); }
-  catch (e) { const err = new Error("The database key no longer works. Connect again."); err.auth = true; throw err; }
-  return cachedToken;
-}
-async function checkToken(token) {
-  const r = await fetch(apiBase, { headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}` }, cache: "no-store" });
-  if (r.status === 401) throw new Error("GitHub didn't accept that key.");
-  if (!r.ok) throw new Error(`Couldn't reach the repository (${r.status}). Check that the key has access to ${GITHUB.repo}.`);
-  const j = await r.json();
-  if (j.permissions && !j.permissions.push) throw new Error("That key can read but not write. Give it Contents: Read and write.");
-}
-
-// ---------- Automatic uploads ----------
-let uploadTimer = null, uploading = false, uploadAgain = false;
-function scheduleUpload(delay = UPLOAD_DELAY_MS) {
-  renderSyncIndicator();
-  if (!uploadsEnabled()) return;
-  clearTimeout(uploadTimer);
-  uploadTimer = setTimeout(uploadChanges, delay);
-}
-async function uploadChanges() {
-  if (!uploadsEnabled() || !pendingCount()) { renderSyncIndicator(); return; }
-  if (!navigator.onLine) { state.sync.error = "offline"; renderSyncIndicator(); return; }
-  if (uploading) { uploadAgain = true; return; }
-  uploading = true; renderSyncIndicator();
-  try {
-    const token = await getToken();
-    // What we're sending, with the timestamp it had, so later edits aren't wrongly cleared.
-    const sentP = {};
-    for (const id in state.outbox.products) { const p = productById(id); sentP[id] = p ? p.updated : state.deleted.products[id] || 0; }
-    for (let attempt = 0; attempt < 4; attempt++) {
-      const { text, sha } = await readRepoFile(GITHUB.dataPath, token);
-      const R = normShared(text ? JSON.parse(text) : null);
-      let n = 0;
-      for (const id in sentP) {
-        const rTs = Math.max((R.products[id] && R.products[id].updated) || 0, R.deleted.products[id] || 0);
-        if (rTs > sentP[id]) continue;                         // someone else changed it more recently
-        const p = productById(id);
-        if (p) { R.products[id] = shareable(p); delete R.deleted.products[id]; }
-        else { delete R.products[id]; R.deleted.products[id] = state.deleted.products[id] || Date.now(); }
-        n++;
-      }
-      R.updated = Date.now();
-      try {
-        await writeRepoFile(GITHUB.dataPath, JSON.stringify(R, null, 1), sha, token,
-          `Shelf Scan: ${n} change${n === 1 ? "" : "s"}${state.storeName ? ` (store ${state.storeName})` : ""}`);
-      } catch (e) { if (e.conflict) continue; throw e; }   // someone uploaded at the same moment; re-read and retry
-      for (const id in sentP) {
-        const p = productById(id), now = p ? p.updated : state.deleted.products[id] || 0;
-        if (now === sentP[id]) delete state.outbox.products[id];
-      }
-      applyShared(R);                                        // pick up everyone else's changes too
-      state.sync.lastPush = state.sync.lastPull = Date.now();
-      state.sync.error = "";
-      save(); renderAll();
-      return;
-    }
-    throw new Error("Too many people uploading at once. Will retry.");
-  } catch (e) {
-    state.sync.error = e.message || String(e);
-    if (e.auth) cachedToken = null;
-    save();
-    if (!e.auth) scheduleUpload(30000);                      // try again shortly
-  } finally {
-    uploading = false;
-    renderSyncIndicator();
-    if (view === "more") renderMore();
-    if (uploadAgain) { uploadAgain = false; scheduleUpload(500); }
-  }
-}
-window.addEventListener("online", () => { state.sync.error = ""; scheduleUpload(500); });
-
-function syncStatus() {
-  const n = pendingCount();
-  if (!uploadsEnabled()) return { dot: "", text: "Uploads are off on this phone", short: "" };
-  if (uploading) return { dot: "warn", text: `Uploading ${n} change${n === 1 ? "" : "s"}…`, short: "up" };
-  if (state.sync.error === "offline" || (!navigator.onLine && n)) return { dot: "warn", text: `${n} change${n === 1 ? "" : "s"} waiting for signal`, short: "wait" };
-  if (state.sync.error) return { dot: "bad", text: state.sync.error, short: "err" };
-  if (n) return { dot: "warn", text: `${n} change${n === 1 ? "" : "s"} waiting to upload`, short: "wait" };
-  return { dot: "ok", text: `All changes uploaded${state.sync.lastPush ? " · " + ago(state.sync.lastPush) : ""}`, short: "ok" };
-}
-function renderSyncIndicator() {
-  const b = $("#sync-ind"); if (!b) return;
-  const s = syncStatus(), n = pendingCount();
-  b.hidden = !s.short;
-  b.innerHTML = s.short === "ok" ? icon("cloud") : s.short === "err" ? icon("cloudoff") : `${icon("upload")}${n || ""}`;
-  b.setAttribute("aria-label", s.text);
-}
-
 // ---------- Swipe a bottom sheet down to close it ----------
 // Like pushing a drawer shut: drag the sheet down from anywhere that isn't a control (the handle, the title, empty space) while it is
 // scrolled to the top, and let go. Far enough, or fast enough, and it slides away; otherwise it springs back. Sheets that must stay
@@ -2450,27 +2256,42 @@ function wireToastSwipe() {
 // A real camera click ("Camera shutter click", mixkit.co, Mixkit License, about 14 KB) is built into the page, so it works offline.
 // The on/off choice lives in settings.beep, is remembered between sessions, and starts on the first time the app is used.
 const SHUTTER_MP3 = "//uQRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAAPAAA4RgAPDw8PDw8iIiIiIiIiNTU1NTU1SEhISEhISFtbW1tbW1tubm5ubm6BgYGBgYGBlZWVlZWVlaioqKioqLu7u7u7u7vOzs7Ozs7O3d3d3d3d6urq6urq6vr6+vr6+vr///////8AAAA5TEFNRTMuOTlyAsUAAAAALDoAADT/JATeTQABAAAAOEbtOwuEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//vQRAADNf97wIGJR7K5D5g1PSauVxn3FIek1cMtvuIU9hs5HQro3F/62vZEsnvsLKUmjmnb+UYczqLGTONZqyIzfOxLJ752IihZEdv02z7Cw4EARHT+xmr1e0YLIiWBw8WGB5qQmNkBgBx8gJLpAKyfeuKyfroIEBifmQHhQnIgZni5OFBIXeFCSJGTxnJidIECCUQuG980hQG35O0dROAWkKCRVHP3ihImbpAggLnu8IWeQDcG4Kwbv7i4oiIiImkvbnu7ji3QwUMLYXuRc+0FBS6LPIMkXPlyxeBQxEeBQxlIAgAEMehxgQxjwnikUCvQ9Rq9/ff/+X79/fMN5qRkxQwRk8EEFCSHUYXFYJisVisVgmG2CAUIECCCjE1yM2IDBGAcDYIAgGEAoJEEW1BQxBiHXFZJBRBk6yd/23vUhDpChApiMVigkzYQsVk+KIIzUIAoY5GK24Lk+4YCAAhJOp1ZDL1oh0LJk9iM3TCCH7k7+Hkyd7BYAQIECGGZqbZexl2oHC0956cbERERnaM7Q5Nd//xEdogxDI5LbcTALye6WE/GMeIm52EkLDFTaqNJlj41PlW6kxR5mEwPG+4LCM3Iy5cRzFZZlGSvZMJRmKDj9e0XQrmzDXQLdhCYRqto8ZLFQwUOoCz5oG0prUnIlBurtAkyguB9DFN5PGE2J8b5RHGKGmUrNmDdebZGycJ5UDmUBGpkzEoKAg7OrlRKJKRtEzjSGlZZ0KJVBuNUGK5/sxDzcJoTuGeHNZx8Mb6tcpssprT02rvM2f2Kvw/omfblYHQ1UyKSgwhSeVx/Qi/oxv34+/XW+1xrNT+0zjEU6ZXRfWXM7nhmv3zA+VhAysZQ23S4Vzc7bMxLhVtwvnBIHcqmhjAsWwnkS1QexJHlMfOIdeW1aRVRH+KSIjpQ8s2jWrF5eO5MCq5WpfPHW9PapKnyIlkgtlRtanbeKR3rBkaJIHTlKeYykFHONvexCye87ZJDerD0FjzjhlYrqhxRU9jTF22UQ+scoSNc7mPOzQpxED0kDRROqQT2Hn7Sq+G8C2zJpPZP9ECbDT4bADajIB4tZdRGgXpqLQoh8F9gHeTBXx2SNHzf6a6QmxwrVv/74EQRAzZPfsSh7DVw3a+4eD2J2CGh+QisPZfMBT9hFPeyuCUHrjJGiA/ezZXeoZHBeJJPJBPVGgnnxXWH6tlc246amlD5suNV5GgrkR6dI2kxrANS/V0DnL2LXZZSnCVWSkE+gasTDlJRux4mttTOkT3coToR+kpc8LUDrjMuVXsLEZSLAJxhjAQKRRIFI7XQWYYf7wjB7UkNIrTJoPMUjpsLAxLIvd7Aw0i3SIPjJDk0KZiWICmPUd/fTv7dmESULpIgkhZsU0RiLA7LgABaH+TEeokCkALWY1Wg/VEkXOFF3Z/i76LAuzxIjKsN6fYndIRY1lcLlDmhCHx0KxoWBwI9dIlVzq8wVeaG4uTJGly3pK00fXHwqSGOGCwuKFglD+uHhJC1hUPz5pwSVZ3EQFpnUfH1ykrD7ErLxaOCCWrFgxN6j2sNTI4MysV0I/OomFiI9MCyWz1fQbGwkURIKiUZqBUMSFBztERVVdC25MURgK9MMIG1k92RXJFELS4bQpPg0khXLpIV8aUpfEqInrYQokCyWq9ZHNnZKsxzucdzc1RljcmYx+ihEAjChxBza66txGKoxJZrNJcyimsb+hjsXj8Wht5Y3hDkapI6y15GsOM1y6X5OqZAGEhZPQwlUS4qTyV45VAa53CBsc7WQVHVTZyp1XrCQRrMcIasxYZ0zaN89EIKfBxoad6nW1KStqRESDeAXYaRwNyAJQGBMSmxblfAb0Co8MaWbWeQelCDwQ82k6VhsPFGoDfklPV+4kgnLkbCuQhQJaIcKYIQhJkFgHIXgsDUix+HkYMZFHmcRLITc5tR2sR7K3c5sI5McW2PULlY6uLBNEJKvJCU1TF/VArOzE+bHgSYIoYMZWuqHVt3HUEunCZgf2jw0KzbsrkONOcecqlFOjjMsQzJXK1COIpBKCpP0bwzWUJAAKiCmMtUo/Mlig49nKMtQ2+CkVBU+dl1KV0wGtRpHdMXtKNa6L6omdLHuq3xOzqZDnKc604HGnzSXBInqjRC6QpDC+p1XsF0ArkNT7caB+QzrVK5wb6nj1NFXujSOxbLkdE7thQhQHQ1FQlCeHgaC5nQyMYqMOs6UQWwWkmihJSXstidhp9J6Lmo3aDZzjVcHEBBmamFOkMSoTBIMTh0Hh6IrxgvMSelG77xrUTT5QR1YsOzMuHT0K1IqREBcy87EvUFgbEzDVo6xejeJtU65pQUCzfVZPfl1GqjXPJla5AYJFhmXljZELrKCafZfHxofMNqXURljtkCmJQAajXegmCZMQKOBROYFQvO4lE2aLZ19X4Y1Mw7GZWrhrrYavXFJaXNRnydIQQwwkSEHouikP07jehl5VT9mTpUxDdOIkcFUC7KVjsrJFYTc5i7n+1RD3Mw4f/74EQuAzgbfMNDD2VzBg/YWGHpvh8R+w8MPZPD5z5hoYeyuTSL6bqeXkeWy+oydWGcxmpFsxul2RJ3E/PI/0JU78yFSnkknHZNDwYTmZzuRBoHKuTqLoOwvChRZbG9HG6fI35lSvr6ASrxD28636ZO4ZoZvj0aDmIToZtCMOQqoqJJy/VAbcMVSlWgQMma8/TNlOr9ZOmSvh4sTI5JieN4ycPGOWvnnI5SLOiNDjSoYLS6vquZpJXUXXRJF/HVapqV/FtIb3r0qER7ALAgAApxBroApoEBAqaa1lXr/nKNwaSxP46q8qzmEOy3W6WOt+8r6133lysKPifFiRByFiJQ5MWUmOkky6STme5IDzEuuWN8Y6dczjORD1Ib6+ZZ/nQeCN2sIYp1Kfy0haFqhFyJ03E8XpFoScaWZWE3j9eR0AeK+qy+LbQXw0FS2ofYsB/ohKJw5Vy2ocShUF1ep0tpcF851GaCZP1DjvYzvcrpeUvaGn0UjjySne0HSZR/mWdCoT64Q5doYxNbxuira2iII0H1wWcnCZ14U5Ewv66NhXaTDSNpu0CapESIxyKIWGURojoUddAtgqio2QvTm9tukJKwGC5lYREittSMT7Mhk+VU3jQY8h6nuRWLmLIXfSNMj7X6fOpK9V6Z2HarPdF4Tg2JJjeoAn8Bctx7ocUKs5f0ukkITqnU6dUarbz+Ly8ZVb5C/s+VWesR+n2JMt2WdLpBTMZ6PTRV7WhKohxGFXq9EIccp/NZW6bC9H9U3DVP5NselYuFM3KRHs0JRH6Yymek1VRVLhfqQ0IkMcP5ScfKRLJBJIosL0I8hgRRpJQnDcgDmrWLSAHpgvIRJuvXtCTe7Z0JJ6JBVNH09DhDQmFNTlXQpSpfVstuLFH4+hau5tecRJ6ob9jqj7KWl1qO3Qn++WfucHZVTpFbr7Z/X1k2vd/LwHtXKDHTQx2UO+OBEAStkkdtAAq1vlg8H2r8zu0EomrM/LWwwmnlkBwbcO1jOEuBfWVFuaBQIj6ucKtrOkEJKdlYC4no0JhRIcbzxHo5CVLZcs6lMxufpyZpMhWGifpf3t3ylSScZTnOZ2WFgfnQ4NhzMzmTI5FEeTC5uosQ3kPNF4wo2KuYEAgiZQl0brFdKR1C+fxpEidR2ohncjkivlQW40SzoVA5dZDsjkgkH9jEV8kqcEo9GZ+dr10IquUDxO0WTOGFPUjWeRwQJ32271WlY9ZdQkJLBZcyycpVzvnNnYaR3s5ZfZ9pQfrFsdKooXCRajx9vvOPc96G2EoItuJoNmlrLQUaIZVeg6JUw9Hml4ydOyGpTXo8Za49DBEGNYcqVRnpHH4eOD8SCWJxVIglExWSC4rC4SgajdOciOeEg8GJoRnSUj3zEniWhP/74EQoARdRfcQjLEzy9a/IaGHsbiLx9xVt5ZFMO7+irawymOEolEJAP0VICiTD0loTThPh1UJK04ogFa4hUP4ygHI8uvKSShmTKSJw7LriDUjHJIOJvDbUg0TAEoMqiFsSsHSVEDQxaYXSBAfIgeGRQoESQioRwcByFFCKqhKdGSAjEwZDzPVXe0VIjLOa0kTKiWE1k2mJl5FEcCfUGpNGsm0k2xiKbMEGJIUKbDvDaSRNz/6Muq9L1ebNJguQKrIALcgwHPcsgTNWmRQTDzDKZ6o3Inu4sVnzAPVJIuHGYm0vcJNi3tgy0wdrCayQjvkkkEhAVi20H+P8p00XhUFalqG1nDgXwy2JllH4cWKJxBHgqpiwEIyPSsJCAXjVtksNIj03ZNuM0RyfHr5uiFI8hUsRwXNGC4T2w/KhTLh4PZERtQnomE1US0AmnlTEQVyouFh0ojSVh78jhaJR2aCYSIim4eE40IzxkHiskwOH5YbLqbU2GaWYziyBK9cVHT1pScxMK2XVC1CVJnHEBuzRmy2T1Ig2pGqYaOImpfiu0sgaNDpGr5hla992qtpmIX9xmyRE1bfEh7ZGYUPCgiCAcwEDBpwYILmBFxjYkaMImAhQGBUgwYCP6XgBweZeAHFPQqHmIAUBEQgFZMPwTUAXAZGZgRkhqGL1QyBwoOSNEY4ERscADg0QhLbAXmAUCSCA901FEn2wNlgB6F/JGsSbLGpmUS+5AsNO5Kx8LZg2JxuJ906yw1GLRkydnqw0KxQHd3AYIyUlbueLkp3d4vstGi251czLDQl8tXIZMWHQJlRYSgORl4eFhWER8hk+M3sYqSeSTl8wHQuPijiUgjumJKGfDrGC8mBiuehKcbKHxYPEKI/fbYrC3q95O2sONL924noNfbjh1t5Y+xN3tjOFkaEw3S+sUq/G/u5dXVuhTfbcic9IwsTLGMYBKktlsHstqk9LEtmITQIFhRcGahGBFACAlH9kSQKwCmaYZjEAsBjSZYgADhkyqw9Aw4SY0481iwz58LEUtTmLYgJxrEEBFlp6p/IhuAvIIIxBS98VOk23KeHWmPK2uM+MLnLmcTfV0nEpgaNxFg+uILR2fF8Qh9Py2e3OIXTomiOfF0dGzKpy4bHS1DV2fVLhINCkVEo7niimLXWRIjeHuNojiQ0JwkK3yYeCGbUBvEQ4zsmk8G5+FA4DSTiQVg/A2Sh8XnxNPh5HRYYrol8LywlsOKMlfuHlF6+N/rSYITT/avM7xJCCqc4c4yQgmDnP1fwwaQojOiWYZlf0et31s0O6P3nGNyKA8SHFFjjHVYyRZswPCCHEnSFqBGKb84P7M0AvO2Uv2DDh4ULDBBNIYyhrnmpKYcxhuqiUpQThEQ4+lySooA2TFP/74GQcgwm6f0YjL2dA1e+YxGGD3GPt8xyMvT0KwLEkeZYi0AyNqNxlGMYMwQ3wSssxYTbTSDL4jCySqP5rhrDiwazWnKCpuKdMrrkoC7HCREf6HKVOhv00C47XSTFtP1Vq9CyYKlSNEphqpUH7hXmWhzHET6eVQnhWbWke9U5lzuBzrJTp0SRDkQJsWwv5BFQTc/xN1dELwZb8aKLFLE9F+FEskFH0LaIaMpGF+KMSAkpdC5pNUsJjKE6D9JqTpSqF2z3cle909ZaKZGqpCVS1zJ9fiMtCeiVtDgbRrkrpshE66Z1HVbEqManA7E4uoZSH45TJiiVj8xPicYqUpyuLS0xiOlJyTDVepjL8A7B2sWpUi5McnBsyJJSeMU1pLrlIzCbLmV8NiBhcFTdH8vXLgFcyfFDpDwNBSE9v14hF4FR4f5rlh1IFcuOunNQLEHcdx2IYXol2x9HdMNXb90D/uWoPA8Dym1E49QS/tnky1U9Jo3q2dtL1H2b0TvQrGc6J0/bN3fsmYdPFFm34FhcRCQ4tgSOHZGKZXR93vN2jVs8mdu2+tVPRNpEMCIuYoshvF5wuM4ty6xaleYh2taISo0cQmTOlq0ezXnGeifbaY1mqOXG8t9tJrNOZZtRatd0hiOQWsNjUOoq1aWoxm6NsOTsgWmJBBhrB0YAgRsoINLaApkyvEYgIc08o8CBjsHW0PDkpEGFqBIONjTjsZuOyRGgwQjfILXlyR4AAFMqB0QNSSOLAhoLA4YVaa6EWmDCyIlLBJAJEcoHNigSAQqFJqkRbmKCJLgIZiIsMtCFI2OolSXhKwlCGtwguBnmKHIJAVgSc0jVIcQAuB0rsmqEG63LgHSaBlHsHCIePhCVhB2TiExBMTdFlU54noHExhAgzCAC9BMMAv1kubkMAOEm5Mbq44SuXQlxGDPrKSE6zsNQcqQWVeriCOj8Qw31tUSItAptpbEIN1bU6sfruPR5NPXJySE8wwuPzibO+2C5PbzPgqiKZEfauO+aBvLgwwqXwsm8u9Veoec1vjKDtIsrvr/+61HNaQ3ZmiTQAgAAdSlpYgCQSilSdQ4kFTQ/U00TSCSNS5EIMcpXva0UG3n1tzszm/1eWyCEv1DjdNJkKyGwFjgqHJs6SidZWswqNkdxpsrL4GKU5a62uGXFPNxe71/JtFoY/BCPwSUxh5lZUMp1iiJABBSBrIky74sYIYhOQxhxDMSKi7yayTNOOkl4QwmxeriJtZmmQbPFnbw88UrmC/yMQQHTIREI9EcYlFJuWhxkummlCSVdJiEAgAAFs0bF+ADeFjDpGQbFQBWAORZUGju2yVlyVpjjBAzDCrt9Ies6ZkIXExnlRET/UemGOiw11Cyi8rd3ra0xgRgQGwQjqqv/74GQmAAjKc0l1ZwAC2u05HqxgAGOKHUP5rAAL6sSmdzLwAIuNLCGFDHpZMoE8b+rvir0OnIZNOs2gFwxojew3aopLBMQVpRQRVchU0MKcMovzUHTuLgSmP3nzXwvlQWCl5KOsT7PxDGUOCxOMV60NuA3NvHhfJuBbmPUlHKJc0hoK74vRvsyxsbyS9046rGvV0U9IdfxrLwPFJ4hOPlInl3D1+M1N0k/DLvvvF7k9Y3vOjy125Lq9uaubzuVJdQ5Y2bkowtyuxHJXYlO6tS/RUufKW9N65vWG5+et59x5qYwwrcrVPsWAA1DhvbJg7EIFohoZZQFAAH9IiLGKlDPc9HQ8hxkiUQOLOQFR7f6TqLEayoZIqIxaAknJFYllaGok9c7x52GxtwZDRRapAUMwRFqlyOU8aiVvXLE1lRZ535t67lLV1je5v8rVmpQXrGeWG9Tmsssvn6GzqX4Y9rZ/2pYuTFr5/kS1MO/YvfepKkrtXKSg72G4pL6dyIvPOLA2Uvu7rUtaV0E/Vs1u0vKuVPboaeL5TMrvX7/ae3ZvZ5VKTLPnNZ1M6XWVreqfOtTX8vvczv93v+3rNyxs9zGCfsMB4r13g61rON5eVdvWRbJDowjkbRGmgmNSwxkjmESYLoTm/0BVFD4kmEt4EFSOQIDFrmiQBxRwICXOwdCxENAM0VU6spw0OKEYRCQxKbxptIumdWfTNPgRTVTNgywr9qxvJGGWMHqsTyQwXe4bbLofZ8X764zLXccx79Neb/jLJZm78XbNWnakYb+fp33t2azoRtb6x4HhxqtHD3bU7QSWmpH9u45Q5T1574/W/ViVPSpu+8SikXt0sspKWcu2MqCFX2JxpypM/XL1Wyl4tTWEMRTKxUsZ5vpSX86SxTVLdyls1tRWWY09i58usbvVce0vIvSXocvdt4WLF3sXmP/9f//////////////////////////////////SavW71P2fpPIh4R9/9vtW4IRwABAAAAIQ+Cw0+xcZDNPmYgNfiI5HMchHc3/hhekH5XSOOgBgLCxMb8z06ZR/q5gXRSsRspoGOhUJwC0k3E0Sg1glaFjHhs8yjyAmDvHGHOXu2r7zbtVNT5alef6FkscJ3FumMFp896VePZ1YQQ5R/i/VkH2+p8Uni0xeuXDDm2PHq2HWSArAVgQMUt9Bjubnae3+nGC2QoUdWYvTJCx/0CMH053ePEMWVahitUzOy+k0JuZs31D/k37bpncb+dC0PjRELhPFBK5qtSMiyq/nNdYz//////////86vjX///+P//////6OSsZEMeqtRtSoeaj667iZvLZ3MSESTVkSgBbjcFZc2WLCg2CABrJKCiqYNEwOBhIWQCu+GQRgR+IwkzAPXf/74EQYgAgpblN+byABAC3KXs1gACEGJU/4+YAL6sKqPzMgASsYVheZBAsNbmwoAKQC0CW0By2v2mcYCDhQRNWAo1DkPQ9AVVp7mF5RIYOaWIwZ5i/rpzk1q1N30oWmIOsoU+zVxo1IliJIR+ef2MQFG6ONcjKu0kk4GLw7O6aTyHIswqCY9ALEy+E18667DmEpeNNVuffGkxr9tYd72hsR6ezq89PZMt0FVWkPjTS6WuzCOTN6nmbG+Y61S0F7udX+Y99+oAfuP9l8ssb7Dsvdx1WJfl2rreHf/LK5rfN2N481r+7x5v7MqmcLt6mlVu9hdqY1q/7F/vTVXmq7GJABV7MgK1gjKdJInSFyrDQQTMWqOKIMKdBUYKG0exakZROFA5pipMML1Cj2dEKFBqsyXUGdEYEjnjh2lpJ1509UJCVlzkCXYU7Utb96mWkSwiTXYPhTKYNpXaoaaMzLEGksRfRzmQ56lzuMsmbkflkul0ugiidIuu761IvCK9p0YzAkajWE3OOm4FNEaZd7EkeUOkUQegHc1S7y/t3G/Kb0Sv3qX9sSUBbspjADw4/LHRgC5Ul1r7n44Y46lWOXMd/v+M7gbsZ+dlUqpqV2duhADb2d71jj//llnhlj27rln/5reOXNZyCtJZRMzEvhqO1NXbmNNd/cu3N6pjprIxUdTTbeNtJCEVlWAqRgAJIggnYC6kAAsQ0DVIkW8BbAMVCmi4gDED8DgwAM8R2ERFmCE4fGMiNgL4hY6LcLCPZwbY5QzghOQ4+PJaIKLgLgsZUGUG0JwFYNheCbyKDKEUEKCzB2EgLmFwlwc43KhUJ4nzpWI4nDYijmRcMCKjYMmPIFIujbKhqgYmaRRImaskeTMCsaF8m1EeYqN0nNi+cQHYQ8nxBMpEEIqS5cNzc+XFm5oXC4ka0jdkElJjjLiJugXHMDQgBUHASR03LRgaJ2QW7ywRUmiidND7stOYGCZuPAy5XIubsXEEE1KN0v////aqr1///sVyYKhOGjUKa5ut2/1381l46KyJLZJIkxWdDCEBsMQI3iHULeqSBIZWQDAR6Ex0S4aRNLZeULfAugL8LfAHyIIFUjAumK3GRIQqClSeGgfH4Y8c4fh/IMohC4REgjsThNEmOAfj5kXzAhhACKFwuMXiOLxSPsYIFYum5KE4XiCEBNS4RAjRkDhgWpkToss1Kq0TxoT5fNEEiomo2LhmQ8yI0mTI3mxsXziiqOeVxH5DBwDZL5OH0TcuSKESIgYGZVSc3PHDijEcZoapmBMFwxTWTZ01QUaG5gfayaSBmUCYLxqYqN2Uy6RSMS+Qd0E7IboMow2////6v///55IihoQQ0wM4wIu7uquruHZ3RE7iAIAAAABTgppmHS3qYGcP/74GQMgAgVddX+PwAA9c3Kf8y8ACC6KWP5l4AD38UrPzDwAI+NUyWI30cYYuzFEIQXkT0cJtIAcdYjE2GDoo3DrY3Ejyx2uq2KrsOjt9yrEcpJpaxbJcr7KL6uQ1MUtevMaxpZG30pVjcaZxpZbKZTld/+cYI4zTM7jdWbWca1umqw7X3hnc+xTxaWrReRaTPEEyXGVetNWqaIxhYbPlp9odiEcnnUKpkRUK4Q692f1erunfhh/4etYY442M4zLqlHrH+SunkzgStnF+zR3aG5eqW+T8q1V/X8xw3c7urjjIpVZ7e7nb3c1lvHd14n/hmMyvGtzeG7d+avf///////6rUwmKhJ48Ss/HstT///9//2zNMZv9i0CQAAAA/hhgp/AMQKngAoEqgesDCmiCsecDj1XF9n3WokpHAehlG4wKPJ+meDIDBJC7cKKt9EfV1d8sHEhhBAg4fzeVA/06pS/R0Nc1zIZSPeNTA4JAcGV0W4uR3FuzqfUZnflwULM3H+XByP5RTz3WYkGaPrHVbYi3JSzHCsHG9+KwttyehalbGB9Mwtz8eBltgx1xCSSeM0lx4n8ecWCra3xPK4vYOs03uG2M0QrCSkMNaVsmhZh1jpzMh/NSHbexY0L49f9Upf5/jZxnGc9ugo7xmKJbcfcqkisC3+AQ0GiYlvZ+gQIS5d0zMzEzMw8uTkPZhBIACAIGN23KBCWdbOcVhh71hwuNF7zTIci6wCvVxIzHCQgykkcbKuTRHG8IWSxIKN0eE5BxMzjRycEwBZLbY6iJ88xZCGCH3SYZZfzsH3aPauZ7KymmRgQszWNGoQTHe6agMmIhx3YDoR6gMd6zF7M4A/Ehpik0XOKzgxC4NZkJVaHYgWwvo5wwdj0H+Uhmo9th4f2ebpXWXaFuEGeIhbWq25UqQuCGO2diT7KpVY3b3be8f7//3pbTCUeW3Ef4vusi1BUBgKU529VTLI6ywEkOc/EIVf/////////////+7yTV95Z9Z3/9//////7f6zuGz5Y3dH7cq8MlU1UtVVQTmbgHAgAAACAQFWcmF5umSAm4BdJewYQvxW+S0h1mDn7bmUwG924O3ngEobwqmw7GSIsODG/VZzl5DPL5Fj2TbAwOFI1IieerTlu0beLMkTF4CsufsVbkQWsavND2ye6vX089hymJGbTqU82d23fc/MuSItQ4FYToKocxok2IOdaOP+0ORscHlZK3j0Xc7/NLHI4IY+T6gPCMWwXAlhptqviudp4Vfr5/3SmtIZhRvKxoivnZPHgQXNcrASsscZnRzCZTCeKKfp2f6/////////////1SI/9cPol80vTWP/////4zFMzw9PHbgqHjwyHNgmq7q6u7qKIlEzWbGBABAGcUOAAf/74EQJgAgBblZ2awAA+43LD81gAB/OKVP5l4AD2USrPzEgAaou9EjOO8UuM0FlbFosxMxBmC14wQ3Ez6Q3mnRg+MxhTFX9iPU9O8zWVfpjLBo2rFm1FWQuLXi9SINTR8ZESjjGN6ktxmpUl9pAa1nJuj6SOT7oqCmfqNyzsalkWqxnLNrSiycWNmxfkNqJxbdLjSTVx521SJf2o6U0/Valq0kpyy7nbvTkSmefuU1JTCAqZhq5VNYo/0NR6VRj6O5jcv57rzMzeq65Z5hjrJ6WVQN2OwAkN8daol7RUHcblfdilyxrQ1EqlX/5nruX5clGsr2Os9UtWOQqmyq1Yi5NWWxKzEot+0RhqAos//CpheZvd3d2Xqq6IzukxTAQCKYILnDeQhg7xTZvY5hQxmjqeKrq6bpggsOqYzTMQChTe411icOtUS9XPROE+8vj7gsWfFPVNt5bT4wS6shgaPxh81YJYz19JTCYQ6Cza0sqM2RVcFyWuPs70HxqcljxyGRPzJKNuEBU9jPNykjlnRCftWZ29do8+SrDUkkb6vzVqNK5af7Puu19bzyorHMqfDctmIJgxlUdYa4upVTVpVd5hWvZat48xjMznGZbna5etZTef0M0+zvRKjbtDNR2qur8tkupyUV6CVS7P9azq26mdytn+FPWt4c7lupPU3d1s8KXGU1t3v1RZFP/Vm7d9/fdQ8spm3HIUgQSUxaVcyyKKjLIJtpIJ8wKZCxxFIB2ooMsfFTTXDiheoaFAVgOcv0zAZYmxBi9gL5/KNBnuNhByowwmB7kmh1OCLLcmW1UsValKXRYZNHgyTQ4aFHy2L3lUqEPTTZiwGfBmvAiMalbu297BphGK+NObj+RiuzbbIcileQm5453hO29Fszgyw0PgnejlEwYmb2RrfsKmgMdaWszditqAQ+06nd2VURxHoVL5gib+dzxWBDdZ+H9kgyWgN0VhvSDNeSPdPzi5rb863zIxz6b1HbGPv////////////0//+//////////tR7o8id1H7PIybpEzN7KzuvsiaREUsjKQABKRiEjp7aagjeVViyIEsK/BT6GifdxkikcCZG8KIAvgceHvGQrYmSDmBNiEgskZA+RYmSkPccoXMfLo5ZEEJMmRMkXOkgaEcOMdAyAuAhhJDnEWKhNn0VLMmLZOFwvm5aGXW7mSJMlE3MJko6gV1rOEwOYTZqZIl5IsZRPKPmSZfMjdZNlIqF0tmZZIuVjYpmDLY3WYnS6mXDqDopGxeNEBYzcwJU3QJpEujsIapBMvlFSjp0zMWdFSJsbJJoKUgdRqRQImT5gTg559iJlgqE+kxNldf////1Vf///QL6kDRbpuggXDQuCKtvbiM7+nDQzIm43EQACEQCqfP/74EQJAAf8blX+a0AA/+3Kr81gAB+97S/dh4AL2DxmO7LwAdvsQQowSxMU9SAu+ZcUj8W9lZkAocOC4MgDrGd8ykk8DRuSyl8lUGzBsQMEN1cJOq5VoFLQUVC4JYVk080lvZP96VNPYgrekCkVahp3pVEqT4rS1WKoKvRAbgv6+0etT8txwvZVbfw2yNajboZOCuS7ZuV9yqNf+Xd44tNT2TndNoEadmEsCprWVWzWr5b5/558/nG4NndR+ZY2dlUTcmPsNjUNTWqmseb3lTOz36lrPHn/DEO4JVMOfppzKmdbsQ1L2Atw/LtXLW//mu95vX/3///////e6VU1DaiNiIyifpnKguNZXfwkIlHlwV3KqJ7uqrIkMicibAAAAAAEDo9EkGkASQxlhgKxiUQGRLGMEBlpPWXMFQKqLDWnpWgHzMoCaSoni4ReB9bkumq0OqgAxSUVRiTwrCtRkduxqFNKSXVazaHnCnnqo8JfGe2VuIo0+14u7KolFq1mU4WMrlDTSKC3QfdiTorklP1t7pqbLWfN/uBUBSy1VWQPextaDBr/w1VltW7y9v96/LP+xhfEnbdfDO2tPq5jDV2xCfpavPpb2Va/TTtbUux3hl/uE7ThOWzqGmbqmhqdjknlDgrmx73e9TNWzU1n/47/8N/l+////4fiUamZt/YCpXaiMog90aOiofxQ8Bp0OjXGsmky6oAAADZqOJxAMcYCFhzUY0u8Y0J7LvWoDgl2XdYady05luYQgqvQN2FkVI3zROgV0OEwT/ergc5KVYrnbKdb14URyvnZ1HU9blYZS4O9/AYxkrCvnbcwmpiYT9mUzCxeCxTM0BtQxPM7FIaiTYiVE+VTN1qMe7Ql9J1kXlC+cpnaoVC2X1kcGFlZ1K1EGOo5iWqVCSMDmNE/iDF+dJg7FInkcrFSwLurUu4bG9ZMWhSMUrW9ZZrbWXiqb0SpsMqNbq4mUTyV2yx5qTPW2Fmr1hVsS0dtjsMFhkbrQE9BrqLbW93tGhPo0bcW/rF9svabrXGPe0GsfUMUro2pFq4cRAAALNlhi5gakFYFpGWgKrwstYhYMhsNStL00TDRzIJiQ5taNp1x6ihHy/Ri5G6/UpKTqHaMFHKxiJMiYSSshMUtzkZaMOpniqFOI9i2TlQqlClK3KddLs2C9KJXNrNZYUr5mVyvc+svk0ujeNJ3O8Uys00VWIidSp1PVM2pxRQ3szK9XKWQ2WTMOAdo+UOLCN9NHsIcZTHZ8bqIwu65UF3Jx2rXzeoXr2NpTM2Ibc5wpzlWXssRnOZCi6qxldRVcxRmVuj43mPqHSkSV7BiyazSta4jaeag11rOa51jeq119VxiFDtjFv9580XPjRWmQao7b7+IADO226IPFiAlIP/74EQHAjdfcElbD03i++/ZFGHsrhxt8xqMPTXL3D5i0YemuTuKMHEQCq12XwGtwWM28jlUodJ5nZlTxwZLZNSz8rf9ZVAjctacgAl4XIYRmmIXJaRhOVQuVS9juno5SFFtRBpLB5JHT+Gln3YjnboZCZZ2R7Z+2K5uw3rKcblcrtoclHcFW6fsilUqKH0h0yRPFRMJywJThliqbL1ZXI+VhmUqsV850kyIMqEUQtyJqgVpbP6EpmZCaq5qQPB4NEsF0Et1JSRC7H0ikKZMHhMTg2IWSVuR4EtGSEyiGSWXqJL6gtJpRhpZ8GWKLCFnMl8vJ+XknB+eSaUMdo4XiiTYyh5Oasiz7wPgXGMuFjgqK2kkZVIIu2BIKX0dNSQFJ5bai7pNOnZa0drz3mEhQfxDmpcCbiMjiUaMLkg0asKQnrAN41j+LaJifbKhyYVhdobMzrkfQ9RlQUNc1EcxMi5PTyZGx93GPsYygPM4SlvGcEQZTxhfzvEOP1zfn4+OaEeJ+G6oVCarxEyoaLimScEmgnMllaqpEgji+gZjxJGeyYTKrencdqlQldRzSCkmgRA6LR6EEsmJ679jKOiyBk9bWsujr+HpyVYlURu4uQqxWPoZa3lv3dceZpWtvPdhqZHqfrX2W6/LNv6zC6sXtu5ey6bWrj3NQWvkzaas2BbjipEgqShStAt+UCQOKytRl3LEB9fnVb+0z5yybazHmry2vdgtEUJKWEbRrIlgLuPEvl0KU5f4rAsP1ctHKqUkX5lSijHpMmdtPpqQk+GwuKSL0ndsTc9Yk/Ahvni82qWSErkHOfy9MoFbFi+HFmTpooBcq2VGwFc/Vx7IceZownNiV5JWxib6t6AfKJaSBzC+oOKE7YnSeZVanWTDnqFpR48uyjOta9JvNam5yKMyI0p4ME0ixZ+25ZLZkuVBW47qUWUTjxV0uzCtktKWz+TdSLdWleZkctWNblVL3GstN3jMAhlNUiDoxLlU6Bgy0SjqCzT7dS5KorKr/2m5PnSWHJfCVxWtYruoO0kolAf49y5jBF4JMRtPwT9al0jHRXJ5xUL2EWZYDdG7HMpbUDEWwepiOWRsL+nkM2uWCEeSFH3lzYnMXGKzHgn13If8A7j+Zn0HTe2ltLissx6l5Z4S7RKdRqoXnN8W4+etl+ZleQlUsiHj4LyX0hZxCGmKssaUPUel1MyNzCsqQsoQVA4OmgySql2MQip7ZMFiIpYfA4VohWZHVmQyhLISV5Ms5No0jWFSFRclKs3r4NbaKTWuZ8EpnW04snY5V6iufzYT21J7HchnYczbE9UYedCgVKkGEzgSTMWMwFknQ1X1Xzy31Wu2eFFPZX3clO2rovSaNIWEup8WO5kZ4jYo2WrE+Oc0Hlj0j//70EQdgQY2e8XB6TbCxQ+4xD0j3Bcd7RcnpNsLEjsioYYluahp1pACOg5MVIkpERO8RilHtLlUnKqTES6lowFHWSSM1oTJj3OdEiIhRJESQVQQZQIYWxNsuVPpDBCMwRmCJdDBsaEwhZZIkR4tAw0FN1RbhAw1FA9iJPVkhLYnMgpJAN1omwiXtKgsovrEuxpWybkefB7GpNZtthbTkZZS31JH7uvfmMSYvK1NoRosJtqqIrDUiBVk3EXFNBmG6FcoZDrHqO6ffgxGNRxtn8hdlJDX2FscTGVJnvWB2TVjfRZFZTOYqmZIDOwm6KWVRMYTcQQYVHFoCFfVwZbKLpktMSQJFHqppoaMrxbqGpFpWsfJRJy5I9C4scRIUMTMIkPIsYbJ3gGAomFYppV4lHRUfgjKF0RskbIlpl6WZJUChe2U5osdGPNyOEzLGLSSQJTezB3TTSejiplMy2Dp3//gdKJpSvVgjm9j06thPME5w2twwVBa95CRNUOwaRdQtlhJi9iDqQDlEYc3znbxvh4cFLKZDklbQVywJnqBCXb95HVOMPHJUFueMylhWTh8Uqj7Z4yhOtmnGak1FtGqSvalFHJA35xfZknejFJLaI67c1VNdizrkdkLpyNRXLNtWIS5siintKoyFCxNyFqa6ikTxiUkNDj0Ch0FCis0Lg5WePv+q0paRVGFqr1hprJSztF3VxptZDOyNF1OomRL48J9B8+Kh/mfO2RnoqwROC8rxAwis1husJlEF2iQbpy6zlyvS+zMFS6yIgNVxeLy5BIZiiHx5aOB6VURPUtIJNOy0ZREuBTExZtczYXQKTg7WiDBCWb2aEleeWsQEMxQ35KLujOYrZQmciiZ93O7SPHiGQy+w84qhLJEygEsnRWkvRxdqi54ViszKVPzFcD7Ky1NqIrPKJNmU0ZxpzOKG0RNT9RFon0pGwZJjUZMwdG6WaTQEuIaUI4I081+Rxh6kbuba/8lkqqEf5/V5M1N6CS4bJIqB2WWAEZGPkwVWgQC0V9GKlHKqFmBb33PZ751tviQYrChbgbhoFiurnFQu0sugYE8DtExKO3MVPIhopgL4eGYmrSggYVYIy0SWjJzOZNN40j/+8BEKAE1xH1FQek14rtPeJg9Jq5WodkVjCTWyvy/YiGGGngPoSic1UyieplYEbWJJIkcQymmYSLYqlc7QiYzhclCxPFJSooo1I9j8uJhcVYFSSviSSOJke7ozaSILfjqNTkkSWVRz90WVqrLJ0jddmaU+cuazoz/HvTqh6fHdZcL7bSTUXWGshunOjChE1AECuh8HUHMSsTUNJ1BXoUbH+tY+MRFClUdRG5eTuQAExENigwJ1ldEwIkCM4K10RwoH2BC29YRK8h9I7QtSaNsJkDSwdeII9D5Q5LjI0yjO8zibQp2ay1HESZ6U0qmlemzAoaLBOKTIYAERpMLHdRKkrLjkrKqgU4ICBEALSJIGFgdkYW+1R5rGZyyihsSo1M6K0sF9M/Mm7p4cw3ORGYWzsSS73YG3uXqIzTMZA6WZ6kurj6jWQ6cIRlmMrJArtpDKHrrbYOuRabR5oZnLU7Tc12bjsUiL/SuKP5P2KeJQ5Erb8r+rTogZguuP4sMCcnDqNcHnlcI+QHdWVYKiIKoKkTj03Q3oiVLHycTIUkgyQpaJFUkTKpNLwKzRxA5J2AtqU/VRBE84Yc1mFlQgQdrJHJFvG1sQRs2S39ylVHmddfjtxaVZVW789N/XcqKMSPxOkM17V1dvp7In/dw1p7PGzWMycF6qNEdlBgXmEUixzYBuBj3Hh6mhTgwzL70RduZ/f5YUt6HHOopbGgtrCccEu5boVT87OiWVTVQ/5kjKhf49jwrqT9DMFKkOn0is/Qm4kpdOW0mte+qegooTOeeldo8YcTn6ds5Lzk2WuFdii1hk6Q1q5Y6uS9+sEjMAkkCQZIPpv2YXhyPKvFWhpgSRizpF562jLMEZR6HZ72k03hVnGSbUe7WXuj4On6zaafqfUiexCj5RXMqkg1ouaZHuMUss7tDLKXd68IRCpRpAGzPDAriByyLydzX3YceH7s7M6//+9lyUOhF4v/70EQPgRXgfkTDDDVwvw+IiD0mvFcd8xNsJNWK173iZPYa0TWpajubhdCUtDorW9VBPBpKZFeK14DNOtSMt9VOSyhHVkwW9dx0xw7XtvO9CgI2Xli5uFDXPNIZ9X7JUp+cL/J2Xj6tfcpdrZyGBhiqRmnGkMD11OfEpc/6MXiUMYWHLi4zBU3qR+/mh3ijy2oxdQbKSd2zSmS521mFIXZdn2cs0h6YnJSeG3ZBTGmN6XlUnd0y5WmyR8TvYzc5+KYEFGAANWOPc5BD1UlcK1vUChVVJc/HgtSy+YFIqXjYuIil3dYQTE0gOXHE1Sz3Xk23htUVLwFZ0sI0TBgUqJwBMLm4oUZXR1mGzjNls2WbnemyRY855iCihKjRFGxkKtqw05JgyQKpRUzUMiBwmUL2KwskesqgcWRljRqmTekgGosRbpuYnTHKKNNTncZJkDbQwRn03T8knNjs0cZbtlk05dBEuyO0UB5K12xCxrYlI1CCf5R1ObCsLqKepGlwMQSgSlHSBJWmsmMNJRXYYyGxbrxSrzk/XqU/bkokcpkTvUkZadBlKw8FwZDzQpQMjbC7SB4oaISYMnRSSLMqF1tKD7K9YovazyRRogbNoVFhE5hCu9xAq2tqqdJQLD5Ct10FTtSCWo2UoNVkXosh7tIkaocKm5NjdjFlAcraZJM9Nq0CiYrYkqXtpMdXS3cmcGE2a2TUS9mPvRWU9YvJdkclrqOSLo/DnqYHbZU68b5TILUaSaviWOc0Czt9KKFIpwxhbBX0QvnoX2AxHi/f5pi9XCjm9kZ2FRrKtU0RElCXyKrSaPApEZSVUVOODc9jTHh2zR8yTkg5KYhKGDExXQ7lyFJGCbK2EjRB6Q2ZRtLC+QtIEHkRxFyqejx+jQokWYn1scv01kdMXprItrJyiSRHSEokvSK9IXKK0XirpJjZh2SordKvHtTq1E8yd7myp29aaheod5Od2prSaP47LqJa2N9dDTvVsXmwdNqVJkEAIwAASIcQ7Q0QqinJbRSw1DR9aFt6y3YXsiJq0KHRCJViImKilhCSsBY26YVQAFMhYTKpHQyNCmBE9C5FMUzIWSxMqhQrIUJYNJillYiQnASbCor/+3BEKg/1xHlAMek0cqhOWBkxI/BAAAGkAAAAIAAANIAAAARSDU9SRTIWUhUeS2jUTlyVJxIsiolTMdUkcBlkbltNUS2a3m4c+adaLbLV601RJMjjG4ck5GSgEYS3m5TEhQcjnbf/MJFqJWRdE7cp8OiquW31Wm5TtptGonbP70arnLIwMtKbwAAGnrgA6fORJIQuMXTlsxdaXbWtWVtF0dchMUM9mqYnF0dStFCQgNBKgR0JTp09Yuk0rFqEyfWklQCRPA6QlBlda4ZPJTFDEkpCMXSawTrpnBMIT20iTmk8UqHyUsOBH0SGFOAuAxy2MBomH3msPqse1LJqTQ/ZwEEBQCq+xgNJlJj/1JpqS5BnEsa9WHf7DVGOrquGFBRMVYzUBIMXBQaSOGm2YRTHdUxBTUUzLjk5";
-const shutter = { ctx: null, buf: null, loading: null };
+const shutter = { ctx: null, buf: null, loading: null, idle: null };
 const shutterOn = () => state.settings.beep !== false;
+// The audio engine for the click exists only for a few seconds around a photo, and never while the app is hidden: an engine left open
+// made the phone chime when the app was closed.
+function shutterCtx() { if (!shutter.ctx || shutter.ctx.state === "closed") shutter.ctx = new (window.AudioContext || window.webkitAudioContext)(); return shutter.ctx; }
+function shutterIdle() { clearTimeout(shutter.idle); shutter.idle = setTimeout(closeShutterAudio, 4000); }
+function closeShutterAudio() {
+  clearTimeout(shutter.idle);
+  if (shutter.ctx) { try { shutter.ctx.close().catch(() => {}); } catch (e) {} }
+  shutter.ctx = null; shutter.buf = null; shutter.loading = null;   // decoded again next time (a few milliseconds)
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden) closeShutterAudio(); });
 // Called first thing in a tap, before any waiting, so the phone allows the sound.
-function primeShutter() { try { if (shutterOn() && shutter.ctx && shutter.ctx.state === "suspended") shutter.ctx.resume(); } catch (e) {} }
+function primeShutter() {
+  if (!shutterOn()) return;
+  try { const c = shutterCtx(); if (c.state === "suspended") c.resume(); shutterLoad(); shutterIdle(); } catch (e) {}
+}
 async function shutterLoad() {
   if (shutter.buf) return shutter.buf;
   if (shutter.loading) return shutter.loading;
+  const ctx = shutterCtx();
   return (shutter.loading = (async () => {
-    shutter.ctx = shutter.ctx || new (window.AudioContext || window.webkitAudioContext)();
     const bin = atob(SHUTTER_MP3), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
-    shutter.buf = await new Promise((res, rej) => shutter.ctx.decodeAudioData(u.buffer, res, rej));
-    return shutter.buf;
+    const buf = await new Promise((res, rej) => ctx.decodeAudioData(u.buffer, res, rej));
+    if (shutter.ctx === ctx) shutter.buf = buf;
+    return buf;
   })().catch(() => { shutter.loading = null; return null; }));
 }
 // Plays the click (when the sound is on). Called from a tap, so the phone lets it play.
 async function playShutter() {
   if (!shutterOn()) return;
   try {
-    const buf = await shutterLoad(); if (!buf) return;
-    if (shutter.ctx.state === "suspended") await shutter.ctx.resume();
-    const src = shutter.ctx.createBufferSource(); src.buffer = buf; src.connect(shutter.ctx.destination); src.start();
+    const ctx = shutterCtx(), buf = await shutterLoad(); if (!buf || shutter.ctx !== ctx) return;
+    if (ctx.state === "suspended") await ctx.resume();
+    const src = ctx.createBufferSource(); src.buffer = buf; src.connect(ctx.destination); src.start();
+    shutterIdle();
   } catch (e) { /* no sound is better than an error */ }
 }
 // The speaker button at the bottom right of both viewfinders.
@@ -2480,417 +2301,54 @@ function renderSoundBtn() {
   document.querySelectorAll(".cam-sound").forEach(b => { b.innerHTML = icon(on ? "vol" : "volx"); b.setAttribute("aria-pressed", on ? "true" : "false"); b.setAttribute("aria-label", on ? "Shutter sound on. Tap to turn off" : "Shutter sound off. Tap to turn on"); });
 }
 function wireSoundBtn() {
-  document.querySelectorAll(".cam-sound").forEach(b => (b.onclick = () => { primeShutter(); state.settings.beep = !shutterOn(); save(); renderSoundBtn(); pulse(b); if (shutterOn()) playShutter(); }));
-  shutterLoad();   // decode it ahead of the first photo (it starts as soon as the phone allows sound)
+  document.querySelectorAll(".cam-sound").forEach(b => (b.onclick = () => { state.settings.beep = !shutterOn(); save(); renderSoundBtn(); pulse(b); if (shutterOn()) { primeShutter(); playShutter(); } }));
 }
-// ---------- Backup on GitHub ----------
-// One backup file per person: data/backup-<name>.json, replaced every time that person backs up (so it never piles up).
-// It holds the product list, the settings, the team key and name, and the store numbers. It never holds the database key, and
-// the token that key unlocks is already in data/key.json (encrypted), so a public repo gives nothing away.
-// The Backup card in More shows every backup on GitHub in a list ("James - Oct 1 - backup 3"); backing up needs the connection
-// (the database key), restoring only needs a signal.
-const BK = { items: [], at: 0, loading: false, busy: false, error: "", sel: "" };
-const BK_SETTINGS = ["beep", "needKind", "captureKind", "baWhen", "baKind", "baSlot", "lens", "wordTiming"];
-const bkSlug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "phone";
-const bkWho = () => (state.team.name || "").trim() || myName();
-const bkLabel = b => `${b.name} - ${new Date(b.at).toLocaleDateString([], { month: "short", day: "numeric" })} - backup ${b.n}`;
-const bkToken = async () => { if (!uploadsEnabled()) return null; try { return await getToken(); } catch (e) { return null; } };
+// ---------- Backup (on this phone) ----------
+// A backup is one small file: the product list, the settings and the store numbers. "Save a backup" hands it to the phone's share sheet
+// (Save to Files, AirDrop, Mail...), and "Restore from a backup" reads such a file back. Nothing goes to any server.
+// The file format is the same as the GitHub backups of 1.0 to 1.2, so those files can be restored too.
+const BK_SETTINGS = ["beep", "needKind", "captureKind", "baWhen", "baKind", "baSlot", "lens", "wordTiming", "hapticShutter", "hapticTaps", "liveListen"];   // (pad2 is in beforeafter.js)
 
-function bkSnapshot(n) {
+function bkSnapshot() {
   const settings = {}; for (const k of BK_SETTINGS) settings[k] = state.settings[k];
-  return { v: 1, name: bkWho(), at: Date.now(), n, settings,
-    team: { key: state.team.key || "", name: state.team.name || "", repo: state.team.repo || "" },
-    stores: state.stores, storeName: state.storeName || "",
+  return { v: 1, app: "Shelfie", at: Date.now(), settings, stores: state.stores, storeName: state.storeName || "",
     products: state.products.map(shareable), deleted: { products: state.deleted.products } };
 }
 
-async function backupNow() {
-  if (BK.busy) return;
-  if (!uploadsEnabled()) return toast("Connect to the team network first. Backing up needs the database key.");
-  if (!navigator.onLine) return toast("No signal. Try again when you have service.");
-  BK.busy = true; fillBackupPick();
+async function saveBackup() {
+  const d = new Date(), name = `shelfie-backup-${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}.json`;
+  const file = new File([JSON.stringify(bkSnapshot())], name, { type: "application/json" });
   try {
-    const token = await getToken(), path = `data/backup-${bkSlug(bkWho())}.json`;
-    let saved = null;
-    for (let attempt = 0; attempt < 3 && !saved; attempt++) {
-      const { text, sha } = await readRepoFile(path, token);
-      let prevN = 0; try { prevN = (JSON.parse(text) || {}).n || 0; } catch (e) {}
-      const n = prevN + 1, snap = bkSnapshot(n);   // how many times this name has backed up: it is kept in their own file
-      try { await writeRepoFile(path, JSON.stringify(snap), sha, token, `Shelf Scan: backup (${snap.name})`); saved = snap; }
-      catch (e) { if (e.conflict) continue; throw e; }   // the same file changed at the same moment: read it again
-    }
-    if (!saved) throw new Error("GitHub was busy. Try again.");
-    toast(`Backed up: ${bkLabel(saved)}`); haptic("ok");
-    BK.sel = `backup-${bkSlug(saved.name)}.json`;
-    await loadBackups(true);
-  } catch (e) { if (e.auth) cachedToken = null; toast(e.auth ? "The saved key no longer works. Connect again." : (e.message || "Couldn't back up")); }
-  BK.busy = false; fillBackupPick();
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; }
+  } catch (e) { if (e && e.name === "AbortError") return; }
+  // No share sheet (a computer browser): download it instead.
+  const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  toast("Backup saved");
 }
 
-// Every backup on GitHub, newest first. Refreshed whenever More opens (at most every 30 seconds) and after a backup.
-async function loadBackups(force = false) {
-  if (BK.loading) return;
-  if (!force && BK.at && Date.now() - BK.at < 30000) { fillBackupPick(); return; }
-  BK.loading = true; BK.error = ""; fillBackupPick();
-  try {
-    const token = await bkToken();
-    const headers = { Accept: "application/vnd.github+json" }; if (token) headers.Authorization = `Bearer ${token}`;
-    const r = await fetch(`${apiBase}/contents/data?ref=${GITHUB.branch}&t=${Date.now()}`, { headers, cache: "no-store" });
-    if (!r.ok) throw new Error(r.status === 403 ? "GitHub is limiting requests. Try again in a minute." : `GitHub said ${r.status}`);
-    const files = (await r.json()).filter(f => f.type === "file" && /^backup-.*\.json$/.test(f.name)), items = [];
-    await Promise.all(files.map(async f => {
-      try { const { text } = await readRepoFile(`data/${f.name}`, token), j = JSON.parse(text); if (j && j.v === 1 && Array.isArray(j.products)) items.push({ file: f.name, name: j.name || "Someone", at: j.at || 0, n: j.n || 1 }); } catch (e) { /* skip a file that isn't a backup */ }
-    }));
-    items.sort((a, b) => b.at - a.at); BK.items = items; BK.at = Date.now();
-    if (!items.some(x => x.file === BK.sel)) BK.sel = items[0] ? items[0].file : "";
-  } catch (e) { BK.error = e.message || "Couldn't load the backups"; }
-  BK.loading = false; fillBackupPick();
+// Pick a backup file and put it back. The file is checked before anything changes; notes and photos stay as they are.
+function pickBackupFile() {
+  const inp = el(`<input type="file" accept=".json,application/json" hidden>`);
+  inp.onchange = async () => {
+    const f = inp.files && inp.files[0]; inp.remove(); if (!f) return;
+    let data = null; try { data = JSON.parse(await f.text()); } catch (e) {}
+    await restoreBackup(data);
+  };
+  document.body.appendChild(inp); inp.click();
 }
-function fillBackupPick() {
-  const sel = document.getElementById("backup-pick"); if (!sel) return;
-  sel.innerHTML = BK.items.length ? BK.items.map(b => `<option value="${esc(b.file)}"${b.file === BK.sel ? " selected" : ""}>${esc(bkLabel(b))}</option>`).join("")
-    : `<option value="">${BK.loading ? "Loading…" : "No backups yet"}</option>`;
-  const st = document.getElementById("backup-status"); if (st) st.textContent = BK.error || (BK.loading ? "Checking GitHub…" : BK.items.length ? `${BK.items.length} backup${BK.items.length === 1 ? "" : "s"} on GitHub` : "");
-  const go = document.getElementById("btn-backup"); if (go) { go.disabled = BK.busy || !uploadsEnabled(); go.lastChild.textContent = BK.busy ? "Backing up…" : "Back up now"; }
-  const rs = document.getElementById("btn-restore"); if (rs) rs.disabled = !BK.sel || BK.busy;
-}
-
-async function restoreSelected() {
-  try { document.activeElement.blur(); } catch (e) {}   // the list keeps focus otherwise, and More would not redraw
-  const it = BK.items.find(x => x.file === BK.sel); if (!it) return toast("Pick a backup first");
-  const hasShots = state.shots.length > 0;
-  if (!(await confirmDialog(`Restore <b>${esc(bkLabel(it))}</b>? This replaces this phone's product list, settings, team key and name${hasShots ? "" : " and store numbers"}. Your notes and photos stay. The database key isn't part of a backup.`, { ok: "Restore", danger: true }))) return;
-  let data;
-  try { const { text } = await readRepoFile(`data/${it.file}`, await bkToken()); data = JSON.parse(text); } catch (e) { return toast("Couldn't read that backup"); }
+async function restoreBackup(data) {
   const okProd = p => p && typeof p.id === "string" && typeof p.brand === "string" && typeof (p.flavor ?? "") === "string" && p.id.length < 200 && p.brand.length < 120;
   if (!data || !Array.isArray(data.products) || data.products.length > 5000 || !data.products.every(okProd)) return toast("That isn't a usable Shelfie backup");
-  const snap = snapshot(), prev = state, next = JSON.parse(snap);
+  const hasShots = state.shots.length > 0, when = data.at ? new Date(data.at).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "";
+  if (!(await confirmDialog(`Restore the backup${when ? ` from <b>${esc(when)}</b>` : ""}? This replaces this phone's product list and settings${hasShots ? "" : " and store numbers"}. Your notes and photos stay.`, { ok: "Restore", danger: true }))) return;
+  const snap = snapshot(), next = JSON.parse(snap);
   next.products = data.products.map(p => ({ ...p }));
   next.deleted = { products: (data.deleted && data.deleted.products) || {} };
   for (const k of BK_SETTINGS) { const x = data.settings && data.settings[k]; if (x !== undefined && typeof x === typeof next.settings[k]) next.settings[k] = x; }   // same kind of value only
-  if (data.team) next.team.name = String(data.team.name || "").slice(0, 60);   // the repo setting is never taken from a backup
   if (!hasShots && Array.isArray(data.stores)) { next.stores = data.stores.slice(0, 5).map(x => String(x || "").slice(0, 20)); next.storeName = String(data.storeName || "").slice(0, 20); }   // photos are filed by slot, so store numbers only change when there are none
-  state = next; migrate();
-  // The restored list becomes the shared one: whatever differs from before is re-marked as just changed, so it uploads and wins.
-  const now = Date.now(), same = (a, b) => JSON.stringify(a) === JSON.stringify(b), strip = p => p && { ...shareable(p), updated: 0 };
-  const pm = Object.fromEntries(prev.products.map(p => [p.id, p])), nm = Object.fromEntries(state.products.map(p => [p.id, p]));
-  for (const id of new Set([...Object.keys(pm), ...Object.keys(nm)])) {
-    if (same(strip(pm[id]), strip(nm[id]))) continue;
-    if (nm[id]) { nm[id].updated = now; delete state.deleted.products[id]; } else state.deleted.products[id] = now;
-    state.outbox.products[id] = 1;
-  }
-  if (data.team && String(data.team.key || "") !== (prev.team.key || "")) teamSetKey(String(data.team.key || "").slice(0, 60));
-  save(); renderAll(); scheduleUpload();
+  state = next; migrate(); save(); renderAll();
   toast("Backup restored", snap);
-}
-// ============================================================
-// Team sync (Beta 6): phones that use the same team key share one Needed list through the GitHub repo.
-// ============================================================
-// Everything lives in one folder (sync/). Each phone only ever writes its own files, so nothing can conflict:
-//   <keyhash>_<phone>_<note>.json   the note (words, Aisle/Display, photo names)
-//   <keyhash>_<phone>_<photo>.jpg   a photo (already shrunk to ~150 KB)
-//   <keyhash>_<phone>_<audio>.wav   the voice recording (16 kHz mono, about 32 KB per second)
-//   <keyhash>_<phone>_ticks.json    this phone's ticks (the newest tick on a product wins, whoever made it)
-// Other phones' files are read, never changed. A phone deletes its own files when the note goes (or after 7 days).
-const TEAM_DIR = "sync", TEAM_POLL_MS = 1000, TEAM_MAX_AGE = 7 * 24 * 3600 * 1000;
-const devId = (() => {
-  const make = () => "d" + Math.random().toString(36).slice(2, 8);
-  try { let d = localStorage.getItem("shelfscan.dev"); if (!d) { d = make(); localStorage.setItem("shelfscan.dev", d); } return d; } catch (e) { return make(); }
-})();
-const T = { kh: "", khFor: "", list: new Map(), listCount: 0, listed: false, etag: "", busy: false, again: false, ticksDirty: false, last: 0, error: "", offline: false, miss: false, devices: new Set([devId]), timer: null, priv: null, privFor: "", arrived: [], sentNow: 0 };
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-const isMine = n => !n.dev;
-const teamKey = () => ((state.team && state.team.key) || "").trim().toLowerCase().replace(/\s+/g, " ");
-const teamOn = () => !!teamKey() && uploadsEnabled();
-const myName = () => (state.team.name || "").trim() || `Phone ${devId.slice(-3).toUpperCase()}`;
-const teamRepo = () => (state.team.repo || "").trim() || `${GITHUB.owner}/${GITHUB.repo}`;
-const teamShares = n => isMine(n) && n.status === "done" && !!n.text && Date.now() - n.at < TEAM_MAX_AGE;
-const teamPending = n => !!teamKey() && teamShares(n) && (n.mod || 0) > (n.pushed || 0);
-async function keyHash() {
-  const k = teamKey(); if (T.khFor === k) return T.kh;
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("shelfscan|" + k));
-  T.kh = [...new Uint8Array(buf)].slice(0, 5).map(b => b.toString(16).padStart(2, "0")).join(""); T.khFor = k;
-  T.list = new Map(); T.etag = ""; T.listed = false; return T.kh;
-}
-const blobToB64 = b => new Promise(res => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(",")[1]); fr.readAsDataURL(b); });
-
-// ---- GitHub calls ----
-async function gh(path, { method = "GET", body, accept, etag } = {}) {
-  const token = await getToken();
-  const headers = { Accept: accept || "application/vnd.github+json", Authorization: `Bearer ${token}` };
-  if (body) headers["Content-Type"] = "application/json";
-  if (etag) headers["If-None-Match"] = etag;
-  return fetch(`https://api.github.com/repos/${teamRepo()}${path ? "/" + path : ""}`, { method, headers, body: body ? JSON.stringify(body) : undefined, cache: "no-store" });
-}
-function httpErr(r) {
-  if (r.status === 401) { const e = new Error("GitHub didn't accept the saved key. Connect again."); e.auth = true; return e; }
-  if (r.status === 403 || r.status === 429) return new Error("GitHub is limiting requests. Pausing a moment.");
-  if (r.status === 404) return new Error("Can't find that repo, or the key can't see it.");
-  return new Error(`GitHub said ${r.status}`);
-}
-async function teamList() {
-  const r = await gh(`contents/${TEAM_DIR}?ref=${GITHUB.branch}`, { etag: T.etag });
-  if (r.status === 304) return false;
-  if (r.status === 404) { T.list = new Map(); T.listCount = 0; T.etag = ""; T.listed = true; return true; }
-  if (!r.ok) throw httpErr(r);
-  const arr = await r.json();
-  T.etag = r.headers.get("ETag") || "";
-  T.list = new Map(arr.filter(f => f.type === "file").map(f => [f.name, f.sha])); T.listCount = arr.length; T.listed = true;
-  return true;
-}
-async function teamReadJSON(name) {
-  const r = await gh(`contents/${TEAM_DIR}/${name}?ref=${GITHUB.branch}`);
-  if (r.status === 404) return null;
-  if (!r.ok) throw httpErr(r);
-  const j = await r.json();
-  try { return JSON.parse(b64decode(j.content)); } catch (e) { return null; }
-}
-async function teamPut(name, b64, message) {
-  for (let a = 0; a < 3; a++) {
-    const sha = T.list.get(name);
-    const r = await gh(`contents/${TEAM_DIR}/${name}`, { method: "PUT", body: { message, content: b64, branch: GITHUB.branch, ...(sha ? { sha } : {}) } });
-    if (r.ok) { const j = await r.json(); T.list.set(name, j.content.sha); return; }
-    if (r.status === 409) { await sleep(400 + Math.random() * 700); continue; }   // the other phone committed at the same moment
-    if (r.status === 422) { if (/\.(jpg|wav)$/.test(name)) { if (!T.list.has(name)) T.list.set(name, "?"); return; } T.etag = ""; throw new Error("Sync hiccup. Retrying."); }
-    throw httpErr(r);
-  }
-  throw new Error("GitHub was busy. Retrying.");
-}
-async function teamDel(name, sha) {
-  for (let a = 0; a < 3; a++) {
-    const r = await gh(`contents/${TEAM_DIR}/${name}`, { method: "DELETE", body: { message: "Shelf Scan: remove", sha, branch: GITHUB.branch } });
-    if (r.ok || r.status === 404 || r.status === 422) { T.list.delete(name); if (r.status === 422) T.etag = ""; return; }
-    if (r.status === 409) { await sleep(400 + Math.random() * 700); continue; }
-    throw httpErr(r);
-  }
-}
-
-// ---- noticing changes (called from save) ----
-// An own note counts as changed when its words, kind, photos, status or author name change; a tick when its value flips.
-function teamTrack() {
-  if (!teamKey() || !state.team) return false;
-  const now = Date.now(), tk = state.team.tick; let touched = false;
-  for (const n of state.notes) {
-    if (isMine(n)) {
-      const sig = JSON.stringify([n.text, n.kind, n.photos, n.status, myName(), n.audio, n.heard]);
-      if (n._sig !== sig) { n._sig = sig; n.mod = now; touched = true; }
-    }
-    const dev = n.dev || devId, keys = new Set([...Object.keys(n.ticks || {}), ...(n.parts || []).map(p => p.vk), "?"]);
-    for (const vk of keys) {
-      const k = `${dev}/${n.id}/${vk}`, cur = !!(n.ticks || {})[vk], e = tk[k];
-      if ((e ? e.v : false) !== cur) { tk[k] = { v: cur, t: now, by: devId }; T.ticksDirty = true; touched = true; }
-    }
-  }
-  return touched;
-}
-function teamSoon(ms = 1500) { clearTimeout(T.timer); T.timer = setTimeout(teamCycle, ms); }
-
-// ---- bringing in other phones' work ----
-function applyTheirNote(dev, kh, j) {
-  if (!j || !j.id || !j.text || state.team.hidden[j.id]) return false;
-  if (Date.now() - (j.at || 0) > TEAM_MAX_AGE) return false;
-  let n = state.notes.find(x => x.id === j.id), isNew = false;
-  if (!n) { n = { id: j.id, at: j.at, photos: [], audio: null, secs: 0, status: "done", ticks: {}, err: "", dev, team: kh }; state.notes.push(n); isNew = true; }
-  else if (!n.dev) return false;   // never overwrite one of my own notes
-  if (!isNew && n.mod === j.mod) return false;
-  let r; try { r = readBlurb(j.text); } catch (e) { r = { parts: [], flag: true }; }
-  Object.assign(n, { text: j.text, kind: j.kind === "display" ? "display" : "aisle", photos: j.photos || [], mod: j.mod, by: j.by || "", parts: r.parts, flag: r.flag, at: j.at,
-    secs: j.secs || 0, audioRef: j.audio || null, heard: j.heard || "", words: j.words || undefined });
-  if (!j.audio) n.audio = null;   // the recording is brought over separately (see teamPull); until then there is nothing to play
-  return true;
-}
-// A photo a teammate chose to send (Before/After gallery): kept until they or I remove it, or 7 days pass.
-function applyTheirShot(dev, kh, j) {
-  if (!j || !j.id || !j.photo) return false;
-  const id = `${dev}:${j.id}`;
-  if (state.team.hidden[id] || Date.now() - (j.sent || j.at || 0) > TEAM_MAX_AGE) return false;
-  const f = { dev, team: kh, by: String(j.by || "").slice(0, 40), at: j.at || Date.now(), sent: j.sent || j.at || Date.now(), store: String(j.store || "").slice(0, 20),
-    when: j.when === "after" ? "after" : "before", kind: j.kind === "display" ? "display" : "aisle", photo: String(j.photo) };
-  const r = state.received.find(x => x.id === id);
-  if (r) { Object.assign(r, f); return true; }   // they moved it between Before and After, or Aisle and Display
-  state.received.unshift({ id, seen: false, ...f }); T.arrived.push(f.by || "A teammate");
-  return true;
-}
-// For every product on every note the newest tick wins, whichever phone made it.
-function teamMergeTicks() {
-  const tk = state.team.tick, eff = { ...tk };
-  for (const dev in state.team.rt) for (const [k, e] of Object.entries(state.team.rt[dev])) { const c = eff[k]; if (!c || e.t > c.t) eff[k] = e; }
-  for (const n of state.notes) {
-    const pre = `${n.dev || devId}/${n.id}/`;
-    for (const k in eff) if (k.startsWith(pre)) { const vk = k.slice(pre.length), e = eff[k]; n.ticks = n.ticks || {}; if (!!n.ticks[vk] !== e.v) n.ticks[vk] = e.v; if (e !== tk[k]) tk[k] = { v: e.v, t: e.t, by: e.by }; }
-  }
-}
-async function teamPull(kh) {
-  let touched = false; T.miss = false; T.devices = new Set([devId]);
-  const pre = kh + "_", theirs = [];
-  for (const name of T.list.keys()) {
-    if (!name.startsWith(pre)) continue;
-    const rest = name.slice(pre.length), i = rest.indexOf("_"); if (i < 0) continue;
-    const dev = rest.slice(0, i); T.devices.add(dev);
-    if (dev !== devId) theirs.push({ name, dev, what: rest.slice(i + 1) });
-  }
-  for (const f of theirs) {
-    if (!f.what.endsWith(".json")) continue;
-    const sha = T.list.get(f.name); if (state.team.seen[f.name] === sha) continue;
-    const j = await teamReadJSON(f.name); if (!j) continue;
-    if (f.what === "ticks.json") { state.team.rt[f.dev] = j.t || {}; touched = true; }
-    else if (f.what.startsWith("shot-")) { if (applyTheirShot(f.dev, kh, j)) touched = true; }
-    else if (applyTheirNote(f.dev, kh, j)) touched = true;
-    state.team.seen[f.name] = sha;
-  }
-  // Their notes that are gone (deleted or expired), or that belong to another team key, leave this phone too.
-  if (T.listCount < 1000) {
-    const have = new Set(theirs.map(f => f.name)), before = state.notes.length;
-    state.notes = state.notes.filter(n => isMine(n) || (n.team === kh && have.has(`${kh}_${n.dev}_${n.id}.json`) && Date.now() - n.at < TEAM_MAX_AGE));
-    if (state.notes.length !== before) touched = true;
-  }
-  for (const n of state.notes) if (n.dev) for (const pid of n.photos || []) {
-    if (await hasPhoto(pid)) continue;
-    const nm = `${kh}_${n.dev}_${pid}.jpg`;
-    if (!T.list.has(nm)) { T.miss = true; continue; }
-    const r = await gh(`contents/${TEAM_DIR}/${nm}?ref=${GITHUB.branch}`, { accept: "application/vnd.github.raw" });
-    if (r.ok) { await putPhoto(pid, new Blob([await r.arrayBuffer()], { type: "image/jpeg" })); touched = true; } else T.miss = true;
-  }
-  // Their recordings, so the play button works here too.
-  for (const n of state.notes) if (n.dev && n.audioRef && n.audioRef !== n.audio) {
-    const aid = n.audioRef;
-    if (await hasAudio(aid)) { n.audio = aid; touched = true; continue; }
-    const nm = `${kh}_${n.dev}_${aid}.wav`;
-    if (!T.list.has(nm)) { T.miss = true; continue; }
-    const r = await gh(`contents/${TEAM_DIR}/${nm}?ref=${GITHUB.branch}`, { accept: "application/vnd.github.raw" });
-    if (!r.ok) { T.miss = true; continue; }
-    const buf = await r.arrayBuffer();
-    if (buf.byteLength > 44) { await putAudio(aid, { pcm: buf.slice(44), rate: 16000 }); n.audio = aid; touched = true; }   // the file is a plain 44-byte-header WAV (pcmToWav)
-  }
-  // Photos teammates sent: fetch the ones not stored yet, and drop old ones (or ones whose file is long gone before they could be fetched).
-  const before = state.received.length;
-  state.received = state.received.filter(r => Date.now() - r.sent < TEAM_MAX_AGE);
-  if (state.received.length !== before) touched = true;
-  for (const r of [...state.received]) {
-    if (await hasPhoto(r.photo)) continue;
-    const nm = `${kh}_${r.dev}_${r.photo}.jpg`;
-    if (!T.list.has(nm)) { if (Date.now() - r.sent > 3600000) { state.received = state.received.filter(x => x !== r); touched = true; } else T.miss = true; continue; }
-    const rr = await gh(`contents/${TEAM_DIR}/${nm}?ref=${GITHUB.branch}`, { accept: "application/vnd.github.raw" });
-    if (rr.ok) { await putPhoto(r.photo, new Blob([await rr.arrayBuffer()], { type: "image/jpeg" })); touched = true; } else T.miss = true;
-  }
-  if (touched) { state.notes.sort((a, b) => b.at - a.at); teamMergeTicks(); }
-  return touched;
-}
-
-// ---- sending this phone's work ----
-async function teamPush(kh) {
-  const mine = state.notes.filter(teamShares), my = `${kh}_${devId}_`;
-  for (const n of mine) {
-    if ((n.mod || 0) <= (n.pushed || 0)) continue;
-    const mod = n.mod;
-    for (const pid of n.photos || []) {
-      const nm = `${my}${pid}.jpg`; if (T.list.has(nm)) continue;
-      const b = await getPhoto(pid).catch(() => null); if (!b) continue;
-      await teamPut(nm, await blobToB64(b), "Shelf Scan: photo");
-    }
-    if (n.audio) {
-      const nm = `${my}${n.audio}.wav`;
-      if (!T.list.has(nm)) { const rec = await getAudio(n.audio).catch(() => null); if (rec && rec.pcm) await teamPut(nm, await blobToB64(pcmToWav(rec.pcm, rec.rate || 16000)), "Shelf Scan: audio"); }
-    }
-    await teamPut(`${my}${n.id}.json`, b64encode(JSON.stringify({ id: n.id, at: n.at, mod, kind: noteKind(n), text: n.text, photos: n.photos || [], by: myName(),
-      audio: n.audio || null, secs: n.secs || 0, heard: n.heard || "", words: n.words || null })), "Shelf Scan: note");
-    n.pushed = mod; save();
-  }
-  // Photos I pressed "Send to team" on: the photo, then a small file that says what it is.
-  for (const s of state.shots.filter(x => x.shared && !x.pushed && Date.now() - x.at < TEAM_MAX_AGE)) {
-    const pn = `${my}${s.photo}.jpg`;
-    if (!T.list.has(pn)) { const b = await getPhoto(s.photo).catch(() => null); if (!b) { s.pushed = -1; continue; } await teamPut(pn, await blobToB64(b), "Shelf Scan: photo"); }
-    await teamPut(`${my}shot-${s.id}.json`, b64encode(JSON.stringify({ id: s.id, at: s.at, sent: s.shared, store: storeOf(s.slot), when: s.when, kind: s.kind, photo: s.photo, by: myName() })), "Shelf Scan: photo");
-    s.pushed = Date.now(); T.sentNow++; save();
-  }
-  // Ticks: only this phone's own entries, for notes that still exist.
-  const tk = state.team.tick, alive = new Set(state.notes.map(n => `${n.dev || devId}/${n.id}/`));
-  for (const k of Object.keys(tk)) { const i = k.indexOf("/", k.indexOf("/") + 1); if (!alive.has(k.slice(0, i + 1))) delete tk[k]; }
-  if (T.ticksDirty) {
-    const t = {}; for (const k in tk) if (tk[k].by === devId) t[k] = tk[k];
-    await teamPut(`${my}ticks.json`, b64encode(JSON.stringify({ t })), "Shelf Scan: ticks");
-    T.ticksDirty = false;
-  }
-  // Clean up: my files for notes that are gone, cleared, expired or whose photo was removed.
-  if (T.listed && T.listCount < 1000) {
-    const keep = new Set([`${my}ticks.json`, ...mine.map(n => `${my}${n.id}.json`), ...mine.flatMap(n => (n.photos || []).map(p => `${my}${p}.jpg`)), ...mine.filter(n => n.audio).map(n => `${my}${n.audio}.wav`),
-      ...state.shots.filter(s => s.shared && Date.now() - s.at < TEAM_MAX_AGE).flatMap(s => [`${my}shot-${s.id}.json`, `${my}${s.photo}.jpg`])]);
-    for (const [name, sha] of [...T.list]) if (name.startsWith(my) && !keep.has(name)) await teamDel(name, sha);
-  }
-}
-
-async function teamCycle() {
-  if (!teamOn()) { teamStatusRender(); return; }
-  if (!navigator.onLine) { T.offline = true; teamStatusRender(); return; }
-  if (Date.now() < (T.retryAt || 0)) { teamStatusRender(); return; }   // pausing after an error
-  if (T.busy) { T.again = true; return; }
-  T.busy = true; T.offline = false;
-  try {
-    const kh = await keyHash();
-    if (T.privFor !== teamRepo()) { const r = await gh(""); if (r.ok) { T.priv = !!(await r.json()).private; T.privFor = teamRepo(); } else throw httpErr(r); }
-    const changed = await teamList();
-    const touched = (changed || T.miss) ? await teamPull(kh) : false;
-    await teamPush(kh);
-    T.error = ""; T.last = Date.now(); T.fails = 0; T.retryAt = 0;
-    if (T.sentNow) { const n = T.sentNow; T.sentNow = 0; toast(`Sent ${n} photo${n === 1 ? "" : "s"} to the team`); haptic("ok"); }
-    if (T.arrived.length) { const n = T.arrived.length, who = [...new Set(T.arrived)].join(", "); T.arrived = []; toast(`${who} sent ${n} photo${n === 1 ? "" : "s"}`); haptic("ok"); }
-    if (touched) { save(); renderAll(); }
-  } catch (e) {
-    T.error = e.message || String(e); if (e.auth) cachedToken = null;
-    T.fails = (T.fails || 0) + 1; T.retryAt = Date.now() + Math.min(60000, 2000 * 2 ** Math.min(T.fails, 5));   // 4 s, 8 s ... up to a minute
-  }
-  finally { T.busy = false; teamStatusRender(); if (T.again) { T.again = false; teamSoon(300); } }
-}
-
-// ---- what the screens show ----
-const teamWaiting = () => state.notes.filter(teamPending).length + (T.ticksDirty ? 1 : 0) + state.shots.filter(s => s.shared && !s.pushed).length;
-function teamStatus() {
-  const w = teamWaiting();
-  if (!teamKey()) return { dot: "", text: "Off. Enter a team key to share your list." };
-  if (!uploadsEnabled()) return { dot: "warn", text: "Connect above first. The database key unlocks the connection." };
-  if (T.offline || !navigator.onLine) return { dot: "warn", text: w ? `${w} waiting for signal` : "No signal. Your list is safe on this phone." };
-  if (T.error) return { dot: "bad", text: T.error };
-  if (!T.last) return { dot: "warn", text: "Connecting…" };
-  const n = T.devices.size;
-  return { dot: w ? "warn" : "ok", text: `${w ? `Sending ${w}…` : "Live"} · ${n} phone${n === 1 ? "" : "s"} on this key · checked ${ago(T.last)}` };
-}
-function teamStatusRender() {
-  const s = teamStatus(), t = document.getElementById("team-status-text"), d = document.getElementById("team-status-dot");
-  if (t) t.textContent = s.text;
-  if (d) d.className = "status-dot " + s.dot;
-}
-setInterval(teamStatusRender, 3000);
-function teamTags(n) {
-  let h = "";
-  if (n.dev && n.by) h += `<span class="by-tag">${esc(n.by)}</span>`;
-  if (teamPending(n)) h += `<span class="pend-tag">Not synced yet</span>`;
-  return h;
-}
-function teamSetKey(k) {
-  k = k.trim();
-  if (k.toLowerCase() === (state.team.key || "").toLowerCase()) { state.team.key = k; save(); return; }
-  state.team.key = k; state.team.seen = {}; state.team.rt = {};
-  state.notes = state.notes.filter(isMine); state.received = [];
-  for (const n of state.notes) { n.pushed = 0; n._sig = ""; }
-  for (const s of state.shots) if (s.shared) s.pushed = 0;   // photos already sent go out again under the new key
-  T.list = new Map(); T.etag = ""; T.khFor = ""; T.listed = false; T.last = 0; T.ticksDirty = true;
-  save(); renderAll(); if (teamKey()) teamSoon(300);
-}
-async function teamTest() {
-  T.retryAt = 0; T.fails = 0;
-  if (!uploadsEnabled()) return toast("Connect first");
-  if (!teamKey()) return toast("Enter a team key first");
-  try {
-    const r = await gh("");
-    if (!r.ok) throw httpErr(r);
-    const j = await r.json();
-    if (j.permissions && !j.permissions.push) throw new Error("That key can read this repo but not write to it.");
-    T.priv = !!j.private; T.privFor = teamRepo(); T.etag = "";
-    await teamCycle();
-    if (T.error) throw new Error(T.error);
-    toast(`Connected. ${T.devices.size} phone${T.devices.size === 1 ? "" : "s"} on this key.`);
-    if (view === "more") renderMore();
-  } catch (e) { toast(e.message || "Couldn't connect"); }
 }
 // ---------- Camera, microphone and making a note ----------
 const MAX_NOTE_SECS = 30;     // Whisper reads 30 seconds at a time
@@ -2901,12 +2359,21 @@ async function startCamera() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { cam.error = "This browser can't use the camera here."; return renderCapture(); }
   const gen = ++cam.gen;
   cam.starting = true; cam.error = ""; renderCapture();
-  // photos are saved at 1280px anyway; a smaller live feed leaves the speech model more memory
-  const wanted = useUltra => ({ ...(useUltra && cam.ultraId ? { deviceId: { exact: cam.ultraId } } : { facingMode: { ideal: "environment" } }), width: { ideal: 1280 }, height: { ideal: 720 } });
+  // 2.0: up to 1920x1440 so a photo of the whole shelf is sharp (1.x used 1280x720 to leave the speech model more memory; Tiny has room)
+  const wanted = useUltra => ({ ...(useUltra && cam.ultraId ? { deviceId: { exact: cam.ultraId } } : { facingMode: { ideal: "environment" } }), width: { ideal: 1920 }, height: { ideal: 1440 } });
+  // The microphone is opened just for a recording and closed after it (an always-open microphone made the phone chime when the app was
+  // closed). But the first start of a launch asks for both at once, so the phone shows one permission prompt, and lets go of the microphone
+  // straight away; opening it later in the same launch doesn't ask again.
   const open = async useUltra => {
-    // Ask for the microphone together with the camera so the phone only asks once.
-    try { return await navigator.mediaDevices.getUserMedia({ video: wanted(useUltra), audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
-    catch (e) { if (e && e.name === "NotAllowedError") throw e; return await navigator.mediaDevices.getUserMedia({ video: wanted(useUltra) }); }
+    if (!cam.askedMic) {
+      cam.askedMic = true;
+      try {
+        const both = await navigator.mediaDevices.getUserMedia({ video: wanted(useUltra), audio: true });
+        both.getAudioTracks().forEach(t => { t.stop(); both.removeTrack(t); });
+        return both;
+      } catch (e) { /* the microphone may be the part that was refused: try the camera on its own */ }
+    }
+    return navigator.mediaDevices.getUserMedia({ video: wanted(useUltra) });
   };
   const openLens = async useUltra => {
     try { return await open(useUltra); }
@@ -2919,8 +2386,7 @@ async function startCamera() {
     if (state.settings.lens === "ultra" && cam.ultraId && cam.lens !== "ultra") { stream.getTracks().forEach(t => t.stop()); stream = await openLens(true); await findLenses(stream); }
     if (gen !== cam.gen || document.hidden) { stream.getTracks().forEach(t => t.stop()); cam.starting = false; return renderCapture(); }   // stopped, or backgrounded, while starting
     cam.stream = stream;
-    cam.audioTrack = stream.getAudioTracks()[0] || null;
-    if (cam.audioTrack) cam.audioTrack.enabled = false;   // only listening while recording
+    cam.audioTrack = null;
     for (const id of ["#cam-video", "#ba-video"]) { const v = $(id); v.srcObject = stream; await v.play().catch(() => {}); }
     state.settings.camOK = true; save();
   } catch (e) {
@@ -2953,6 +2419,7 @@ function renderLens() {
 }
 function stopCamera() {
   clearTimeout(cam.sleepTimer); cam.gen++;   // also cancels a start that is still waiting for the phone
+  if (typeof hold !== "undefined") { endHoldSession(); closeLiveMic(); }
   if (cam.stream) cam.stream.getTracks().forEach(t => t.stop());
   cam.stream = null; cam.audioTrack = null;
   for (const id of ["#cam-video", "#ba-video"]) { const v = $(id); if (v) v.srcObject = null; }
@@ -2978,6 +2445,7 @@ async function grabPhoto(vid = "#cam-video", boxId = "#camera") {
 }
 async function onShutter(forcePhone, kind = "aisle") {
   if (recorder) return;
+  if (hold.session) endHoldSession();
   primeShutter(); haptic("shutter"); pulse($("#btn-shutter"), "fire", 600);
   let blob = null;
   if (cam.stream && !forcePhone) {
@@ -2989,28 +2457,40 @@ async function onShutter(forcePhone, kind = "aisle") {
   if (!blob) { if (cam.stream && !forcePhone) toast("The camera isn't ready yet. Try again."); return; }
   playShutter();
   const photoId = newId("p");
-  try { await putPhoto(photoId, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
+  try { await savePhoto(photoId, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
   startRecording({ photos: [photoId], kind });
 }
 function box_flash(id = "#camera") { const b = $(id); b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); setTimeout(() => b.classList.remove("flash"), 400); }
 
 // ---- Recording ----
 let recorder = null;
-const clearRecovery = () => delAudio("_recovery").catch(() => {});
-// At launch: a note whose recording was cut off by a restart comes back with its photo (and the audio so far, if any).
+// The recovery copy of a recording in progress: "_recovery" (the photo, the item being said) plus "_recovery_item_N" for each finished item.
+async function clearRecovery() {
+  try { for (const k of await mediaTx("audio", "readonly", s => s.getAllKeys())) if (String(k).startsWith("_recovery")) await delAudio(k); } catch (e) {}
+}
+// At launch: a recording cut off by a restart comes back with its photo, every finished item, and the item being said (if long enough).
 async function recoverRecording() {
   let rec; try { rec = await getAudio("_recovery"); } catch (e) { return; }
   if (!rec) return;
   const photos = rec.photos || [];
-  const already = state.notes.some(n => (n.photos || []).some(p => photos.includes(p)));
+  const already = !rec.live && state.notes.some(n => (n.photos || []).some(p => photos.includes(p)));   // live: some items were already notes
   const hasPhoto = photos.length && (await getPhoto(photos[0]).catch(() => null));
   if (already || !hasPhoto) { clearRecovery(); return; }
-  let audioId = null;
-  if (rec.pcm && rec.pcm.byteLength > 16000 * 2 * 0.6) { audioId = newId("a"); await putAudio(audioId, { pcm: rec.pcm, rate: 16000 }).catch(() => { audioId = null; }); }
-  const n = { id: newId("n"), at: rec.at || Date.now(), kind: rec.kind === "display" ? "display" : "aisle", photos, audio: audioId, secs: rec.secs || 0, text: "", status: audioId ? "queued" : "error", parts: [], flag: false, ticks: {},
-    err: audioId ? "" : "The app restarted while you were recording. Tap to record it again." };
-  state.notes.unshift(n); await delAudio("_recovery").catch(() => {});
-  save(); renderAll(); toast(audioId ? "Recovered your last note" : "Your last photo was saved. Record it again from Needed.");
+  const items = [];
+  for (let i = 0; i < (rec.items || 0); i++) { const it = await getAudio("_recovery_item_" + i).catch(() => null); if (it && it.pcm) items.push(it); }
+  if (rec.pcm && rec.pcm.byteLength > 16000 * 2 * 0.6) items.push({ pcm: rec.pcm, secs: rec.secs || 0 });
+  const t0 = rec.at || Date.now();
+  if (!items.length) {
+    state.notes.unshift({ id: newId("n"), at: t0, kind: rec.kind === "display" ? "display" : "aisle", photos: [...photos], audio: null, secs: 0, text: "", status: "error", parts: [], flag: false, ticks: {},
+      err: "The app restarted while you were recording. Tap to record it again." });
+  }
+  for (const [i, it] of items.entries()) {
+    const audioId = newId("a"); await putAudio(audioId, { pcm: it.pcm, rate: 16000 }).catch(() => {});
+    state.notes.unshift({ id: newId("n"), at: t0 + i, kind: rec.kind === "display" ? "display" : "aisle", photos: [...photos], audio: audioId, secs: it.secs || 0, text: "", status: "queued", parts: [], flag: false, ticks: {}, err: "" });
+  }
+  await clearRecovery();
+  save(); renderAll(); pump();
+  toast(items.length ? `Recovered ${items.length} item${items.length === 1 ? "" : "s"} from your last photo` : "Your last photo was saved. Record it again from Needed.");
 }
 async function micTrack() {
   if (cam.audioTrack) return cam.audioTrack;
@@ -3034,23 +2514,27 @@ function resampleTo16k(chunks, inRate) {
   for (let i = 0; i < n; i++) out[i] = Math.max(-32768, Math.min(32767, Math.round(f[i] * gain * 32767)));
   return { pcm: out.buffer, rate: 16000, peak };
 }
-// Recording sheet. Starts listening straight away; the person taps Done when finished.
+// Recording sheet. Starts listening straight away. For a new photo, several products can be said: "Next item" closes one product and
+// starts the next, and Done closes the last. Each product becomes its own note with the same photo. Re-recording a note is one item.
 // `base`: what to do with the result ({photos} for a new note, or {note} to re-record an existing one).
+const MAX_ITEMS = 25;
 async function startRecording(base) {
   if (recorder) return;
+  const multi = !!base.photos;
   const sheet = el(`<div class="sheet rec-sheet"><div class="handle"></div>
     <h2>What do you need ${base.kind === "display" ? "on this display" : base.note && base.note.kind === "display" ? "on this display" : "here"}?</h2>
-    <p class="hint center" id="rec-hint">Say just the brand and flavor, like “Diet Coke” or “Dr Pepper Cherry”.</p>
+    <p class="hint center" id="rec-hint">${multi ? "Say one product, then tap Next item. Tap Done after the last one." : "Say just the brand and flavor, like “Diet Coke” or “Dr Pepper Cherry”."}</p>
     <div class="rec-meter"><i id="rec-level"></i></div>
     <div class="rec-time" id="rec-time">0:00</div>
-    <button class="btn primary block rec-done" data-a="done">${icon("check")}Done</button>
+    ${multi ? `<p class="rec-items" id="rec-items">Item 1</p><button class="btn primary block rec-next" data-a="next">${icon("plus")}Next item</button>` : ""}
+    <button class="btn ${multi ? "" : "primary "}block rec-done" data-a="done">${icon("check")}Done</button>
     <div class="row rec-alt"><button class="btn quiet grow" data-a="type">${icon("note")}Type it instead</button><button class="btn quiet grow" data-a="cancel">${icon("x")}Discard</button></div></div>`);
   let finished = false;
-  const r = recorder = { chunks: [], rate: 0, secs: 0, peak: 0, t0: 0, ctx: null, node: null, src: null, timer: null, closeSheet: null };
+  const r = recorder = { chunks: [], rate: 0, secs: 0, peak: 0, t0: 0, start: Date.now(), ctx: null, node: null, src: null, timer: null, closeSheet: null, items: [], saved: 0, count: 0 };   // items: said but not yet notes; count: already notes
   const cleanup = () => {
     clearInterval(r.timer);
     try { r.node && r.node.disconnect(); r.src && r.src.disconnect(); } catch (e) {}
-    try { r.ctx && r.ctx.close(); } catch (e) {}
+    try { r.ctx && r.ctx.close().catch(() => {}); } catch (e) {}
     if (cam.audioTrack) cam.audioTrack.enabled = false;
     if (cam.micOnly) { cam.micOnly.getTracks().forEach(t => t.stop()); cam.micOnly = null; cam.audioTrack = null; }
     recorder = null;
@@ -3060,9 +2544,46 @@ async function startRecording(base) {
     if (base.photos) for (const id of base.photos) delPhoto(id).catch(() => {});
     clearRecovery();
   };
-  // A new note keeps a recovery copy (the photo and the audio so far) in storage, so if the phone restarts the app mid-sentence nothing is lost.
-  const keepSafe = () => { if (base.photos && r.chunks.length) { const x = resampleTo16k(r.chunks.slice(), r.rate); putAudio("_recovery", { photos: base.photos, kind: base.kind, at: r.t0, secs: r.secs, pcm: x.pcm }).catch(() => {}); } };
-  if (base.photos) putAudio("_recovery", { photos: base.photos, kind: base.kind, at: Date.now(), secs: 0, pcm: null }).catch(() => {});
+  // The recovery copy (new photos only): the item being said, every 3 seconds. Finished items are written once, when they finish.
+  const keepSafe = () => { if (base.photos && r.chunks.length) { const x = resampleTo16k(r.chunks.slice(), r.rate); putAudio("_recovery", { photos: base.photos, kind: base.kind, at: r.start, secs: r.secs, pcm: x.pcm, items: r.items.length, live: r.count > 0 }).catch(() => {}); } };
+  if (base.photos) putAudio("_recovery", { photos: base.photos, kind: base.kind, at: r.start, secs: 0, pcm: null, items: 0 }).catch(() => {});
+  // The words since the last tap become one item (if anything was really said).
+  const closeItem = () => {
+    const chunks = r.chunks, secs = r.secs, peak = r.peak;
+    r.chunks = []; r.peak = 0; r.secs = 0; r.t0 = Date.now(); r.saved = 0;
+    if (!chunks.length || secs < 0.6 || peak < 0.004) return false;
+    const x = resampleTo16k(chunks, r.rate), it = { pcm: x.pcm, secs };
+    r.items.push(it);
+    if (base.photos) {
+      putAudio("_recovery_item_" + (r.items.length - 1), it).catch(() => {});
+      putAudio("_recovery", { photos: base.photos, kind: base.kind, at: r.start, secs: 0, pcm: null, items: r.items.length, live: r.count > 0 }).catch(() => {});
+    }
+    return true;
+  };
+  const total = () => r.count + r.items.length;
+  const showItems = () => {
+    const box = sheet.querySelector("#rec-items"); if (!box) return;
+    box.textContent = total() ? `${total()} saved · now saying item ${total() + 1}` : "Item 1";
+    pulse(box);
+    const ty = sheet.querySelector('[data-a="type"]'); if (ty) ty.hidden = total() > 0;   // typing is for a photo with nothing said yet
+  };
+  // "Listen while recording": a finished item becomes a note at once, so it is read while the next one is said.
+  const flushItems = async () => {
+    const items = r.items.splice(0);
+    for (const it of items) { await saveNote({ ...base, audioRec: { pcm: it.pcm, rate: 16000 }, secs: it.secs, text: "", status: "queued", at: r.start + r.count }); r.count++; }
+    if (base.photos) {
+      for (let i = 0; i < items.length; i++) delAudio("_recovery_item_" + i).catch(() => {});
+      putAudio("_recovery", { photos: base.photos, kind: base.kind, at: r.start, secs: 0, pcm: null, items: 0, live: true }).catch(() => {});
+    }
+    pump();
+  };
+  const next = () => {
+    if (finished || !r.ctx) return;
+    if (!closeItem()) { toast("Didn't hear that one. Say it, then tap Next item."); return; }
+    haptic("tick");
+    if (liveListenOn() && base.photos) flushItems().then(showItems); else showItems();
+    if (total() >= MAX_ITEMS) done();
+  };
   r.closeSheet = openLayer(sheet, { sticky: true });
   // Start the audio pipeline (this runs inside the tap that took the photo, which iOS requires).
   try {
@@ -3084,37 +2605,45 @@ async function startRecording(base) {
     r.timer = setInterval(() => {
       r.secs = (Date.now() - r.t0) / 1000;
       const t = sheet.querySelector("#rec-time"); if (t) t.textContent = `${Math.floor(r.secs / 60)}:${String(Math.floor(r.secs % 60)).padStart(2, "0")}`;
-      if (r.secs > 3 && r.peak < 0.004) { const h = sheet.querySelector("#rec-hint"); if (h) h.textContent = "I can't hear anything. Is the microphone covered?"; }
+      if (r.secs > 3 && r.peak < 0.004 && !r.items.length) { const h = sheet.querySelector("#rec-hint"); if (h) h.textContent = "I can't hear anything. Is the microphone covered?"; }
       if (base.photos && Math.floor(r.secs / 3) > (r.saved || 0)) { r.saved = Math.floor(r.secs / 3); keepSafe(); }
-      if (r.secs >= MAX_NOTE_SECS) done();
+      if (r.secs >= MAX_NOTE_SECS) { if (multi) next(); else done(); }   // Whisper reads 30 seconds at a time: one item is never longer
     }, 200);
   } catch (e) {
     const h = sheet.querySelector("#rec-hint");
     h.textContent = e && e.name === "NotAllowedError" ? "The microphone is blocked. Allow it in Settings, or type the note instead." : "The microphone isn't available. You can type the note instead.";
     sheet.querySelector('[data-a="done"]').disabled = true;
+    const nx = sheet.querySelector('[data-a="next"]'); if (nx) nx.disabled = true;
   }
   const done = async () => {
     if (finished) return; finished = true;
-    step("done"); const secs = r.secs, chunks = r.chunks, rate = r.rate, tooQuiet = r.peak < 0.004;
+    step("done");
+    closeItem();
+    const items = r.items.splice(0);
     cleanup(); r.closeSheet();
-    if (!chunks.length || secs < 0.6 || tooQuiet) {
+    if (!items.length && !r.count) {
       // Nothing usable was said: keep the photo, and let the person choose what to do.
       const note = await saveNote({ ...base, audioRec: null, secs: 0, text: "", status: "empty" });
       clearRecovery();
       toast("Didn't hear anything. Open the note to record again.");
       return note;
     }
-    const rec = resampleTo16k(chunks, rate);
     step("resampled");
-    await saveNote({ ...base, audioRec: { pcm: rec.pcm, rate: rec.rate }, secs, text: "", status: "queued" });
+    for (const it of items) { await saveNote({ ...base, audioRec: { pcm: it.pcm, rate: 16000 }, secs: it.secs, text: "", status: "queued", at: r.start + r.count }); r.count++; }
     step("saved");
     clearRecovery();
+    if (r.count > 1) toast(`${r.count} items saved`);
     pump();
   };
+  const nx = sheet.querySelector('[data-a="next"]'); if (nx) nx.onclick = next;
   sheet.querySelector('[data-a="done"]').onclick = done;
   sheet.querySelector('[data-a="cancel"]').onclick = async () => {
     if (base.note) { finished = true; cleanup(); r.closeSheet(); return; }
-    if (!(await confirmDialog("Discard this photo and note?", { ok: "Discard", danger: true }))) return;
+    if (r.count) {   // some products are already notes (Listen while recording): they stay, only what's left goes
+      if (!(await confirmDialog(`Stop here? The ${r.count} item${r.count === 1 ? "" : "s"} already on the list stay${r.items.length ? `; the ${r.items.length} not read yet` : ""} and the one being said ${r.items.length ? "are" : "is"} dropped.`, { ok: "Stop", danger: true }))) return;
+      finished = true; cleanup(); r.closeSheet(); clearRecovery(); pump(); return;
+    }
+    if (!(await confirmDialog(r.items.length ? `Discard this photo and the ${r.items.length} item${r.items.length === 1 ? "" : "s"} said for it?` : "Discard this photo and note?", { ok: "Discard", danger: true }))) return;
     discard();
   };
   sheet.querySelector('[data-a="type"]').onclick = async () => {
@@ -3127,7 +2656,7 @@ async function startRecording(base) {
   };
 }
 // Create a new note, or (base.note) replace what an existing note heard.
-async function saveNote({ photos, note, audioRec, secs, text, status, kind }) {
+async function saveNote({ photos, note, audioRec, secs, text, status, kind, at }) {
   let audioId = null;
   if (audioRec) { audioId = newId("a"); try { await putAudio(audioId, audioRec); } catch (e) { toast("Couldn't save the recording. Phone storage may be full."); } }
   if (note) {
@@ -3136,7 +2665,7 @@ async function saveNote({ photos, note, audioRec, secs, text, status, kind }) {
     if (old) delAudio(old).catch(() => {});
     save(); renderAll(); return note;
   }
-  const n = { id: newId("n"), at: Date.now(), kind: kind === "display" ? "display" : "aisle", photos: photos || [], audio: audioId, secs, text, status, parts: [], flag: false, ticks: {}, err: "" };
+  const n = { id: newId("n"), at: at || Date.now(), kind: kind === "display" ? "display" : "aisle", photos: [...(photos || [])], audio: audioId, secs, text, status, parts: [], flag: false, ticks: {}, err: "" };
   state.notes.unshift(n);
   save(); renderAll();
   lastNoteId = n.id;
@@ -3162,6 +2691,137 @@ function textPrompt(title, value = "", { ok = "Save" } = {}) {
 }
 
 
+// ---------- Hold the shutter to talk ----------
+// The Stocking shutter is held, not tapped: the first hold takes the shelf photo and records while the finger is down; letting go saves
+// that product as a note. Holding again adds the next product to the same photo, as many times as needed. "Done" (or leaving the tab, or
+// closing the app) closes the shelf.
+// Audio: iPhones only start an audio engine from a real tap, and a finger going down doesn't count, so the engine is started on any tap on
+// the Stocking tab. The microphone itself is opened when the shutter is pressed and closed when the shelf closes, and the engine is closed
+// whenever the app is hidden or the tab is left (an audio engine or microphone left open made the phone chime when the app was closed).
+const HOLD_MS = 250;
+const liveListenOn = () => state.settings.liveListen === true;
+const hold = { timer: null, pressing: false, active: false, justHeld: false, session: null, chunks: [], peak: 0, t0: 0, tick: null, ctx: null, rate: 48000, mic: null, src: null, node: null };
+
+// The audio engine (no microphone yet): ready and running, so a hold can record from its first moment.
+async function ensureLiveCtx() {
+  if (!hold.ctx || hold.ctx.state === "closed") {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)(), node = ctx.createScriptProcessor(4096, 1, 1), mute = ctx.createGain();
+      mute.gain.value = 0;
+      node.onaudioprocess = e => {
+        if (!hold.active) return;
+        const d = e.inputBuffer.getChannelData(0); hold.chunks.push(new Float32Array(d));
+        let s = 0; for (let i = 0; i < d.length; i += 4) s += d[i] * d[i];
+        const lvl = Math.sqrt(s / (d.length / 4)); hold.peak = Math.max(hold.peak, lvl);
+        const lv = document.getElementById("hold-level"); if (lv) lv.style.transform = `scaleX(${Math.min(1, lvl * 7)})`;
+      };
+      node.connect(mute); mute.connect(ctx.destination);
+      hold.ctx = ctx; hold.node = node; hold.rate = ctx.sampleRate; hold.src = null;
+    } catch (e) { return false; }
+  }
+  if (hold.ctx.state === "suspended") { try { await hold.ctx.resume(); } catch (e) {} }
+  return hold.ctx.state === "running";
+}
+// The microphone, plugged into the engine. Opened when the shutter goes down; kept while the shelf is open.
+async function openHoldMic() {
+  const live = hold.mic && hold.mic.getAudioTracks().some(t => t.readyState === "live");
+  if (!live) {
+    try { hold.mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+    catch (e) { hold.mic = null; return false; }
+    hold.src = null;
+  }
+  if (!(await ensureLiveCtx())) return false;
+  if (!hold.src) { try { hold.src = hold.ctx.createMediaStreamSource(hold.mic); hold.src.connect(hold.node); } catch (e) { return false; } }
+  return true;
+}
+function closeHoldMic() {
+  try { hold.src && hold.src.disconnect(); } catch (e) {}
+  if (hold.mic) hold.mic.getTracks().forEach(t => t.stop());
+  hold.mic = null; hold.src = null;
+}
+function closeLiveMic() {
+  closeHoldMic();
+  try { hold.ctx && hold.ctx.close().catch(() => {}); } catch (e) {}
+  hold.ctx = null; hold.node = null;
+}
+// Any real tap on the Stocking tab gets the engine ready; it is closed again when the app is hidden.
+document.addEventListener("touchend", () => { if (view === "capture" && cam.stream && !recorder) ensureLiveCtx(); }, { capture: true, passive: true });
+document.addEventListener("click", () => { if (view === "capture" && cam.stream && !recorder) ensureLiveCtx(); }, true);
+document.addEventListener("visibilitychange", () => { if (document.hidden) { endHoldSession(); closeLiveMic(); } });
+
+function wireHoldToTalk() {
+  const wrap = document.querySelector("#view-capture .shutter-wrap"), btn = $("#btn-shutter");
+  if (!wrap) return;
+  wrap.addEventListener("pointerdown", () => {
+    if (btn.disabled || recorder || !cam.stream) return;
+    hold.pressing = true; hold.micReady = openHoldMic();   // the microphone opens while the hold is being recognized
+    clearTimeout(hold.timer); hold.timer = setTimeout(() => { if (hold.pressing) holdStart(); }, HOLD_MS);
+  });
+  const up = () => { hold.pressing = false; clearTimeout(hold.timer); if (hold.active) holdEnd(); else if (!hold.session) closeHoldMic(); };
+  wrap.addEventListener("pointerup", up);
+  wrap.addEventListener("pointercancel", up);
+  wrap.addEventListener("contextmenu", e => e.preventDefault());   // no "copy / look up" menu on a long press
+  $("#hold-done").onclick = () => endHoldSession(true);
+}
+
+async function holdStart() {
+  hold.active = true; hold.justHeld = true; hold.chunks = []; hold.peak = 0; hold.t0 = Date.now();
+  primeShutter(); haptic("shutter");
+  renderHoldLive(true);
+  hold.tick = setInterval(() => {
+    const s = (Date.now() - hold.t0) / 1000, t = document.getElementById("hold-time");
+    if (t) t.textContent = `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+    if (s >= MAX_NOTE_SECS) holdEnd();   // Whisper reads 30 seconds at a time: one product is never longer
+  }, 200);
+  if (!hold.session) {   // the first hold of a shelf takes its photo
+    const blob = await grabPhoto(); box_flash(); pulse($("#btn-shutter"), "fire", 600);
+    if (!blob) { holdAbort("The camera isn't ready yet. Try again."); return; }
+    playShutter();
+    const id = newId("p");
+    try { await savePhoto(id, blob); } catch (e) { holdAbort("Couldn't save the photo. Phone storage may be full."); return; }
+    hold.session = { photo: id, kind: captureKind(), at: Date.now(), count: 0 };
+    renderHoldBar();
+  }
+  if (!(await (hold.micReady || openHoldMic()))) hold.noAudio = true;
+}
+function holdAbort(msg) {
+  hold.active = false; clearInterval(hold.tick); hold.chunks = [];
+  if (!hold.session) closeHoldMic();
+  renderHoldLive(false); toast(msg);
+}
+async function holdEnd() {
+  if (!hold.active) return;
+  hold.active = false; clearInterval(hold.tick);
+  const chunks = hold.chunks, secs = (Date.now() - hold.t0) / 1000, peak = hold.peak, noAudio = hold.noAudio;
+  hold.chunks = []; hold.noAudio = false;
+  setTimeout(() => (hold.justHeld = false), 600);   // the tap that ends a hold is not a shutter tap
+  renderHoldLive(false);
+  const s = hold.session; if (!s) return;
+  if (!chunks.length || secs < 0.5 || peak < 0.004) { toast(noAudio ? "Couldn't use the microphone. Allow it in Settings, or tap the shutter again and hold." : "Didn't hear that. Hold the shutter and say the product."); renderHoldBar(); return; }
+  const x = resampleTo16k(chunks, hold.rate);
+  await saveNote({ photos: [s.photo], kind: s.kind, audioRec: { pcm: x.pcm, rate: 16000 }, secs, text: "", status: "queued", at: s.at + s.count });
+  s.count++; renderHoldBar(); pulse($("#hold-bar"));
+  if (liveListenOn()) pump();
+}
+// Close the shelf: its products are on the list (read now, unless they already are). A shelf with nothing said keeps no photo.
+function endHoldSession(byButton) {
+  const s = hold.session; if (!s) return;
+  if (hold.active) holdEnd();
+  hold.session = null; closeHoldMic();
+  if (!s.count) delPhoto(s.photo).catch(() => {});
+  else if (byButton) toast(`${s.count} item${s.count === 1 ? "" : "s"} saved`);
+  renderHoldBar(); pump();
+}
+function renderHoldLive(on) {
+  const live = document.getElementById("hold-live"); if (live) live.hidden = !on;
+  $("#camera").classList.toggle("holding", on);
+  const t = document.getElementById("hold-time"); if (t && on) t.textContent = "0:00";
+}
+function renderHoldBar() {
+  const bar = document.getElementById("hold-bar"), s = hold.session; if (!bar) return;
+  bar.hidden = !s; $("#shutter-label").hidden = !!s;
+  if (s) $("#hold-text").textContent = s.count ? `${s.count} item${s.count === 1 ? "" : "s"} for this shelf. Hold again for the next.` : "Keep holding and say the product.";
+}
 // ---------- Playing a note back, with each word lit up as it is said ----------
 // The whole note is always shown. While the recording plays, the word being said is highlighted, and tapping a word jumps there.
 // The speech model hands back a start and end time for every word it heard (n.words = [[word, start, end], ...]); this lines them up
@@ -3291,6 +2951,7 @@ function wirePlayerBar(root, n) {
 let view = "capture";
 const isCamView = () => view === "capture" || view === "ba";   // the two tabs with a viewfinder
 function showView(v) {
+  if (v !== "capture") { endHoldSession(); closeLiveMic(); } else ensureLiveCtx();   // the hold-to-talk audio engine only lives on the Stocking tab
   view = v;
   document.body.dataset.view = v;
   document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.id === "view-" + v));
@@ -3306,7 +2967,6 @@ function renderAll() {
   const badge = $("#need-badge");
   if (open && String(open) !== badge.textContent) bump(badge);
   badge.hidden = !open; badge.textContent = open;
-  renderSyncIndicator();
   if (view === "capture") renderCapture();
   if (view === "ba") renderBA();
   if (view === "needed") renderNeeded();
@@ -3341,8 +3001,9 @@ function renderCapture() {
   const sec = $("#view-capture");
   sec.classList.toggle("mode-display", ck === "display"); sec.classList.toggle("mode-aisle", ck === "aisle");
   $("#cap-band").textContent = ck === "display" ? "DISPLAY" : "AISLE";
-  $("#shutter-label").textContent = ck === "display" ? "Snap the display, then say what you need." : "Snap the aisle, then say what you need.";
-  $("#btn-shutter").setAttribute("aria-label", `Take a ${ck} photo, then say what you need`);
+  $("#shutter-label").textContent = cam.stream ? "Hold the shutter and say a product. Hold again for the next." : "Tap the shutter to use the phone camera.";
+  renderHoldBar();
+  $("#btn-shutter").setAttribute("aria-label", `Hold to photograph the ${ck} and say a product`);
   const q = queueState();
   const vb = $("#model-banner");
   if (state.settings.voiceHold) {
@@ -3463,7 +3124,7 @@ function renderNeeded() {
 }
 // A photo that has no words yet (nothing was heard, or the app restarted while recording): tap to record it again.
 const waitRow = n => `<div class="item need tap flagged" data-n="${esc(n.id)}" data-k="?"><div class="shelf-thumb" data-photo-wrap>${n.photos[0] ? `<img data-photo="${esc(n.photos[0])}" alt="">` : icon("note")}</div>
-  <div class="grow"><div class="blurb">${esc(n.status === "error" ? (n.err || "Couldn't read this note") : "Nothing was heard. Tap to record it again.")}</div>${teamTags(n) ? `<div class="chips-row">${teamTags(n)}</div>` : ""}</div>${icon("jump")}</div>`;
+  <div class="grow"><div class="blurb">${esc(n.status === "error" ? (n.err || "Couldn't read this note") : "Nothing was heard. Tap to record it again.")}</div></div>${icon("jump")}</div>`;
 // The blurb with the part about this product in bold.
 function markText(n, pid) {
   const t = n.text || "";
@@ -3479,15 +3140,14 @@ function needRow(n, a) {
   return `<div class="item need tap${done ? " done" : ""}${n.flag ? " flagged" : ""}" data-n="${esc(n.id)}" data-k="${esc(a.key)}">
     <button class="check${done ? " on" : ""}" data-a="toggle" aria-label="Mark as pulled">${icon("check")}</button>
     <div class="shelf-thumb" data-photo-wrap>${n.photos[0] ? `<img data-photo="${esc(n.photos[0])}" alt="">` : icon("note")}</div>
-    <div class="grow"><div class="blurb">${noteTextHTML(n, a.vk)}</div>${chips || n.flag || teamTags(n) ? `<div class="chips-row">${teamTags(n)}${chips}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}</div>` : ""}</div>
+    <div class="grow"><div class="blurb">${noteTextHTML(n, a.vk)}</div>${chips || n.flag ? `<div class="chips-row">${chips}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}</div>` : ""}</div>
     ${n.audio ? `<button class="pbtn" data-a="play" data-n="${esc(n.id)}" aria-label="Play the recording">${icon("play")}</button>` : ""}
     ${icon("jump")}</div>`;
 }
 function clearAllNotes() {
-  confirmDialog("Clear the whole list? This removes every note and photo from this phone. If you share a list, your own notes leave it too.", { ok: "Clear list", danger: true }).then(ok => {
+  confirmDialog("Clear the whole list? This removes every note and photo from this phone.", { ok: "Clear list", danger: true }).then(ok => {
     if (!ok) return;
     const snap = snapshot();
-    for (const n of state.notes) if (n.dev) state.team.hidden[n.id] = Date.now();   // the other phone's notes just leave this phone's view
     state.notes = []; lastNoteId = null; save(); renderAll(); scheduleSweep();
     toast("List cleared", snap);
   });
@@ -3515,7 +3175,7 @@ function openCheck(n, focusPid) {
   const draw = () => {
     s.querySelector("#ck-heard").innerHTML = n.heard && n.heard !== n.text ? `Heard as “${esc(n.heard)}”` : "";
     s.querySelector("#ck-text").innerHTML = n.text ? `“${noteTextHTML(n, focusPid && focusPid !== "?" ? focusPid : null)}”` : "(no words: typed or no recording)";
-    s.querySelector("#ck-chips").innerHTML = `<span class="pill kind ${noteKind(n)}">${KIND_LABEL[noteKind(n)]}</span>${teamTags(n)}${chipsFor(n, null)}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}`;
+    s.querySelector("#ck-chips").innerHTML = `<span class="pill kind ${noteKind(n)}">${KIND_LABEL[noteKind(n)]}</span>${chipsFor(n, null)}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}`;
     s.querySelector("#ck-actions").innerHTML = `<button class="btn sm grow" data-a="edit">${icon("note")}Edit text</button><button class="btn sm grow quiet" data-a="more">More…</button>`;
     const a = s.querySelector("#ck-actions");
     a.querySelector('[data-a="edit"]').onclick = async () => { await editText(n); draw(); };
@@ -3528,10 +3188,6 @@ function openCheck(n, focusPid) {
       else if (pick === "kind") { n.kind = noteKind(n) === "aisle" ? "display" : "aisle"; save(); renderAll(); toast(`Moved to ${KIND_LABEL[n.kind]}`); draw(); }
       else if (pick === "delete") { close(); deleteNote(n); }
     };
-    if (n.dev) {   // another phone's note: you can tick it and read it, but only they can change it
-      a.innerHTML = `<button class="btn sm grow quiet" data-a="hide">Hide from my list</button>`;
-      a.querySelector('[data-a="hide"]').onclick = () => { state.team.hidden[n.id] = Date.now(); state.notes = state.notes.filter(x => x.id !== n.id); save(); close(); renderAll(); toast("Hidden from this phone"); };
-    }
   };
   s.querySelector('[data-a="close"]').onclick = close;
   showPhoto(); draw();
@@ -3544,7 +3200,7 @@ async function editText(n) {
 async function addPhoto(n) {
   if (n.photos.length >= 6) return toast("That's the most photos for one note");
   const blob = await cameraPhoto(); if (!blob) return;
-  const id = newId("p"); await putPhoto(id, blob); n.photos.push(id); save(); renderAll();
+  const id = newId("p"); await savePhoto(id, blob); n.photos.push(id); save(); renderAll();
 }
 function deleteNote(n) {
   const snap = snapshot();
@@ -3620,7 +3276,6 @@ function renderBA() {
   lb.style.visibility = last ? "visible" : "hidden";
   if (last && lb.dataset.shot !== last.photo) { lb.dataset.shot = last.photo; lb.innerHTML = `<img data-photo="${esc(last.photo)}" alt="">`; hydratePhotos(lb); }
   const c = $("#ba-count"); c.hidden = !mine.length; c.textContent = mine.length;
-  const nn = teamPhotosNew(), nb = $("#ba-new"); nb.hidden = !nn; nb.textContent = nn;
   if (view === "ba" && cam.stream) { const v = $("#ba-video"); if (v.paused) v.play().catch(() => {}); }
 }
 
@@ -3664,7 +3319,7 @@ async function onShutterBA(forcePhone) {
   if (!blob) { if (cam.stream && !forcePhone) toast("The camera isn't ready yet. Try again."); return; }
   playShutter();
   const shot = { id: newId("s"), at: Date.now(), slot, when: baWhen(), kind: baKind(), photo: newId("p") };
-  try { await putPhoto(shot.photo, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
+  try { await savePhoto(shot.photo, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
   state.shots.unshift(shot); lastShotId = shot.id; save(); renderAll(); pulse($("#ba-last"));
   toast(`Saved to store#${storeOf(slot)} · ${WHEN_LABEL[shot.when]} · ${KIND_LABEL[shot.kind]}`);
 }
@@ -3687,7 +3342,6 @@ function openGallery(startKind = baKind(), startSlot = baSlot()) {
   const s = el(`<div class="sheet gallery-sheet"><div class="handle"></div><h2>Before/After photos</h2>
     <div class="slots" id="gal-slots"></div>
     <div class="row" id="gal-share"></div>
-    <div class="row" id="gal-team"></div>
     <div class="seg" id="gal-seg">${KINDS.map(k => `<button data-k="${k}">${KIND_LABEL[k]} <span class="kcount" data-c="${k}"></span></button>`).join("")}</div>
     <div id="gal-body"></div><button class="btn primary block" data-a="close">Done</button></div>`);
   const close = openLayer(s, { onClose: () => renderAll() });
@@ -3697,13 +3351,11 @@ function openGallery(startKind = baKind(), startSlot = baSlot()) {
     s.querySelectorAll("#gal-seg button").forEach(b => { b.classList.toggle("active", b.dataset.k === kind); b.querySelector(".kcount").textContent = mine().filter(x => x.kind === b.dataset.k).length || ""; });
     syncIndicator(s.querySelector("#gal-seg"), false);
     s.querySelector("#gal-share").innerHTML = ["before", "after"].map(w => { const n = mine().filter(x => x.when === w).length; return `<button class="btn sm primary grow" data-share="${w}"${n ? "" : " disabled"}>${icon("upload")}Text all ${WHEN_LABEL[w]} (${n})</button>`; }).join("");
-    const unsent = mine().filter(x => !x.shared).length, news = teamPhotosNew();
-    s.querySelector("#gal-team").innerHTML = `<button class="btn sm grow" data-team="send"${unsent ? "" : " disabled"}>${icon("upload")}${unsent ? `Send to team (${unsent})` : mine().length ? "Sent to team" : "Send to team"}</button><button class="btn sm grow quiet" data-team="inbox">${icon("image")}From team (${state.received.length})${news ? ` <span class="kcount">${news}</span>` : ""}</button>`;
     let html = "";
     for (const w of ["before", "after"]) {
       const list = mine().filter(x => x.kind === kind && x.when === w);
       html += `<div class="cluster-h">${WHEN_LABEL[w]}<span class="n">${list.length}</span></div>`;
-      html += list.length ? `<div class="shot-grid">${list.map(x => `<button class="shot" data-s="${esc(x.id)}" data-photo-wrap><img data-photo="${esc(x.photo)}" alt=""><span>${x.shared ? "✓ " : ""}${esc(timeOf(x.at))}</span></button>`).join("")}</div>`
+      html += list.length ? `<div class="shot-grid">${list.map(x => `<button class="shot" data-s="${esc(x.id)}" data-photo-wrap><img data-photo="${esc(x.photo)}" alt=""><span>${esc(timeOf(x.at))}</span></button>`).join("")}</div>`
         : `<p class="muted small" style="margin:4px 0 0">No ${w} photos of ${kind === "display" ? "displays" : "aisles"} yet.</p>`;
     }
     if (mine().length) html += `<button class="btn block quiet" data-a="clear" style="margin-top:20px">Clear ${storeOf(slot) ? `store#${esc(storeOf(slot))}` : "this store"}'s photos</button>`;
@@ -3716,10 +3368,6 @@ function openGallery(startKind = baKind(), startSlot = baSlot()) {
     const b = e.target.closest("[data-slot]"); if (b) { slot = +b.dataset.slot; draw(); }
   };
   s.querySelector("#gal-seg").onclick = e => { const b = e.target.closest("button[data-k]"); if (b) { kind = b.dataset.k; draw(); } };
-  s.querySelector("#gal-team").onclick = e => {
-    const b = e.target.closest("[data-team]"); if (!b || b.disabled) return;
-    if (b.dataset.team === "send") sendToTeam(slot).then(ok => { if (ok) draw(); }); else openTeamPhotos(draw);
-  };
   s.querySelector("#gal-share").onclick = e => { const sh = e.target.closest("[data-share]"); if (sh && !sh.disabled) shareBatch(slot, sh.dataset.share); };
   s.querySelector("#gal-body").onclick = e => {
     const t = e.target.closest(".shot"); if (t) { const x = state.shots.find(y => y.id === t.dataset.s); if (x) openShot(x, draw); return; }
@@ -3845,11 +3493,9 @@ function openShot(x, onChange) {
     const pick = await menu("This photo", [
       { label: x.when === "before" ? "Move to After" : "Move to Before", value: "when" },
       { label: x.kind === "aisle" ? "Move to Display" : "Move to Aisle", value: "kind" },
-      { label: x.shared ? "Send to team again" : "Send to team", value: "send" },
       { label: "Delete photo", value: "delete", danger: true }]);
-    if (pick === "send") { await sendToTeam(x.slot, [x]); }
-    else if (pick === "when") { x.when = x.when === "before" ? "after" : "before"; if (x.shared) { x.pushed = 0; teamSoon(200); } save(); head(); toast(`Moved to ${WHEN_LABEL[x.when]}`); }
-    else if (pick === "kind") { x.kind = x.kind === "aisle" ? "display" : "aisle"; if (x.shared) { x.pushed = 0; teamSoon(200); } save(); head(); toast(`Moved to ${KIND_LABEL[x.kind]}`); }
+    if (pick === "when") { x.when = x.when === "before" ? "after" : "before"; save(); head(); toast(`Moved to ${WHEN_LABEL[x.when]}`); }
+    else if (pick === "kind") { x.kind = x.kind === "aisle" ? "display" : "aisle"; save(); head(); toast(`Moved to ${KIND_LABEL[x.kind]}`); }
     else if (pick === "delete") {
       const snap = snapshot();
       state.shots = state.shots.filter(y => y.id !== x.id); if (lastShotId === x.id) lastShotId = null;
@@ -3858,67 +3504,6 @@ function openShot(x, onChange) {
   };
 }
 
-// ---- Sending photos to the team, by hand ----
-// Nothing leaves this phone until a Send button is pressed. Sent photos go through the shared sync folder (see team.js) to everyone
-// with the same team key, who see them under "From team". `only` = just these photos (one picked photo can be sent again).
-const teamPhotosNew = () => state.received.filter(r => !r.seen).length;
-async function sendToTeam(slot, only) {
-  if (!teamKey()) { toast("Set a team key in More first."); return false; }
-  if (!uploadsEnabled()) { toast("Connect to the team network in More first."); return false; }
-  const list = only || state.shots.filter(x => x.slot === slot && !x.shared);
-  if (!list.length) { toast("Everything here is already sent"); return false; }
-  const who = storeOf(slot) ? `store#${esc(storeOf(slot))}` : "this store";
-  if (!(await confirmDialog(`Send ${list.length} photo${list.length === 1 ? "" : "s"} of ${who} to everyone on the team key <b>${esc(state.team.key)}</b>? They go through the shared GitHub repo, which anyone can read.`, { ok: "Send" }))) return false;
-  const now = Date.now(); for (const x of list) { x.shared = now; x.pushed = 0; }
-  save(); renderAll(); teamSoon(200);
-  toast(`Sending ${list.length} photo${list.length === 1 ? "" : "s"}…`);
-  return true;
-}
-// Hand one stored photo to the phone's share sheet (Save Image goes to Photos).
-async function savePhotoToPhone(photoId, name) {
-  const blob = await getPhoto(photoId).catch(() => null); if (!blob) return toast("This photo is missing");
-  const file = new File([blob], name, { type: "image/jpeg" });
-  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
-  toast("Press and hold the photo, then choose Save to Photos");
-}
-// What teammates sent, grouped by person and store.
-function openTeamPhotos(onChange) {
-  const s = el(`<div class="sheet"><div class="handle"></div><h2>From the team</h2><div id="tp-body"></div><button class="btn primary block" data-a="close">Done</button></div>`);
-  const close = openLayer(s, { onClose: () => { if (onChange) onChange(); renderAll(); } });
-  const draw = () => {
-    const list = [...state.received].sort((a, b) => b.sent - a.sent), box = s.querySelector("#tp-body");
-    if (!list.length) { box.innerHTML = `<div class="empty"><p>Photos your teammates send show up here.</p></div>`; return; }
-    const groups = new Map(); for (const r of list) { const k = r.dev + "|" + r.store; (groups.get(k) || groups.set(k, []).get(k)).push(r); }
-    let html = "";
-    for (const rs of groups.values()) {
-      html += `<div class="cluster-h">${esc(rs[0].by || "Teammate")}${rs[0].store ? ` · store#${esc(rs[0].store)}` : ""}<span class="n">${rs.length}</span></div><div class="shot-grid">${rs.map(r => `<button class="shot" data-r="${esc(r.id)}" data-photo-wrap><img data-photo="${esc(r.photo)}" alt=""><span>${r.seen ? "" : "● "}${WHEN_LABEL[r.when]} · ${KIND_LABEL[r.kind]}</span></button>`).join("")}</div>`;
-    }
-    box.innerHTML = html + `<button class="btn block quiet" data-a="clearr" style="margin-top:20px">Clear received photos</button>`;
-    hydratePhotos(box);
-  };
-  s.querySelector("#tp-body").onclick = async e => {
-    const t = e.target.closest(".shot"); if (t) { const r = state.received.find(x => x.id === t.dataset.r); if (r) openReceived(r, draw); return; }
-    if (e.target.closest('[data-a="clearr"]') && await confirmDialog("Remove every photo teammates sent from this phone?", { ok: "Remove", danger: true })) {
-      const now = Date.now(); for (const r of state.received) state.team.hidden[r.id] = now;
-      state.received = []; save(); draw(); scheduleSweep(); renderAll();
-    }
-  };
-  s.querySelector('[data-a="close"]').onclick = close;
-  for (const r of state.received) r.seen = true;   // opening the list counts as seeing them
-  save(); renderAll(); draw();
-}
-function openReceived(r, onChange) {
-  const s = el(`<div class="sheet check-sheet shot-sheet"><div class="handle"></div><h2></h2>
-    <div class="zoom-stage"><img alt=""><span class="zoom-hint">Pinch to zoom</span></div>
-    <div class="row"><button class="btn sm grow" data-a="save">${icon("download")}Save to Photos</button><button class="btn sm grow quiet" data-a="remove">Remove</button></div>
-    <button class="btn primary block" data-a="close">Done</button></div>`);
-  const close = openLayer(s, { onClose: () => { if (onChange) onChange(); renderAll(); } });
-  s.querySelector("h2").textContent = `${r.by || "Teammate"}${r.store ? ` · #${r.store}` : ""} · ${WHEN_LABEL[r.when]} · ${KIND_LABEL[r.kind]}`;
-  const img = s.querySelector("img"); zoomStage(img, s.querySelector(".zoom-stage")); photoURL(r.photo).then(u => { img.src = u || ""; });
-  s.querySelector('[data-a="close"]').onclick = close;
-  s.querySelector('[data-a="save"]').onclick = () => savePhotoToPhone(r.photo, `${(r.by || "team").replace(/[^A-Za-z0-9-]/g, "")}_store${(r.store || "none").replace(/[^A-Za-z0-9-]/g, "")}_${WHEN_LABEL[r.when]}_${KIND_LABEL[r.kind]}.jpg`);
-  s.querySelector('[data-a="remove"]').onclick = () => { state.team.hidden[r.id] = Date.now(); state.received = state.received.filter(x => x !== r); save(); close(); scheduleSweep(); toast("Removed from this phone"); };
-}
 // ---------- Products: the brand + flavor combinations the list recognizes ----------
 // Size and pack don't matter here: they stay in the words you read. Edits apply to every size of a combination
 // and upload to the shared product list like before.
@@ -4014,8 +3599,8 @@ function editVariation(v, { prefill = "" } = {}) {
     save(); close(); renderAll(); toast("Deleted", snap);
   };
 }
-// The running count of releases since the project began (every pushed update that is not a phone's automatic sync). Add one with each push.
-const REVISION = 62;
+// The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
+const REVISION = 63;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -4027,9 +3612,7 @@ function renderMore() {
   const v = $("#view-more");
   const a = document.activeElement;
   if (a && v.contains(a) && a.matches("input, textarea, select")) return;   // don't wipe what is being typed; it redraws when focus leaves
-  const s = syncStatus();
-  const on = uploadsEnabled();
-  const dl = ai.dl.key, ts = teamStatus();
+  const dl = ai.dl.key;
   v.innerHTML = `
     <div class="list-head"><h2>More</h2></div>
     <div class="card">
@@ -4037,6 +3620,7 @@ function renderMore() {
       <p class="hint">Listening runs on this phone, so it works with no signal. The speech model downloads once (use Wi-Fi), then stays on the phone.</p>
       ${modelRow("asr")}
       <div class="set-row"><label class="grow" for="word-timing">Highlight words while a note plays<br><span class="hint">Uses more memory while listening. If the app restarts after you tap Done, leave this off.</span></label><input type="checkbox" id="word-timing" ${state.settings.wordTiming ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
+      <div class="set-row"><label class="grow" for="live-listen">Listen while recording<br><span class="hint">Turns each product into text while you say the next one, so the list is ready the moment you finish. Uses more memory at once: for newer iPhones. If the app restarts while you record, turn this off.</span></label><input type="checkbox" id="live-listen" ${liveListenOn() ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
       <p class="hint" style="margin:-4px 0 6px 21px">Turns your recording into words and gives you a list right away.</p>
       ${dl ? `<div class="mprog" data-mprog><i></i></div><p class="hint" data-mprog-label style="margin-top:6px">Starting…</p>` : ""}
       ${ai.dl.error ? `<div class="banner warn" style="margin-top:8px">${icon("warn")}<span class="grow">${esc(ai.dl.error)}</span></div>` : ""}
@@ -4050,163 +3634,39 @@ function renderMore() {
       <div class="set-row"><label class="grow" for="haptic-taps">Button feedback<br><span class="hint">A light tap on buttons, tabs and switches. iPhones on iOS 26.5 or later don't allow this one, so it only works on older ones.</span></label><input type="checkbox" id="haptic-taps" ${hapticTapsOn() ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
     </div>
     <div class="card">
-      <h3>Team network</h3>
-      <p class="hint">Connect to share the product list and a live Needed list with your team, photos, voice recordings and ticks included. It goes through the GitHub repo and nothing else. Everything else stays on this phone.</p>
-      <div class="set-row"><span class="status-dot ${on ? "ok" : ""}"></span><span class="grow"><b>${on ? "Connected" : "Not connected"}</b><br><span class="hint">${on ? "This phone can send and receive team data." : "Enter the database key once to connect this phone."}</span></span>
-        ${on ? "" : `<button class="btn sm primary" id="btn-enable">Connect</button>`}</div>
-      <label class="f" for="team-key">Team key</label>
-      <input class="field" id="team-key" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="A word or number you both type" value="${esc(state.team.key)}">
-      <label class="f" for="team-name">Your name (shown on your notes)</label>
-      <input class="field" id="team-name" autocomplete="off" placeholder="e.g. James" value="${esc(state.team.name)}">
-      <div class="set-row" style="margin-top:10px"><span class="status-dot ${ts.dot}" id="team-status-dot"></span><span class="grow small" id="team-status-text">${esc(ts.text)}</span></div>
-      ${on ? `<div class="set-row"><span class="status-dot ${s.dot}"></span><span class="grow small">Product list: ${esc(s.text)}</span></div>` : ""}
-      ${T.priv === false && teamKey() ? `<div class="banner warn" style="margin:8px 0">${icon("warn")}<span class="grow">The repo ${esc(teamRepo())} is public, so anyone who knows where to look can see shared notes, photos and voice recordings. Ask the owner to move team data to a private repo.</span></div>` : ""}
-      <div class="stack" style="margin-top:10px">
-        <button class="btn block" id="btn-team-test">${icon("refresh")}Test connection</button>
-        ${on ? `<button class="btn block quiet" id="btn-disable">Disconnect</button>` : ""}
-      </div>
-    </div>
-    <div class="card">
       <h3>Backup</h3>
-      <p class="hint">Saves the product list, settings, team key and name, and store numbers to GitHub. Everyone gets one backup under their own name, and each new backup replaces their last one. The database key is never saved.</p>
+      <p class="hint">Saves the product list, settings and store numbers as one small file. Keep it in Files (or send it to yourself), then restore it here on this phone or a new one. Notes and photos aren't included.</p>
       <div class="stack" style="margin-top:10px">
-        <button class="btn block primary" id="btn-backup">${icon("upload")}Back up now</button>
-        ${on ? "" : `<p class="hint">Connect to the team network above to back up. Restoring works without it.</p>`}
-        <label class="f" for="backup-pick" style="margin-bottom:0">Backups on GitHub</label>
-        <select class="field" id="backup-pick" aria-label="Backups on GitHub"></select>
-        <p class="hint" id="backup-status" style="margin:0"></p>
-        <button class="btn block" id="btn-restore">Restore the selected backup</button>
+        <button class="btn block primary" id="btn-backup">${icon("download")}Save a backup</button>
+        <button class="btn block" id="btn-restore">Restore from a backup</button>
       </div>
-    </div>
-    <div class="card">
-      <details class="owner"><summary>Owner setup: database key</summary>
-        <p class="hint" style="margin-top:10px">Only needed once, by the repo owner. Paste a GitHub access token that can write to ${esc(GITHUB.owner)}/${esc(GITHUB.repo)} and choose the database key. The token is encrypted on this phone before it's saved.</p>
-        <label class="f" for="own-token">GitHub access token</label><input class="field" id="own-token" type="password" autocomplete="off" placeholder="github_pat_…">
-        <label class="f" for="own-pass">Database key</label><input class="field" id="own-pass" type="text" autocomplete="off" autocapitalize="off" placeholder="At least 6 characters">
-        <button class="btn primary block" id="btn-own-save" style="margin-top:12px">Save and connect</button>
-      </details>
     </div>
     <div class="card">
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelfie 1.2.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 2.0.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
-  v.querySelector("#team-key").onchange = e => teamSetKey(e.target.value);
-  v.querySelector("#team-name").onchange = e => { state.team.name = e.target.value.trim(); save(); teamSoon(300); };
-  v.querySelector("#btn-team-test").onclick = teamTest;
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
   v.querySelector("#haptic-shutter").onchange = e => { state.settings.hapticShutter = e.target.checked; save(); syncHaptics(); };
   v.querySelector("#haptic-taps").onchange = e => { state.settings.hapticTaps = e.target.checked; save(); };
+  v.querySelector("#live-listen").onchange = e => { state.settings.liveListen = e.target.checked; save(); };
   v.querySelector("#word-timing").onchange = e => { state.settings.wordTiming = e.target.checked; save(); };
   v.querySelectorAll("[data-dl]").forEach(b => (b.onclick = () => downloadModels([b.dataset.dl])));
   const del = v.querySelector("#btn-del-models"); if (del) del.onclick = async () => {
     if (!(await confirmDialog("Delete the speech model? Notes already read keep their lists. New notes wait until you download it again.", { ok: "Delete", danger: true }))) return;
     await deleteModels(); toast("Speech model deleted");
   };
-  v.querySelector("#btn-backup").onclick = backupNow;
-  v.querySelector("#btn-restore").onclick = restoreSelected;
-  v.querySelector("#backup-pick").onchange = e => { BK.sel = e.target.value; fillBackupPick(); };
-  fillBackupPick(); loadBackups();
-  const en = v.querySelector("#btn-enable"); if (en) en.onclick = enableUploads;
-  const dis = v.querySelector("#btn-disable"); if (dis) dis.onclick = async () => {
-    if (!(await confirmDialog("Disconnect this phone from the team network? Your notes and products stay on this phone, but nothing is shared until you connect again.", { ok: "Disconnect" }))) return;
-    setPass(""); cachedToken = null; renderAll();
-  };
-  v.querySelector("#btn-own-save").onclick = ownerSetup;
+  v.querySelector("#btn-backup").onclick = saveBackup;
+  v.querySelector("#btn-restore").onclick = pickBackupFile;
   v.querySelector("#btn-reset").onclick = async () => {
-    const n = pendingCount();
-    if (!(await confirmDialog(`Erase everything on this phone (notes, photos and settings) and start fresh from the shared product list?${n ? `<br><br><b>${n} change${n === 1 ? " hasn't" : "s haven't"} uploaded</b> and will be lost.` : ""}`, { ok: "Erase", danger: true }))) return;
-    const keep = state.sync, models = state.settings.models, team = { key: state.team.key, name: state.team.name, repo: state.team.repo };
-    state = freshState(); state.sync = keep; state.settings.models = models; Object.assign(state.team, team); save(); renderAll(); scheduleSweep();
-    pullShared({ overwrite: true, quiet: false }).catch(e => toast(e.message));
+    if (!(await confirmDialog("Erase everything on this phone (notes, photos, store numbers and settings) and start fresh with the built-in product list? Save a backup first if you want to keep your product changes.", { ok: "Erase", danger: true }))) return;
+    const models = state.settings.models;
+    state = freshState(); state.settings.models = models; save(); renderAll(); scheduleSweep();
+    toast("This phone was reset");
   };
 }
-function passwordDialog(title, note, okLabel = "Connect") {
-  return new Promise(resolve => {
-    const d = el(`<div class="dialog"><p><b>${esc(title)}</b><br><span class="hint">${esc(note)}</span></p>
-      <input class="field" type="text" id="pw-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Database key">
-      <p class="hint" id="pw-err" style="color:var(--red);margin:8px 0 0"></p>
-      <div class="btns" style="margin-top:14px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="ok">${esc(okLabel)}</button></div></div>`);
-    let done = false;
-    const close = openLayer(d, { center: true, onClose: () => { if (!done) resolve(null); } });
-    const inp = d.querySelector("input"), err = d.querySelector("#pw-err"), ok = d.querySelector('[data-a="ok"]');
-    d.querySelector('[data-a="c"]').onclick = () => { done = true; close(); resolve(null); };
-    const go = async () => {
-      if (!inp.value) return;
-      ok.disabled = true; ok.textContent = "Checking…"; err.textContent = "";
-      try { await resolveCheck(inp.value); done = true; close(); resolve(inp.value); }
-      catch (e) { err.textContent = e.message; ok.disabled = false; ok.textContent = okLabel; }
-    };
-    let resolveCheck;
-    d.check = fn => (resolveCheck = fn);
-    ok.onclick = go;
-    inp.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
-    setTimeout(() => inp.focus(), 50);
-    passwordDialog.current = d;
-  });
-}
-async function enableUploads() {
-  const p = passwordDialog("Connect this phone", "Enter the database key. You'll only need it once on this phone.");
-  passwordDialog.current.check(async pw => {
-    const blob = await loadKeyBlob();
-    let token;
-    try { token = await decryptToken(blob, pw); } catch (e) { throw new Error("That database key isn't right."); }
-    await checkToken(token);
-    cachedToken = token;
-  });
-  const pw = await p;
-  if (!pw) return;
-  setPass(pw); state.sync.error = "";
-  save(); renderAll();
-  toast("Connected. Changes now share automatically.");
-  scheduleUpload(300);
-}
-async function ownerSetup() {
-  const token = $("#own-token").value.trim(), pw = $("#own-pass").value;
-  if (!token) return toast("Paste the GitHub access token first");
-  if (pw.length < 6) return toast("Use a database key of at least 6 characters");
-  const btn = $("#btn-own-save");
-  btn.disabled = true; btn.textContent = "Saving…";
-  try {
-    await checkToken(token);
-    const blob = await encryptToken(token, pw);
-    const { sha } = await readRepoFile(GITHUB.keyPath, token);
-    await writeRepoFile(GITHUB.keyPath, JSON.stringify(blob, null, 1), sha, token, "Shelf Scan: set upload key");
-    setPass(pw); cachedToken = token; state.sync.error = "";
-    save(); renderAll();
-    toast("Saved. This phone is connected.");
-    scheduleUpload(300);
-  } catch (e) {
-    toast(e.message || "Couldn't save the key");
-    btn.disabled = false; btn.textContent = "Save and connect";
-  }
-}
-async function syncFromGitHub() {
-  const n = pendingCount();
-  const ok = await confirmDialog(`Replace this phone's product list with the shared one from GitHub? Your notes are kept.${n ? `<br><br><b>${n} change${n === 1 ? " hasn't" : "s haven't"} uploaded</b> and will be lost.` : ""}`, { ok: "Replace", danger: !!n });
-  if (!ok) return;
-  if (!navigator.onLine) return toast("No signal. Try again when you're online.");
-  toast("Syncing…");
-  try { await pullShared({ overwrite: true, quiet: false }); }
-  catch (e) { toast(e.message || "Couldn't reach GitHub"); }
-}
-function exportBackup() {
-  const text = JSON.stringify(state);
-  const box = $("#backup-text");
-  const fallback = () => { box.value = text; box.focus(); box.select(); toast("Backup is in the box. Select all and copy it."); };
-  try { navigator.clipboard.writeText(text).then(() => toast("Backup copied"), fallback); }
-  catch (e) { fallback(); }
-}
-async function restoreBackupText(text) {
-  let data;
-  try { data = JSON.parse(text); } catch (e) { data = null; }
-  if (!data || !data.products) { toast("That isn't a Shelf Scan backup"); return; }
-  if (!(await confirmDialog("Replace everything on this phone with the backup?", { ok: "Replace", danger: true }))) return;
-  const snap = snapshot(); state = data; migrate(); save(); renderAll(); toast("Backup restored", snap);
-}
-
 
 // ---------- Wire up ----------
 fillIcons();
@@ -4216,14 +3676,20 @@ document.querySelectorAll("#tabs button").forEach(b => (b.onclick = () => showVi
 $("#btn-cam-start").onclick = startCamera;
 $("#btn-cam-stop").onclick = () => { state.settings.camOK = false; save(); stopCamera(); };
 document.querySelectorAll("#cap-seg button").forEach(b => (b.onclick = () => { state.settings.captureKind = b.dataset.k; save(); renderCapture(); }));
-$("#btn-shutter").onclick = () => onShutter(false, captureKind());
+// The shutter is held, not tapped: a hold takes the shelf photo and records one product (see hold.js). A tap just says so, except with no
+// live camera, where it opens the iPhone camera app and then the recording sheet.
+$("#btn-shutter").onclick = () => {
+  if (hold.justHeld) { hold.justHeld = false; return; }   // the tap that ends a hold isn't a shutter tap
+  if (!cam.stream) return onShutter(false, captureKind());
+  toast("Hold the shutter while you say each product"); pulse($("#shutter-label"));
+};
+wireHoldToTalk();
 $("#btn-phonecam").onclick = () => onShutter(true, captureKind());
 wireBA();
 wireSoundBtn();
 wireHaptics();
 wireToastSwipe();
 document.querySelectorAll(".cam-lens button").forEach(b => (b.onclick = () => { pulse(b); setLens(b.dataset.lens); }));
-$("#sync-ind").onclick = () => showView("more");
 renderAll();
 save();
 syncAllIndicators(false);
@@ -4233,15 +3699,6 @@ checkLastCrash();
 recoverRecording();
 try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}   // ask iOS not to clear saved photos and recordings when space is low
 verifyModels().then(() => { setTimeout(warmUp, 3000); pump(); });   // the model loads a moment after the camera starts, not at the same instant   // get the models ready, and pick up anything still waiting from last time
-
-// Pull everyone's latest product list on open, then upload anything waiting.
-if (navigator.onLine) pullShared().catch(() => {}).finally(() => scheduleUpload(1000));
-
-// Team list: look for new notes every few seconds while the app is open.
-setInterval(() => { if (!document.hidden) teamCycle(); }, TEAM_POLL_MS);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) teamCycle(); });
-window.addEventListener("online", () => teamCycle());
-setTimeout(teamCycle, 1500);
 
 // Updates: check for a new version whenever the app comes back to the foreground (home-screen apps on iPhone
 // stay loaded for days), and offer a one-tap reload once it's installed.

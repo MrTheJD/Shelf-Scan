@@ -6,7 +6,7 @@ speech model that runs on the phone turns the recording into a short pull list f
 - `index.html` is the whole app (HTML, CSS and JS in one file).
 - `ai-worker.js` runs the speech-to-text model off the main thread.
 - `sw.js` and `manifest.webmanifest` let it be added to the home screen and work offline.
-- `data/shared.json` is the product list shared by everyone; `data/key.json` is the encrypted upload key.
+- Since 2.0 the app doesn't sync: everything stays on the phone, and backups are files saved from More. `data/` and `sync/` hold data from 1.x and are no longer read by the app.
 - Notes, photos and recordings stay on the phone. The speech model downloads once from Hugging Face when you tap Download in More, then runs offline.
 
 The camera and microphone need an **https://** address, so the app is hosted on GitHub Pages.
