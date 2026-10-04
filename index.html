@@ -379,6 +379,9 @@ header.top h1 img.brand { display: block; height: 24px; width: auto; }
 .hold-meter b { display: block; height: 100%; width: 100%; background: #fff; transform: scaleX(0); transform-origin: left; transition: transform .08s linear; }
 .camera.holding { box-shadow: 0 0 0 3px var(--red), 0 0 0 9px color-mix(in srgb, var(--red) 35%, transparent); }
 .hold-bar { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 14px; border-radius: 14px; background: var(--chip); font-size: 14px; font-weight: 650; }
+
+/* 2.1: the Products page sits under More */
+.back-btn { margin-bottom: 4px; }
 </style>
 </head>
 <body data-view="capture">
@@ -391,6 +394,7 @@ header.top h1 img.brand { display: block; height: 24px; width: auto; }
 <main>
   <!-- CAPTURE: a big viewfinder, with everything you tap sitting in the bottom third -->
   <section class="view active mode-aisle" id="view-capture">
+    <div class="slots" id="cap-slots"></div>
     <div class="camera" id="camera">
       <video id="cam-video" playsinline muted autoplay hidden></video>
       <div class="cam-wait" id="cam-starting" hidden>Starting the camera…</div>
@@ -441,10 +445,6 @@ header.top h1 img.brand { display: block; height: 24px; width: auto; }
       <button class="cam-stop" id="ba-cam-stop" aria-label="Turn the camera off" hidden><span data-icon="x"></span></button>
     </div>
     <div class="deck">
-      <div class="seg cap-seg" id="ba-when-seg">
-        <button data-w="before" class="active">Before</button>
-        <button data-w="after">After</button>
-      </div>
       <div class="seg cap-seg" id="ba-kind-seg">
         <button data-k="aisle" class="active">Aisle</button>
         <button data-k="display">Display</button>
@@ -459,15 +459,16 @@ header.top h1 img.brand { display: block; height: 24px; width: auto; }
   </section>
 
   <section class="view" id="view-needed"></section>
+  <section class="view" id="view-gallery"></section>
   <section class="view" id="view-products"></section>
   <section class="view" id="view-more"></section>
 </main>
 
 <nav class="tabs" id="tabs">
-  <button data-view="capture" class="active"><span data-icon="camera"></span>Stocking</button>
-  <button data-view="ba"><span data-icon="image"></span>Before/After</button>
+  <button data-view="capture" class="active"><span data-icon="camera"></span>Before</button>
+  <button data-view="ba"><span data-icon="image"></span>After</button>
   <button data-view="needed"><span data-icon="list"></span>Needed<span class="badge" id="need-badge" hidden></span></button>
-  <button data-view="products"><span data-icon="grid"></span>Products</button>
+  <button data-view="gallery"><span data-icon="grid"></span>Gallery</button>
   <button data-view="more"><span data-icon="sliders"></span>More</button>
 </nav>
 
@@ -817,7 +818,7 @@ function freshState() {
     notes: [],                              // newest first: { id, at, photos:[id], audio:id|null, secs, text, status, parts:[{vk, s, e}] (brand + flavor found in the text), flag, ticks:{pid: true}, err }
     recents: [],
     stores: ["", "", "", "", ""],            // the five store slots on the Before/After tab: the store number in each
-    shots: [],                              // Before/After photos: { id, at, slot:0-4, when:"before"|"after", kind:"aisle"|"display", photo }
+    shots: [],                              // Before/After photos: { id, at, slot:0-4, when:"after" ("before" for photos from 2.0 and earlier), kind:"aisle"|"display", photo }
     settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", baWhen: "before", baKind: "aisle", baSlot: 0, lens: "wide", hapticShutter: true, hapticTaps: true, wordTiming: false, liveListen: false, asrId: "tiny", models: { asr: false } },   // models: which downloads finished
     sync: { lastPull: 0, lastPush: 0, error: "" },
   };
@@ -2458,7 +2459,7 @@ async function onShutter(forcePhone, kind = "aisle") {
   playShutter();
   const photoId = newId("p");
   try { await savePhoto(photoId, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
-  startRecording({ photos: [photoId], kind });
+  startRecording({ photos: [photoId], kind, slot: baSlot() });
 }
 function box_flash(id = "#camera") { const b = $(id); b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); setTimeout(() => b.classList.remove("flash"), 400); }
 
@@ -2481,12 +2482,12 @@ async function recoverRecording() {
   if (rec.pcm && rec.pcm.byteLength > 16000 * 2 * 0.6) items.push({ pcm: rec.pcm, secs: rec.secs || 0 });
   const t0 = rec.at || Date.now();
   if (!items.length) {
-    state.notes.unshift({ id: newId("n"), at: t0, kind: rec.kind === "display" ? "display" : "aisle", photos: [...photos], audio: null, secs: 0, text: "", status: "error", parts: [], flag: false, ticks: {},
+    state.notes.unshift({ id: newId("n"), at: t0, slot: rec.slot, kind: rec.kind === "display" ? "display" : "aisle", photos: [...photos], audio: null, secs: 0, text: "", status: "error", parts: [], flag: false, ticks: {},
       err: "The app restarted while you were recording. Tap to record it again." });
   }
   for (const [i, it] of items.entries()) {
     const audioId = newId("a"); await putAudio(audioId, { pcm: it.pcm, rate: 16000 }).catch(() => {});
-    state.notes.unshift({ id: newId("n"), at: t0 + i, kind: rec.kind === "display" ? "display" : "aisle", photos: [...photos], audio: audioId, secs: it.secs || 0, text: "", status: "queued", parts: [], flag: false, ticks: {}, err: "" });
+    state.notes.unshift({ id: newId("n"), at: t0 + i, slot: rec.slot, kind: rec.kind === "display" ? "display" : "aisle", photos: [...photos], audio: audioId, secs: it.secs || 0, text: "", status: "queued", parts: [], flag: false, ticks: {}, err: "" });
   }
   await clearRecovery();
   save(); renderAll(); pump();
@@ -2545,8 +2546,8 @@ async function startRecording(base) {
     clearRecovery();
   };
   // The recovery copy (new photos only): the item being said, every 3 seconds. Finished items are written once, when they finish.
-  const keepSafe = () => { if (base.photos && r.chunks.length) { const x = resampleTo16k(r.chunks.slice(), r.rate); putAudio("_recovery", { photos: base.photos, kind: base.kind, at: r.start, secs: r.secs, pcm: x.pcm, items: r.items.length, live: r.count > 0 }).catch(() => {}); } };
-  if (base.photos) putAudio("_recovery", { photos: base.photos, kind: base.kind, at: r.start, secs: 0, pcm: null, items: 0 }).catch(() => {});
+  const keepSafe = () => { if (base.photos && r.chunks.length) { const x = resampleTo16k(r.chunks.slice(), r.rate); putAudio("_recovery", { photos: base.photos, kind: base.kind, slot: base.slot, at: r.start, secs: r.secs, pcm: x.pcm, items: r.items.length, live: r.count > 0 }).catch(() => {}); } };
+  if (base.photos) putAudio("_recovery", { photos: base.photos, kind: base.kind, slot: base.slot, at: r.start, secs: 0, pcm: null, items: 0 }).catch(() => {});
   // The words since the last tap become one item (if anything was really said).
   const closeItem = () => {
     const chunks = r.chunks, secs = r.secs, peak = r.peak;
@@ -2556,7 +2557,7 @@ async function startRecording(base) {
     r.items.push(it);
     if (base.photos) {
       putAudio("_recovery_item_" + (r.items.length - 1), it).catch(() => {});
-      putAudio("_recovery", { photos: base.photos, kind: base.kind, at: r.start, secs: 0, pcm: null, items: r.items.length, live: r.count > 0 }).catch(() => {});
+      putAudio("_recovery", { photos: base.photos, kind: base.kind, slot: base.slot, at: r.start, secs: 0, pcm: null, items: r.items.length, live: r.count > 0 }).catch(() => {});
     }
     return true;
   };
@@ -2573,7 +2574,7 @@ async function startRecording(base) {
     for (const it of items) { await saveNote({ ...base, audioRec: { pcm: it.pcm, rate: 16000 }, secs: it.secs, text: "", status: "queued", at: r.start + r.count }); r.count++; }
     if (base.photos) {
       for (let i = 0; i < items.length; i++) delAudio("_recovery_item_" + i).catch(() => {});
-      putAudio("_recovery", { photos: base.photos, kind: base.kind, at: r.start, secs: 0, pcm: null, items: 0, live: true }).catch(() => {});
+      putAudio("_recovery", { photos: base.photos, kind: base.kind, slot: base.slot, at: r.start, secs: 0, pcm: null, items: 0, live: true }).catch(() => {});
     }
     pump();
   };
@@ -2622,9 +2623,10 @@ async function startRecording(base) {
     const items = r.items.splice(0);
     cleanup(); r.closeSheet();
     if (!items.length && !r.count) {
-      // Nothing usable was said: keep the photo, and let the person choose what to do.
-      const note = await saveNote({ ...base, audioRec: null, secs: 0, text: "", status: "empty" });
       clearRecovery();
+      if (base.photos) { keepPhotoOnly(base.photos[0], base.slot, base.kind, r.start); return; }   // a new photo with nothing said: Gallery only
+      // Re-recording a note and nothing was said: the note stays, waiting for a recording.
+      const note = await saveNote({ ...base, audioRec: null, secs: 0, text: "", status: "empty" });
       toast("Didn't hear anything. Open the note to record again.");
       return note;
     }
@@ -2656,7 +2658,7 @@ async function startRecording(base) {
   };
 }
 // Create a new note, or (base.note) replace what an existing note heard.
-async function saveNote({ photos, note, audioRec, secs, text, status, kind, at }) {
+async function saveNote({ photos, note, audioRec, secs, text, status, kind, at, slot }) {
   let audioId = null;
   if (audioRec) { audioId = newId("a"); try { await putAudio(audioId, audioRec); } catch (e) { toast("Couldn't save the recording. Phone storage may be full."); } }
   if (note) {
@@ -2665,7 +2667,7 @@ async function saveNote({ photos, note, audioRec, secs, text, status, kind, at }
     if (old) delAudio(old).catch(() => {});
     save(); renderAll(); return note;
   }
-  const n = { id: newId("n"), at: at || Date.now(), kind: kind === "display" ? "display" : "aisle", photos: [...(photos || [])], audio: audioId, secs, text, status, parts: [], flag: false, ticks: {}, err: "" };
+  const n = { id: newId("n"), at: at || Date.now(), slot: Number.isInteger(slot) ? slot : baSlot(), kind: kind === "display" ? "display" : "aisle", photos: [...(photos || [])], audio: audioId, secs, text, status, parts: [], flag: false, ticks: {}, err: "" };
   state.notes.unshift(n);
   save(); renderAll();
   lastNoteId = n.id;
@@ -2692,7 +2694,7 @@ function textPrompt(title, value = "", { ok = "Save" } = {}) {
 
 
 // ---------- Hold the shutter to talk ----------
-// The Stocking shutter is held, not tapped: the first hold takes the shelf photo and records while the finger is down; letting go saves
+// The Before tab's shutter is held, not tapped: the first hold takes the shelf photo and records while the finger is down; letting go saves
 // that product as a note. Holding again adds the next product to the same photo, as many times as needed. "Done" (or leaving the tab, or
 // closing the app) closes the shelf.
 // Audio: iPhones only start an audio engine from a real tap, and a finger going down doesn't count, so the engine is started on any tap on
@@ -2779,7 +2781,7 @@ async function holdStart() {
     playShutter();
     const id = newId("p");
     try { await savePhoto(id, blob); } catch (e) { holdAbort("Couldn't save the photo. Phone storage may be full."); return; }
-    hold.session = { photo: id, kind: captureKind(), at: Date.now(), count: 0 };
+    hold.session = { photo: id, kind: captureKind(), slot: baSlot(), at: Date.now(), count: 0 };
     renderHoldBar();
   }
   if (!(await (hold.micReady || openHoldMic()))) hold.noAudio = true;
@@ -2799,16 +2801,16 @@ async function holdEnd() {
   const s = hold.session; if (!s) return;
   if (!chunks.length || secs < 0.5 || peak < 0.004) { toast(noAudio ? "Couldn't use the microphone. Allow it in Settings, or tap the shutter again and hold." : "Didn't hear that. Hold the shutter and say the product."); renderHoldBar(); return; }
   const x = resampleTo16k(chunks, hold.rate);
-  await saveNote({ photos: [s.photo], kind: s.kind, audioRec: { pcm: x.pcm, rate: 16000 }, secs, text: "", status: "queued", at: s.at + s.count });
+  await saveNote({ photos: [s.photo], kind: s.kind, slot: s.slot, audioRec: { pcm: x.pcm, rate: 16000 }, secs, text: "", status: "queued", at: s.at + s.count });
   s.count++; renderHoldBar(); pulse($("#hold-bar"));
   if (liveListenOn()) pump();
 }
-// Close the shelf: its products are on the list (read now, unless they already are). A shelf with nothing said keeps no photo.
+// Close the shelf: its products are on the list (read now, unless they already are). A shelf with nothing said keeps its photo in the Gallery.
 function endHoldSession(byButton) {
   const s = hold.session; if (!s) return;
   if (hold.active) holdEnd();
   hold.session = null; closeHoldMic();
-  if (!s.count) delPhoto(s.photo).catch(() => {});
+  if (!s.count) keepPhotoOnly(s.photo, s.slot, s.kind, s.at);
   else if (byButton) toast(`${s.count} item${s.count === 1 ? "" : "s"} saved`);
   renderHoldBar(); pump();
 }
@@ -2952,10 +2954,11 @@ let view = "capture";
 const isCamView = () => view === "capture" || view === "ba";   // the two tabs with a viewfinder
 function showView(v) {
   if (v !== "capture") { endHoldSession(); closeLiveMic(); } else ensureLiveCtx();   // the hold-to-talk audio engine only lives on the Stocking tab
+  if (v === "gallery" && view !== "gallery") { gal.slot = baSlot(); gal.kind = view === "capture" ? captureKind() : baKind(); }
   view = v;
   document.body.dataset.view = v;
   document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.id === "view-" + v));
-  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.view === v));
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.view === (v === "products" ? "more" : v)));
   syncIndicator($("#tabs"));
   if (!isCamView()) { if (deferVoice() && queuedCount()) { stopCamera(); pump(); } else sleepCameraSoon(); } else wakeCamera();   // Base listens while the camera is off
   renderAll();
@@ -2971,6 +2974,7 @@ function renderAll() {
   if (view === "ba") renderBA();
   if (view === "needed") renderNeeded();
   if (view === "products") renderProducts();
+  if (view === "gallery") renderGallery();
   if (view === "more") renderMore();
   if (typeof playerPaint === "function") playerPaint();
 }
@@ -3230,30 +3234,55 @@ function zoomStage(img, stage) {
   const up = e => { pts.delete(e.pointerId); if (scale <= 1.02) reset(); last = null; };
   stage.addEventListener("pointerup", up); stage.addEventListener("pointercancel", up);
 }
-// ---------- Before / After photos ----------
-// A photo-only twin of the Stocking tab: same camera, no voice. Five store slots sit across the top, so a shift's photos from up to
-// five stores can be kept apart and reviewed until the end of the shift. The sixth button saves everything to the phone and clears it. Two switches (Before | After, Aisle | Display) decide where
-// each shot is filed inside the open store. Photos stay on this phone.
+// ---------- Before and After ----------
+// Since 2.1 the shelf photos taken on the Before tab (the Needed-list notes) are the Before pictures, and the After tab takes the After
+// pictures (photo only, no voice). Five store slots, shared by both tabs, sit across the top so a shift's photos from up to five stores stay
+// apart until the end of the shift; the sixth button saves everything to the phone and clears it. Photos stay on this phone.
+// Notes carry the slot they were taken in (n.slot); After photos are state.shots ({ id, at, slot, when: "after", kind, photo }).
+// Shots with when "before" are Before photos from 2.0 and earlier (when the second tab took both).
 const SLOTS = 5;
-const baWhen = () => (state.settings.baWhen === "after" ? "after" : "before");
 const baKind = () => (state.settings.baKind === "display" ? "display" : "aisle");
 const baSlot = () => { const n = +state.settings.baSlot; return n >= 0 && n < SLOTS ? n : 0; };
 const storeOf = i => String((state.stores || [])[i] || "").trim();
-const slotCount = i => state.shots.filter(s => s.slot === i).length;
 const WHEN_LABEL = { before: "Before", after: "After" };
 let lastShotId = null;
+// A shelf photo where nothing was said: kept as a photo-only Before picture (it shows in the Gallery, not on the Needed list).
+function keepPhotoOnly(photo, slot, kind, at) {
+  state.shots.unshift({ id: newId("s"), at: at || Date.now(), slot: Number.isInteger(slot) ? slot : baSlot(), when: "before", kind: kind === "display" ? "display" : "aisle", photo });
+  save(); renderAll();
+  toast("Nothing was heard. The photo is in the Gallery.");
+}
+
+// A store's Before pictures: each shelf photo once (several notes can share one), plus old Before shots. After: the After shots.
+function beforeItems(slot) {
+  const seen = new Map();
+  for (const n of [...state.notes].sort((a, b) => a.at - b.at)) {
+    const p = (n.photos || [])[0];
+    if (!p || n.slot !== slot || seen.has(p)) continue;
+    seen.set(p, { photo: p, at: n.at, kind: noteKind(n), when: "before", note: n, slot });
+  }
+  const old = state.shots.filter(x => x.slot === slot && x.when === "before").map(x => ({ photo: x.photo, at: x.at, kind: x.kind, when: "before", shot: x, slot }));
+  return [...seen.values(), ...old].sort((a, b) => a.at - b.at);
+}
+const afterItems = slot => state.shots.filter(x => x.slot === slot && x.when !== "before").map(x => ({ photo: x.photo, at: x.at, kind: x.kind, when: "after", shot: x, slot })).sort((a, b) => a.at - b.at);
+const itemsOf = (slot, w) => (w === "before" ? beforeItems(slot) : afterItems(slot));
+const slotCount = i => beforeItems(i).length + afterItems(i).length;
 
 // The store buttons: the store number (or + when the slot is empty) and how many photos it holds, then the Save and clear button.
 function slotsHTML(active) {
-  const act = `<button class="slot act" data-act="save" aria-label="Save every photo to this phone, then clear the stores and photos">${icon("download")}<small>Save</small></button>`;
+  const act = `<button class="slot act" data-act="save" aria-label="Save every photo to this phone, then clear the stores, photos and Needed list">${icon("download")}<small>Save</small></button>`;
   return Array.from({ length: SLOTS }, (_, i) => {
     const st = storeOf(i), n = slotCount(i);
     return `<button class="slot${i === active ? " active" : ""}" data-slot="${i}" aria-label="${st ? `Store ${esc(st)}` : `Empty store slot ${i + 1}`}${n ? `, ${n} photo${n === 1 ? "" : "s"}` : ""}"><b>${st ? esc(st) : "+"}</b><small>${n || ""}</small></button>`;
   }).join("") + act;
 }
 
+// Draws the After tab, and the parts of the Before tab that belong to the stores (its slot row and the store on its camera label).
 function renderBA() {
-  const on = !!cam.stream, w = baWhen(), k = baKind(), slot = baSlot(), st = storeOf(slot);
+  const on = !!cam.stream, k = baKind(), slot = baSlot(), st = storeOf(slot), row = slotsHTML(slot);
+  $("#ba-slots").innerHTML = row;
+  const cs = document.getElementById("cap-slots"); if (cs) cs.innerHTML = row;
+  $("#cap-band").textContent = `${st ? `#${st} · ` : ""}${captureKind() === "display" ? "DISPLAY" : "AISLE"}`;
   $("#ba-off").hidden = on || cam.starting;
   $("#ba-video").hidden = !on;
   $("#ba-starting").hidden = !cam.starting;
@@ -3263,19 +3292,17 @@ function renderBA() {
   $("#ba-phonecam").hidden = !cam.error;
   $("#ba-cam-stop").hidden = !on;
   $("#ba-shutter").disabled = cam.starting;
-  $("#ba-slots").innerHTML = slotsHTML(slot);
-  document.querySelectorAll("#ba-when-seg button").forEach(b => b.classList.toggle("active", b.dataset.w === w));
   document.querySelectorAll("#ba-kind-seg button").forEach(b => b.classList.toggle("active", b.dataset.k === k));
-  if (view === "ba") { syncIndicator($("#ba-when-seg"), false); syncIndicator($("#ba-kind-seg"), false); }
+  if (view === "ba") syncIndicator($("#ba-kind-seg"), false);
   const sec = $("#view-ba");
   sec.classList.toggle("mode-display", k === "display"); sec.classList.toggle("mode-aisle", k === "aisle");
-  $("#ba-band").textContent = `${st ? `#${st} · ` : ""}${WHEN_LABEL[w].toUpperCase()} · ${KIND_LABEL[k].toUpperCase()}`;
-  $("#ba-hint").textContent = st ? `Photo only. Filing to store#${st} · ${WHEN_LABEL[w]} · ${KIND_LABEL[k]}.` : "Tap a store slot above to set its store number.";
-  $("#ba-shutter").setAttribute("aria-label", `Take the ${w} photo of the ${k}`);
-  const mine = state.shots.filter(s => s.slot === slot), last = mine.find(s => s.id === lastShotId) || mine[0], lb = $("#ba-last");
+  $("#ba-band").textContent = `${st ? `#${st} · ` : ""}AFTER · ${KIND_LABEL[k].toUpperCase()}`;
+  $("#ba-hint").textContent = st ? `Snap the finished ${k}. Files under store#${st} · After · ${KIND_LABEL[k]}.` : "Tap a store slot above to set its store number.";
+  $("#ba-shutter").setAttribute("aria-label", `Take the after photo of the ${k}`);
+  const mine = afterItems(slot).map(i => i.shot).reverse(), last = mine.find(s => s.id === lastShotId) || mine[0], lb = $("#ba-last");
   lb.style.visibility = last ? "visible" : "hidden";
   if (last && lb.dataset.shot !== last.photo) { lb.dataset.shot = last.photo; lb.innerHTML = `<img data-photo="${esc(last.photo)}" alt="">`; hydratePhotos(lb); }
-  const c = $("#ba-count"); c.hidden = !mine.length; c.textContent = mine.length;
+  const n = slotCount(slot), c = $("#ba-count"); c.hidden = !n; c.textContent = n;
   if (view === "ba" && cam.stream) { const v = $("#ba-video"); if (v.paused) v.play().catch(() => {}); }
 }
 
@@ -3300,12 +3327,13 @@ function askStore(slot) {
     setTimeout(() => { inp.focus(); inp.select(); }, 50);
   });
 }
-// Tapping a slot opens it (asking for the store number if it is empty); tapping the open slot again changes its number.
+// Tapping a slot opens it (asking for the store number if it is empty); tapping the open slot again changes its number. Both tabs share it.
 async function pickSlot(i) {
   if (i === baSlot() && storeOf(i)) { await askStore(i); return; }
+  if (hold.session) endHoldSession();   // a held shelf belongs to the store it was started in
   state.settings.baSlot = i; lastShotId = null;
   if (storeOf(i)) state.storeName = storeOf(i);
-  save(); renderAll(); pulse(document.querySelector(`#ba-slots [data-slot="${i}"]`));
+  save(); renderAll(); document.querySelectorAll(`#ba-slots [data-slot="${i}"], #cap-slots [data-slot="${i}"]`).forEach(b => pulse(b));
   if (!storeOf(i)) await askStore(i);
 }
 
@@ -3318,10 +3346,10 @@ async function onShutterBA(forcePhone) {
   else blob = await cameraPhoto();
   if (!blob) { if (cam.stream && !forcePhone) toast("The camera isn't ready yet. Try again."); return; }
   playShutter();
-  const shot = { id: newId("s"), at: Date.now(), slot, when: baWhen(), kind: baKind(), photo: newId("p") };
+  const shot = { id: newId("s"), at: Date.now(), slot, when: "after", kind: baKind(), photo: newId("p") };
   try { await savePhoto(shot.photo, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
   state.shots.unshift(shot); lastShotId = shot.id; save(); renderAll(); pulse($("#ba-last"));
-  toast(`Saved to store#${storeOf(slot)} · ${WHEN_LABEL[shot.when]} · ${KIND_LABEL[shot.kind]}`);
+  toast(`Saved to store#${storeOf(slot)} · After · ${KIND_LABEL[shot.kind]}`);
 }
 
 function wireBA() {
@@ -3329,59 +3357,59 @@ function wireBA() {
   $("#ba-cam-stop").onclick = () => { state.settings.camOK = false; save(); stopCamera(); };
   $("#ba-shutter").onclick = () => onShutterBA(false);
   $("#ba-phonecam").onclick = () => onShutterBA(true);
-  $("#ba-slots").onclick = e => { if (e.target.closest("[data-act]")) return saveAndClear(); const b = e.target.closest("[data-slot]"); if (b) pickSlot(+b.dataset.slot); };
-  document.querySelectorAll("#ba-when-seg button").forEach(b => (b.onclick = () => { state.settings.baWhen = b.dataset.w; save(); renderBA(); }));
+  const slotTap = e => { if (e.target.closest("[data-act]")) return saveAndClear(); const b = e.target.closest("[data-slot]"); if (b) pickSlot(+b.dataset.slot); };
+  $("#ba-slots").onclick = slotTap;
+  const cs = document.getElementById("cap-slots"); if (cs) cs.onclick = slotTap;
   document.querySelectorAll("#ba-kind-seg button").forEach(b => (b.onclick = () => { state.settings.baKind = b.dataset.k; save(); renderBA(); }));
   $("#ba-gallery").onclick = () => openGallery();
-  $("#ba-last").onclick = () => { const s = state.shots.find(x => x.id === lastShotId && x.slot === baSlot()) || state.shots.find(x => x.slot === baSlot()); if (s) openShot(s); };
+  $("#ba-last").onclick = () => { const s = state.shots.find(x => x.id === lastShotId && x.slot === baSlot()) || afterItems(baSlot()).map(i => i.shot).pop(); if (s) openShot(s); };
 }
 
-// ---- Gallery: one store at a time, sorted by Aisle / Display and then Before / After ----
-function openGallery(startKind = baKind(), startSlot = baSlot()) {
-  let kind = startKind, slot = startSlot;
-  const s = el(`<div class="sheet gallery-sheet"><div class="handle"></div><h2>Before/After photos</h2>
-    <div class="slots" id="gal-slots"></div>
-    <div class="row" id="gal-share"></div>
-    <div class="seg" id="gal-seg">${KINDS.map(k => `<button data-k="${k}">${KIND_LABEL[k]} <span class="kcount" data-c="${k}"></span></button>`).join("")}</div>
-    <div id="gal-body"></div><button class="btn primary block" data-a="close">Done</button></div>`);
-  const close = openLayer(s, { onClose: () => renderAll() });
-  const mine = () => state.shots.filter(x => x.slot === slot);
-  const draw = () => {
-    s.querySelector("#gal-slots").innerHTML = slotsHTML(slot);
-    s.querySelectorAll("#gal-seg button").forEach(b => { b.classList.toggle("active", b.dataset.k === kind); b.querySelector(".kcount").textContent = mine().filter(x => x.kind === b.dataset.k).length || ""; });
-    syncIndicator(s.querySelector("#gal-seg"), false);
-    s.querySelector("#gal-share").innerHTML = ["before", "after"].map(w => { const n = mine().filter(x => x.when === w).length; return `<button class="btn sm primary grow" data-share="${w}"${n ? "" : " disabled"}>${icon("upload")}Text all ${WHEN_LABEL[w]} (${n})</button>`; }).join("");
-    let html = "";
-    for (const w of ["before", "after"]) {
-      const list = mine().filter(x => x.kind === kind && x.when === w);
-      html += `<div class="cluster-h">${WHEN_LABEL[w]}<span class="n">${list.length}</span></div>`;
-      html += list.length ? `<div class="shot-grid">${list.map(x => `<button class="shot" data-s="${esc(x.id)}" data-photo-wrap><img data-photo="${esc(x.photo)}" alt=""><span>${esc(timeOf(x.at))}</span></button>`).join("")}</div>`
-        : `<p class="muted small" style="margin:4px 0 0">No ${w} photos of ${kind === "display" ? "displays" : "aisles"} yet.</p>`;
+// ---- The Gallery tab: one store at a time, Aisle / Display, then Before (the shelf photos) and After ----
+// It opens on the store and Aisle/Display that are open on the camera tabs; picking another store here only changes what the Gallery shows.
+const gal = { slot: null, kind: null };
+function openGallery() { showView("gallery"); }
+function renderGallery() {
+  const v = $("#view-gallery");
+  if (gal.slot == null) gal.slot = baSlot();
+  if (!gal.kind) gal.kind = baKind();
+  const slot = gal.slot, kind = gal.kind, all = [...beforeItems(slot), ...afterItems(slot)], after = afterItems(slot);
+  let html = `<div class="list-head"><h2>Gallery</h2><span class="muted small">${storeOf(slot) ? `store#${esc(storeOf(slot))}` : ""}</span></div>
+    <div class="slots" id="gal-slots">${slotsHTML(slot)}</div>
+    <div class="row" id="gal-share">${["before", "after"].map(w => { const n = itemsOf(slot, w).length; return `<button class="btn sm primary grow" data-share="${w}"${n ? "" : " disabled"}>${icon("upload")}Text all ${WHEN_LABEL[w]} (${n})</button>`; }).join("")}</div>
+    <div class="seg" id="gal-seg">${KINDS.map(k => { const n = all.filter(x => x.kind === k).length; return `<button data-k="${k}" class="${k === kind ? "active" : ""}">${KIND_LABEL[k]} ${n ? `<span class="kcount">${n}</span>` : ""}</button>`; }).join("")}</div>`;
+  for (const w of ["before", "after"]) {
+    const list = itemsOf(slot, w).filter(x => x.kind === kind).reverse();
+    html += `<div class="cluster-h">${WHEN_LABEL[w]}<span class="n">${list.length}</span></div>`;
+    html += list.length ? `<div class="shot-grid">${list.map(x => `<button class="shot" data-w="${w}" data-p="${esc(x.photo)}" data-photo-wrap><img data-photo="${esc(x.photo)}" alt=""><span>${esc(timeOf(x.at))}</span></button>`).join("")}</div>`
+      : `<p class="muted small" style="margin:4px 0 0">${w === "before" ? `No shelf photos of ${kind === "display" ? "displays" : "aisles"} for this store yet. Take them on the Before tab.` : `No After photos of ${kind === "display" ? "displays" : "aisles"} yet. Take them on the After tab.`}</p>`;
+  }
+  const afterAll = state.shots.filter(x => x.when !== "before");
+  if (after.length) html += `<button class="btn block quiet" data-a="clear" style="margin-top:20px">Clear ${storeOf(slot) ? `store#${esc(storeOf(slot))}` : "this store"}'s After photos</button>`;
+  if (afterAll.length > after.length) html += `<button class="btn block quiet" data-a="clearall" style="margin-top:8px">Clear all stores' After photos</button>`;
+  v.innerHTML = html;
+  syncIndicator(v.querySelector("#gal-seg"), false);
+  hydratePhotos(v);
+  v.onclick = e => {
+    if (e.target.closest("#gal-slots [data-act]")) { saveAndClear(); return; }
+    const sb = e.target.closest("#gal-slots [data-slot]"); if (sb) { gal.slot = +sb.dataset.slot; renderGallery(); return; }
+    const kb = e.target.closest("#gal-seg [data-k]"); if (kb) { gal.kind = kb.dataset.k; renderGallery(); return; }
+    const sh = e.target.closest("[data-share]"); if (sh) { if (!sh.disabled) shareBatch(slot, sh.dataset.share); return; }
+    const t = e.target.closest(".shot");
+    if (t) {
+      const x = itemsOf(slot, t.dataset.w).find(i => i.photo === t.dataset.p); if (!x) return;
+      if (x.note) openCheck(x.note); else openShot(x.shot);   // a shelf photo opens its note (photo, words, playback)
+      return;
     }
-    if (mine().length) html += `<button class="btn block quiet" data-a="clear" style="margin-top:20px">Clear ${storeOf(slot) ? `store#${esc(storeOf(slot))}` : "this store"}'s photos</button>`;
-    if (state.shots.length > mine().length) html += `<button class="btn block quiet" data-a="clearall" style="margin-top:8px">Clear all stores' photos</button>`;
-    s.querySelector("#gal-body").innerHTML = html;
-    hydratePhotos(s);
+    if (e.target.closest('[data-a="clear"]')) clearShots(slot);
+    if (e.target.closest('[data-a="clearall"]')) clearShots(null);
   };
-  s.querySelector("#gal-slots").onclick = e => {
-    if (e.target.closest("[data-act]")) { saveAndClear().then(done => { if (done) close(); }); return; }
-    const b = e.target.closest("[data-slot]"); if (b) { slot = +b.dataset.slot; draw(); }
-  };
-  s.querySelector("#gal-seg").onclick = e => { const b = e.target.closest("button[data-k]"); if (b) { kind = b.dataset.k; draw(); } };
-  s.querySelector("#gal-share").onclick = e => { const sh = e.target.closest("[data-share]"); if (sh && !sh.disabled) shareBatch(slot, sh.dataset.share); };
-  s.querySelector("#gal-body").onclick = e => {
-    const t = e.target.closest(".shot"); if (t) { const x = state.shots.find(y => y.id === t.dataset.s); if (x) openShot(x, draw); return; }
-    if (e.target.closest('[data-a="clear"]')) clearShots(slot).then(done => { if (done) draw(); });
-    if (e.target.closest('[data-a="clearall"]')) clearShots(null).then(done => { if (done) draw(); });
-  };
-  s.querySelector('[data-a="close"]').onclick = close;
-  draw();
 }
 
-// One batch = every Before photo in a store (Aisle and Display together), or every After photo. The phone's share sheet opens with
+// One batch = every Before photo of a store (Aisle and Display together), or every After photo. The phone's share sheet opens with
 // the photos attached and a line of text already written; pick Messages and the boss's name. Before and After go as two texts.
 async function shareBatch(slot, w) {
-  const list = state.shots.filter(x => x.slot === slot && x.when === w).sort((a, b) => a.at - b.at);
+  const list = itemsOf(slot, w);
   if (!list.length) return;
   const store = storeOf(slot) || await askStore(slot); if (store == null) return;
   const files = [];
@@ -3401,7 +3429,7 @@ async function shareBatch(slot, w) {
 function askSaveFirst(n) {
   return new Promise(resolve => {
     const d = el(`<div class="dialog"><p><b>Clear everything?</b></p>
-      <p>This clears every store number and all ${n} Before/After photo${n === 1 ? "" : "s"} from the app. Do you want to save the photos to this phone first?</p>
+      <p>This clears every store number, all After photos and the whole Needed list (its notes and shelf photos). Do you want to save the ${n} Before and After photo${n === 1 ? "" : "s"} to this phone first?</p>
       <div class="stack"><button class="btn primary block" data-a="save">${icon("download")}Yes, save them first</button>
       <button class="btn block" data-a="clear">No, just clear</button>
       <button class="btn block quiet" data-a="c">Cancel</button></div></div>`);
@@ -3416,26 +3444,37 @@ function showSaveHint(n) {
   document.body.appendChild(h);
   return () => h.remove();
 }
-// End of shift: forget the store numbers and clear the photos, saving them to the phone first if asked. The share sheet gets the
-// photos named like store1234_Before_Aisle_1_2026-10-01.jpg; nothing is cleared unless that has gone through.
+// End of shift: the store numbers, the After photos and the whole Needed list are cleared, after saving every Before and After photo to the
+// phone if asked. Files are named like store1234_Before_Aisle_1_2026-10-03.jpg; nothing is cleared unless the save went through.
 const pad2 = n => String(n).padStart(2, "0");
+function allPhotoItems() {
+  const seen = new Set(), out = [];
+  for (const n of [...state.notes].sort((a, b) => a.at - b.at)) {
+    const p = (n.photos || [])[0]; if (!p || seen.has(p)) continue;
+    seen.add(p); out.push({ photo: p, at: n.at, kind: noteKind(n), when: "before", slot: n.slot });
+  }
+  for (const x of state.shots) out.push({ photo: x.photo, at: x.at, kind: x.kind, when: x.when === "before" ? "before" : "after", slot: x.slot });
+  return out.sort((a, b) => (a.slot ?? 9) - (b.slot ?? 9) || a.when.localeCompare(b.when) || a.kind.localeCompare(b.kind) || a.at - b.at);
+}
 function clearEverything() {
   const snap = snapshot();
-  state.shots = []; state.stores = Array(SLOTS).fill(""); state.storeName = ""; state.settings.baSlot = 0; lastShotId = null;
+  state.shots = []; state.notes = []; lastNoteId = null; lastShotId = null;
+  state.stores = Array(SLOTS).fill(""); state.storeName = ""; state.settings.baSlot = 0;
   save(); renderAll(); scheduleSweep();
   toast("Cleared", snap); haptic("ok");
   return true;
 }
 async function saveAndClear() {
-  const n = state.shots.length;
+  if (hold.session) endHoldSession();
+  const list = allPhotoItems(), n = list.length;
   if (!n) {
-    if (!state.stores.some(Boolean)) { toast("Nothing to clear"); return false; }
-    return (await confirmDialog("Clear the store numbers?", { ok: "Clear", danger: true })) ? clearEverything() : false;
+    if (!state.stores.some(Boolean) && !state.notes.length) { toast("Nothing to clear"); return false; }
+    return (await confirmDialog("Clear the store numbers and the Needed list?", { ok: "Clear", danger: true })) ? clearEverything() : false;
   }
   const choice = await askSaveFirst(n);
   if (!choice) return false;
   if (choice === "clear") return clearEverything();
-  const list = [...state.shots].sort((a, b) => a.slot - b.slot || a.when.localeCompare(b.when) || a.kind.localeCompare(b.kind) || a.at - b.at), count = {}, files = [];
+  const count = {}, files = [];
   for (const x of list) {
     const d = new Date(x.at), key = `${x.slot}|${x.when}|${x.kind}`; count[key] = (count[key] || 0) + 1;
     const blob = await getPhoto(x.photo).catch(() => null);
@@ -3453,29 +3492,30 @@ async function saveAndClear() {
   }
   hideHint();
   return clearEverything();
-}// slot = a store number to clear, or null for every store.
+}
+// After photos only (Before photos are the Needed list's shelf photos; they go with their notes). slot = one store, or null for all.
 function clearShots(slot) {
-  const msg = slot == null ? "Remove the Before/After photos of every store from this phone? Save or send the ones you need first."
-    : `Remove the Before/After photos of ${storeOf(slot) ? `store#${esc(storeOf(slot))}` : "this store"} from this phone? Save or send them first.`;
+  const msg = slot == null ? "Remove the After photos of every store from this phone? Save or send the ones you need first."
+    : `Remove the After photos of ${storeOf(slot) ? `store#${esc(storeOf(slot))}` : "this store"} from this phone? Save or send them first.`;
   return confirmDialog(msg, { ok: "Remove", danger: true }).then(ok => {
     if (!ok) return false;
     const snap = snapshot();
-    state.shots = slot == null ? [] : state.shots.filter(x => x.slot !== slot);
+    state.shots = state.shots.filter(x => x.when === "before" || (slot != null && x.slot !== slot));
     lastShotId = null; save(); renderAll(); scheduleSweep();
     toast("Photos removed", snap);
     return true;
   });
 }
 
-// ---- One photo: zoom, save to the phone's Photos, move, delete ----
+// ---- One After photo: zoom, save to the phone's Photos, move, delete ----
 function openShot(x, onChange) {
-  const name = () => `${KIND_LABEL[x.kind]}-${WHEN_LABEL[x.when]}-${new Date(x.at).toISOString().slice(0, 16).replace(/[-:T]/g, "")}.jpg`;
+  const name = () => `${KIND_LABEL[x.kind]}-${WHEN_LABEL[x.when === "before" ? "before" : "after"]}-${new Date(x.at).toISOString().slice(0, 16).replace(/[-:T]/g, "")}.jpg`;
   const s = el(`<div class="sheet check-sheet shot-sheet"><div class="handle"></div><h2></h2>
     <div class="zoom-stage"><img alt=""><span class="zoom-hint">Pinch to zoom</span></div>
     <div class="row"><button class="btn sm grow" data-a="save">${icon("download")}Save to Photos</button><button class="btn sm grow quiet" data-a="more">More…</button></div>
     <button class="btn primary block" data-a="close">Done</button></div>`);
   const close = openLayer(s, { onClose: () => { if (onChange) onChange(); renderAll(); } });
-  const head = () => { s.querySelector("h2").textContent = `${storeOf(x.slot) ? `#${storeOf(x.slot)} · ` : ""}${WHEN_LABEL[x.when]} · ${KIND_LABEL[x.kind]} · ${new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`; };
+  const head = () => { s.querySelector("h2").textContent = `${storeOf(x.slot) ? `#${storeOf(x.slot)} · ` : ""}${WHEN_LABEL[x.when === "before" ? "before" : "after"]} · ${KIND_LABEL[x.kind]} · ${new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`; };
   head();
   const img = s.querySelector("img");
   zoomStage(img, s.querySelector(".zoom-stage"));
@@ -3491,11 +3531,9 @@ function openShot(x, onChange) {
   };
   s.querySelector('[data-a="more"]').onclick = async () => {
     const pick = await menu("This photo", [
-      { label: x.when === "before" ? "Move to After" : "Move to Before", value: "when" },
       { label: x.kind === "aisle" ? "Move to Display" : "Move to Aisle", value: "kind" },
       { label: "Delete photo", value: "delete", danger: true }]);
-    if (pick === "when") { x.when = x.when === "before" ? "after" : "before"; save(); head(); toast(`Moved to ${WHEN_LABEL[x.when]}`); }
-    else if (pick === "kind") { x.kind = x.kind === "aisle" ? "display" : "aisle"; save(); head(); toast(`Moved to ${KIND_LABEL[x.kind]}`); }
+    if (pick === "kind") { x.kind = x.kind === "aisle" ? "display" : "aisle"; save(); head(); toast(`Moved to ${KIND_LABEL[x.kind]}`); }
     else if (pick === "delete") {
       const snap = snapshot();
       state.shots = state.shots.filter(y => y.id !== x.id); if (lastShotId === x.id) lastShotId = null;
@@ -3503,7 +3541,6 @@ function openShot(x, onChange) {
     }
   };
 }
-
 // ---------- Products: the brand + flavor combinations the list recognizes ----------
 // Size and pack don't matter here: they stay in the words you read. Edits apply to every size of a combination
 // and upload to the shared product list like before.
@@ -3515,12 +3552,14 @@ const rowLabel = v => { const pre = CHILD_LABEL[v.brand]; return pre ? (v.flavor
 function renderProducts() {
   const v = $("#view-products");
   if (!v.querySelector("input")) {
-    v.innerHTML = `<div class="list-head"><h2>Products</h2></div>
+    v.innerHTML = `<button class="btn sm quiet back-btn" data-a="back">‹ More</button>
+      <div class="list-head"><h2>Products</h2></div>
       <p class="hint">What the list recognizes when you talk: a brand and a flavor. Add one if people say something it doesn't know.</p>
       ${searchBox("Search brands and flavors")}<div id="prod-results"></div>
       <div class="dock-space"></div><div class="dock"><button class="fab" data-a="add">${icon("plus")}Add product</button></div>`;
     v.querySelector("input").addEventListener("input", debounce(e => { prodQuery = e.target.value; renderProductResults(); }));
     v.querySelector('[data-a="add"]').onclick = () => editVariation(null, { prefill: prodQuery });
+    v.querySelector('[data-a="back"]').onclick = () => showView("more");
   }
   renderProductResults();
 }
@@ -3600,7 +3639,7 @@ function editVariation(v, { prefill = "" } = {}) {
   };
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 63;
+const REVISION = 64;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -3634,6 +3673,11 @@ function renderMore() {
       <div class="set-row"><label class="grow" for="haptic-taps">Button feedback<br><span class="hint">A light tap on buttons, tabs and switches. iPhones on iOS 26.5 or later don't allow this one, so it only works on older ones.</span></label><input type="checkbox" id="haptic-taps" ${hapticTapsOn() ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
     </div>
     <div class="card">
+      <h3>Products</h3>
+      <p class="hint">The brands and flavors the list recognizes when you talk. Add one if people say something it doesn't know, or retire ones you never stock.</p>
+      <div class="stack" style="margin-top:10px"><button class="btn block" id="btn-products">${icon("grid")}Product list (${variations().length})</button></div>
+    </div>
+    <div class="card">
       <h3>Backup</h3>
       <p class="hint">Saves the product list, settings and store numbers as one small file. Keep it in Files (or send it to yourself), then restore it here on this phone or a new one. Notes and photos aren't included.</p>
       <div class="stack" style="margin-top:10px">
@@ -3645,7 +3689,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelfie 2.0.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 2.1.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
@@ -3658,6 +3702,7 @@ function renderMore() {
     if (!(await confirmDialog("Delete the speech model? Notes already read keep their lists. New notes wait until you download it again.", { ok: "Delete", danger: true }))) return;
     await deleteModels(); toast("Speech model deleted");
   };
+  v.querySelector("#btn-products").onclick = () => showView("products");
   v.querySelector("#btn-backup").onclick = saveBackup;
   v.querySelector("#btn-restore").onclick = pickBackupFile;
   v.querySelector("#btn-reset").onclick = async () => {
