@@ -739,6 +739,11 @@ nav.tabs button:active svg.i { transform: scale(.82); }
 .disp-last { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .disp-last .shelf-thumb { width: 100%; height: auto; aspect-ratio: 1; position: relative; }
 .disp-last .shelf-thumb b { position: absolute; left: 4px; bottom: 4px; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: rgba(0, 0, 0, .65); color: #fff; font-size: 11px; line-height: 20px; text-align: center; }
+
+/* 2.9.1: display groups in the Gallery */
+.disp-h { display: flex; align-items: baseline; gap: 8px; margin: 14px 4px 7px; font-size: 15px; font-weight: 800; }
+.disp-h span { font-size: 12.5px; font-weight: 650; color: var(--muted); }
+.cluster-h + .disp-h { margin-top: 4px; }
 </style>
 </head>
 <body data-view="capture">
@@ -4412,7 +4417,10 @@ function renderGallery() {
   for (const w of ["before", "after"]) {
     const list = itemsOf(slot, w).filter(x => x.kind === kind).reverse();
     html += `<div class="cluster-h">${WHEN_LABEL[w]}<span class="n">${list.length}</span></div>`;
-    html += list.length ? `<div class="shot-grid">${list.map(x => `<button class="shot" data-w="${w}" data-p="${esc(x.photo)}" data-photo-wrap><img data-photo="${esc(x.photo)}" alt=""><span>${esc(timeOf(x.at))}</span></button>`).join("")}</div>`
+    const tile = x => `<button class="shot" data-w="${w}" data-p="${esc(x.photo)}" data-photo-wrap><img data-photo="${esc(x.photo)}" alt=""><span>${esc(timeOf(x.at))}</span></button>`;
+    html += list.length && kind === "display"   // displays: one group each, numbered like the list on the camera
+      ? displayGroups(slot, w).map((g, i) => `<div class="disp-h">Display ${i + 1}<span>${g.items.length} photo${g.items.length === 1 ? "" : "s"}</span></div><div class="shot-grid">${g.items.map(tile).join("")}</div>`).join("")
+      : list.length ? `<div class="shot-grid">${list.map(tile).join("")}</div>`
       : `<p class="muted small" style="margin:4px 0 0">${w === "before" ? `No shelf photos of ${KIND_PLURAL[kind]} for this store yet. Take them on the Before tab.` : `No After photos of ${KIND_PLURAL[kind]} yet. Take them on the After tab.`}</p>`;
   }
   const afterAll = state.shots.filter(x => x.when !== "before");
@@ -4443,10 +4451,10 @@ async function shareBatch(slot, w) {
   const list = itemsOf(slot, w);
   if (!list.length) return;
   const store = storeOf(slot) || await askStore(slot); if (store == null) return;
-  const files = [];
+  const files = [], dnum = displayNumbers();
   for (const [i, x] of list.entries()) {
     const blob = await getPhoto(x.photo).catch(() => null);
-    if (blob) files.push(new File([blob], `${WHEN_LABEL[w]}-${i + 1}-${KIND_LABEL[x.kind]}.jpg`, { type: "image/jpeg" }));
+    if (blob) files.push(new File([blob], `${WHEN_LABEL[w]}-${i + 1}-${(dn => (x.kind === "display" && dn ? `Display${dn[0]}` : KIND_LABEL[x.kind]))(dnum.get(w + "|" + x.photo))}.jpg`, { type: "image/jpeg" }));
   }
   if (!files.length) return toast("These photos are missing");
   const when = new Date(list[0].at).toLocaleDateString([], { month: "short", day: "numeric" });
@@ -4487,6 +4495,12 @@ function allPhotoItems() {
   for (const x of state.shots) out.push({ photo: x.photo, at: x.at, kind: x.kind, when: x.when === "before" ? "before" : "after", slot: x.slot });
   return out.sort((a, b) => (a.slot ?? 9) - (b.slot ?? 9) || a.when.localeCompare(b.when) || a.kind.localeCompare(b.kind) || a.at - b.at);
 }
+// Display photos: "before|photo" → [display number, photo number within it], for file names
+function displayNumbers() {
+  const m = new Map();
+  for (let sl = 0; sl < SLOTS; sl++) for (const w of ["before", "after"]) displayGroups(sl, w).forEach((g, i) => g.items.forEach((it, j) => m.set(w + "|" + it.photo, [i + 1, j + 1])));
+  return m;
+}
 function clearEverything() {
   const snap = snapshot();
   state.shots = []; state.notes = []; lastNoteId = null; lastShotId = null; displayTarget = null;
@@ -4506,11 +4520,11 @@ async function saveAndClear() {
   const choice = await askSaveFirst(n);
   if (!choice) return false;
   if (choice === "clear") { await rememberDisplays(); return clearEverything(); }
-  const count = {}, files = [];
+  const count = {}, files = [], dnum = displayNumbers();
   for (const x of list) {
     const d = new Date(x.at), key = `${x.slot}|${x.when}|${x.kind}`; count[key] = (count[key] || 0) + 1;
     const blob = await getPhoto(x.photo).catch(() => null);
-    if (blob) files.push(new File([blob], `store${(storeOf(x.slot) || "none").replace(/[^A-Za-z0-9-]/g, "")}_${WHEN_LABEL[x.when]}_${KIND_LABEL[x.kind]}_${count[key]}_${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}.jpg`, { type: "image/jpeg" }));
+    if (blob) files.push(new File([blob], `store${(storeOf(x.slot) || "none").replace(/[^A-Za-z0-9-]/g, "")}_${WHEN_LABEL[x.when]}_${(dn => (x.kind === "display" && dn ? `Display${dn[0]}_${dn[1]}` : `${KIND_LABEL[x.kind]}_${count[key]}`))(dnum.get(x.when + "|" + x.photo))}_${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}.jpg`, { type: "image/jpeg" }));
   }
   if (files.length < list.length) { toast("Some photos are missing, so nothing was cleared"); return false; }
   const hideHint = showSaveHint(files.length);
@@ -4784,7 +4798,7 @@ function editVariation(v, { prefill = "" } = {}) {
   };
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 76;
+const REVISION = 77;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -4826,7 +4840,7 @@ function renderMore() {
     </div>
     <p class="sec-foot">One small file with the product list, settings and store numbers. Keep it in Files or send it to yourself. Notes and photos aren't included.</p>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
-    <p class="foot">Shelfie 2.9.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 2.9.1 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
