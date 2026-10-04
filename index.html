@@ -3043,49 +3043,63 @@ function wireRowSwipe(root, sel, cfg) {
 // No dragging pictures out of the app (iOS lifts an image after a long hold); a long hold means select.
 document.addEventListener("dragstart", e => { if (e.target && e.target.closest && e.target.closest("img, .shot, .shelf-thumb, .deck-side")) e.preventDefault(); }, true);
 
-// ---- Swipe a page sideways to change sets (Needed: Aisle / Display; Gallery: Aisle / Display / Backstock) ----
-// cfg: { skip: selector of things that keep their own swipes, list: () => [keys], cur: () => key, go: key => …, off: () => true to ignore,
-//        moving: () => element that follows the finger }
-function wirePageSwipe(roots, cfg) {
-  const sw = { on: false, x0: 0, y0: 0, t0: 0, dx: 0, axis: "", el: null };
-  const start = e => {
-    if (e.touches.length !== 1 || (cfg.off && cfg.off()) || (cfg.skip && e.target.closest(cfg.skip))) { sw.on = false; return; }
-    sw.on = true; sw.x0 = e.touches[0].clientX; sw.y0 = e.touches[0].clientY; sw.t0 = e.timeStamp; sw.dx = 0; sw.axis = ""; sw.el = null;
-  };
-  const move = e => {
+// ---- Swipe sideways anywhere on the screen to change sets (Needed: Aisle / Display; Gallery: Aisle / Display / Backstock) ----
+// Pages like an iPhone: the page follows the finger, then slides out while the next set slides in from the other side.
+// sets: [{ when: () => true on that page, skip: selector that keeps its own swipes, list, cur, go, moving: () => the page, off }]
+function wirePageSwipe(sets) {
+  const NEVER = "#tabs, #layer, #tut, .photo-full, #toast, .hero-photo, input, textarea";   // the tab bar, sheets, the practice run, full-screen photos
+  const sw = { on: false, cfg: null, x0: 0, y0: 0, t0: 0, dx: 0, axis: "", el: null, busy: false };
+  document.addEventListener("touchstart", e => {
+    sw.on = false; if (sw.busy || e.touches.length !== 1) return;
+    const cfg = sets.find(c => c.when()); if (!cfg || (cfg.off && cfg.off())) return;
+    const t = e.target; if (t.closest && (t.closest(NEVER) || (cfg.skip && t.closest(cfg.skip)))) return;
+    if (document.querySelector("#layer .overlay:not(.closing)")) return;
+    Object.assign(sw, { on: true, cfg, x0: e.touches[0].clientX, y0: e.touches[0].clientY, t0: e.timeStamp, dx: 0, axis: "", el: null });
+  }, { passive: true });
+  document.addEventListener("touchmove", e => {
     if (!sw.on) return;
     const dx = e.touches[0].clientX - sw.x0, dy = e.touches[0].clientY - sw.y0;
     if (!sw.axis) {
-      if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.5) { sw.axis = "x"; sw.el = cfg.moving(); if (sw.el) sw.el.style.transition = "none"; }
-      else if (Math.abs(dy) > 12) { sw.on = false; return; }
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.3) { sw.axis = "x"; sw.el = sw.cfg.moving(); if (sw.el) { sw.el.getAnimations().forEach(a => a.cancel()); sw.el.style.transition = "none"; } }
+      else if (Math.abs(dy) > 10) { sw.on = false; return; }
       else return;
     }
     e.preventDefault();
     sw.dx = dx;
-    const list = cfg.list(), i = list.indexOf(cfg.cur()), edge = (dx > 0 && i <= 0) || (dx < 0 && i >= list.length - 1);
-    if (sw.el) sw.el.style.transform = `translateX(${dx * (edge ? 0.15 : 0.35)}px)`;   // at the first / last set it barely moves
-  };
-  const end = e => {
+    const list = sw.cfg.list(), i = list.indexOf(sw.cfg.cur()), edge = (dx > 0 && i <= 0) || (dx < 0 && i >= list.length - 1);
+    if (sw.el) { sw.el.style.transform = `translateX(${edge ? dx * 0.22 : dx}px)`; sw.el.style.opacity = edge ? "" : String(1 - Math.min(0.35, Math.abs(dx) / innerWidth)); }   // at the first / last set it resists
+  }, { passive: false });
+  const settle = el => { el.style.transition = "transform .32s var(--spring), opacity .2s ease"; el.style.transform = ""; el.style.opacity = ""; setTimeout(() => { el.style.transition = ""; }, 340); };
+  document.addEventListener("touchend", e => {
     if (!sw.on || sw.axis !== "x") { sw.on = false; return; }
     sw.on = false;
-    const list = cfg.list(), i = list.indexOf(cfg.cur()), fast = Math.abs(sw.dx) / Math.max(1, e.timeStamp - sw.t0) > 0.45;
-    const dir = (Math.abs(sw.dx) > 70 || (fast && Math.abs(sw.dx) > 30)) ? (sw.dx < 0 ? 1 : -1) : 0, to = list[i + dir];
-    const el = sw.el;
-    if (el) { el.style.transition = "transform .35s var(--spring)"; el.style.transform = ""; setTimeout(() => { el.style.transition = ""; }, 380); }
-    if (!dir || !to) return;
+    const cfg = sw.cfg, el = sw.el, list = cfg.list(), i = list.indexOf(cfg.cur());
+    const fast = Math.abs(sw.dx) / Math.max(1, e.timeStamp - sw.t0) > 0.45;
+    const dir = (Math.abs(sw.dx) > innerWidth * 0.22 || (fast && Math.abs(sw.dx) > 30)) ? (sw.dx < 0 ? 1 : -1) : 0, to = list[i + dir];
+    if (!el) return;
+    if (!dir || !to) return settle(el);
     haptic("tick");
-    cfg.go(to);
-    const fresh = cfg.moving(); if (fresh && !calmMotion()) { fresh.classList.remove("slide-from-left", "slide-from-right"); void fresh.offsetWidth; fresh.classList.add(dir > 0 ? "slide-from-right" : "slide-from-left");
-      setTimeout(() => fresh.classList.remove("slide-from-left", "slide-from-right"), 400); }   // (left on, it would replay the next time the tab opens)
-  };
-  for (const r of roots) {
-    if (!r) continue;
-    r.addEventListener("touchstart", start, { passive: true });
-    r.addEventListener("touchmove", move, { passive: false });
-    r.addEventListener("touchend", end); r.addEventListener("touchcancel", () => (sw.on = false));
-  }
+    const W = innerWidth, from = sw.dx;
+    if (calmMotion() || !el.animate) { el.style.transform = ""; el.style.opacity = ""; cfg.go(to); return; }
+    sw.busy = true;
+    // out with the current set, the way the finger was going…
+    el.style.transition = "";
+    const outMs = Math.max(120, 240 * (1 - Math.abs(from) / W));
+    const outA = el.animate([{ transform: `translateX(${from}px)`, opacity: el.style.opacity || 1 }, { transform: `translateX(${-dir * W}px)`, opacity: 0.2 }],
+      { duration: outMs, easing: "cubic-bezier(.3, 0, .8, .4)", fill: "forwards" });
+    let next = false;
+    const swap = () => { if (next) return; next = true;   // once, whether the animation finishes or (paused by the phone) the timer does
+      cfg.go(to); window.scrollTo(0, 0);
+      const fresh = cfg.moving(); outA.cancel(); el.style.transform = ""; el.style.opacity = "";
+      // …and in with the next one from the other side
+      const inA = fresh.animate([{ transform: `translateX(${dir * W * 0.85}px)`, opacity: 0.2 }, { transform: "translateX(0)", opacity: 1 }], { duration: 340, easing: "cubic-bezier(.2, .9, .25, 1)" });
+      const done = () => { sw.busy = false; }; inA.onfinish = done; inA.oncancel = done;
+      setTimeout(() => { try { if (inA.playState !== "finished") inA.finish(); } catch (err) {} done(); }, 420);   // never left part-way
+    };
+    outA.onfinish = swap; setTimeout(swap, outMs + 120);
+  });
+  document.addEventListener("touchcancel", () => { if (sw.on && sw.el) settle(sw.el); sw.on = false; });
 }
-
 // ---- Hold something for its quick menu (Needed rows, store buttons). A hold that moves is a swipe or a scroll, not a hold. ----
 function wireHold(root, sel, fn, ms = 480) {
   if (!root) return;
@@ -6003,6 +6017,7 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "2.12.3", notes: ["Swipe anywhere on the screen to change sets on the Needed list and in the Gallery, including the empty space below a short list.", "Changing sets slides like flipping pages: the page follows your finger and the next set slides in."] },
   { v: "2.12.2", notes: [
     "Swipe left or right to change sets: Aisle and Display on the Needed list (anywhere except on a row, which keeps its own swipes), and Aisle, Display and Backstock in the Gallery.",
     "Tap the tab you're on to jump back to the top.",
@@ -6083,7 +6098,7 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 85;
+const REVISION = 86;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -6140,7 +6155,7 @@ function renderMore() {
       <button class="item row-btn nav" id="btn-whatsnew">${icon("note")}<span class="grow">What's new</span>${icon("jump")}</button>
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
-    <p class="foot">Shelfie 2.12.2 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 2.12.3 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
@@ -6200,18 +6215,12 @@ wireHold($("#view-needed"), ".need[data-n]:not([data-k='?'])", needRowMenu);   /
 for (const id of ["#cap-slots", "#ba-slots", "#view-gallery"]) wireHold($(id), ".slot[data-slot]", slotMenu);   // hold a store button: its menu
 wireEdgeBack("#view-products.active, #view-changelog.active", () => showView("more"));   // swipe in from the left edge: back to More
 // 2.12.2: swipe sideways to change sets
-wirePageSwipe([$("#view-needed"), $("#kind-dock")], {
-  skip: ".need, .swipe-bg",   // rows keep their own swipes (tick, None in back, delete)
-  list: () => NEED_KINDS, cur: () => curKind(),
-  go: k => { state.settings.needKind = k; save(); renderNeeded(); },
-  moving: () => $("#view-needed"),
-});
-wirePageSwipe([$("#view-gallery")], {
-  off: () => gsel.on,   // not while selecting photos
-  list: () => KINDS, cur: () => gal.kind || baKind(),
-  go: k => { gal.kind = k; renderGallery(); },
-  moving: () => $("#view-gallery"),
-});
+wirePageSwipe([
+  { when: () => view === "needed", skip: ".need, .swipe-bg",   // rows keep their own swipes (tick, None in back, delete)
+    list: () => NEED_KINDS, cur: () => curKind(), go: k => { state.settings.needKind = k; save(); renderNeeded(); }, moving: () => $("#view-needed") },
+  { when: () => view === "gallery", off: () => gsel.on,   // not while selecting photos
+    list: () => KINDS, cur: () => gal.kind || baKind(), go: k => { gal.kind = k; renderGallery(); }, moving: () => $("#view-gallery") },
+]);
 document.querySelectorAll(".cam-lens button").forEach(b => (b.onclick = () => { pulse(b); setLens(b.dataset.lens); }));
 renderAll();
 save();
