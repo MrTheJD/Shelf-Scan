@@ -744,6 +744,14 @@ nav.tabs button:active svg.i { transform: scale(.82); }
 .disp-h { display: flex; align-items: baseline; gap: 8px; margin: 14px 4px 7px; font-size: 15px; font-weight: 800; }
 .disp-h span { font-size: 12.5px; font-weight: 650; color: var(--muted); }
 .cluster-h + .disp-h { margin-top: 4px; }
+
+/* 2.9.2: store on Needed rows, Hide done */
+.store-tag { font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: var(--chip); color: var(--text); font-variant-numeric: tabular-nums; margin-right: 8px; }
+.need .chips-row .store-tag + .chip-sm::before { content: none; }
+.hide-done { margin-left: auto; align-self: center; border: 0; background: none; padding: 6px 2px 6px 10px; color: var(--red); font-size: 14px; font-weight: 750; white-space: nowrap; }
+.hide-done:active { opacity: .6; }
+.need.leaving { animation: rowOut .4s ease forwards; }
+@keyframes rowOut { 40% { opacity: .6; transform: none; } to { opacity: 0; transform: translateX(24px); } }
 </style>
 </head>
 <body data-view="capture">
@@ -1190,19 +1198,25 @@ function freshState() {
     displayMemory: {},                      // store number → { at, photos: [thumbnail ids, one per display] } from the last Clear
     pickUse: { b: {}, f: {} },              // picks per brand (sNorm) and per variation (vKey), so the picker puts them first                       // store numbers used lately, newest first (kept through Clear)            // the five store slots on the Before/After tab: the store number in each
     shots: [],                              // Before/After photos: { id, at, slot:0-4, when:"after" ("before" for photos from 2.0 and earlier), kind:"aisle"|"display", photo }
-    settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", baWhen: "before", baKind: "aisle", baSlot: 0, lens: "wide", hapticShutter: true, hapticTaps: true, wordTiming: false, liveListen: false, asrId: "tiny", models: { asr: false } },   // models: which downloads finished
+    settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", baWhen: "before", baKind: "aisle", baSlot: 0, lens: "wide", hapticShutter: true, hapticTaps: true, hideDone: false, wordTiming: false, liveListen: false, asrId: "tiny", models: { asr: false } },   // models: which downloads finished
     sync: { lastPull: 0, lastPush: 0, error: "" },
   };
 }
+const PRODUCTS_KEY = STORAGE_KEY + ".products";   // the product list on its own, written only when it changes (see save)
 function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) state = JSON.parse(raw);
+    if (state && (state.productsApart || !Array.isArray(state.products))) {
+      const p = JSON.parse(localStorage.getItem(PRODUCTS_KEY) || "null");
+      state.products = Array.isArray(p) ? p : buildSeedProducts();   // never lose notes and photos over a missing product list
+    }
   } catch (e) { /* storage unavailable */ }
-  if (!state || !state.products) state = freshState();
+  if (!state || !Array.isArray(state.products)) state = freshState();
   migrate();
 }
 function migrate() {
+  delete state.productsApart;
   const f = freshState();
   for (const k of ["deleted", "outbox", "sync", "settings"]) state[k] = Object.assign(f[k], state[k] || {});
   state.settings.models = { asr: !!(state.settings.models && state.settings.models.asr) };
@@ -1212,7 +1226,7 @@ function migrate() {
   if (state.settings.wordTiming === undefined) state.settings.wordTiming = false;   // lighting up words while a note plays needs more memory; off unless chosen
   delete state.settings.smart; delete state.settings.smartV; delete state.settings.smartId;   // smart reading was removed in Beta 5.1.1
   state.deleted = { products: state.deleted.products || {} };
-  state.outbox = { products: state.outbox.products || {} };
+  state.outbox = { products: {} };   // 2.0 removed uploading: nothing waits to go anywhere
   delete state.tags; delete state.config;   // left over from the scanning app
   // 2.0: no sync. Teammates' notes and photos, the team settings and the saved database key leave this phone.
   delete state.team; delete state.received;
@@ -1266,8 +1280,14 @@ function migrate() {
   for (const id of DISCONTINUED) { const p = productById(id); if (p && !p.retired && !p.updated) p.retired = true; }
   state.version = 4;
 }
+let savedProdRev = null;
 function save() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  try {
+    const rev = prodRev();
+    if (rev !== savedProdRev) { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(state.products)); savedProdRev = rev; }
+    const { products, ...rest } = state;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...rest, products: [], productsApart: true }));   // an empty list here keeps older versions from resetting
+  }
   catch (e) { toast("Couldn't save. Phone storage is full or blocked."); }
 }
 function snapshot() { return JSON.stringify(state); }
@@ -1496,10 +1516,31 @@ async function photoURL(id) {
 // Fill <img data-photo="id"> placeholders after a render, with the thumbnail when there is one (photos from before 2.0 have none).
 function hydratePhotos(root) {
   root.querySelectorAll("img[data-photo]").forEach(async img => {
-    const u = (await photoURL(thumbId(img.dataset.photo))) || (await photoURL(img.dataset.photo));
+    const id = img.dataset.photo;
+    let u = await photoURL(thumbId(id));
+    if (!u) { u = await photoURL(id); if (u) backfillThumb(id); }   // no thumbnail yet: show the photo, and make one for next time
     if (u) { img.addEventListener("load", () => img.classList.add("in"), { once: true }); img.src = u; if (img.complete && img.naturalWidth) img.classList.add("in"); }
     else img.closest("[data-photo-wrap]")?.classList.add("missing");
   });
+}
+// Missing thumbnails are made one at a time, in the background (each means decoding a full photo).
+const thumbQueue = new Set(); let thumbBusy = false;
+function backfillThumb(id) {
+  if (String(id).startsWith("dm")) return;   // the displays' "last time" pictures are thumbnails already
+  thumbQueue.add(id); if (thumbBusy) return;
+  thumbBusy = true;
+  (async () => {
+    while (thumbQueue.size) {
+      const next = thumbQueue.values().next().value; thumbQueue.delete(next);
+      try {
+        if (await getPhoto(thumbId(next)).catch(() => null)) continue;
+        const full = await getPhoto(next).catch(() => null); if (!full) continue;
+        const t = await makeThumb(full); if (t) await putPhoto(thumbId(next), t);
+      } catch (e) {}
+      await new Promise(r => setTimeout(r, 50));   // leave the phone room to breathe between photos
+    }
+    thumbBusy = false;
+  })();
 }
 // Remove photos and clips no note points to (runs after deletes once the undo window has passed).
 async function sweepMedia() {
@@ -2767,8 +2808,7 @@ function wireNeededSwipe() {
       }, 260);
     } else if (dx > 80 && n) {   // tick: spring back, then the tick pops
       setTimeout(() => {
-        clearBg(); n.ticks = n.ticks || {}; n.ticks[k] = !n.ticks[k]; if (n.ticks[k]) setOut(n, k, false); save(); renderAll();
-        pulse(document.querySelector(`#view-needed .need[data-n="${CSS.escape(n.id)}"][data-k="${CSS.escape(k)}"] .check`));
+        clearBg(); row.classList.remove("swiping"); toggleTick(n, k);
       }, 260);
     } else setTimeout(() => { clearBg(); row.classList.remove("swiping"); }, 480);
   };
@@ -2892,12 +2932,13 @@ function wireSoundBtn() {
 // A backup is one small file: the product list, the settings and the store numbers. "Save a backup" hands it to the phone's share sheet
 // (Save to Files, AirDrop, Mail...), and "Restore from a backup" reads such a file back. Nothing goes to any server.
 // The file format is the same as the GitHub backups of 1.0 to 1.2, so those files can be restored too.
-const BK_SETTINGS = ["beep", "needKind", "captureKind", "baWhen", "baKind", "baSlot", "lens", "wordTiming", "hapticShutter", "hapticTaps", "liveListen"];   // (pad2 is in beforeafter.js)
+const BK_SETTINGS = ["beep", "needKind", "captureKind", "baWhen", "baKind", "baSlot", "lens", "wordTiming", "hapticShutter", "hapticTaps", "liveListen", "hideDone"];   // (pad2 is in beforeafter.js)
 
 function bkSnapshot() {
   const settings = {}; for (const k of BK_SETTINGS) settings[k] = state.settings[k];
   return { v: 1, app: "Shelfie", at: Date.now(), settings, stores: state.stores, storeName: state.storeName || "",
-    products: state.products.map(shareable), deleted: { products: state.deleted.products } };
+    products: state.products.map(shareable), deleted: { products: state.deleted.products },
+    recentStores: state.recentStores || [], pickUse: state.pickUse || {} };
 }
 
 async function saveBackup() {
@@ -2932,6 +2973,11 @@ async function restoreBackup(data) {
   next.deleted = { products: (data.deleted && data.deleted.products) || {} };
   for (const k of BK_SETTINGS) { const x = data.settings && data.settings[k]; if (x !== undefined && typeof x === typeof next.settings[k]) next.settings[k] = x; }   // same kind of value only
   if (!hasShots && Array.isArray(data.stores)) { next.stores = data.stores.slice(0, 5).map(x => String(x || "").slice(0, 20)); next.storeName = String(data.storeName || "").slice(0, 20); }   // photos are filed by slot, so store numbers only change when there are none
+  if (Array.isArray(data.recentStores)) next.recentStores = data.recentStores.map(x => String(x || "").slice(0, 20)).filter(Boolean).slice(0, 8);
+  if (data.pickUse && typeof data.pickUse === "object") {   // counts only: { b: {key: n}, l: {...}, f: {...} }
+    const clean = o => Object.fromEntries(Object.entries(o && typeof o === "object" ? o : {}).filter(([k, v]) => k.length < 200 && Number.isFinite(v) && v >= 0).slice(0, 3000).map(([k, v]) => [k, Math.min(v, 100000)]));
+    next.pickUse = { b: clean(data.pickUse.b), l: clean(data.pickUse.l), f: clean(data.pickUse.f) };
+  }
   state = next; migrate(); save(); renderAll();
   toast("Backup restored", snap);
 }
@@ -3053,18 +3099,29 @@ function paintFeed(v) {
   if (!c || !c.classList.contains("cam-canvas") || v._painting) return;
   const ctx = c.getContext("2d", { alpha: false }); if (!ctx) return;
   v._painting = true;
-  let lastT = -1, lastKey = "";
-  const step = () => {
-    if (!v.srcObject || document.hidden) { v._painting = false; c.classList.remove("live"); c.width = c.width; return; }   // stopped: let go (and clear the picture)
-    const box = c.parentElement, dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const W = Math.round(box.clientWidth * dpr), H = Math.round(box.clientHeight * dpr), vw = v.videoWidth, vh = v.videoHeight;
+  const gen = (v._pgen = (v._pgen || 0) + 1), box = c.parentElement;
+  let W = 0, H = 0, fresh = true, lastKey = "", lastDraw = 0;
+  const measure = () => { const dpr = Math.min(window.devicePixelRatio || 1, 2); W = Math.round(box.clientWidth * dpr); H = Math.round(box.clientHeight * dpr); fresh = true; };
+  measure();
+  const ro = window.ResizeObserver ? new ResizeObserver(measure) : null; if (ro) ro.observe(box);   // measured when the frame changes size, not every frame
+  // a new camera frame: draw it (about 30 a second, not every 60 Hz screen refresh)
+  const vfc = typeof v.requestVideoFrameCallback === "function";
+  const onFrame = () => { fresh = true; if (v._painting && v._pgen === gen) v.requestVideoFrameCallback(onFrame); };
+  if (vfc) v.requestVideoFrameCallback(onFrame);
+  const step = now => {
+    if (!v.srcObject || document.hidden || v._pgen !== gen) {   // stopped: let go (and clear the picture)
+      if (v._pgen === gen) { v._painting = false; c.classList.remove("live"); c.width = c.width; }
+      if (ro) ro.disconnect(); return;
+    }
+    if (!ro) measure();
+    const vw = v.videoWidth, vh = v.videoHeight;
     if (W && H && vw && vh && v.readyState >= 2) {
       const key = W + "x" + H + "/" + vw + "x" + vh;
-      if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
-      if (v.currentTime !== lastT || key !== lastKey) {
+      if (c.width !== W || c.height !== H) { c.width = W; c.height = H; fresh = true; }
+      if (fresh || !vfc || key !== lastKey || now - lastDraw > 100) {   // > 100 ms: a safety redraw, so it can't freeze
         const k = Math.max(W / vw, H / vh), sw = W / k, sh = H / k;
         try { ctx.drawImage(v, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, W, H); c.classList.add("live"); } catch (e) {}
-        lastT = v.currentTime; lastKey = key;
+        fresh = false; lastKey = key; lastDraw = now;
       }
     }
     requestAnimationFrame(step);
@@ -3486,11 +3543,15 @@ async function holdEnd() {
 // Close the shelf: its products are on the list (read now, unless they already are). A shelf with nothing said keeps its photo in the Gallery.
 function endHoldSession(byButton) {
   const s = hold.session; if (!s) return;
-  if (hold.active) holdEnd();
-  hold.session = null; closeHoldMic();
-  if (!s.count) keepPhotoOnly(s.photo, s.slot, s.kind, s.at, "", s.dg);
-  else if (byButton) toast(`${s.count} item${s.count === 1 ? "" : "s"} saved`);
-  renderHoldBar(); pump();
+  const last = hold.active ? holdEnd() : null;   // an item still being said: holdEnd has taken it (and this shelf) already
+  hold.session = null; closeHoldMic(); renderHoldBar();
+  const wrapUp = () => {
+    if (!s.count) keepPhotoOnly(s.photo, s.slot, s.kind, s.at, "", s.dg);
+    else if (byButton) toast(`${s.count} item${s.count === 1 ? "" : "s"} saved`);
+    renderHoldBar(); pump();
+  };
+  if (last) last.then(wrapUp, wrapUp);   // only once that item is saved can we tell whether the shelf had anything
+  else wrapUp();                         // nothing in flight: file it now (Clear lists the photos right after this)
 }
 function renderHoldLive(on) {
   const live = document.getElementById("hold-live"); if (live) live.hidden = !on;
@@ -3659,34 +3720,49 @@ function openPicker(s) {
     };
     // Hold to talk, right here: the same recording as holding the shutter, into this shelf
     const mic = sh.querySelector(".pick-mic"), micT = sh.querySelector(".pick-mic-t");
-    let micTimer = 0, micTick = 0;
+    let micTimer = 0, micTick = 0, micDown = 0, micBefore = null;
+    // the item a recording saved (found by what wasn't there when it started), into the picked row
+    const takeSaid = () => {
+      if (!micBefore) return; const before = micBefore; micBefore = null;
+      const n = state.notes.find(x => !before.has(x.id) && (x.photos || [])[0] === s.photo && !added.includes(x));
+      if (n) { added.push(n); drawTray(); haptic("tick"); }
+    };
     const micUI = on => {
       mic.classList.toggle("rec", on); clearInterval(micTick);
       if (!on) { micT.textContent = "Hold to talk"; return; }
-      const t0 = Date.now(), paint = () => { const s2 = Math.floor((Date.now() - t0) / 1000); micT.textContent = `${Math.floor(s2 / 60)}:${String(s2 % 60).padStart(2, "0")} · let go to add`; };
+      const t0 = Date.now(), paint = () => {
+        if (!hold.active) { micUI(false); setTimeout(takeSaid, 400); return; }   // stopped by itself at 30 seconds
+        const s2 = Math.floor((Date.now() - t0) / 1000); micT.textContent = `${Math.floor(s2 / 60)}:${String(s2 % 60).padStart(2, "0")} · let go to add`;
+      };
       paint(); micTick = setInterval(paint, 250);
     };
     mic.addEventListener("pointerdown", e => {
       if (recorder || hold.active || hold.session !== s) return;
       try { mic.setPointerCapture(e.pointerId); } catch (_) {}
-      hold.pressing = true; hold.micReady = openHoldMic();
-      clearTimeout(micTimer); micTimer = setTimeout(() => { if (hold.pressing) { holdStart(); micUI(true); } }, 150);
+      micDown = Date.now(); hold.pressing = true; hold.micReady = openHoldMic();
+      clearTimeout(micTimer); micTimer = setTimeout(() => { if (hold.pressing) { micBefore = new Set(state.notes.map(n => n.id)); holdStart(); micUI(true); } }, 150);
     });
     const micUp = async () => {
       hold.pressing = false; clearTimeout(micTimer);
-      if (!hold.active) return;
+      if (!hold.active) {
+        if (micBefore) { micUI(false); setTimeout(takeSaid, 400); }   // it had already stopped by itself
+        else if (micDown && Date.now() - micDown < 400) { toast("Hold the button while you say the product"); pulse(mic); if (!hold.session || !hold.session.count) closeHoldMic(); }
+        micDown = 0; return;
+      }
+      micDown = 0;
       micUI(false);
-      const before = new Set(state.notes.map(n => n.id));
       await holdEnd();
-      const n = state.notes.find(x => !before.has(x.id) && (x.photos || [])[0] === s.photo);
-      if (n) { added.push(n); drawTray(); haptic("tick"); }
+      takeSaid();
     };
     mic.addEventListener("pointerup", micUp); mic.addEventListener("pointercancel", micUp);
     mic.addEventListener("contextmenu", e => e.preventDefault());
     let done = false;
-    const finish = () => {
+    const finish = async () => {
       if (done) return; done = true;
-      clearTimeout(micTimer); clearInterval(micTick); if (hold.active) holdEnd();
+      clearTimeout(micTimer); clearInterval(micTick); hold.pressing = false;
+      if (hold.active) {   // closed while Hold to talk was down: keep what was said, then decide about the shelf
+        micUI(false); await holdEnd(); takeSaid();
+      }
       if (hold.session === s && s.reopened) {   // a reopened shelf: just say what was added
         hold.session = null; closeHoldMic(); renderHoldBar(); pump();
         if (added.length) toast(`Added ${added.length} more item${added.length === 1 ? "" : "s"} to that shelf`);
@@ -3984,6 +4060,35 @@ async function shareOuts() {
   try { if (navigator.share) { await navigator.share({ text }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
   try { await navigator.clipboard.writeText(text); toast("Copied. Paste it into a text."); } catch (e) { toast("Sharing isn't available here"); }
 }
+// Tick (or untick) one appearance of a note, updating that row and the counts in place.
+function toggleTick(n, k) {
+  n.ticks = n.ticks || {};
+  const wasOut = isOut(n, k);
+  n.ticks[k] = !n.ticks[k]; if (n.ticks[k]) setOut(n, k, false);
+  save();
+  const sel = `#view-needed .need[data-n="${CSS.escape(n.id)}"][data-k="${CSS.escape(k)}"]`, rows = document.querySelectorAll(sel);
+  if (wasOut || view !== "needed" || !rows.length) renderAll();   // the orange bar changes too: draw it all
+  else {
+    const on = !!n.ticks[k];
+    rows.forEach(r => { r.classList.toggle("done", on); const c = r.querySelector(".check"); if (c) c.classList.toggle("on", on); });
+    refreshNeedCounts();
+    if (on && state.settings.hideDone === true) { rows.forEach(r => r.classList.add("leaving")); setTimeout(() => { if (view === "needed") renderNeeded(); }, 420); }
+  }
+  pulse(document.querySelector(sel + " .check"));
+}
+// The numbers that change with a tick: "N to go", the switch's counts, the tab badge and the camera's Needed badge.
+function refreshNeedCounts() {
+  const kind = curKind(), notes = listed(kind), left = notes.filter(n => !noteDone(n)).length;
+  const head = document.querySelector("#view-needed .list-head .muted"); if (head) head.textContent = notes.length ? `${left} to go` : "";
+  document.querySelectorAll("#kind-seg [data-k]").forEach(b => {
+    const c = openCount(b.dataset.k); let s = b.querySelector(".kcount");
+    if (!c) { if (s) s.remove(); return; }
+    if (!s) { s = document.createElement("span"); s.className = "kcount"; b.append(" ", s); }
+    if (s.textContent !== String(c)) { s.textContent = c; bump(s); }
+  });
+  const open = NEED_KINDS.reduce((t, k) => t + openCount(k), 0);
+  for (const id of ["need-badge", "deck-badge"]) { const b = document.getElementById(id); if (b) { b.hidden = !open; b.textContent = open; } }
+}
 function wireOutBar(v) { const b = v.querySelector('[data-a="out-share"]'); if (b) b.onclick = e => { e.stopPropagation(); shareOuts(); }; }
 const listed = kind => state.notes.filter(n => noteKind(n) === kind && n.status === "done" && n.text);
 const openCount = kind => listed(kind).filter(n => !noteDone(n)).length;
@@ -4010,20 +4115,30 @@ function renderNeeded() {
   const oc = {}; for (const k of NEED_KINDS) oc[k] = openCount(k);
   const dock = `<div class="dock-space"></div>`;
   $("#kind-dock").innerHTML = `<div class="seg" id="kind-seg">${NEED_KINDS.map(k => `<button data-k="${k}" class="${k === kind ? "active" : ""}">${KIND_LABEL[k]}${oc[k] ? ` <span class="kcount">${oc[k]}</span>` : ""}</button>`).join("")}</div>`;
-  let html = `<div class="list-head"><h2>Needed</h2><span class="muted small">${notes.length ? `${open} to go` : ""}</span></div>`;
+  const hide = state.settings.hideDone === true, rowDone = r => !!(r.n.ticks || {})[r.a.key] || isOut(r.n, r.a.key);
+  const groups = neededGroups(kind), doneRows = groups.reduce((t, c) => t + c.rows.filter(rowDone).length, 0);
+  needMultiStore = new Set(notes.map(n => storeOf(n.slot)).filter(Boolean)).size > 1;
+  const hideBtn = notes.length ? `<button class="hide-done" data-a="hide-done">${hide ? `Show done${doneRows ? ` (${doneRows})` : ""}` : "Hide done"}</button>` : "";
+  let html = `<div class="list-head"><h2>Needed</h2><span class="muted small">${notes.length ? `${open} to go` : ""}</span>${hideBtn}</div>`;
   if (q.text) html += `<div class="banner ${q.busy ? "busy" : ""}"><span class="spin"></span><span class="grow">${esc(q.text)}</span></div>`;
   const outs = outItems().length;
   if (outs) html += `<div class="out-bar"><span class="out-dot"></span><span class="grow"><b>${outs}</b> none in the back</span><button class="btn sm" data-a="out-share">${icon("upload")}Text it</button></div>`;
   const waiting = state.notes.filter(n => noteKind(n) === kind && (n.status === "empty" || n.status === "error"));   // a photo with no words yet
   if (!notes.length && !waiting.length) {
     html += `<div class="empty">${icon("list")}<h3>Nothing needed ${{ aisle: "in aisles", display: "on displays", backstock: "from the back" }[kind]} yet</h3><p>Snap ${{ aisle: "a shelf", display: "a display", backstock: "the back stock" }[kind]} and say what's missing. It lands here.</p></div>`;
-    v.innerHTML = html + dock; wireKindSeg(v); wireOutBar(v); v.onclick = null; return;
+    v.innerHTML = html + dock; wireKindSeg(v); wireOutBar(v);
+    v.onclick = e => { if (e.target.closest('[data-a="hide-done"]')) { state.settings.hideDone = !hide; save(); renderNeeded(); } };
+    return;
   }
   if (waiting.length) html += `<div class="group-h">${icon("mic")}Needs a recording</div><div class="list">${waiting.map(waitRow).join("")}</div>`;
-  for (const c of neededGroups(kind)) {
-    html += c.v ? `<div class="cluster-h">${esc(vName(c.v))}<span class="n">${c.rows.length}</span></div>` : `<div class="group-h">${icon("warn")}Check the text</div>`;
-    html += `<div class="list">${c.rows.map(r => needRow(r.n, r.a)).join("")}</div>`;
+  let shown = 0;
+  for (const c of groups) {
+    const rows = hide ? c.rows.filter(r => !rowDone(r)) : c.rows; if (!rows.length) continue;
+    shown += rows.length;
+    html += c.v ? `<div class="cluster-h">${esc(vName(c.v))}<span class="n">${rows.length}</span></div>` : `<div class="group-h">${icon("warn")}Check the text</div>`;
+    html += `<div class="list">${rows.map(r => needRow(r.n, r.a)).join("")}</div>`;
   }
+  if (hide && !shown && doneRows) html += `<div class="empty">${icon("check")}<h3>All done here</h3><p>Tap Show done to see what you've pulled.</p></div>`;
   html += `<button class="btn block quiet" id="btn-clear-all" style="margin-top:24px">Clear the whole list</button>`;
   v.innerHTML = html + dock; wireKindSeg(v); wireOutBar(v);
   // rows that weren't on screen before slide in (the first draw never animates)
@@ -4033,12 +4148,12 @@ function renderNeeded() {
   hydratePhotos(v);
   v.onclick = e => {
     if (e.target.closest("#btn-clear-all")) return clearAllNotes();
+    if (e.target.closest('[data-a="hide-done"]')) { state.settings.hideDone = !hide; save(); renderNeeded(); return; }
     const row = e.target.closest(".need[data-n]"); if (!row) return;
     const n = state.notes.find(x => x.id === row.dataset.n); if (!n) return;
     if (e.target.closest('[data-a="play"]')) return playerToggle(n);
     if (e.target.closest('[data-a="toggle"]')) {
-      n.ticks = n.ticks || {}; n.ticks[row.dataset.k] = !n.ticks[row.dataset.k]; if (n.ticks[row.dataset.k]) setOut(n, row.dataset.k, false); save(); renderAll();
-      pulse(document.querySelector(`#view-needed .need[data-n="${CSS.escape(n.id)}"][data-k="${CSS.escape(row.dataset.k)}"] .check`));
+      toggleTick(n, row.dataset.k);
     }
     else openCheck(n, row.dataset.k);
   };
@@ -4056,8 +4171,10 @@ function markText(n, pid) {
 }
 const chipsFor = (n, exceptVk) => { const bm = brandMap(); return [...new Set((n.parts || []).map(p => p.vk))].filter(k => k !== exceptVk && bm.has(k))
   .map(k => `<span class="chip-sm">${esc(bm.get(k))}</span>`).join(""); };
+let needMultiStore = false;   // set by renderNeeded: the list holds more than one store, so rows say which
 function needRow(n, a) {
-  const done = !!(n.ticks || {})[a.key], out = isOut(n, a.key), chips = chipsFor(n, a.vk) + (out ? `<span class="out-tag">None in back</span>` : "");
+  const st = needMultiStore && Number.isInteger(n.slot) ? storeOf(n.slot) : "";
+  const done = !!(n.ticks || {})[a.key], out = isOut(n, a.key), chips = (st ? `<span class="store-tag">#${esc(st)}</span>` : "") + chipsFor(n, a.vk) + (out ? `<span class="out-tag">None in back</span>` : "");
   return `<div class="item need tap${done ? " done" : ""}${out ? " out" : ""}${n.flag ? " flagged" : ""}" data-n="${esc(n.id)}" data-k="${esc(a.key)}">
     <div class="shelf-thumb" data-photo-wrap>${n.photos[0] ? `<img data-photo="${esc(n.photos[0])}" alt="">` : icon("note")}</div>
     <div class="grow"><div class="blurb">${noteTextHTML(n, a.vk)}</div>${chips || n.flag ? `<div class="chips-row">${chips}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}</div>` : ""}</div>
@@ -4098,7 +4215,7 @@ function openCheck(n, focusPid) {
   const draw = () => {
     s.querySelector("#ck-heard").innerHTML = n.heard && n.heard !== n.text ? `Heard as “${esc(n.heard)}”` : "";
     s.querySelector("#ck-text").innerHTML = n.text ? `“${noteTextHTML(n, focusPid && focusPid !== "?" ? focusPid : null)}”` : "(no words: typed or no recording)";
-    s.querySelector("#ck-chips").innerHTML = `<span class="pill kind ${noteKind(n)}">${KIND_LABEL[noteKind(n)]}</span>${chipsFor(n, null)}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}${outKeys().some(k => isOut(n, k)) ? `<span class="out-tag">None in back</span>` : ""}`;
+    s.querySelector("#ck-chips").innerHTML = `<span class="pill kind ${noteKind(n)}">${noteKind(n) === "display" ? displayLabel(n.photos[0], n.slot, "before") : KIND_LABEL[noteKind(n)]}</span>${chipsFor(n, null)}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}${outKeys().some(k => isOut(n, k)) ? `<span class="out-tag">None in back</span>` : ""}`;
     s.querySelector("#ck-actions").innerHTML = `<button class="btn sm grow" data-a="edit">${icon("note")}Edit text</button><button class="btn sm grow quiet" data-a="more">More…</button>`;
     const a = s.querySelector("#ck-actions");
     a.querySelector('[data-a="edit"]').onclick = async () => { await editText(n); draw(); };
@@ -4346,6 +4463,7 @@ function askStore(slot) {
 async function pickSlot(i) {
   if (i === baSlot() && storeOf(i)) { await askStore(i); return; }
   if (hold.session) endHoldSession();   // a held shelf belongs to the store it was started in
+  if (displayTarget && displayTarget.slot !== i) displayTarget = null;   // "+ Photo" was for the other store
   state.settings.baSlot = i; lastShotId = null;
   if (storeOf(i)) state.storeName = storeOf(i);
   save(); renderAll(); document.querySelectorAll(`#ba-slots [data-slot="${i}"], #cap-slots [data-slot="${i}"]`).forEach(b => pulse(b));
@@ -4562,7 +4680,7 @@ function openShot(x, onChange) {
     <div class="row"><button class="btn sm grow" data-a="save">${icon("download")}Save to Photos</button><button class="btn sm grow quiet" data-a="more">More…</button></div>
     <button class="btn primary block" data-a="close">Done</button></div>`);
   const close = openLayer(s, { onClose: () => { if (onChange) onChange(); renderAll(); } });
-  const head = () => { s.querySelector("h2").textContent = `${storeOf(x.slot) ? `#${storeOf(x.slot)} · ` : ""}${WHEN_LABEL[x.when === "before" ? "before" : "after"]} · ${KIND_LABEL[x.kind]} · ${new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`; };
+  const head = () => { s.querySelector("h2").textContent = `${storeOf(x.slot) ? `#${storeOf(x.slot)} · ` : ""}${WHEN_LABEL[x.when === "before" ? "before" : "after"]} · ${x.kind === "display" ? displayLabel(x.photo, x.slot, x.when === "before" ? "before" : "after") : KIND_LABEL[x.kind]} · ${new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`; };
   head();
   const img = s.querySelector("img");
   zoomStage(img, s.querySelector(".zoom-stage"));
@@ -4685,6 +4803,12 @@ async function rememberDisplays() {
   }
   save();
 }
+
+// "Display 2" for a display photo (the same numbering as the displays list and the Gallery), or just "Display" if it can't be placed.
+function displayLabel(photo, slot, when) {
+  const i = Number.isInteger(slot) ? displayGroups(slot, when).findIndex(g => g.items.some(x => x.photo === photo)) : -1;
+  return i < 0 ? "Display" : `Display ${i + 1}`;
+}
 // ---------- Products: the brand + flavor combinations the list recognizes ----------
 // Size and pack don't matter here: they stay in the words you read. Edits apply to every size of a combination
 // and upload to the shared product list like before.
@@ -4798,7 +4922,7 @@ function editVariation(v, { prefill = "" } = {}) {
   };
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 77;
+const REVISION = 78;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -4840,7 +4964,7 @@ function renderMore() {
     </div>
     <p class="sec-foot">One small file with the product list, settings and store numbers. Keep it in Files or send it to yourself. Notes and photos aren't included.</p>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
-    <p class="foot">Shelfie 2.9.1 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 2.9.2 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
