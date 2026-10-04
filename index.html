@@ -542,6 +542,13 @@ nav.tabs button:active svg.i { transform: scale(.82); }
 /* 2.4.0: Needed's switch lives outside the page */
 #kind-dock[hidden] { display: none; }
 #kind-dock:not([hidden]) { animation: fade .25s ease both; }
+
+/* 2.4.2: the hold bar sits over the hint's space under the shutter (it was taller, so the shutter moved up while held) */
+#view-capture .deck { position: relative; }
+#view-capture #shutter-label { min-height: 44px; display: flex; align-items: center; justify-content: center; }
+#view-capture #hold-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 44px; padding-top: 0; padding-bottom: 0; box-sizing: border-box; }
+#view-capture #hold-bar .btn { min-height: 32px; padding-top: 0; padding-bottom: 0; }
+.slot.act small { font-weight: 800; }
 </style>
 </head>
 <body data-view="capture">
@@ -1024,7 +1031,7 @@ function migrate() {
   // Work that was interrupted (app closed, phone ran low on memory) goes back in the queue.
   for (const n of state.notes) {
     n.photos = n.photos || [];
-    if (n.kind !== "display" && n.kind !== "backstock") n.kind = "aisle";   // notes from before aisle/display were separate
+    if (n.kind !== "display") n.kind = "aisle";   // notes are Aisle or Display (Backstock is photo only)   // notes from before aisle/display were separate
     if (n.status === "reading") n.status = "heard";
     // Beta 5.1.2: a note is its words plus the products the matcher found in them (no quantities or dots).
     delete n.items; delete n.rev; delete n.edited;
@@ -2812,6 +2819,7 @@ async function grabPhoto(vid = "#cam-video", boxId = "#camera") {
 async function onShutter(forcePhone, kind = "aisle") {
   if (recorder) return;
   if (!storeOf(baSlot())) { await askStore(baSlot()); return; }   // the first tap only asks for the store number; the next one takes the photo
+  if (kind === "backstock") return snapBackstock(forcePhone);
   if (hold.session) endHoldSession();
   primeShutter(); haptic("shutter"); pulse($("#btn-shutter"), "fire", 600);
   let blob = null;
@@ -3121,7 +3129,7 @@ function wireHoldToTalk() {
   const wrap = document.querySelector("#view-capture .shutter-wrap"), btn = $("#btn-shutter");
   if (!wrap) return;
   wrap.addEventListener("pointerdown", () => {
-    if (btn.disabled || recorder || !cam.stream || !storeOf(baSlot())) return;   // no store number yet: the tap asks for it instead
+    if (btn.disabled || recorder || !cam.stream || !storeOf(baSlot()) || captureKind() === "backstock") return;   // Backstock is a plain tap   // no store number yet: the tap asks for it instead
     hold.pressing = true; hold.micReady = openHoldMic();   // the microphone opens while the hold is being recognized
     clearTimeout(hold.timer); hold.timer = setTimeout(() => { if (hold.pressing) holdStart(); }, HOLD_MS);
   });
@@ -3189,7 +3197,7 @@ function renderHoldLive(on) {
 }
 function renderHoldBar() {
   const bar = document.getElementById("hold-bar"), s = hold.session; if (!bar) return;
-  bar.hidden = !s; $("#shutter-label").hidden = !!s;
+  bar.hidden = !s; $("#shutter-label").style.visibility = s ? "hidden" : "";   // the hint keeps its space; the bar sits over it
   if (s) $("#hold-text").textContent = s.count ? `${s.count} item${s.count === 1 ? "" : "s"} for this shelf. Hold again for the next.` : "Keep holding and say the product.";
 }
 // ---------- Playing a note back, with each word lit up as it is said ----------
@@ -3339,8 +3347,8 @@ function showView(v) {
   window.scrollTo(0, 0); dockTitle();
 }
 function renderAll() {
-  $("#hdr-store").textContent = state.storeName ? "Store " + state.storeName : "";
-  const open = KINDS.reduce((t, k) => t + openCount(k), 0);
+  const hs = storeOf(baSlot()); $("#hdr-store").textContent = hs ? "Store " + hs : "";   // the store that's open on the camera tabs
+  const open = NEED_KINDS.reduce((t, k) => t + openCount(k), 0);
   const badge = $("#need-badge");
   if (open && String(open) !== badge.textContent) bump(badge);
   badge.hidden = !open; badge.textContent = open;
@@ -3380,9 +3388,10 @@ function renderCapture() {
   setModeClass(sec, ck);
   $("#cap-band").textContent = KIND_LABEL[ck].toUpperCase();
   $("#shutter-label").textContent = !storeOf(baSlot()) ? "Tap the shutter or a store slot above to set the store number."
+    : ck === "backstock" ? "Tap the shutter to photograph the back stock. No voice note needed."
     : cam.stream ? "Hold the shutter and say a product. Hold again for the next." : "Tap the shutter to use the phone camera.";
   renderHoldBar();
-  $("#btn-shutter").setAttribute("aria-label", `Hold to photograph the ${ck} and say a product`);
+  $("#btn-shutter").setAttribute("aria-label", ck === "backstock" ? "Take a photo of the back stock" : `Hold to photograph the ${ck} and say a product`);
   const q = queueState();
   const vb = $("#model-banner");
   if (state.settings.voiceHold) {
@@ -3408,7 +3417,7 @@ function renderCapture() {
     lb.onclick = () => openCheck(last);
     hydratePhotos(lb);
   }
-  const open = KINDS.reduce((t, k) => t + openCount(k), 0), db = $("#deck-badge");
+  const open = NEED_KINDS.reduce((t, k) => t + openCount(k), 0), db = $("#deck-badge");
   db.hidden = !open; db.textContent = open;
   $("#btn-open-needed").onclick = () => showView("needed");
   const line = $("#queue-line");
@@ -3431,10 +3440,11 @@ function noteSummary(n) {
 const KINDS = ["aisle", "display", "backstock"];
 const normKind = k => (k === "display" || k === "backstock" ? k : "aisle");
 const noteKind = n => normKind(n.kind);
+const NEED_KINDS = ["aisle", "display"];   // Backstock is photo only, so it never has anything on the Needed list
 const KIND_LABEL = { aisle: "Aisle", display: "Display", backstock: "Backstock" };
 const KIND_PLURAL = { aisle: "aisles", display: "displays", backstock: "backstock" };
 const captureKind = () => normKind(state.settings.captureKind);
-const curKind = () => normKind(state.settings.needKind);
+const curKind = () => (state.settings.needKind === "display" ? "display" : "aisle");
 // "Move to …" menu items for the two kinds something isn't, and the camera tab colours for the kind that's on
 const kindMoves = cur => KINDS.filter(k => k !== cur).map(k => ({ label: `Move to ${KIND_LABEL[k]}`, value: "kind:" + k }));
 const setModeClass = (sec, k) => KINDS.forEach(x => sec.classList.toggle("mode-" + x, x === k));
@@ -3474,9 +3484,9 @@ function renderNeeded() {
   const notes = listed(kind), open = notes.filter(n => !noteDone(n)).length;
   // The Aisle | Display | Backstock switch is docked at the bottom, where a thumb can reach it. It sits outside the page (#kind-dock),
   // so the page sliding in can't carry it up over the list.
-  const oc = {}; for (const k of KINDS) oc[k] = openCount(k);
+  const oc = {}; for (const k of NEED_KINDS) oc[k] = openCount(k);
   const dock = `<div class="dock-space"></div>`;
-  $("#kind-dock").innerHTML = `<div class="seg" id="kind-seg">${KINDS.map(k => `<button data-k="${k}" class="${k === kind ? "active" : ""}">${KIND_LABEL[k]}${oc[k] ? ` <span class="kcount">${oc[k]}</span>` : ""}</button>`).join("")}</div>`;
+  $("#kind-dock").innerHTML = `<div class="seg" id="kind-seg">${NEED_KINDS.map(k => `<button data-k="${k}" class="${k === kind ? "active" : ""}">${KIND_LABEL[k]}${oc[k] ? ` <span class="kcount">${oc[k]}</span>` : ""}</button>`).join("")}</div>`;
   let html = `<div class="list-head"><h2>Needed</h2><span class="muted small">${notes.length ? `${open} to go` : ""}</span></div>`;
   if (q.text) html += `<div class="banner ${q.busy ? "busy" : ""}"><span class="spin"></span><span class="grow">${esc(q.text)}</span></div>`;
   const waiting = state.notes.filter(n => noteKind(n) === kind && (n.status === "empty" || n.status === "error"));   // a photo with no words yet
@@ -3569,7 +3579,7 @@ function openCheck(n, focusPid) {
     a.querySelector('[data-a="more"]').onclick = async () => {
       const pick = await menu("This note", [
         { label: "Record again", value: "rerecord" }, { label: "Add another photo", value: "photo" },
-        ...kindMoves(noteKind(n)), { label: "Delete note", value: "delete", danger: true }]);
+        ...kindMoves(noteKind(n)).filter(m => m.value !== "kind:backstock"), { label: "Delete note", value: "delete", danger: true }]);
       if (pick === "rerecord") { close(); startRecording({ note: n }); }
       else if (pick === "photo") { await addPhoto(n); showPhoto(); }
       else if (String(pick).startsWith("kind:")) { n.kind = normKind(pick.slice(5)); save(); renderAll(); toast(`Moved to ${KIND_LABEL[n.kind]}`); draw(); }
@@ -3653,7 +3663,7 @@ const slotCount = i => beforeItems(i).length + afterItems(i).length;
 
 // The store buttons: the store number (or + when the slot is empty) and how many photos it holds, then the Save and clear button.
 function slotsHTML(active) {
-  const act = `<button class="slot act" data-act="save" aria-label="Save every photo to this phone, then clear the stores, photos and Needed list">${icon("download")}<small>Save</small></button>`;
+  const act = `<button class="slot act" data-act="save" aria-label="Clear the stores, photos and Needed list (you can save the photos first)">${icon("x")}<small>Clear</small></button>`;
   return Array.from({ length: SLOTS }, (_, i) => {
     const st = storeOf(i), n = slotCount(i);
     return `<button class="slot${i === active ? " active" : ""}" data-slot="${i}" aria-label="${st ? `Store ${esc(st)}` : `Empty store slot ${i + 1}`}${n ? `, ${n} photo${n === 1 ? "" : "s"}` : ""}"><b>${st ? esc(st) : "+"}</b><small>${n || ""}</small></button>`;
@@ -3697,13 +3707,21 @@ function askStore(slot) {
     const inp = d.querySelector("input"); inp.value = storeOf(slot);
     const clean = v => String(v).trim().replace(/^store\s*#?\s*/i, "").replace(/^#\s*/, "");
     let done = false;
-    const close = openLayer(d, { center: true, sticky: true, onClose: () => { if (!done) resolve(null); } });
+    const btns = () => document.querySelectorAll(`#cap-slots [data-slot="${slot}"], #ba-slots [data-slot="${slot}"], #gal-slots [data-slot="${slot}"]`);
+    // what's typed shows at the top straight away (the store button and the header), and goes back if cancelled
+    inp.oninput = () => {
+      const v = clean(inp.value);
+      btns().forEach(b => { const t = b.querySelector("b"); if (t) t.textContent = v || "+"; });
+      if (slot === baSlot()) $("#hdr-store").textContent = v ? "Store " + v : "";
+    };
+    const close = openLayer(d, { center: true, sticky: true, onClose: () => { if (!done) { renderAll(); resolve(null); } } });
     const go = () => {
       const v = clean(inp.value); if (!v) { inp.focus(); return; }
       done = true; state.stores[slot] = v; if (slot === baSlot()) state.storeName = v;
       save(); renderAll(); close(); resolve(v);
+      btns().forEach(b => pulse(b));
     };
-    d.querySelector('[data-a="c"]').onclick = () => { done = true; close(); resolve(null); };
+    d.querySelector('[data-a="c"]').onclick = () => { done = true; close(); renderAll(); resolve(null); };
     d.querySelector('[data-a="ok"]').onclick = go;
     inp.onkeydown = e => { if (e.key === "Enter") go(); };
     setTimeout(() => { inp.focus(); inp.select(); }, 50);
@@ -3732,6 +3750,22 @@ async function onShutterBA(forcePhone) {
   try { await savePhoto(shot.photo, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
   state.shots.unshift(shot); lastShotId = shot.id; save(); renderAll(); pulse($("#ba-last"));
   toast(`Saved to store#${storeOf(slot)} · After · ${KIND_LABEL[shot.kind]}`);
+}
+
+// Before tab, Backstock: one tap, one photo, filed as a Before picture of the store (no voice note).
+async function snapBackstock(forcePhone) {
+  if (hold.session) endHoldSession();
+  const slot = baSlot();
+  primeShutter(); haptic("shutter"); pulse($("#btn-shutter"), "fire", 600);
+  let blob = null;
+  if (cam.stream && !forcePhone) { blob = await grabSharp(); box_flash(); if (blob) flyToThumb(blob, $("#camera"), $("#btn-open-needed")); }
+  else blob = await cameraPhoto();
+  if (!blob) { if (cam.stream && !forcePhone) toast("The camera isn't ready yet. Try again."); return; }
+  playShutter();
+  const shot = { id: newId("s"), at: Date.now(), slot, when: "before", kind: "backstock", photo: newId("p") };
+  try { await savePhoto(shot.photo, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
+  state.shots.unshift(shot); save(); renderAll();
+  toast(`Saved to store#${storeOf(slot)} · Before · Backstock`);
 }
 
 function wireBA() {
@@ -4021,7 +4055,7 @@ function editVariation(v, { prefill = "" } = {}) {
   };
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 67;
+const REVISION = 68;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -4071,7 +4105,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelfie 2.4.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 2.4.1 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
@@ -4102,13 +4136,13 @@ document.body.dataset.view = view;   // the layout keys off this (it also works 
 document.querySelectorAll("#tabs button").forEach(b => (b.onclick = () => showView(b.dataset.view)));
 $("#btn-cam-start").onclick = startCamera;
 $("#btn-cam-stop").onclick = () => { state.settings.camOK = false; save(); stopCamera(); };
-document.querySelectorAll("#cap-seg button").forEach(b => (b.onclick = () => { state.settings.captureKind = b.dataset.k; save(); renderCapture(); }));
+document.querySelectorAll("#cap-seg button").forEach(b => (b.onclick = () => { if (hold.session && b.dataset.k !== captureKind()) endHoldSession(); state.settings.captureKind = b.dataset.k; save(); renderCapture(); }));
 // The shutter is held, not tapped: a hold takes the shelf photo and records one product (see hold.js). A tap just says so, except with no
 // live camera, where it opens the iPhone camera app and then the recording sheet.
 $("#btn-shutter").onclick = () => {
   if (hold.justHeld) { hold.justHeld = false; return; }   // the tap that ends a hold isn't a shutter tap
   if (!storeOf(baSlot())) { askStore(baSlot()); return; }   // like the After tab: the first tap asks for the store number, nothing else
-  if (!cam.stream) return onShutter(false, captureKind());
+  if (!cam.stream || captureKind() === "backstock") return onShutter(false, captureKind());
   toast("Hold the shutter while you say each product"); pulse($("#shutter-label"));
 };
 wireHoldToTalk();
