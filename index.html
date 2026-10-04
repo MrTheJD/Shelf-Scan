@@ -881,6 +881,23 @@ body[data-nav="push"] #view-changelog.active { animation: pushIn .5s cubic-bezie
 .addr-pick .grow { font-size: 14.5px; font-weight: 600; line-height: 1.3; }
 .addr-pick .set-val { color: var(--red); font-weight: 800; }
 .addr-note { margin-top: 8px; font-size: 12px; }
+
+/* 2.12.2: the next set slides in from the side it was swiped to */
+.view.slide-from-right { animation: slideFromRight .34s var(--ease-out) both; }
+.view.slide-from-left { animation: slideFromLeft .34s var(--ease-out) both; }
+@keyframes slideFromRight { from { opacity: .3; transform: translateX(46px); } to { opacity: 1; transform: none; } }
+@keyframes slideFromLeft { from { opacity: .3; transform: translateX(-46px); } to { opacity: 1; transform: none; } }
+
+/* ---------- 2.12.2: quick moves ---------- */
+.need, .slot { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.cluster-h.fold { cursor: pointer; -webkit-user-select: none; user-select: none; }
+.cluster-h.fold:active { opacity: .6; }
+.fold-chev { margin-left: auto; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform .3s var(--spring); margin-right: 6px; }
+.cluster-h.folded .fold-chev { transform: rotate(-45deg); }
+.cluster-h.folded { opacity: .75; margin-bottom: 4px; }
+.pf-count { position: absolute; left: 50%; top: calc(var(--safe-t) + 18px); transform: translateX(-50%); z-index: 2; padding: 4px 12px; border-radius: 999px; background: rgba(0, 0, 0, .5); color: #fff; font-size: 13px; font-weight: 750; font-variant-numeric: tabular-nums; pointer-events: none; transition: opacity .2s ease; }
+.pf-count:empty { display: none; }
+.photo-full.chrome-off .pf-count { opacity: 0; }
 </style>
 </head>
 <body data-view="capture">
@@ -3025,6 +3042,86 @@ function wireRowSwipe(root, sel, cfg) {
 
 // No dragging pictures out of the app (iOS lifts an image after a long hold); a long hold means select.
 document.addEventListener("dragstart", e => { if (e.target && e.target.closest && e.target.closest("img, .shot, .shelf-thumb, .deck-side")) e.preventDefault(); }, true);
+
+// ---- Swipe a page sideways to change sets (Needed: Aisle / Display; Gallery: Aisle / Display / Backstock) ----
+// cfg: { skip: selector of things that keep their own swipes, list: () => [keys], cur: () => key, go: key => …, off: () => true to ignore,
+//        moving: () => element that follows the finger }
+function wirePageSwipe(roots, cfg) {
+  const sw = { on: false, x0: 0, y0: 0, t0: 0, dx: 0, axis: "", el: null };
+  const start = e => {
+    if (e.touches.length !== 1 || (cfg.off && cfg.off()) || (cfg.skip && e.target.closest(cfg.skip))) { sw.on = false; return; }
+    sw.on = true; sw.x0 = e.touches[0].clientX; sw.y0 = e.touches[0].clientY; sw.t0 = e.timeStamp; sw.dx = 0; sw.axis = ""; sw.el = null;
+  };
+  const move = e => {
+    if (!sw.on) return;
+    const dx = e.touches[0].clientX - sw.x0, dy = e.touches[0].clientY - sw.y0;
+    if (!sw.axis) {
+      if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.5) { sw.axis = "x"; sw.el = cfg.moving(); if (sw.el) sw.el.style.transition = "none"; }
+      else if (Math.abs(dy) > 12) { sw.on = false; return; }
+      else return;
+    }
+    e.preventDefault();
+    sw.dx = dx;
+    const list = cfg.list(), i = list.indexOf(cfg.cur()), edge = (dx > 0 && i <= 0) || (dx < 0 && i >= list.length - 1);
+    if (sw.el) sw.el.style.transform = `translateX(${dx * (edge ? 0.15 : 0.35)}px)`;   // at the first / last set it barely moves
+  };
+  const end = e => {
+    if (!sw.on || sw.axis !== "x") { sw.on = false; return; }
+    sw.on = false;
+    const list = cfg.list(), i = list.indexOf(cfg.cur()), fast = Math.abs(sw.dx) / Math.max(1, e.timeStamp - sw.t0) > 0.45;
+    const dir = (Math.abs(sw.dx) > 70 || (fast && Math.abs(sw.dx) > 30)) ? (sw.dx < 0 ? 1 : -1) : 0, to = list[i + dir];
+    const el = sw.el;
+    if (el) { el.style.transition = "transform .35s var(--spring)"; el.style.transform = ""; setTimeout(() => { el.style.transition = ""; }, 380); }
+    if (!dir || !to) return;
+    haptic("tick");
+    cfg.go(to);
+    const fresh = cfg.moving(); if (fresh && !calmMotion()) { fresh.classList.remove("slide-from-left", "slide-from-right"); void fresh.offsetWidth; fresh.classList.add(dir > 0 ? "slide-from-right" : "slide-from-left");
+      setTimeout(() => fresh.classList.remove("slide-from-left", "slide-from-right"), 400); }   // (left on, it would replay the next time the tab opens)
+  };
+  for (const r of roots) {
+    if (!r) continue;
+    r.addEventListener("touchstart", start, { passive: true });
+    r.addEventListener("touchmove", move, { passive: false });
+    r.addEventListener("touchend", end); r.addEventListener("touchcancel", () => (sw.on = false));
+  }
+}
+
+// ---- Hold something for its quick menu (Needed rows, store buttons). A hold that moves is a swipe or a scroll, not a hold. ----
+function wireHold(root, sel, fn, ms = 480) {
+  if (!root) return;
+  const h = { t: 0, x: 0, y: 0, fired: false };
+  root.addEventListener("pointerdown", e => {
+    h.fired = false; const el = e.target.closest(sel); if (!el || (e.pointerType === "mouse" && e.button !== 0)) return;
+    h.x = e.clientX; h.y = e.clientY; clearTimeout(h.t);
+    h.t = setTimeout(() => { if (!el.isConnected || el.classList.contains("swiping")) return; h.fired = true; haptic("tick"); pulse(el); fn(el); }, ms);
+  });
+  root.addEventListener("pointermove", e => { if (Math.hypot(e.clientX - h.x, e.clientY - h.y) > 8) clearTimeout(h.t); });
+  for (const ev of ["pointerup", "pointercancel"]) root.addEventListener(ev, () => { clearTimeout(h.t); if (h.fired) setTimeout(() => (h.fired = false), 450); });
+  root.addEventListener("click", e => { if (h.fired && e.target.closest(sel)) { e.stopPropagation(); e.preventDefault(); h.fired = false; } }, true);   // the lift after a hold isn't a tap
+  root.addEventListener("contextmenu", e => { if (e.target.closest(sel)) e.preventDefault(); });
+}
+// ---- Swipe in from the left edge of a page inside More: back to More (like iPhone apps) ----
+function wireEdgeBack(sel, back) {
+  const g = { on: false, x0: 0, y0: 0, dx: 0, el: null };
+  document.addEventListener("touchstart", e => {
+    const el = e.target.closest && e.target.closest(sel);
+    g.on = !!el && e.touches.length === 1 && e.touches[0].clientX < 28 && !document.querySelector("#layer .overlay:not(.closing)");
+    if (g.on) { g.el = el; g.x0 = e.touches[0].clientX; g.y0 = e.touches[0].clientY; g.dx = 0; el.style.transition = "none"; }
+  }, { passive: true });
+  document.addEventListener("touchmove", e => {
+    if (!g.on) return;
+    g.dx = e.touches[0].clientX - g.x0; const dy = e.touches[0].clientY - g.y0;
+    if (Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(g.dx)) { g.on = false; g.el.style.transform = ""; g.el.style.transition = ""; return; }
+    if (g.dx > 0) { e.preventDefault(); g.el.style.transform = `translateX(${g.dx}px)`; g.el.style.boxShadow = "-12px 0 30px rgba(0, 0, 0, .18)"; }
+  }, { passive: false });
+  document.addEventListener("touchend", () => {
+    if (!g.on) return; g.on = false; const el = g.el;
+    el.style.transition = "transform .28s var(--ease-out)";
+    const clear = () => { el.style.transform = ""; el.style.transition = ""; el.style.boxShadow = ""; };
+    if (g.dx > 90) { el.style.transform = "translateX(100%)"; haptic("tick"); setTimeout(() => { clear(); back(); }, 230); }
+    else { el.style.transform = ""; setTimeout(clear, 300); }
+  });
+}
 // ---------- Shutter sound ----------
 // A real camera click ("Camera shutter click", mixkit.co, Mixkit License, about 14 KB) is built into the page, so it works offline.
 // The on/off choice lives in settings.beep, is remembered between sessions, and starts on the first time the app is used.
@@ -4292,8 +4389,9 @@ function renderNeeded() {
   for (const c of groups) {
     const rows = hide ? c.rows.filter(r => !rowDone(r)) : c.rows; if (!rows.length) continue;
     shown += rows.length;
-    html += c.v ? `<div class="cluster-h">${esc(vName(c.v))}<span class="n">${rows.length}</span></div>` : `<div class="group-h">${icon("warn")}Check the text</div>`;
-    html += `<div class="list">${rows.map(r => needRow(r.n, r.a)).join("")}</div>`;
+    const folded = !!c.v && needFolded.has(c.key);   // a brand heading folds its group (7)
+    html += c.v ? `<div class="cluster-h fold${folded ? " folded" : ""}" data-ck="${esc(c.key)}" role="button" aria-expanded="${!folded}">${esc(vName(c.v))}<span class="n">${rows.length}</span><i class="fold-chev" aria-hidden="true"></i></div>` : `<div class="group-h">${icon("warn")}Check the text</div>`;
+    if (!folded) html += `<div class="list">${rows.map(r => needRow(r.n, r.a)).join("")}</div>`;
   }
   if (hide && !shown && doneRows) html += `<div class="empty">${icon("check")}<h3>All done here</h3><p>Tap Show done to see what you've pulled.</p></div>`;
   html += `<button class="btn block quiet" id="btn-clear-all" style="margin-top:24px">Clear the whole list</button>`;
@@ -4304,11 +4402,15 @@ function renderNeeded() {
   renderNeeded.seen = seen ? new Set([...seen, ...now]) : now;
   hydratePhotos(v);
   v.onclick = e => {
+    const ch = e.target.closest(".cluster-h[data-ck]");
+    if (ch) { const k = ch.dataset.ck; if (needFolded.has(k)) needFolded.delete(k); else needFolded.add(k); haptic("tick"); renderNeeded(); return; }
     if (e.target.closest("#btn-clear-all")) return clearAllNotes();
     if (e.target.closest('[data-a="hide-done"]')) { state.settings.hideDone = !hide; save(); renderNeeded(); return; }
     const row = e.target.closest(".need[data-n]"); if (!row) return;
     const n = state.notes.find(x => x.id === row.dataset.n); if (!n) return;
     const fx = e.target.closest("[data-fix]"); if (fx) return applyFix(n, fx.dataset.fix);   // one of the suggested products
+    const th = e.target.closest(".shelf-thumb");   // the photo: straight to full screen (3)
+    if (th && (n.photos || [])[0] && !e.target.closest('[data-a]')) { photoURL(n.photos[0]).then(u => u && openPhotoFull(u, { list: n.photos, index: 0 })); return; }
     if (e.target.closest('[data-a="play"]')) return playerToggle(n);
     if (e.target.closest('[data-a="toggle"]')) {
       toggleTick(n, row.dataset.k);
@@ -4329,7 +4431,24 @@ function markText(n, pid) {
 }
 const chipsFor = (n, exceptVk) => { const bm = brandMap(); return [...new Set((n.parts || []).map(p => p.vk))].filter(k => k !== exceptVk && bm.has(k))
   .map(k => `<span class="chip-sm">${esc(bm.get(k))}</span>`).join(""); };
-let needMultiStore = false;   // set by renderNeeded: the list holds more than one store, so rows say which
+let needMultiStore = false;
+const needFolded = new Set();   // brand headings folded on the Needed list (this session)
+// Hold a row: its quick actions (4)
+async function needRowMenu(row) {
+  const n = state.notes.find(x => x.id === row.dataset.n), k = row.dataset.k; if (!n) return;
+  const done = !!(n.ticks || {})[k], out = isOut(n, k), other = noteKind(n) === "aisle" ? "display" : "aisle";
+  const pick = await menu(n.text ? (n.text.length > 48 ? n.text.slice(0, 46) + "…" : n.text) : "This item", [
+    { label: done ? "Mark not pulled" : "Mark pulled", value: "tick" },
+    { label: out ? "Back in stock" : "None in the back", value: "out" },
+    { label: `Move to ${KIND_LABEL[other]}`, value: "kind" },
+    { label: "Open", value: "open" },
+    { label: "Delete", value: "del", danger: true }]);
+  if (pick === "tick") toggleTick(n, k);
+  else if (pick === "out") { const snap = snapshot(); setOut(n, k, !out); save(); renderAll(); toast(out ? "Back on the list" : "Marked: none in the back", snap); }
+  else if (pick === "kind") { const snap = snapshot(); n.kind = other; save(); renderAll(); toast(`Moved to ${KIND_LABEL[other]}`, snap); }
+  else if (pick === "open") openCheck(n, k);
+  else if (pick === "del") deleteNote(n);
+}   // set by renderNeeded: the list holds more than one store, so rows say which
 // Two or three likely products for a note the list couldn't place (learn.js).
 const fixRowHTML = n => { const s = suggestFor(n); return s.length ? `<div class="fix-row"><span class="fix-q">Did you mean</span>${s.map(x => `<button class="fix-chip" data-fix="${esc(x)}">${esc(x)}</button>`).join("")}</div>` : ""; };
 function needRow(n, a) {
@@ -4362,7 +4481,7 @@ function openCheck(n, focusPid) {
   wirePlayerBar(s, n);
   s.querySelector("#ck-text").onclick = e => { const w = e.target.closest(".w"); if (w && n.audio) playerSeek(n, +w.dataset.s); };
   const img = s.querySelector("img");
-  const zs = zoomStage(img, s.querySelector("#ck-stage"));
+  const zs = zoomStage(img, s.querySelector("#ck-stage"), { fullList: () => ({ list: n.photos, index: photoIdx }) });
   const showPhoto = async () => {
     const id = n.photos[photoIdx];
     zs.reset();
@@ -4418,13 +4537,14 @@ function deleteNote(n) {
 // button) opens the photo full screen; full screen, a swipe down closes it and a tap hides the buttons.
 const EXPAND_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>';
 function zoomStage(img, stage, opt = {}) {
-  let s = 1, tx = 0, ty = 0, pull = 0, pinch = null, last = null, start = null, moved = false, dbl = false, lastUp = 0, vx = 0, vy = 0, glide = 0, tapTimer = 0;
+  let hx = 0, axis = "", s = 1, tx = 0, ty = 0, pull = 0, pinch = null, last = null, start = null, moved = false, dbl = false, lastUp = 0, vx = 0, vy = 0, glide = 0, tapTimer = 0;
   const pts = new Map(), MAX = 8;
   const lvl = document.createElement("span"); lvl.className = "zoom-level"; stage.appendChild(lvl);
-  const onTap = opt.full ? opt.onTap : () => openPhotoFull(img.src);
+  const full = () => openPhotoFull(img.src, opt.fullList ? opt.fullList() : null);
+  const onTap = opt.full ? opt.onTap : full;
   if (!opt.full) {
     const b = document.createElement("button"); b.className = "zoom-expand"; b.setAttribute("aria-label", "Show the photo full screen"); b.innerHTML = EXPAND_SVG;
-    b.onclick = e => { e.stopPropagation(); openPhotoFull(img.src); };
+    b.onclick = e => { e.stopPropagation(); full(); };
     stage.appendChild(b);
   }
   const hint = stage.querySelector(".zoom-hint"); if (hint) hint.textContent = "Pinch or double-tap to zoom";
@@ -4433,7 +4553,7 @@ function zoomStage(img, stage, opt = {}) {
   const clampT = () => { const b = lim(s); tx = Math.max(-b.x, Math.min(b.x, tx)); ty = Math.max(-b.y, Math.min(b.y, ty)); };
   const apply = anim => {
     img.style.transition = anim ? "transform .36s cubic-bezier(.2, .9, .25, 1)" : "none";
-    img.style.transform = `translate3d(${tx}px, ${ty + pull}px, 0) scale(${s})`;
+    img.style.transform = `translate3d(${tx + hx}px, ${ty + pull}px, 0) scale(${s})`;
     const z = s > 1.04; stage.classList.toggle("zoomed", z); lvl.textContent = z ? `${s.toFixed(1)}×` : "";
     if (opt.onPull) opt.onPull(pull);
   };
@@ -4456,7 +4576,7 @@ function zoomStage(img, stage, opt = {}) {
       if (s > 1.04) reset(); else zoomTo(3, local(e.clientX, e.clientY));
       clampT(); apply(true); dbl = true; lastUp = 0;
     }
-    start = last = { x: e.clientX, y: e.clientY, t: e.timeStamp }; moved = false; vx = vy = 0;
+    start = last = { x: e.clientX, y: e.clientY, t: e.timeStamp }; moved = false; vx = vy = 0; axis = "";
   });
   stage.addEventListener("pointermove", e => {
     if (!pts.has(e.pointerId)) return;
@@ -4475,7 +4595,11 @@ function zoomStage(img, stage, opt = {}) {
       const b = lim(s), rx = Math.abs(tx + dx) > b.x ? 0.35 : 1, ry = Math.abs(ty + dy) > b.y ? 0.35 : 1;   // past the edge: it resists
       tx += dx * rx; ty += dy * ry; vx = 0.7 * vx + 0.3 * (dx / dt); vy = 0.7 * vy + 0.3 * (dy / dt);
       apply(false);
-    } else if (opt.onSwipeDown && moved) { pull = Math.max(0, pull + dy); apply(false); }
+    } else if (moved) {   // not zoomed in: sideways goes to the next photo, down closes
+      if (!axis) axis = Math.abs(e.clientX - start.x) > Math.abs(e.clientY - start.y) ? "x" : "y";
+      if (axis === "x" && opt.onSwipeX) { hx += dx; apply(false); }
+      else if (axis === "y" && opt.onSwipeDown) { pull = Math.max(0, pull + dy); apply(false); }
+    }
     last = { x: e.clientX, y: e.clientY, t: e.timeStamp };
   });
   const up = e => {
@@ -4485,6 +4609,7 @@ function zoomStage(img, stage, opt = {}) {
     if (pts.size) return;
     pinch = null;
     const lastMove = last ? e.timeStamp - last.t : 999; last = null;
+    if (hx) { const d = hx; hx = 0; if (Math.abs(d) > 70 && opt.onSwipeX(d < 0 ? 1 : -1)) apply(false); else apply(true); return; }
     if (pull) { if (pull > 110 && opt.onSwipeDown) { opt.onSwipeDown(); return; } pull = 0; apply(true); return; }
     if (s <= 1.04) { if (s !== 1 || tx || ty) { reset(); apply(true); } }
     else if (moved && lastMove < 80 && Math.hypot(vx, vy) > 0.25) {   // let go while moving: glide, slowing down
@@ -4504,18 +4629,31 @@ function zoomStage(img, stage, opt = {}) {
   return { reset: () => { cancelAnimationFrame(glide); reset(); apply(false); } };
 }
 // Full screen, on black: the same zoom; swipe down (when not zoomed in) or the X closes it; a tap hides the buttons.
-function openPhotoFull(src) {
+function openPhotoFull(src, set) {
   if (!src) return;
-  const v = el(`<div class="photo-full" role="dialog" aria-label="Photo"><div class="zoom-stage"><img alt=""></div><button class="pf-close" aria-label="Close">${icon("x")}</button></div>`);
-  v.querySelector("img").src = src;
+  const v = el(`<div class="photo-full" role="dialog" aria-label="Photo"><div class="zoom-stage"><img alt=""></div><span class="pf-count"></span><button class="pf-close" aria-label="Close">${icon("x")}</button></div>`);
+  const img = v.querySelector("img"), count = v.querySelector(".pf-count");
+  img.src = src;
   document.body.appendChild(v); haptic();
-  let gone = false;
+  let gone = false, zs = null, idx = set && set.list ? Math.max(0, set.index | 0) : 0;
+  const list = set && set.list && set.list.length > 1 ? set.list : null;
+  const paintCount = () => { count.textContent = list ? `${idx + 1} / ${list.length}` : ""; };
+  paintCount();
   const close = () => { if (gone) return; gone = true; v.classList.add("closing"); setTimeout(() => v.remove(), 220); };
-  zoomStage(v.querySelector("img"), v.querySelector(".zoom-stage"), {
-    full: true, onSwipeDown: close,
+  // the next / previous photo of the set; false at either end (it springs back)
+  const step = d => {
+    if (!list || !list[idx + d]) return false;
+    idx += d; paintCount(); haptic("tick");
+    photoURL(list[idx]).then(u => { if (!u) return; img.style.transition = "none"; img.style.opacity = "0"; img.src = u; if (zs) zs.reset();
+      requestAnimationFrame(() => { img.style.transition = "opacity .2s ease"; img.style.opacity = "1"; }); });
+    return true;
+  };
+  zs = zoomStage(img, v.querySelector(".zoom-stage"), {
+    full: true, onSwipeDown: close, onSwipeX: list ? step : null,
     onTap: () => v.classList.toggle("chrome-off"),
     onPull: p => { v.style.backgroundColor = p ? `rgba(0, 0, 0, ${Math.max(0.35, 1 - p / 400)})` : ""; },
   });
+  if (list) photoURL(list[idx]).then(u => { if (u && u !== img.src) img.src = u; });   // full size for the one we started on
   v.querySelector(".pf-close").onclick = close;
 }
 // ---------- Before and After ----------
@@ -4857,7 +4995,10 @@ function openShot(x, onChange) {
   const head = () => { s.querySelector("h2").textContent = `${storeOf(x.slot) ? `#${storeOf(x.slot)} · ` : ""}${WHEN_LABEL[x.when === "before" ? "before" : "after"]} · ${x.kind === "display" ? displayLabel(x.photo, x.slot, x.when === "before" ? "before" : "after") : KIND_LABEL[x.kind]} · ${new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`; };
   head();
   const img = s.querySelector("img");
-  zoomStage(img, s.querySelector(".zoom-stage"));
+  zoomStage(img, s.querySelector(".zoom-stage"), { fullList: () => {   // full screen swipes through that Gallery section
+    const w = x.when === "before" ? "before" : "after", list = itemsOf(x.slot, w).filter(i => i.kind === x.kind).map(i => i.photo);
+    return { list, index: Math.max(0, list.indexOf(x.photo)) };
+  } });
   photoURL(x.photo).then(u => { img.src = u || ""; heroInto(img); });
   s.querySelector('[data-a="close"]').onclick = close;
   s.querySelector('[data-a="save"]').onclick = async () => {
@@ -5101,6 +5242,22 @@ const untexted = (slot, w) => { const sent = new Set(((state.texted || {})[slot]
 function markTexted(slot, w) {
   state.texted = state.texted || {}; (state.texted[slot] = state.texted[slot] || {})[w] = itemsOf(slot, w).map(x => x.photo);
   save(); if (view === "gallery") renderGallery();
+}
+
+// Hold a store button: its quick menu. An empty one just asks for its number.
+async function slotMenu(el) {
+  const i = +el.dataset.slot, st = storeOf(i); if (!Number.isInteger(i)) return;
+  if (!st) return pickSlot(i);
+  const spot = (state.storeSpots || {})[st];
+  const pick = await menu(`#${st}`, [
+    ...(i !== baSlot() ? [{ label: "Open this store", value: "open" }] : []),
+    { label: "Change store number", value: "num" },
+    { label: "See its photos", value: "gal" },
+    { label: spot ? "Store location…" : "Set store location…", value: "loc" }]);
+  if (pick === "open") pickSlot(i);
+  else if (pick === "num") askStore(i);
+  else if (pick === "gal") { gal.slot = i; showView("gallery"); gal.slot = i; renderGallery(); }
+  else if (pick === "loc") spotActions(st, () => renderAll());
 }
 // ---------- Products: the brand + flavor combinations the list recognizes ----------
 // Size and pack don't matter here: they stay in the words you read. Edits apply to every size of a combination
@@ -5846,6 +6003,13 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "2.12.2", notes: [
+    "Swipe left or right to change sets: Aisle and Display on the Needed list (anywhere except on a row, which keeps its own swipes), and Aisle, Display and Backstock in the Gallery.",
+    "Tap the tab you're on to jump back to the top.",
+    "Hold a Needed item for quick actions, or hold a store button for its menu.",
+    "Tap a Needed item's photo to open it full screen, and swipe sideways there to the next photo.",
+    "Tap a brand heading on the Needed list to fold it away.",
+    "Swipe in from the left edge to go back from the Product list and What's new." ] },
   { v: "2.12.1", notes: [
     "Store locations are learned from the photos you take at a store, not from typing its number.",
     "“Not here” always forgets that store's location; it learns it again from your next photo there.",
@@ -5919,7 +6083,7 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 84;
+const REVISION = 85;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -5976,7 +6140,7 @@ function renderMore() {
       <button class="item row-btn nav" id="btn-whatsnew">${icon("note")}<span class="grow">What's new</span>${icon("jump")}</button>
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
-    <p class="foot">Shelfie 2.12.1 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 2.12.2 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
@@ -6010,7 +6174,10 @@ function renderMore() {
 fillIcons();
 load();
 document.body.dataset.view = view;   // the layout keys off this (it also works where the page is wrapped by another document)
-document.querySelectorAll("#tabs button").forEach(b => (b.onclick = () => showView(b.dataset.view)));
+document.querySelectorAll("#tabs button").forEach(b => (b.onclick = () => {
+  if (view === b.dataset.view && !isCamView()) { window.scrollTo({ top: 0, behavior: calmMotion() ? "auto" : "smooth" }); return; }   // the tab you're on: back to the top
+  showView(b.dataset.view);
+}));
 $("#btn-cam-start").onclick = startCamera;
 $("#btn-cam-stop").onclick = () => { state.settings.camOK = false; save(); stopCamera(); };
 document.querySelectorAll("#cap-seg button").forEach(b => (b.onclick = () => { if (hold.session && b.dataset.k !== captureKind()) endHoldSession(); state.settings.captureKind = b.dataset.k; save(); renderCapture(); }));
@@ -6029,6 +6196,22 @@ wireSoundBtn();
 wireHaptics();
 wireToastSwipe();
 wireNeededSwipe();
+wireHold($("#view-needed"), ".need[data-n]:not([data-k='?'])", needRowMenu);   // hold a row: quick actions
+for (const id of ["#cap-slots", "#ba-slots", "#view-gallery"]) wireHold($(id), ".slot[data-slot]", slotMenu);   // hold a store button: its menu
+wireEdgeBack("#view-products.active, #view-changelog.active", () => showView("more"));   // swipe in from the left edge: back to More
+// 2.12.2: swipe sideways to change sets
+wirePageSwipe([$("#view-needed"), $("#kind-dock")], {
+  skip: ".need, .swipe-bg",   // rows keep their own swipes (tick, None in back, delete)
+  list: () => NEED_KINDS, cur: () => curKind(),
+  go: k => { state.settings.needKind = k; save(); renderNeeded(); },
+  moving: () => $("#view-needed"),
+});
+wirePageSwipe([$("#view-gallery")], {
+  off: () => gsel.on,   // not while selecting photos
+  list: () => KINDS, cur: () => gal.kind || baKind(),
+  go: k => { gal.kind = k; renderGallery(); },
+  moving: () => $("#view-gallery"),
+});
 document.querySelectorAll(".cam-lens button").forEach(b => (b.onclick = () => { pulse(b); setLens(b.dataset.lens); }));
 renderAll();
 save();
