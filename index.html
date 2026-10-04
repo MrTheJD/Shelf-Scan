@@ -617,6 +617,26 @@ nav.tabs button:active svg.i { transform: scale(.82); }
 .need .check:not(.on) svg.i { opacity: 0; }
 .need .check.on svg.i { opacity: 1; }
 .item.done .blurb, .item.done .blurb .hl { color: var(--faint); }
+
+/* ---------- 2.6.0: recent stores ---------- */
+.recent-h { margin: 14px 0 6px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.recent-stores { display: flex; flex-wrap: wrap; gap: 8px; }
+.recent-store { border: 0; border-radius: 999px; padding: 8px 14px; min-height: 38px; background: var(--chip); color: var(--text); font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; transition: transform .3s var(--spring), background-color .15s ease; }
+.recent-store:active { transform: scale(.94); background: var(--surface-2); }
+
+/* ---------- 2.6.0: none in the back ---------- */
+.out-tag { font-size: 11px; font-weight: 800; padding: 1px 7px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); }
+.need .chips-row .out-tag { margin-left: 8px; } .need .chips-row .out-tag:first-child { margin-left: 0; }
+.check-sheet .out-tag { padding: 3px 9px; font-size: 12px; }
+.need.out .shelf-thumb { opacity: .5; }
+.need.out .blurb, .need.out .blurb .hl { color: var(--muted); }
+.need.out .check { border-color: var(--warn); }
+.out-bar { display: flex; align-items: center; gap: 10px; margin: 6px 0 4px; padding: 8px 8px 8px 14px; border-radius: 16px; background: var(--warn-soft); color: var(--warn); font-size: 14px; font-weight: 700; animation: riseIn .35s var(--ease-out) both; }
+.out-bar b { font-weight: 900; }
+.out-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); flex: none; }
+.out-bar .btn { background: var(--surface); color: var(--text); }
+.swipe-bg.left { background: var(--warn); transition: background-color .15s ease; }
+.swipe-bg.left.del { background: var(--red); }
 </style>
 </head>
 <body data-view="capture">
@@ -1056,7 +1076,8 @@ function freshState() {
     outbox: { products: {} },               // changed since last upload
     notes: [],                              // newest first: { id, at, photos:[id], audio:id|null, secs, text, status, parts:[{vk, s, e}] (brand + flavor found in the text), flag, ticks:{pid: true}, err }
     recents: [],
-    stores: ["", "", "", "", ""],            // the five store slots on the Before/After tab: the store number in each
+    stores: ["", "", "", "", ""],
+    recentStores: [],                       // store numbers used lately, newest first (kept through Clear)            // the five store slots on the Before/After tab: the store number in each
     shots: [],                              // Before/After photos: { id, at, slot:0-4, when:"after" ("before" for photos from 2.0 and earlier), kind:"aisle"|"display", photo }
     settings: { beep: true, camOK: false, needKind: "aisle", captureKind: "aisle", baWhen: "before", baKind: "aisle", baSlot: 0, lens: "wide", hapticShutter: true, hapticTaps: true, wordTiming: false, liveListen: false, asrId: "tiny", models: { asr: false } },   // models: which downloads finished
     sync: { lastPull: 0, lastPush: 0, error: "" },
@@ -1086,6 +1107,7 @@ function migrate() {
   delete state.team; delete state.received;
   try { localStorage.removeItem(PASS_KEY); localStorage.removeItem("shelfscan.dev"); } catch (e) {}
   state.recents = state.recents || [];
+  state.recentStores = (Array.isArray(state.recentStores) ? state.recentStores : []).map(String).filter(Boolean).slice(0, 8);
   state.shots = (Array.isArray(state.shots) ? state.shots : []).filter(s => s && s.photo);
   { const old = Array.isArray(state.stores) ? state.stores : [];   // Beta 7 had six slots; a number in the sixth moves to the fifth when that one is free
     state.stores = Array.from({ length: 5 }, (_, i) => String(old[i] || ""));
@@ -1104,6 +1126,7 @@ function migrate() {
     // Beta 5.1.2: a note is its words plus the products the matcher found in them (no quantities or dots).
     delete n.items; delete n.rev; delete n.edited;
     n.ticks = n.ticks || {};
+    if (!n.out || typeof n.out !== "object") n.out = {};   // 2.6: appearances marked "none in the back"
     if ((n.parts || []).some(p => p.pid)) {   // Beta 5.1.2 notes pointed at exact products: re-read them, keeping their ticks
       const t = {};
       for (const k in n.ticks) { if (!n.ticks[k]) continue; const p = k === "?" ? null : productById(k); t[p ? vKey(p) : k] = true; }
@@ -2580,7 +2603,7 @@ function wireNeededSwipe() {
   root.addEventListener("touchstart", e => {
     const row = e.target.closest(".need[data-n]");
     if (!row || e.touches.length !== 1 || e.target.closest(".pbtn")) { sw.row = null; return; }
-    sw.row = row; sw.x0 = e.touches[0].clientX; sw.y0 = e.touches[0].clientY; sw.dx = 0; sw.axis = "";
+    sw.row = row; sw.x0 = e.touches[0].clientX; sw.y0 = e.touches[0].clientY; sw.dx = 0; sw.axis = ""; sw.zone = "";
   }, { passive: true });
   root.addEventListener("touchmove", e => {
     const row = sw.row; if (!row) return;
@@ -2589,7 +2612,7 @@ function wireNeededSwipe() {
       if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.3) {
         sw.axis = "x"; clearBg();
         sw.bg = document.createElement("div"); sw.bg.className = "swipe-bg";
-        sw.bg.innerHTML = `<span class="sw-tick">${icon("check")}<b>${row.classList.contains("done") ? "Undo" : "Done"}</b></span><span class="sw-del"><b>Delete</b>${icon("x")}</span>`;
+        sw.bg.innerHTML = `<span class="sw-tick">${icon("check")}<b>${row.classList.contains("done") ? "Undo" : "Done"}</b></span><span class="sw-del"><b class="sw-lbl">${row.classList.contains("out") ? "In stock" : "None in back"}</b>${icon("x")}</span>`;
         Object.assign(sw.bg.style, { top: row.offsetTop + "px", height: row.offsetHeight + "px" });
         row.parentElement.insertBefore(sw.bg, row); row.classList.add("swiping"); row.style.transition = "none";
       } else if (Math.abs(dy) > 10) { sw.row = null; return; }
@@ -2600,14 +2623,17 @@ function wireNeededSwipe() {
     const ease = v => Math.sign(v) * (Math.abs(v) < 120 ? Math.abs(v) : 120 + (Math.abs(v) - 120) * 0.45);   // gets heavier past the trigger point
     row.style.transform = `translateX(${ease(dx)}px)`;
     sw.bg.classList.toggle("right", dx > 0); sw.bg.classList.toggle("left", dx < 0);
-    sw.bg.classList.toggle("armed", dx > 80 || dx < -110);
+    const zone = dx > 80 ? "tick" : dx < -190 ? "del" : dx < -90 ? "out" : "";
+    if (zone !== sw.zone) { if (zone) haptic("tick"); sw.zone = zone; }
+    sw.bg.classList.toggle("armed", !!zone); sw.bg.classList.toggle("del", zone === "del");
+    const lbl = sw.bg.querySelector(".sw-lbl"); if (lbl) lbl.textContent = zone === "del" ? "Delete" : row.classList.contains("out") ? "In stock" : "None in back";
   }, { passive: false });
   const end = () => {
     const row = sw.row; sw.row = null;
     if (!row || sw.axis !== "x") return;
     sw.just = true; setTimeout(() => (sw.just = false), 400);
     const n = state.notes.find(x => x.id === row.dataset.n), k = row.dataset.k, dx = sw.dx;
-    if (dx < -110 && n) {   // delete: slide away, fold up, then go (with Undo)
+    if (dx < -190 && n) {   // all the way: delete (slide away, fold up, then go, with Undo)
       haptic("tick");
       row.style.transition = "transform .24s ease-in"; row.style.transform = "translateX(-110%)";
       setTimeout(() => {
@@ -2619,10 +2645,14 @@ function wireNeededSwipe() {
       return;
     }
     row.style.transition = "transform .5s var(--spring)"; row.style.transform = "";
-    if (dx > 80 && n) {   // tick: spring back, then the tick pops
-      haptic("tick");
+    if (dx < -90 && n) {   // part way: none in the back (or back in stock)
       setTimeout(() => {
-        clearBg(); n.ticks = n.ticks || {}; n.ticks[k] = !n.ticks[k]; save(); renderAll();
+        clearBg(); const snap = snapshot(), on = !isOut(n, k); setOut(n, k, on); save(); renderAll();
+        toast(on ? "Marked: none in the back" : "Back on the list", snap);
+      }, 260);
+    } else if (dx > 80 && n) {   // tick: spring back, then the tick pops
+      setTimeout(() => {
+        clearBg(); n.ticks = n.ticks || {}; n.ticks[k] = !n.ticks[k]; if (n.ticks[k]) setOut(n, k, false); save(); renderAll();
         pulse(document.querySelector(`#view-needed .need[data-n="${CSS.escape(n.id)}"][data-k="${CSS.escape(k)}"] .check`));
       }, 260);
     } else setTimeout(() => { clearBg(); row.classList.remove("swiping"); }, 480);
@@ -3558,7 +3588,29 @@ function appearances(n) {
   const bm = brandMap(), vks = [...new Set((n.parts || []).map(p => p.vk).filter(k => bm.has(k)))];
   return vks.length ? vks.map(vk => ({ key: vk, vk })) : [{ key: "?", vk: null }];
 }
-const noteDone = n => appearances(n).every(a => (n.ticks || {})[a.key]);
+const isOut = (n, k) => !!(n.out || {})[k];
+const noteDone = n => appearances(n).every(a => (n.ticks || {})[a.key] || isOut(n, a.key));
+// "None in the back" for one appearance of a note: on clears its tick, a tick clears it
+function setOut(n, k, on) {
+  n.out = n.out || {};
+  if (on) { n.out[k] = true; if (n.ticks) delete n.ticks[k]; } else delete n.out[k];
+}
+const outItems = () => state.notes.filter(n => n.status === "done" && n.text).flatMap(n => appearances(n).filter(a => isOut(n, a.key)).map(a => ({ n, a })));
+// The text for the boss: per store, what was out in the back.
+async function shareOuts() {
+  const list = outItems(); if (!list.length) return;
+  const bm = brandMap(), bySlot = new Map();
+  for (const x of [...list].sort((p, q) => p.n.at - q.n.at)) {
+    const key = Number.isInteger(x.n.slot) ? x.n.slot : -1;
+    const line = (appearances(x.n).length > 1 && x.a.vk ? `${bm.get(x.a.vk)}: ` : "") + x.n.text;
+    (bySlot.get(key) || bySlot.set(key, []).get(key)).push(line);
+  }
+  const text = [...bySlot.entries()].sort((p, q) => p[0] - q[0])
+    .map(([slot, lines]) => `${slot >= 0 && storeOf(slot) ? `store#${storeOf(slot)}` : "Store"} – none in the back:\n${[...new Set(lines)].map(l => "• " + l).join("\n")}`).join("\n\n");
+  try { if (navigator.share) { await navigator.share({ text }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
+  try { await navigator.clipboard.writeText(text); toast("Copied. Paste it into a text."); } catch (e) { toast("Sharing isn't available here"); }
+}
+function wireOutBar(v) { const b = v.querySelector('[data-a="out-share"]'); if (b) b.onclick = e => { e.stopPropagation(); shareOuts(); }; }
 const listed = kind => state.notes.filter(n => noteKind(n) === kind && n.status === "done" && n.text);
 const openCount = kind => listed(kind).filter(n => !noteDone(n)).length;
 // Blurbs are clustered by brand and flavor (Coca-Cola and Diet Coke first, then alphabetical); the ones nothing was recognized in come first.
@@ -3586,10 +3638,12 @@ function renderNeeded() {
   $("#kind-dock").innerHTML = `<div class="seg" id="kind-seg">${NEED_KINDS.map(k => `<button data-k="${k}" class="${k === kind ? "active" : ""}">${KIND_LABEL[k]}${oc[k] ? ` <span class="kcount">${oc[k]}</span>` : ""}</button>`).join("")}</div>`;
   let html = `<div class="list-head"><h2>Needed</h2><span class="muted small">${notes.length ? `${open} to go` : ""}</span></div>`;
   if (q.text) html += `<div class="banner ${q.busy ? "busy" : ""}"><span class="spin"></span><span class="grow">${esc(q.text)}</span></div>`;
+  const outs = outItems().length;
+  if (outs) html += `<div class="out-bar"><span class="out-dot"></span><span class="grow"><b>${outs}</b> none in the back</span><button class="btn sm" data-a="out-share">${icon("upload")}Text it</button></div>`;
   const waiting = state.notes.filter(n => noteKind(n) === kind && (n.status === "empty" || n.status === "error"));   // a photo with no words yet
   if (!notes.length && !waiting.length) {
     html += `<div class="empty">${icon("list")}<h3>Nothing needed ${{ aisle: "in aisles", display: "on displays", backstock: "from the back" }[kind]} yet</h3><p>Snap ${{ aisle: "a shelf", display: "a display", backstock: "the back stock" }[kind]} and say what's missing. It lands here.</p></div>`;
-    v.innerHTML = html + dock; wireKindSeg(v); v.onclick = null; return;
+    v.innerHTML = html + dock; wireKindSeg(v); wireOutBar(v); v.onclick = null; return;
   }
   if (waiting.length) html += `<div class="group-h">${icon("mic")}Needs a recording</div><div class="list">${waiting.map(waitRow).join("")}</div>`;
   for (const c of neededGroups(kind)) {
@@ -3597,7 +3651,7 @@ function renderNeeded() {
     html += `<div class="list">${c.rows.map(r => needRow(r.n, r.a)).join("")}</div>`;
   }
   html += `<button class="btn block quiet" id="btn-clear-all" style="margin-top:24px">Clear the whole list</button>`;
-  v.innerHTML = html + dock; wireKindSeg(v);
+  v.innerHTML = html + dock; wireKindSeg(v); wireOutBar(v);
   // rows that weren't on screen before slide in (the first draw never animates)
   const seen = renderNeeded.seen, now = new Set();
   v.querySelectorAll(".need[data-n]").forEach(r => { const k = r.dataset.n + "|" + r.dataset.k; now.add(k); if (seen && !seen.has(k)) r.classList.add("enter"); });
@@ -3609,7 +3663,7 @@ function renderNeeded() {
     const n = state.notes.find(x => x.id === row.dataset.n); if (!n) return;
     if (e.target.closest('[data-a="play"]')) return playerToggle(n);
     if (e.target.closest('[data-a="toggle"]')) {
-      n.ticks = n.ticks || {}; n.ticks[row.dataset.k] = !n.ticks[row.dataset.k]; save(); renderAll();
+      n.ticks = n.ticks || {}; n.ticks[row.dataset.k] = !n.ticks[row.dataset.k]; if (n.ticks[row.dataset.k]) setOut(n, row.dataset.k, false); save(); renderAll();
       pulse(document.querySelector(`#view-needed .need[data-n="${CSS.escape(n.id)}"][data-k="${CSS.escape(row.dataset.k)}"] .check`));
     }
     else openCheck(n, row.dataset.k);
@@ -3629,8 +3683,8 @@ function markText(n, pid) {
 const chipsFor = (n, exceptVk) => { const bm = brandMap(); return [...new Set((n.parts || []).map(p => p.vk))].filter(k => k !== exceptVk && bm.has(k))
   .map(k => `<span class="chip-sm">${esc(bm.get(k))}</span>`).join(""); };
 function needRow(n, a) {
-  const done = !!(n.ticks || {})[a.key], chips = chipsFor(n, a.vk);
-  return `<div class="item need tap${done ? " done" : ""}${n.flag ? " flagged" : ""}" data-n="${esc(n.id)}" data-k="${esc(a.key)}">
+  const done = !!(n.ticks || {})[a.key], out = isOut(n, a.key), chips = chipsFor(n, a.vk) + (out ? `<span class="out-tag">None in back</span>` : "");
+  return `<div class="item need tap${done ? " done" : ""}${out ? " out" : ""}${n.flag ? " flagged" : ""}" data-n="${esc(n.id)}" data-k="${esc(a.key)}">
     <div class="shelf-thumb" data-photo-wrap>${n.photos[0] ? `<img data-photo="${esc(n.photos[0])}" alt="">` : icon("note")}</div>
     <div class="grow"><div class="blurb">${noteTextHTML(n, a.vk)}</div>${chips || n.flag ? `<div class="chips-row">${chips}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}</div>` : ""}</div>
     ${n.audio ? `<button class="pbtn" data-a="play" data-n="${esc(n.id)}" aria-label="Play the recording">${icon("play")}</button>` : ""}
@@ -3666,18 +3720,21 @@ function openCheck(n, focusPid) {
     s.querySelector("#ck-dots").innerHTML = n.photos.length > 1 ? n.photos.map((_, k) => `<button class="dot${k === photoIdx ? " on" : ""}" data-k="${k}" aria-label="Photo ${k + 1}"></button>`).join("") : "";
   };
   s.querySelector("#ck-dots").onclick = e => { const b = e.target.closest("[data-k]"); if (b) { photoIdx = +b.dataset.k; showPhoto(); } };
+  const outKeys = () => (focusPid ? [focusPid] : appearances(n).map(a => a.key));   // the product the note was opened from, or all of them
   const draw = () => {
     s.querySelector("#ck-heard").innerHTML = n.heard && n.heard !== n.text ? `Heard as “${esc(n.heard)}”` : "";
     s.querySelector("#ck-text").innerHTML = n.text ? `“${noteTextHTML(n, focusPid && focusPid !== "?" ? focusPid : null)}”` : "(no words: typed or no recording)";
-    s.querySelector("#ck-chips").innerHTML = `<span class="pill kind ${noteKind(n)}">${KIND_LABEL[noteKind(n)]}</span>${chipsFor(n, null)}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}`;
+    s.querySelector("#ck-chips").innerHTML = `<span class="pill kind ${noteKind(n)}">${KIND_LABEL[noteKind(n)]}</span>${chipsFor(n, null)}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}${outKeys().some(k => isOut(n, k)) ? `<span class="out-tag">None in back</span>` : ""}`;
     s.querySelector("#ck-actions").innerHTML = `<button class="btn sm grow" data-a="edit">${icon("note")}Edit text</button><button class="btn sm grow quiet" data-a="more">More…</button>`;
     const a = s.querySelector("#ck-actions");
     a.querySelector('[data-a="edit"]').onclick = async () => { await editText(n); draw(); };
     a.querySelector('[data-a="more"]').onclick = async () => {
       const pick = await menu("This note", [
         { label: "Record again", value: "rerecord" }, { label: "Add another photo", value: "photo" },
+        { label: outKeys().every(k => isOut(n, k)) ? "Back in stock" : "None in the back", value: "out" },
         ...kindMoves(noteKind(n)).filter(m => m.value !== "kind:backstock"), { label: "Delete note", value: "delete", danger: true }]);
-      if (pick === "rerecord") { close(); startRecording({ note: n }); }
+      if (pick === "out") { const on = !outKeys().every(k => isOut(n, k)); for (const k of outKeys()) setOut(n, k, on); save(); renderAll(); toast(on ? "Marked: none in the back" : "Back on the list"); draw(); }
+      else if (pick === "rerecord") { close(); startRecording({ note: n }); }
       else if (pick === "photo") { await addPhoto(n); showPhoto(); }
       else if (String(pick).startsWith("kind:")) { n.kind = normKind(pick.slice(5)); save(); renderAll(); toast(`Moved to ${KIND_LABEL[n.kind]}`); draw(); }
       else if (pick === "delete") { close(); deleteNote(n); }
@@ -3883,6 +3940,7 @@ function askStore(slot) {
   return new Promise(resolve => {
     const d = el(`<div class="dialog"><p><b>Which store is this?</b></p>
       <input class="field" inputmode="numeric" autocomplete="off" placeholder="Store number, like 1234" aria-label="Store number">
+      ${(state.recentStores || []).length ? `<p class="recent-h">Recent stores</p><div class="recent-stores">${state.recentStores.map(s => `<button class="recent-store" data-st="${esc(s)}">#${esc(s)}</button>`).join("")}</div>` : ""}
       <div class="btns" style="margin-top:14px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="ok">Continue</button></div></div>`);
     const inp = d.querySelector("input"); inp.value = storeOf(slot);
     const clean = v => String(v).trim().replace(/^store\s*#?\s*/i, "").replace(/^#\s*/, "");
@@ -3898,13 +3956,15 @@ function askStore(slot) {
     const go = () => {
       const v = clean(inp.value); if (!v) { inp.focus(); return; }
       done = true; state.stores[slot] = v; if (slot === baSlot()) state.storeName = v;
+      state.recentStores = [v, ...(state.recentStores || []).filter(x => x !== v)].slice(0, 8);
       save(); renderAll(); close(); resolve(v);
       btns().forEach(b => pulse(b));
     };
     d.querySelector('[data-a="c"]').onclick = () => { done = true; close(); renderAll(); resolve(null); };
     d.querySelector('[data-a="ok"]').onclick = go;
     inp.onkeydown = e => { if (e.key === "Enter") go(); };
-    setTimeout(() => { inp.focus(); inp.select(); }, 50);
+    d.querySelectorAll(".recent-store").forEach(b => (b.onclick = () => { inp.value = b.dataset.st; inp.oninput(); go(); }));
+    if (!(state.recentStores || []).length) setTimeout(() => { inp.focus(); inp.select(); }, 50);   // with recent stores to tap, no keyboard until asked
   });
 }
 // Tapping a slot opens it (asking for the store number if it is empty); tapping the open slot again changes its number. Both tabs share it.
@@ -4235,7 +4295,7 @@ function editVariation(v, { prefill = "" } = {}) {
   };
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 70;
+const REVISION = 71;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -4285,7 +4345,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelfie 2.5.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 2.6.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
