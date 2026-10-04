@@ -858,6 +858,18 @@ body[data-nav="push"] #view-changelog.active { animation: pushIn .5s cubic-bezie
 .pick-warn { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 12px; border-radius: 14px; background: var(--warn-soft); color: var(--warn); font-size: 14px; font-weight: 700; animation: riseIn .3s var(--ease-out) both; }
 .pick-warn svg.i { width: 18px; height: 18px; flex: none; }
 .pick-warn .btn { background: var(--surface); color: var(--text); }
+
+/* ---------- 2.12.0 ---------- */
+.fix-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 7px; }
+.fix-q { font-size: 12px; font-weight: 700; color: var(--muted); margin-right: 2px; }
+.fix-chip { border: 0; border-radius: 999px; padding: 6px 11px; min-height: 32px; background: color-mix(in srgb, var(--red) 12%, var(--chip)); color: var(--text); font-size: 13.5px; font-weight: 750; transition: transform .3s var(--spring); }
+.fix-chip:active { transform: scale(.93); }
+.fix-tag { font-size: 11px; font-weight: 750; padding: 1px 7px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); margin-left: 8px; }
+.need .chips-row .fix-tag:first-child { margin-left: 0; }
+#ck-fix:empty { display: none; }
+.learned-sheet .list.group { margin-top: 10px; }
+.learned-row .pbtn { width: 34px; height: 34px; background: none; color: var(--muted); box-shadow: inset 0 0 0 1.5px var(--line); }
+.learned-row .pbtn svg.i { width: 15px; height: 15px; }
 </style>
 </head>
 <body data-view="capture">
@@ -1304,6 +1316,8 @@ function freshState() {
     recents: [],
     stores: ["", "", "", "", ""],
     recentStores: [],
+    storeSpots: {},                         // store number → { lat, lon, n } where it is (2.12, kept through Clear)
+    learned: {},                            // misheard phrase → { name, at } (2.12, kept through Clear)
     texted: {},                             // slot → { before: [photo ids sent], after: [...] } (Text all)
     displayMemory: {},                      // store number → { at, photos: [thumbnail ids, one per display] } from the last Clear
     pickUse: { b: {}, f: {} },              // picks per brand (sNorm) and per variation (vKey), so the picker puts them first                       // store numbers used lately, newest first (kept through Clear)            // the five store slots on the Before/After tab: the store number in each
@@ -1347,6 +1361,7 @@ function migrate() {
     if (state.pickUse.b[from]) { state.pickUse.b[to] = (state.pickUse.b[to] || 0) + state.pickUse.b[from]; delete state.pickUse.b[from]; }
   if (!state.displayMemory || typeof state.displayMemory !== "object") state.displayMemory = {};
   if (!state.texted || typeof state.texted !== "object") state.texted = {};
+  for (const k of ["storeSpots", "learned"]) if (!state[k] || typeof state[k] !== "object" || Array.isArray(state[k])) state[k] = {};
   state.recentStores = (Array.isArray(state.recentStores) ? state.recentStores : []).map(String).filter(Boolean).slice(0, 8);
   state.shots = (Array.isArray(state.shots) ? state.shots : []).filter(s => s && s.photo);
   { const old = Array.isArray(state.stores) ? state.stores : [];   // Beta 7 had six slots; a number in the sixth moves to the fifth when that one is free
@@ -2612,6 +2627,10 @@ function quickRead(n) {
     let r = readBlurb(n.text);
     // Fix a brand that was heard wrong in the note itself. The original wording is kept so the note can still show what was heard.
     if (r.fixes && r.fixes.length) { const fixed = applyFixes(n.text, r.fixes), flag = r.flag; n.heard = n.heard || n.text; n.text = fixed; r = readBlurb(fixed); r.flag = r.flag || flag; n._al = null; }
+    if (!(r.parts || []).length) {   // nothing placed: a phrase it has learned? (2.12)
+      const lf = learnedFix(n.text);
+      if (lf) { n.heard = n.heard || n.text; n.text = lf.text; n.autoFix = { from: lf.phrase, to: lf.name }; n._al = null; r = readBlurb(lf.text); }
+    }
     n.parts = r.parts; n.flag = r.flag;
   } catch (e) { n.parts = []; n.flag = true; }
   n.ticks = {}; delete n.items;
@@ -3056,7 +3075,7 @@ function bkSnapshot() {
   const settings = {}; for (const k of BK_SETTINGS) settings[k] = state.settings[k];
   return { v: 1, app: "Shelfie", at: Date.now(), settings, stores: state.stores, storeName: state.storeName || "",
     products: state.products.map(shareable), deleted: { products: state.deleted.products },
-    recentStores: state.recentStores || [], pickUse: state.pickUse || {} };
+    recentStores: state.recentStores || [], pickUse: state.pickUse || {}, storeSpots: state.storeSpots || {}, learned: state.learned || {} };
 }
 
 async function saveBackup() {
@@ -3096,6 +3115,11 @@ async function restoreBackup(data) {
     const clean = o => Object.fromEntries(Object.entries(o && typeof o === "object" ? o : {}).filter(([k, v]) => k.length < 200 && Number.isFinite(v) && v >= 0).slice(0, 3000).map(([k, v]) => [k, Math.min(v, 100000)]));
     next.pickUse = { b: clean(data.pickUse.b), l: clean(data.pickUse.l), f: clean(data.pickUse.f) };
   }
+  if (data.storeSpots && typeof data.storeSpots === "object") next.storeSpots = Object.fromEntries(Object.entries(data.storeSpots)
+    .filter(([k, v]) => k.length <= 20 && v && Number.isFinite(v.lat) && Number.isFinite(v.lon) && Math.abs(v.lat) <= 90 && Math.abs(v.lon) <= 180).slice(0, 200)
+    .map(([k, v]) => [k, { lat: v.lat, lon: v.lon, n: Math.max(1, Math.min(10, v.n | 0)) }]));
+  if (data.learned && typeof data.learned === "object") next.learned = Object.fromEntries(Object.entries(data.learned)
+    .filter(([k, v]) => k.length <= 80 && v && typeof v.name === "string" && v.name.length <= 80).slice(0, 400).map(([k, v]) => [k, { name: v.name, at: +v.at || Date.now() }]));
   state = next; migrate(); save(); renderAll();
   toast("Backup restored", snap);
 }
@@ -4273,6 +4297,7 @@ function renderNeeded() {
     if (e.target.closest('[data-a="hide-done"]')) { state.settings.hideDone = !hide; save(); renderNeeded(); return; }
     const row = e.target.closest(".need[data-n]"); if (!row) return;
     const n = state.notes.find(x => x.id === row.dataset.n); if (!n) return;
+    const fx = e.target.closest("[data-fix]"); if (fx) return applyFix(n, fx.dataset.fix);   // one of the suggested products
     if (e.target.closest('[data-a="play"]')) return playerToggle(n);
     if (e.target.closest('[data-a="toggle"]')) {
       toggleTick(n, row.dataset.k);
@@ -4294,12 +4319,15 @@ function markText(n, pid) {
 const chipsFor = (n, exceptVk) => { const bm = brandMap(); return [...new Set((n.parts || []).map(p => p.vk))].filter(k => k !== exceptVk && bm.has(k))
   .map(k => `<span class="chip-sm">${esc(bm.get(k))}</span>`).join(""); };
 let needMultiStore = false;   // set by renderNeeded: the list holds more than one store, so rows say which
+// Two or three likely products for a note the list couldn't place (learn.js).
+const fixRowHTML = n => { const s = suggestFor(n); return s.length ? `<div class="fix-row"><span class="fix-q">Did you mean</span>${s.map(x => `<button class="fix-chip" data-fix="${esc(x)}">${esc(x)}</button>`).join("")}</div>` : ""; };
 function needRow(n, a) {
   const st = needMultiStore && Number.isInteger(n.slot) ? storeOf(n.slot) : "";
+  const fixTag = n.autoFix ? `<span class="fix-tag">Fixed: “${esc(n.autoFix.from)}” → ${esc(n.autoFix.to)}</span>` : "";
   const done = !!(n.ticks || {})[a.key], out = isOut(n, a.key), chips = (st ? `<span class="store-tag">#${esc(st)}</span>` : "") + chipsFor(n, a.vk) + (out ? `<span class="out-tag">None in back</span>` : "");
   return `<div class="item need tap${done ? " done" : ""}${out ? " out" : ""}${n.flag ? " flagged" : ""}" data-n="${esc(n.id)}" data-k="${esc(a.key)}">
     <div class="shelf-thumb" data-photo-wrap>${n.photos[0] ? `<img data-photo="${esc(n.photos[0])}" alt="">` : icon("note")}</div>
-    <div class="grow"><div class="blurb">${noteTextHTML(n, a.vk)}</div>${chips || n.flag ? `<div class="chips-row">${chips}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}</div>` : ""}</div>
+    <div class="grow"><div class="blurb">${noteTextHTML(n, a.vk)}</div>${chips || n.flag || fixTag ? `<div class="chips-row">${chips}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}${fixTag}</div>` : ""}${a.key === "?" ? fixRowHTML(n) : ""}</div>
     ${n.audio ? `<button class="pbtn" data-a="play" data-n="${esc(n.id)}" aria-label="Play the recording">${icon("play")}</button>` : ""}
     <button class="check${done ? " on" : ""}" data-a="toggle" aria-label="Mark as pulled">${icon("check")}</button></div>`;
 }
@@ -4317,7 +4345,7 @@ function openCheck(n, focusPid) {
   let photoIdx = 0;
   const s = el(`<div class="sheet check-sheet"><div class="handle"></div><h2>Check against the photo</h2>
     <div class="zoom-stage" id="ck-stage"><img alt=""><span class="zoom-hint">Pinch to zoom</span></div><div class="viewer-dots" id="ck-dots" style="padding:0"></div>
-    <div class="transcript" id="ck-text"></div><div class="hint" id="ck-heard"></div>${n.audio ? playerBarHTML(n) : ""}<div class="chips-row" id="ck-chips"></div>
+    <div class="transcript" id="ck-text"></div><div class="hint" id="ck-heard"></div>${n.audio ? playerBarHTML(n) : ""}<div class="chips-row" id="ck-chips"></div><div id="ck-fix"></div>
     <div class="row" id="ck-actions"></div><button class="btn primary block" data-a="close">Done</button></div>`);
   const close = openLayer(s, { onClose: () => { playerStop(); renderAll(); } });
   wirePlayerBar(s, n);
@@ -4337,7 +4365,8 @@ function openCheck(n, focusPid) {
   const draw = () => {
     s.querySelector("#ck-heard").innerHTML = n.heard && n.heard !== n.text ? `Heard as “${esc(n.heard)}”` : "";
     s.querySelector("#ck-text").innerHTML = n.text ? `“${noteTextHTML(n, focusPid && focusPid !== "?" ? focusPid : null)}”` : "(no words: typed or no recording)";
-    s.querySelector("#ck-chips").innerHTML = `<span class="pill kind ${noteKind(n)}">${noteKind(n) === "display" ? displayLabel(n.photos[0], n.slot, "before") : KIND_LABEL[noteKind(n)]}</span>${chipsFor(n, null)}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}${outKeys().some(k => isOut(n, k)) ? `<span class="out-tag">None in back</span>` : ""}`;
+    s.querySelector("#ck-chips").innerHTML = `<span class="pill kind ${noteKind(n)}">${noteKind(n) === "display" ? displayLabel(n.photos[0], n.slot, "before") : KIND_LABEL[noteKind(n)]}</span>${chipsFor(n, null)}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}${outKeys().some(k => isOut(n, k)) ? `<span class="out-tag">None in back</span>` : ""}${n.autoFix ? `<span class="fix-tag">Fixed: “${esc(n.autoFix.from)}” → ${esc(n.autoFix.to)}</span>` : ""}`;
+    const fr = s.querySelector("#ck-fix"); if (fr) { fr.innerHTML = (n.parts || []).length ? "" : fixRowHTML(n); fr.onclick = e => { const b = e.target.closest("[data-fix]"); if (b) { close(); applyFix(n, b.dataset.fix); } }; }
     s.querySelector("#ck-actions").innerHTML = `<button class="btn sm grow" data-a="edit">${icon("note")}Edit text</button><button class="btn sm grow quiet" data-a="more">More…</button>`;
     const a = s.querySelector("#ck-actions");
     a.querySelector('[data-a="edit"]').onclick = async () => { await editText(n); draw(); };
@@ -4359,6 +4388,7 @@ function openCheck(n, focusPid) {
 async function editText(n) {
   const t = await textPrompt("What was said", n.text || "");
   if (t == null) return;
+  learnFromEdit(n, t); delete n.autoFix;   // a hand fix of a note nobody could place teaches the phrase (2.12)
   n.text = t; n.heard = null; n.parts = []; n.flag = false; n.ticks = {}; n.err = ""; n.status = t ? "heard" : "empty"; save(); renderAll(); await pump();
 }
 async function addPhoto(n) {
@@ -4571,6 +4601,7 @@ function askStore(slot) {
       const v = clean(inp.value); if (!v) { inp.focus(); return; }
       done = true; state.stores[slot] = v; if (slot === baSlot()) state.storeName = v;
       state.recentStores = [v, ...(state.recentStores || []).filter(x => x !== v)].slice(0, 8);
+      if (state.settings.geo === undefined) setTimeout(() => askGeoOnce(v), 450); else learnSpot(v);   // 2.12: remember where this store is
       save(); renderAll(); close(); resolve(v);
       btns().forEach(b => pulse(b));
     };
@@ -5025,7 +5056,7 @@ async function galMove() {
     const moved = new Set(sel.map(x => x.photo));
     for (const x of sel) for (const r of [...x.notes, ...x.shots]) { r.slot = to; if (r.dg && !moved.has(r.dg)) delete r.dg; }   // a display group left behind starts its own
     save(); galSelectEnd(true); gal.slot = to; renderAll();
-    toast(`Moved ${n} photo${n === 1 ? "" : "s"} to #${storeOf(to)}`, snap);
+    toastAction(`Moved ${n} photo${n === 1 ? "" : "s"} to #${storeOf(to)}`, "UNDO", () => { restore(snap); gal.slot = cur; renderAll(); toast("Undone"); });
   } else if (what === "kind") {
     for (const x of sel) for (const r of [...x.notes, ...x.shots]) { r.kind = val; if (val !== "display") delete r.dg; }   // out of a display: its link goes
     save(); galSelectEnd(true); gal.kind = val; renderAll();
@@ -5173,6 +5204,161 @@ function editVariation(v, { prefill = "" } = {}) {
     save(); close(); renderAll(); toast("Deleted", snap);
   };
 }
+// ---------- Store by location (2.12) ----------
+// When a store number is set, the phone's position is remembered for it (averaged over visits, kept on this phone only). When Shelfie
+// opens, or comes back after 15+ minutes, it looks once: at the store that's open, nothing is asked; at another known store (within
+// 1,500 m; Walmarts are big but far apart), it opens that one (adding it to the store buttons if needed) and says so, with "Not here".
+const GEO_RADIUS = 1500;   // metres
+const geoOn = () => state.settings.geo === true;
+function getPos(timeout = 8000) {
+  return new Promise(res => {
+    if (!navigator.geolocation) return res(null);
+    let done = false; const fin = v => { if (!done) { done = true; res(v); } };
+    setTimeout(() => fin(null), timeout + 1000);
+    navigator.geolocation.getCurrentPosition(p => fin({ lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy || 9999 }),
+      () => fin(null), { enableHighAccuracy: false, maximumAge: 60000, timeout });
+  });
+}
+function metresBetween(a, b) {
+  const R = 6371000, rad = x => x * Math.PI / 180, dLat = rad(b.lat - a.lat), dLon = rad(b.lon - a.lon);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+// The nearest store we know, if it's within reach.
+function nearestStore(pos) {
+  let best = null;
+  for (const [store, s] of Object.entries(state.storeSpots || {})) {
+    const d = metresBetween(pos, s); if (d <= GEO_RADIUS && (!best || d < best.d)) best = { store, d };
+  }
+  return best;
+}
+// Remember (or refine) where a store is: the average of up to the last 10 visits.
+async function learnSpot(store, pos) {
+  if (!geoOn() || tutorialActive || !store) return;
+  pos = pos || await getPos(); if (!pos || pos.acc > 2000) return;
+  state.storeSpots = state.storeSpots || {};
+  const s = state.storeSpots[store];
+  if (!s) state.storeSpots[store] = { lat: pos.lat, lon: pos.lon, n: 1 };
+  else { const n = Math.min(s.n + 1, 10); s.lat += (pos.lat - s.lat) / n; s.lon += (pos.lon - s.lon) / n; s.n = n; }
+  save();
+}
+// Asked once, the first time a store number is set: a word of explanation before the iPhone's own question.
+function askGeoOnce(store) {
+  if (state.settings.geo !== undefined || tutorialActive) return;
+  const pin = `<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>`;
+  const d = el(`<div class="dialog"><div class="update-icon">${pin}</div><p style="text-align:center;margin-top:12px"><b>Let Shelfie find your store?</b></p>
+    <p style="text-align:center">When you come back to a store, Shelfie opens it for you, so photos land under the right number. Your location stays on this phone.</p>
+    <div class="stack"><button class="btn primary block" data-a="yes">Allow</button><button class="btn block quiet" data-a="no">Not now</button></div></div>`);
+  const close = openLayer(d, { center: true, sticky: true });
+  d.querySelector('[data-a="yes"]').onclick = () => { close(); state.settings.geo = true; save(); learnSpot(store); };   // the iPhone asks now
+  d.querySelector('[data-a="no"]').onclick = () => { close(); state.settings.geo = false; save(); toast("You can turn it on in More"); };
+}
+// At a different known store: open it (adding it to the store buttons if there's room) and say so. False when there's no room.
+function autoSwitchStore(store, cur) {
+  const prev = baSlot(); let i = state.stores.indexOf(store), added = false;
+  if (i < 0) {
+    i = state.stores.findIndex(s => !s); if (i < 0) return false;
+    state.stores[i] = store; added = true;
+    state.recentStores = [store, ...(state.recentStores || []).filter(x => x !== store)].slice(0, 8); save();
+  }
+  if (i !== baSlot()) pickSlot(i); else renderAll();
+  haptic("tick");
+  toastAction(cur ? `You're at #${store}. Switched from #${cur}.` : `You're at #${store}.`, "NOT HERE", () => {
+    if (added && !slotCount(i)) state.stores[i] = "";   // nothing filed there: take it back off
+    const s = (state.storeSpots || {})[store]; if (s && s.n <= 1) delete state.storeSpots[store];   // a one-visit guess that was wrong: forget it
+    save();
+    if (prev !== baSlot() && storeOf(prev)) pickSlot(prev); else renderAll();
+    toast(cur ? `Back to #${cur}` : "OK");
+  }, 9000);
+  return true;
+}
+// ---------- Fixes that learn (2.12) ----------
+// A note the list couldn't place ("Check the text") shows two or three likely products as buttons. Picking one, or fixing the words by
+// hand to a product, teaches Shelfie that phrase ("dye coke" → "Diet Coke"); from then on a note with that phrase is fixed on its own,
+// with a small "Fixed" tag. Learned words are kept through Clear, go into backups, and can be removed in More.
+const FILLER = new Set(("a an the of and or some more about need needs needed we got get out low on for to is it in at its this that " +
+  "one two three four five six seven eight nine ten eleven twelve fifteen twenty half dozen case cases pack packs pk liter liters litre " +
+  "litres l oz ounce ounces bottle bottles can cans box boxes count ct x tray trays flat flats shelf shelves").split(" "));
+// The part of a note that names the product: the longest run of words that aren't amounts or filler.
+function phraseOf(text) {
+  let run = [], best = [];
+  for (const t of sNorm(text).split(" ").filter(Boolean)) {
+    if (FILLER.has(t) || /^\d/.test(t)) { if (run.length > best.length) best = run; run = []; } else run.push(t);
+  }
+  if (run.length > best.length) best = run;
+  return best.join(" ");
+}
+const reEscL = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+// Put the product name where the phrase was, keeping the rest of the words ("dye coke twelve packs" → "Diet Coke twelve packs").
+function replacePhrase(text, phrase, name) {
+  const words = phrase.split(" ").filter(Boolean); if (!words.length) return name;
+  const re = new RegExp("\\b" + words.map(reEscL).join("[^a-z0-9]+") + "\\b", "i");
+  return re.test(text) ? text.replace(re, () => name) : `${name} ${text}`.trim();
+}
+function learnPhrase(phrase, name) {
+  if (!phrase || !name || sNorm(name) === phrase || tutorialActive) return;
+  state.learned = state.learned || {};
+  state.learned[phrase] = { name, at: Date.now() };
+  const keys = Object.keys(state.learned); if (keys.length > 400) delete state.learned[keys.sort((a, b) => state.learned[a].at - state.learned[b].at)[0]];   // keep it small
+}
+// A learned phrase in this text? (The longest one wins.)
+function learnedFix(text) {
+  const norm = " " + sNorm(text) + " "; let hit = null;
+  for (const [phrase, v] of Object.entries(state.learned || {})) if (norm.includes(" " + phrase + " ") && (!hit || phrase.length > hit.phrase.length)) hit = { phrase, name: v.name };
+  return hit ? { ...hit, text: replacePhrase(text, hit.phrase, hit.name) } : null;
+}
+// ---- suggestions: the closest product names to the phrase (letter-triplet overlap), learned ones and much-used ones first ----
+const tri = s => { const t = new Set(), x = `  ${s} `; for (let i = 0; i < x.length - 2; i++) t.add(x.slice(i, i + 3)); return t; };
+const dice = (a, b) => { let n = 0; for (const g of a) if (b.has(g)) n++; return (2 * n) / (a.size + b.size || 1); };
+let sugCache = null, sugRev = -1;
+function suggestNames() {   // every product as it would be said, and each brand on its own
+  const rev = prodRev(); if (sugCache && sugRev === rev) return sugCache;
+  const m = new Map();
+  for (const v of variations()) { const name = pickText(v); m.set(name, { name, brand: v.brand, key: v.key, t: tri(sNorm(name)) }); m.set(v.brand, m.get(v.brand) || { name: v.brand, brand: v.brand, key: sNorm(v.brand) + "|", t: tri(sNorm(v.brand)) }); }
+  sugRev = rev; return (sugCache = [...m.values()]);
+}
+function suggestFor(n) {
+  const phrase = phraseOf(n.text || ""); if (!phrase) return [];
+  const p = tri(phrase), learned = (state.learned || {})[phrase], use = pickUse();
+  const scored = suggestNames().map(c => ({ c, s: dice(p, c.t) + (learned && learned.name === c.name ? 1 : 0) + Math.min(0.08, ((use.f[c.key] || 0) + (use.b[sNorm(c.brand)] || 0)) * 0.01) }))
+    .filter(x => x.s >= 0.28).sort((a, b) => b.s - a.s);
+  const out = [], brands = new Set();
+  for (const x of scored) { if (out.length >= 3) break; if (brands.has(x.c.brand) && out.length) continue; brands.add(x.c.brand); out.push(x.c.name); }
+  return out;
+}
+// Fix a note with a picked product: its words keep everything but the misheard phrase, and the phrase is learned.
+function applyFix(n, name) {
+  const snap = snapshot(), orig = n.text || "", phrase = phraseOf(orig);
+  n.heard = n.heard || orig; n.text = replacePhrase(orig, phrase, name); n._al = null; delete n.autoFix;
+  learnPhrase(phrase, name);
+  n.status = "heard"; n.parts = []; n.flag = false; n.ticks = {}; n.out = {};
+  save(); renderAll(); pump();
+  toast(`Fixed: “${phrase}” → ${name}. Learned for next time.`, snap);
+}
+// A hand edit that turns a note nobody could place into one the list understands teaches the phrase too.
+function learnFromEdit(n, newText) {
+  try {
+    if (!n.text || (n.parts || []).length) return;   // only notes that weren't placed
+    const phrase = phraseOf(n.text), r = readBlurb(newText), p = (r.parts || [])[0];
+    if (!phrase || !p) return;
+    learnPhrase(phrase, newText.slice(p.s, p.e).trim());
+  } catch (e) {}
+}
+// ---- More › Learned words ----
+function openLearned() {
+  const s = el(`<div class="sheet learned-sheet"><div class="handle"></div><h2>Learned words</h2><p class="hint">When you fix a note the list didn't understand, Shelfie remembers what you meant. Remove any that are wrong.</p><div class="learned-body"></div>
+    <button class="btn primary block" data-a="close">Done</button></div>`);
+  const body = s.querySelector(".learned-body");
+  const draw = () => {
+    const rows = Object.entries(state.learned || {}).sort((a, b) => b[1].at - a[1].at);
+    body.innerHTML = rows.length ? `<div class="list group">${rows.map(([k, v]) => `<div class="item learned-row"><div class="grow"><div class="name">“${esc(k)}”</div><div class="sub">→ ${esc(v.name)}</div></div><button class="pbtn" data-del="${esc(k)}" aria-label="Forget this one">${icon("x")}</button></div>`).join("")}</div>`
+      : `<p class="sec-foot">Nothing learned yet.</p>`;
+  };
+  body.onclick = e => { const b = e.target.closest("[data-del]"); if (!b) return; const snap = snapshot(); delete state.learned[b.dataset.del]; save(); draw(); renderAll(); toast("Forgotten", snap); };
+  const close = openLayer(s, { onClose: () => renderAll() });
+  s.querySelector('[data-a="close"]').onclick = close;
+  draw();
+}
 // ---------- "Still at #1234?" and the new-day prompt (2.11) ----------
 // When Shelfie comes back on screen after 15+ minutes away (another app, closed, or the phone locked), it asks whether you're still at the
 // same store, with your recent stores one tap away: so a drive to the next store can't file its photos under the last store's number.
@@ -5187,25 +5373,42 @@ setInterval(() => { if (!document.hidden) markSeen(); }, 30000);
 document.addEventListener("visibilitychange", () => { if (document.hidden) markSeen(); else awayCheck(); });
 
 // Coming back: the new-day prompt first (it covers the store question too), else "Still at…?" after a long enough time away.
-function awayCheck() {
+async function awayCheck() {
   let last = 0; try { last = +localStorage.getItem(SEEN_KEY) || 0; } catch (e) {}
   markSeen();
-  if (tutorialActive || document.querySelector("#layer .overlay:not(.closing)")) return;   // not over the practice run or an open sheet
+  const busy = () => tutorialActive || !!document.querySelector("#layer .overlay:not(.closing)");   // not over the practice run or an open sheet
+  if (busy()) return;
   if (newDayDue()) { askNewDay(); return; }
-  if (last && Date.now() - last >= AWAY_ASK_MS && storeOf(baSlot())) askStillHere(Date.now() - last);
+  const launch = !awayCheck.ran; awayCheck.ran = true;
+  const away = last ? Date.now() - last : 0, long = away >= AWAY_ASK_MS;
+  if (!launch && !long) return;
+  // 2.12: where are we? At the open store: nothing to ask. At another known store: open it.
+  let suggest = null;
+  if (geoOn()) {
+    const pos = await getPos();
+    if (busy()) return;
+    if (pos) {
+      const near = nearestStore(pos), cur = storeOf(baSlot());
+      if (near && near.store === cur) { learnSpot(cur, pos); return; }
+      if (near && autoSwitchStore(near.store, cur)) return;
+      if (near) suggest = near.store;   // no room for it on the store buttons: offer it below
+    }
+  }
+  if (long && storeOf(baSlot())) askStillHere(away, suggest);
 }
 
 // ---- Still at #1234? ----
-function askStillHere(awayMs) {
+function askStillHere(awayMs, suggest) {
   const cur = storeOf(baSlot()), mins = Math.round(awayMs / 60000);
   const away = mins >= 120 ? `${Math.round(mins / 60)} hours` : `${mins} minutes`;
   const others = [...new Set([...(state.recentStores || []), ...state.stores.filter(Boolean)])].filter(s => s !== cur).slice(0, 6);
   const d = el(`<div class="dialog still-dialog"><p class="still-h">Still at <b>#${esc(cur)}</b>?</p><p class="still-sub">You were away ${esc(away)}.</p>
-    <button class="btn primary block still-yes" data-a="yes">Yes, still here</button>
+    ${suggest ? `<button class="btn primary block still-yes" data-st="${esc(suggest)}">Looks like #${esc(suggest)} · Switch</button>` : ""}
+    <button class="btn ${suggest ? "" : "primary "}block still-yes" data-a="yes"${suggest ? ' style="margin-top:8px"' : ""}>Yes, still here</button>
     ${others.length ? `<p class="recent-h">Switch to</p><div class="recent-stores">${others.map(s => `<button class="recent-store" data-st="${esc(s)}">#${esc(s)}</button>`).join("")}</div>` : ""}
     <button class="btn block quiet" data-a="other" style="margin-top:10px">Other store…</button></div>`);
   const close = openLayer(d, { center: true, sticky: true });
-  d.querySelector('[data-a="yes"]').onclick = () => { close(); haptic("tick"); };
+  d.querySelector('[data-a="yes"]').onclick = () => { close(); haptic("tick"); learnSpot(cur); };
   d.querySelectorAll("[data-st]").forEach(b => (b.onclick = () => { close(); switchToStore(b.dataset.st); }));
   d.querySelector('[data-a="other"]').onclick = () => {
     close();
@@ -5223,7 +5426,7 @@ function switchToStore(v) {
     state.stores[i] = v; state.recentStores = [v, ...(state.recentStores || []).filter(x => x !== v)].slice(0, 8); save();
   }
   if (i !== baSlot()) pickSlot(i);
-  toast(`Now at #${v}`);
+  toast(`Now at #${v}`); learnSpot(v);
 }
 
 // ---- New day ----
@@ -5538,6 +5741,11 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "2.12.0", notes: [
+    "Shelfie can find your store by location: arrive at a store you've been to and it opens that store for you (with “Not here” if it's wrong), and it stops asking “Still at…?” when you haven't moved.",
+    "Notes the list didn't understand show “Did you mean” buttons. Pick one, or fix the words, and Shelfie learns it: next time that phrase is fixed on its own.",
+    "Learned words in More, to remove any that are wrong.",
+    "Undo after moving photos to another store goes back to the store they came from." ] },
   { v: "2.11.0", notes: [
     "Coming back after 15 minutes or more asks “Still at #1234?”, with your recent stores one tap away, so photos don't land under the last store.",
     "The first time you open the app on a new day with yesterday's work still in it, it offers to save and clear it.",
@@ -5602,7 +5810,7 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 82;
+const REVISION = 83;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -5643,17 +5851,22 @@ function renderMore() {
       <button class="item row-btn" id="btn-restore">${icon("upload")}<span class="grow">Restore from a backup</span></button>
     </div>
     <p class="sec-foot">One small file with the product list, settings and store numbers. Keep it in Files or send it to yourself. Notes and photos aren't included.</p>
+    <div class="sec-h">Stores</div>
+    <div class="list group">
+      <div class="item set"><label class="grow" for="geo-on"><div class="name">Find my store by location</div><div class="sub">Opens the right store when you arrive, and skips “Still at…?” when you haven't moved. Your location stays on this phone.</div></label><input type="checkbox" switch id="geo-on" ${geoOn() ? "checked" : ""}></div>
+    </div>
     <div class="sec-h">Photos</div>
     <div class="list group">
       <div class="item set"><label class="grow" for="photo-check"><div class="name">Warn about blurry or dark photos</div><div class="sub">Right after a photo, if it looks blurry or too dark, you get a Retake button.</div></label><input type="checkbox" switch id="photo-check" ${photoCheckOn() ? "checked" : ""}></div>
     </div>
     <div class="sec-h">Help</div>
     <div class="list group">
+      <button class="item row-btn nav" id="btn-learned">${icon("mic")}<span class="grow">Learned words</span><span class="set-val">${Object.keys(state.learned || {}).length}</span>${icon("jump")}</button>
       <button class="item row-btn" id="btn-practice">${icon("play")}<span class="grow">Practice run</span></button>
       <button class="item row-btn nav" id="btn-whatsnew">${icon("note")}<span class="grow">What's new</span>${icon("jump")}</button>
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
-    <p class="foot">Shelfie 2.11.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 2.12.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
@@ -5671,6 +5884,8 @@ function renderMore() {
   v.querySelector("#btn-restore").onclick = pickBackupFile;
   v.querySelector("#photo-check").onchange = e => { state.settings.photoCheck = e.target.checked; save(); };
   v.querySelector("#btn-practice").onclick = () => startTutorial();
+  v.querySelector("#btn-learned").onclick = () => openLearned();
+  v.querySelector("#geo-on").onchange = e => { state.settings.geo = e.target.checked; save(); if (e.target.checked && storeOf(baSlot())) learnSpot(storeOf(baSlot())); };
   v.querySelector("#btn-whatsnew").onclick = () => showView("changelog");
   v.querySelector("#btn-reset").onclick = async () => {
     if (!(await confirmDialog("Erase everything on this phone (notes, photos, store numbers and settings) and start fresh with the built-in product list? Save a backup first if you want to keep your product changes.", { ok: "Erase", danger: true }))) return;
