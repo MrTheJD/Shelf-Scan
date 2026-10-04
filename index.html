@@ -870,6 +870,17 @@ body[data-nav="push"] #view-changelog.active { animation: pushIn .5s cubic-bezie
 .learned-sheet .list.group { margin-top: 10px; }
 .learned-row .pbtn { width: 34px; height: 34px; background: none; color: var(--muted); box-shadow: inset 0 0 0 1.5px var(--line); }
 .learned-row .pbtn svg.i { width: 15px; height: 15px; }
+
+/* 2.12.1: store locations */
+.spots-sheet .list.group { margin-top: 12px; }
+.spots-sheet > .btn[data-a="add"] { margin-top: 6px; }
+.spot-row .grow { display: flex; flex-direction: column; min-width: 0; }
+.spot-row .name { font-weight: 750; }
+.spot-row .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.addr-results .list.group { margin-top: 10px; }
+.addr-pick .grow { font-size: 14.5px; font-weight: 600; line-height: 1.3; }
+.addr-pick .set-val { color: var(--red); font-weight: 800; }
+.addr-note { margin-top: 8px; font-size: 12px; }
 </style>
 </head>
 <body data-view="capture">
@@ -4601,7 +4612,6 @@ function askStore(slot) {
       const v = clean(inp.value); if (!v) { inp.focus(); return; }
       done = true; state.stores[slot] = v; if (slot === baSlot()) state.storeName = v;
       state.recentStores = [v, ...(state.recentStores || []).filter(x => x !== v)].slice(0, 8);
-      if (state.settings.geo === undefined) setTimeout(() => askGeoOnce(v), 450); else learnSpot(v);   // 2.12: remember where this store is
       save(); renderAll(); close(); resolve(v);
       btns().forEach(b => pulse(b));
     };
@@ -5239,8 +5249,20 @@ async function learnSpot(store, pos) {
   state.storeSpots = state.storeSpots || {};
   const s = state.storeSpots[store];
   if (!s) state.storeSpots[store] = { lat: pos.lat, lon: pos.lon, n: 1 };
+  else if (s.exact) {   // set by address or by hand: visits only fine-tune it, nearby
+    if (metresBetween(pos, s) > 400) return;
+    const n = Math.min((s.n || 1) + 1, 20); s.lat += (pos.lat - s.lat) / (n * 2); s.lon += (pos.lon - s.lon) / (n * 2); s.n = n;
+  }
   else { const n = Math.min(s.n + 1, 10); s.lat += (pos.lat - s.lat) / n; s.lon += (pos.lon - s.lon) / n; s.n = n; }
   save();
+}
+// After a photo: log the store's position (once per visit: not again for 30 minutes), asking the once-only question first.
+const spotLogged = {};
+function photoSpot() {
+  const st = storeOf(baSlot()); if (!st || tutorialActive) return;
+  if (state.settings.geo === undefined) { if (!document.querySelector("#layer .overlay:not(.closing)")) askGeoOnce(st); return; }   // asked when nothing else is open
+  if (!geoOn() || Date.now() - (spotLogged[st] || 0) < 30 * 60000) return;
+  spotLogged[st] = Date.now(); learnSpot(st);
 }
 // Asked once, the first time a store number is set: a word of explanation before the iPhone's own question.
 function askGeoOnce(store) {
@@ -5250,7 +5272,7 @@ function askGeoOnce(store) {
     <p style="text-align:center">When you come back to a store, Shelfie opens it for you, so photos land under the right number. Your location stays on this phone.</p>
     <div class="stack"><button class="btn primary block" data-a="yes">Allow</button><button class="btn block quiet" data-a="no">Not now</button></div></div>`);
   const close = openLayer(d, { center: true, sticky: true });
-  d.querySelector('[data-a="yes"]').onclick = () => { close(); state.settings.geo = true; save(); learnSpot(store); };   // the iPhone asks now
+  d.querySelector('[data-a="yes"]').onclick = () => { close(); state.settings.geo = true; save(); spotLogged[store] = Date.now(); learnSpot(store); };   // the iPhone asks now
   d.querySelector('[data-a="no"]').onclick = () => { close(); state.settings.geo = false; save(); toast("You can turn it on in More"); };
 }
 // At a different known store: open it (adding it to the store buttons if there's room) and say so. False when there's no room.
@@ -5265,12 +5287,94 @@ function autoSwitchStore(store, cur) {
   haptic("tick");
   toastAction(cur ? `You're at #${store}. Switched from #${cur}.` : `You're at #${store}.`, "NOT HERE", () => {
     if (added && !slotCount(i)) state.stores[i] = "";   // nothing filed there: take it back off
-    const s = (state.storeSpots || {})[store]; if (s && s.n <= 1) delete state.storeSpots[store];   // a one-visit guess that was wrong: forget it
+    if (state.storeSpots) delete state.storeSpots[store];   // wrong: forget it, and learn it again from the next photo there
     save();
     if (prev !== baSlot() && storeOf(prev)) pickSlot(prev); else renderAll();
     toast(cur ? `Back to #${cur}` : "OK");
   }, 9000);
   return true;
+}
+
+// ---- More › Stores › Store locations ----
+const spotLabel = s => (s.label ? s.label : s.exact ? "Set by hand" : `Learned from ${s.n} visit${s.n === 1 ? "" : "s"}`);
+function openStoreSpots() {
+  const s = el(`<div class="sheet spots-sheet"><div class="handle"></div><h2>Store locations</h2>
+    <p class="hint">Where each store is, so Shelfie can open it when you arrive. Learned from your photos, or set here.</p>
+    <button class="btn block" data-a="add">${icon("plus")}Add store</button><div class="spots-body"></div>
+    <button class="btn primary block" data-a="close">Done</button></div>`);
+  const body = s.querySelector(".spots-body");
+  const draw = () => {
+    const rows = Object.entries(state.storeSpots || {}).sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }));
+    body.innerHTML = (geoOn() ? "" : `<p class="sec-foot">Find my store by location is off, so these aren't used until it's on.</p>`) +
+      (rows.length ? `<div class="list group">${rows.map(([k, v]) => `<button class="item row-btn nav spot-row" data-st="${esc(k)}"><span class="grow"><span class="name">#${esc(k)}</span><span class="sub">${esc(spotLabel(v))}</span></span>${icon("jump")}</button>`).join("")}</div>`
+        : `<p class="sec-foot">No store locations yet. They're learned when you take photos at a store, or add one above.</p>`);
+  };
+  body.onclick = e => { const b = e.target.closest("[data-st]"); if (b) spotActions(b.dataset.st, draw); };
+  s.querySelector('[data-a="add"]').onclick = () => addStoreSpot(draw);
+  const close = openLayer(s, { onClose: () => renderAll() });
+  s.querySelector('[data-a="close"]').onclick = close;
+  draw();
+}
+async function spotActions(store, redraw) {
+  const pick = await menu(`#${store}`, [{ label: "Use where I am now", value: "here" }, { label: "Set by address…", value: "addr" }, { label: "Forget this location", value: "forget", danger: true }]);
+  if (pick === "here") await setSpotHere(store);
+  else if (pick === "addr") await setSpotByAddress(store);
+  else if (pick === "forget") { const snap = snapshot(); delete state.storeSpots[store]; save(); toast(`Forgot #${store}'s location`, snap); }
+  redraw();
+}
+async function setSpotHere(store) {
+  toast("Finding where you are…");
+  const pos = await getPos(10000);
+  if (!pos) return toast("Couldn't get your location. Check that Shelfie is allowed to use it.");
+  state.storeSpots = state.storeSpots || {};
+  state.storeSpots[store] = { lat: pos.lat, lon: pos.lon, n: 1, exact: true, label: "Set where you stood" };
+  save(); toast(`#${store} is set to where you are`);
+}
+// Address → place, with OpenStreetMap's search. Only from this menu; only the typed address is sent.
+async function lookUpAddress(q) {
+  const url = "https://nominatim.openstreetmap.org/search?format=jsonv2&limit=4&addressdetails=0&q=" + encodeURIComponent(q);
+  const r = await fetch(url, { headers: { "Accept-Language": "en" } });
+  if (!r.ok) throw new Error("lookup");
+  return (await r.json()).filter(x => Number.isFinite(+x.lat) && Number.isFinite(+x.lon)).map(x => ({ lat: +x.lat, lon: +x.lon, name: String(x.display_name || "") }));
+}
+const shortPlace = n => n.split(",").map(x => x.trim()).filter(x => x && !/^United States$/.test(x) && !/County$/.test(x)).slice(0, 4).join(", ");
+function setSpotByAddress(store) {
+  return new Promise(resolve => {
+    const d = el(`<div class="dialog addr-dialog"><p><b>Where is #${esc(store)}?</b></p>
+      <input class="field" autocomplete="off" placeholder="Street address, city, state" aria-label="Store address">
+      <div class="addr-results"></div><p class="hint addr-note">Looked up with OpenStreetMap. Only the address is sent.</p>
+      <div class="btns" style="margin-top:12px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="go">Look up</button></div></div>`);
+    const inp = d.querySelector("input"), out = d.querySelector(".addr-results");
+    const close = openLayer(d, { center: true, sticky: true, onClose: () => resolve() });
+    d.querySelector('[data-a="c"]').onclick = close;
+    const go = async () => {
+      const q = inp.value.trim(); if (q.length < 4) return inp.focus();
+      out.innerHTML = `<p class="hint">Looking up…</p>`;
+      let res; try { res = await lookUpAddress(q); } catch (e) { out.innerHTML = `<p class="hint">Couldn't look that up. Check your signal and try again.</p>`; return; }
+      if (!res.length) { out.innerHTML = `<p class="hint">Nothing found. Try adding the city and state.</p>`; return; }
+      out.innerHTML = `<div class="list group">${res.map((x, i) => `<button class="item row-btn addr-pick" data-i="${i}"><span class="grow">${esc(shortPlace(x.name))}</span><span class="set-val">Use</span></button>`).join("")}</div>`;
+      out.onclick = e => {
+        const b = e.target.closest("[data-i]"); if (!b) return; const x = res[+b.dataset.i];
+        state.storeSpots = state.storeSpots || {};
+        state.storeSpots[store] = { lat: x.lat, lon: x.lon, n: 1, exact: true, label: shortPlace(x.name) };
+        save(); close(); toast(`#${store}'s location is set`);
+      };
+    };
+    d.querySelector('[data-a="go"]').onclick = go;
+    inp.onkeydown = e => { if (e.key === "Enter") go(); };
+    setTimeout(() => inp.focus(), 50);
+  });
+}
+function addStoreSpot(redraw) {
+  const d = el(`<div class="dialog"><p><b>Add a store location</b></p>
+    <input class="field" inputmode="numeric" autocomplete="off" placeholder="Store number, like 1234" aria-label="Store number">
+    <div class="stack" style="margin-top:12px"><button class="btn primary block" data-a="addr">Set by address…</button><button class="btn block" data-a="here">Use where I am now</button><button class="btn block quiet" data-a="c">Cancel</button></div></div>`);
+  const inp = d.querySelector("input"), close = openLayer(d, { center: true, sticky: true });
+  const num = () => { const v = inp.value.trim().replace(/^store\s*#?\s*/i, "").replace(/^#\s*/, ""); if (!v) inp.focus(); return v; };
+  d.querySelector('[data-a="c"]').onclick = close;
+  d.querySelector('[data-a="addr"]').onclick = async () => { const v = num(); if (!v) return; close(); await setSpotByAddress(v); redraw(); };
+  d.querySelector('[data-a="here"]').onclick = async () => { const v = num(); if (!v) return; close(); await setSpotHere(v); redraw(); };
+  setTimeout(() => inp.focus(), 50);
 }
 // ---------- Fixes that learn (2.12) ----------
 // A note the list couldn't place ("Check the text") shows two or three likely products as buttons. Picking one, or fixing the words by
@@ -5389,7 +5493,7 @@ async function awayCheck() {
     if (busy()) return;
     if (pos) {
       const near = nearestStore(pos), cur = storeOf(baSlot());
-      if (near && near.store === cur) { learnSpot(cur, pos); return; }
+      if (near && near.store === cur) return;   // at the open store: nothing to ask
       if (near && autoSwitchStore(near.store, cur)) return;
       if (near) suggest = near.store;   // no room for it on the store buttons: offer it below
     }
@@ -5408,7 +5512,7 @@ function askStillHere(awayMs, suggest) {
     ${others.length ? `<p class="recent-h">Switch to</p><div class="recent-stores">${others.map(s => `<button class="recent-store" data-st="${esc(s)}">#${esc(s)}</button>`).join("")}</div>` : ""}
     <button class="btn block quiet" data-a="other" style="margin-top:10px">Other store…</button></div>`);
   const close = openLayer(d, { center: true, sticky: true });
-  d.querySelector('[data-a="yes"]').onclick = () => { close(); haptic("tick"); learnSpot(cur); };
+  d.querySelector('[data-a="yes"]').onclick = () => { close(); haptic("tick"); };
   d.querySelectorAll("[data-st]").forEach(b => (b.onclick = () => { close(); switchToStore(b.dataset.st); }));
   d.querySelector('[data-a="other"]').onclick = () => {
     close();
@@ -5426,7 +5530,7 @@ function switchToStore(v) {
     state.stores[i] = v; state.recentStores = [v, ...(state.recentStores || []).filter(x => x !== v)].slice(0, 8); save();
   }
   if (i !== baSlot()) pickSlot(i);
-  toast(`Now at #${v}`); learnSpot(v);
+  toast(`Now at #${v}`);
 }
 
 // ---- New day ----
@@ -5500,6 +5604,7 @@ async function measurePhoto(blob) {
 }
 const photoInUse = id => state.notes.some(n => (n.photos || []).includes(id)) || state.shots.some(s => s.photo === id) || !!(hold.session && hold.session.photo === id);
 async function checkPhotoQuality(id) {
+  photoSpot();   // 2.12.1: a photo means we're at the store: log where it is
   if (!photoCheckOn() || tutorialActive) return;
   let blob = null;
   for (let i = 0; i < 20 && !blob; i++) { blob = await getPhoto(thumbId(id)).catch(() => null); if (!blob) await qSleep(150); }   // the thumbnail is made in the background
@@ -5741,6 +5846,10 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "2.12.1", notes: [
+    "Store locations are learned from the photos you take at a store, not from typing its number.",
+    "“Not here” always forgets that store's location; it learns it again from your next photo there.",
+    "More › Stores › Store locations: see every store's location, set one to where you are or by address, forget one, or add a store ahead of time." ] },
   { v: "2.12.0", notes: [
     "Shelfie can find your store by location: arrive at a store you've been to and it opens that store for you (with “Not here” if it's wrong), and it stops asking “Still at…?” when you haven't moved.",
     "Notes the list didn't understand show “Did you mean” buttons. Pick one, or fix the words, and Shelfie learns it: next time that phrase is fixed on its own.",
@@ -5810,7 +5919,7 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 83;
+const REVISION = 84;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -5854,6 +5963,7 @@ function renderMore() {
     <div class="sec-h">Stores</div>
     <div class="list group">
       <div class="item set"><label class="grow" for="geo-on"><div class="name">Find my store by location</div><div class="sub">Opens the right store when you arrive, and skips “Still at…?” when you haven't moved. Your location stays on this phone.</div></label><input type="checkbox" switch id="geo-on" ${geoOn() ? "checked" : ""}></div>
+      <button class="item row-btn nav" id="btn-spots">${icon("camera")}<span class="grow">Store locations</span><span class="set-val">${Object.keys(state.storeSpots || {}).length}</span>${icon("jump")}</button>
     </div>
     <div class="sec-h">Photos</div>
     <div class="list group">
@@ -5866,7 +5976,7 @@ function renderMore() {
       <button class="item row-btn nav" id="btn-whatsnew">${icon("note")}<span class="grow">What's new</span>${icon("jump")}</button>
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
-    <p class="foot">Shelfie 2.12.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 2.12.1 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
@@ -5885,7 +5995,8 @@ function renderMore() {
   v.querySelector("#photo-check").onchange = e => { state.settings.photoCheck = e.target.checked; save(); };
   v.querySelector("#btn-practice").onclick = () => startTutorial();
   v.querySelector("#btn-learned").onclick = () => openLearned();
-  v.querySelector("#geo-on").onchange = e => { state.settings.geo = e.target.checked; save(); if (e.target.checked && storeOf(baSlot())) learnSpot(storeOf(baSlot())); };
+  v.querySelector("#geo-on").onchange = e => { state.settings.geo = e.target.checked; save(); if (e.target.checked) getPos(); };   // turning it on: the iPhone asks now
+  v.querySelector("#btn-spots").onclick = () => openStoreSpots();
   v.querySelector("#btn-whatsnew").onclick = () => showView("changelog");
   v.querySelector("#btn-reset").onclick = async () => {
     if (!(await confirmDialog("Erase everything on this phone (notes, photos, store numbers and settings) and start fresh with the built-in product list? Save a backup first if you want to keep your product changes.", { ok: "Erase", danger: true }))) return;
