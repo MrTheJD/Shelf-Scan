@@ -382,6 +382,88 @@ header.top h1 img.brand { display: block; height: 24px; width: auto; }
 
 /* 2.1: the Products page sits under More */
 .back-btn { margin-bottom: 4px; }
+
+/* 2.1.1: the Before shutter stays still while held (no shrink, no page scroll under the finger); holding shows a glow instead */
+#view-capture .shutter-wrap, #view-capture .shutter-wrap .hap { touch-action: none; }
+#view-capture .shutter-big, #view-capture .shutter-big:active, #view-capture .shutter-wrap:active .shutter-big { transform: none !important; transition: border-color .3s ease, box-shadow .2s ease; }
+#view-capture .shutter-big span { transition: background-color .2s ease; }
+#view-capture .shutter-big.holding { box-shadow: 0 0 0 7px color-mix(in srgb, var(--red) 30%, transparent); }
+#view-capture .shutter-big.holding span { background: var(--red-press); }
+#view-capture.mode-display .shutter-big.holding { box-shadow: 0 0 0 7px color-mix(in srgb, var(--ink) 30%, transparent); }
+
+/* ---------- 2.2: motion everywhere ---------- */
+@keyframes riseIn { from { opacity: 0; transform: translateY(12px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes dropIn { from { opacity: 0; transform: translate(-50%, -10px) scale(.92); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+@keyframes viewInFwd { from { opacity: 0; transform: translateX(22px); } to { opacity: 1; transform: none; } }
+@keyframes viewInBack { from { opacity: 0; transform: translateX(-22px); } to { opacity: 1; transform: none; } }
+@keyframes camIn { from { opacity: 0; transform: scale(1.06); filter: blur(10px) brightness(1.4); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes softIn { from { opacity: 0; transform: scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes barIn { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes brandIn { from { opacity: 0; transform: translateY(-6px) scale(.9); } to { opacity: 1; transform: none; } }
+@keyframes breathe { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+
+/* screens slide in from the side of the tab they came from */
+body[data-dir="fwd"] .view.active { animation: viewInFwd .36s var(--ease-out) both; }
+body[data-dir="back"] .view.active { animation: viewInBack .36s var(--ease-out) both; }
+/* and their contents rise in one after another */
+.view.entering :is(.list-head, .card, .banner, .group-h, .cluster-h, .list, .slots, .row, .seg, .empty, .btn.block, .shot) { animation: riseIn .42s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 32ms); }
+.view.entering .list > .item { animation: riseIn .4s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 28ms); }
+
+/* first paint */
+header.top h1 img.brand { animation: brandIn .7s var(--spring) both; }
+nav.tabs { animation: barIn .55s var(--ease-out) both; }
+
+/* the camera: the feed fades in sharp, the waiting text breathes, the off panel settles in */
+.camera video { animation: camIn .6s var(--ease-out) both; }
+.cam-wait { animation: breathe 1.4s ease-in-out infinite; }
+.cam-off:not([hidden]) > * { animation: riseIn .45s var(--ease-out) both; }
+.cam-off:not([hidden]) > *:nth-child(2) { animation-delay: .06s; }
+.cam-off:not([hidden]) > *:nth-child(3) { animation-delay: .12s; }
+.cam-off:not([hidden]) > *:nth-child(4) { animation-delay: .18s; }
+.cam-lens:not([hidden]), .cam-sound, .cam-stop:not([hidden]) { animation: softIn .4s var(--spring) both; }
+.camera.flash::after { animation: fadeOut .45s ease forwards; }
+.fly-photo { position: fixed; z-index: 90; object-fit: cover; pointer-events: none; box-shadow: 0 10px 30px rgba(0, 0, 0, .35); transform-origin: center; }
+
+/* hold to talk */
+.hold-live:not([hidden]) { animation: dropIn .32s var(--spring) both; }
+.hold-bar:not([hidden]) { animation: riseIn .32s var(--spring) both; }
+.camera { transition: border-color .3s ease, box-shadow .3s ease; }
+
+/* labels and banners */
+.cam-chip { transition: background-color .3s ease, color .3s ease; }
+.cam-chip.pop { animation: pop .45s var(--spring); }
+#model-banner:not([hidden]) .banner, .banner { animation: riseIn .4s var(--ease-out) both; }
+.queue-line:not([hidden]) { animation: softIn .3s var(--ease-out) both; }
+.save-hint { animation: dropIn .4s var(--spring) both; }
+
+/* thumbnails fade in as they load */
+img[data-photo] { opacity: 0; transition: opacity .35s ease; }
+img[data-photo].in { opacity: 1; }
+
+/* sheets, menus and dialogs: their parts come in one after another */
+.sheet > *:not(.handle) { animation: riseIn .4s var(--ease-out) both; }
+.sheet > *:nth-child(2) { animation-delay: .04s; } .sheet > *:nth-child(3) { animation-delay: .08s; } .sheet > *:nth-child(4) { animation-delay: .12s; }
+.sheet > *:nth-child(5) { animation-delay: .16s; } .sheet > *:nth-child(6) { animation-delay: .2s; } .sheet > *:nth-child(n+7) { animation-delay: .24s; }
+.menu-list button { animation: riseIn .35s var(--ease-out) both; }
+.menu-list button:nth-child(2) { animation-delay: .05s; } .menu-list button:nth-child(3) { animation-delay: .1s; } .menu-list button:nth-child(4) { animation-delay: .15s; }
+.menu-list button:nth-child(5) { animation-delay: .2s; } .menu-list button:nth-child(n+6) { animation-delay: .25s; }
+.dialog > * { animation: riseIn .35s var(--ease-out) both; animation-delay: .06s; }
+.dialog .btns .btn, .dialog .stack .btn { animation: softIn .35s var(--spring) both; animation-delay: .12s; }
+.overlay.closing .sheet > *, .overlay.closing .dialog > * { animation: none; }
+.zoom-stage img { animation: softIn .45s var(--ease-out) both; }
+
+/* controls */
+input[type="checkbox"] { transition: transform .3s var(--spring); }
+input[type="checkbox"]:active { transform: scale(.85); }
+input[type="checkbox"]:checked { animation: pop .35s var(--spring); }
+.item.done .shelf-thumb, .item .blurb { transition: opacity .3s ease, color .3s ease; }
+.slot { transition: background-color .25s ease, color .25s ease, transform .4s var(--spring); }
+.slot small { transition: opacity .2s ease; }
+.kcount, .badge { transition: transform .3s var(--spring); }
+.field { transition: border-color .2s ease, box-shadow .2s ease; }
+.field:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 18%, transparent); }
+.rec-meter i { transition: transform .08s linear; }
+.rec-next:active { transform: scale(.97); }
 </style>
 </head>
 <body data-view="capture">
@@ -1120,7 +1202,8 @@ async function photoURL(id) {
 function hydratePhotos(root) {
   root.querySelectorAll("img[data-photo]").forEach(async img => {
     const u = (await photoURL(thumbId(img.dataset.photo))) || (await photoURL(img.dataset.photo));
-    if (u) img.src = u; else img.closest("[data-photo-wrap]")?.classList.add("missing");
+    if (u) { img.addEventListener("load", () => img.classList.add("in"), { once: true }); img.src = u; if (img.complete && img.naturalWidth) img.classList.add("in"); }
+    else img.closest("[data-photo-wrap]")?.classList.add("missing");
   });
 }
 // Remove photos and clips no note points to (runs after deletes once the undo window has passed).
@@ -1135,14 +1218,14 @@ async function sweepMedia() {
 }
 function scheduleSweep() { clearTimeout(scheduleSweep.t); scheduleSweep.t = setTimeout(sweepMedia, 10000); }
 
-// Resize an image or video frame to at most PHOTO_MAX px on the long side and encode it as JPEG. 2400 px keeps a whole shelf readable
-// when zoomed in (about 0.6 to 1 MB a photo; 1.x kept 1280 px).
-const PHOTO_MAX = 2400;
+// Resize an image or video frame to at most PHOTO_MAX px on the long side and encode it as JPEG. 4096 px keeps a whole shelf sharp when
+// zoomed in (about 1.5 to 3 MB a photo; 2.0 kept 2400 px, 1.x 1280 px).
+const PHOTO_MAX = 4096;
 function frameToBlob(source, sw, sh, sx = 0, sy = 0, cw = sw, ch = sh) {
   const k = Math.min(1, PHOTO_MAX / Math.max(cw, ch));
   const c = document.createElement("canvas"); c.width = Math.round(cw * k); c.height = Math.round(ch * k);
   c.getContext("2d").drawImage(source, sx, sy, cw, ch, 0, 0, c.width, c.height);
-  return new Promise(r => c.toBlob(r, "image/jpeg", 0.8));
+  return new Promise(r => c.toBlob(r, "image/jpeg", 0.86));
 }
 async function fileToBlob(file) {
   const bmp = await createImageBitmap(file);
@@ -2253,6 +2336,47 @@ function wireToastSwipe() {
   t.addEventListener("pointerup", end);
   t.addEventListener("pointercancel", end);
 }
+
+// ---- Motion helpers ----
+const calmMotion = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+// A screen that just opened: its cards, rows, headings and photos rise in one after another (only for a moment after opening, so later
+// redraws don't replay it).
+function enterView(v) {
+  if (!v || calmMotion()) return;
+  v.classList.remove("entering"); void v.offsetWidth; v.classList.add("entering");
+  staggerIn(v);
+  clearTimeout(v._enterT); v._enterT = setTimeout(() => v.classList.remove("entering"), 700);
+}
+function staggerIn(root) {
+  let i = 0;
+  root.querySelectorAll(":scope > .list-head, :scope > .card, :scope > .banner, :scope > .group-h, :scope > .cluster-h, :scope > .list, :scope > .slots, :scope > .row, :scope > .seg, :scope > .shot-grid, :scope > .empty, :scope > .btn, :scope .list > .item, :scope .shot-grid > .shot")
+    .forEach(el => { if (i < 24) el.style.setProperty("--i", i++); });
+}
+// Text that changed gets a small pop (the camera labels).
+function setTextPop(el, text) {
+  if (!el || el.textContent === text) return;
+  const had = el.textContent; el.textContent = text;
+  if (had) pulse(el, "pop", 450);
+}
+// A new photo shrinks from the viewfinder into its thumbnail.
+function flyToThumb(blob, fromEl, toEl) {
+  if (calmMotion() || !fromEl || !toEl || !Element.prototype.animate) return;
+  const a = fromEl.getBoundingClientRect(), b = toEl.getBoundingClientRect();
+  if (!a.width || !b.width) return;
+  const url = URL.createObjectURL(blob), img = document.createElement("img");
+  img.className = "fly-photo"; img.src = url;
+  Object.assign(img.style, { left: a.left + "px", top: a.top + "px", width: a.width + "px", height: a.height + "px" });
+  document.body.appendChild(img);
+  const dx = b.left + b.width / 2 - (a.left + a.width / 2), dy = b.top + b.height / 2 - (a.top + a.height / 2), s = b.width / a.width;
+  const anim = img.animate([
+    { transform: "translate(0,0) scale(1)", borderRadius: "24px", opacity: 1 },
+    { transform: `translate(${dx * 0.55}px, ${dy * 0.45}px) scale(${(1 + s) / 2.4})`, borderRadius: "40px", opacity: 1, offset: 0.55 },
+    { transform: `translate(${dx}px, ${dy}px) scale(${s})`, borderRadius: "60px", opacity: 0.4 }
+  ], { duration: 620, easing: "cubic-bezier(.3,.7,.2,1)" });
+  let gone = false;
+  const done = () => { if (gone) return; gone = true; img.remove(); URL.revokeObjectURL(url); pulse(toEl); };
+  anim.onfinish = done; anim.oncancel = done; setTimeout(done, 900);   // also if the animation never got to run (app in the background)
+}
 // ---------- Shutter sound ----------
 // A real camera click ("Camera shutter click", mixkit.co, Mixkit License, about 14 KB) is built into the page, so it works offline.
 // The on/off choice lives in settings.beep, is remembered between sessions, and starts on the first time the app is used.
@@ -2434,6 +2558,52 @@ document.addEventListener("visibilitychange", () => {
   else if (isCamView()) wakeCamera();
 });
 
+// The live video is sized by hand to cover its box, centred (the same crop grabPhoto saves). iPhones sometimes drew it smaller than the
+// box with object-fit alone, after the stream or the box changed size.
+function fitVideo(v) {
+  const box = v && v.parentElement;
+  if (!box || !v.videoWidth || !v.videoHeight || !box.clientWidth || !box.clientHeight) return;
+  const bw = box.clientWidth, bh = box.clientHeight, k = Math.max(bw / v.videoWidth, bh / v.videoHeight);
+  const w = Math.ceil(v.videoWidth * k), h = Math.ceil(v.videoHeight * k);
+  v.style.width = w + "px"; v.style.height = h + "px";
+  v.style.left = Math.floor((bw - w) / 2) + "px"; v.style.top = Math.floor((bh - h) / 2) + "px";
+}
+const fitVideos = () => document.querySelectorAll(".camera video").forEach(fitVideo);
+document.querySelectorAll(".camera video").forEach(v => { for (const ev of ["loadedmetadata", "resize", "playing"]) v.addEventListener(ev, () => fitVideo(v)); });
+window.addEventListener("resize", fitVideos);
+window.addEventListener("orientationchange", () => setTimeout(fitVideos, 300));
+if (window.ResizeObserver) { const ro = new ResizeObserver(fitVideos); document.querySelectorAll(".camera").forEach(b => ro.observe(b)); }   // a tab coming into view, the slot row appearing...
+
+// A sharper still: for the moment of the photo the camera switches to its largest size, then back to the live size (a full-size live feed
+// all the time would take memory the speech model needs). If the camera can't go bigger, the live frame is used, and the app stops trying.
+const LIVE_SIZE = { width: { ideal: 1920 }, height: { ideal: 1440 } };
+async function grabSharp(vid = "#cam-video", boxId = "#camera") {
+  const v = $(vid), track = cam.stream && cam.stream.getVideoTracks()[0];
+  if (!track || !track.applyConstraints || cam.noBoost || !v.videoWidth) return grabPhoto(vid, boxId);
+  let big = { width: { ideal: 4032 }, height: { ideal: 3024 } };
+  try { const c = track.getCapabilities && track.getCapabilities(); if (c && c.width && c.width.max && c.height && c.height.max) big = { width: { ideal: c.width.max }, height: { ideal: c.height.max } }; } catch (e) {}
+  const area = v.videoWidth * v.videoHeight;
+  try {
+    await track.applyConstraints(big);
+    const grew = await biggerFrame(v, area, 900);
+    if (!grew) cam.noBoost = true;
+    return await grabPhoto(vid, boxId);
+  } catch (e) { cam.noBoost = true; return grabPhoto(vid, boxId); }
+  finally { track.applyConstraints(LIVE_SIZE).catch(() => {}); }
+}
+// Wait for the first frame at the new size (true), or give up after maxMs (false).
+function biggerFrame(v, oldArea, maxMs) {
+  return new Promise(res => {
+    const t0 = performance.now();
+    const check = () => {
+      if (v.videoWidth * v.videoHeight > oldArea * 1.1) { if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(() => res(true)); else setTimeout(() => res(true), 80); return; }
+      if (performance.now() - t0 > maxMs) return res(false);
+      setTimeout(check, 30);
+    };
+    check();
+  });
+}
+
 // Crop the live video to the shape of the viewfinder (what you see is what's saved).
 async function grabPhoto(vid = "#cam-video", boxId = "#camera") {
   const v = $(vid), box = $(boxId);
@@ -2450,7 +2620,7 @@ async function onShutter(forcePhone, kind = "aisle") {
   primeShutter(); haptic("shutter"); pulse($("#btn-shutter"), "fire", 600);
   let blob = null;
   if (cam.stream && !forcePhone) {
-    blob = await grabPhoto();
+    blob = await grabSharp();
     box_flash();
   } else {
     blob = await cameraPhoto();   // no live camera: use the iPhone camera app
@@ -2776,7 +2946,8 @@ async function holdStart() {
     if (s >= MAX_NOTE_SECS) holdEnd();   // Whisper reads 30 seconds at a time: one product is never longer
   }, 200);
   if (!hold.session) {   // the first hold of a shelf takes its photo
-    const blob = await grabPhoto(); box_flash(); pulse($("#btn-shutter"), "fire", 600);
+    const blob = await grabSharp(); box_flash(); pulse($("#btn-shutter"), "fire", 600);
+    if (blob) flyToThumb(blob, $("#camera"), $("#last-note"));
     if (!blob) { holdAbort("The camera isn't ready yet. Try again."); return; }
     playShutter();
     const id = newId("p");
@@ -2816,6 +2987,7 @@ function endHoldSession(byButton) {
 }
 function renderHoldLive(on) {
   const live = document.getElementById("hold-live"); if (live) live.hidden = !on;
+  $("#btn-shutter").classList.toggle("holding", on);
   $("#camera").classList.toggle("holding", on);
   const t = document.getElementById("hold-time"); if (t && on) t.textContent = "0:00";
 }
@@ -2955,6 +3127,8 @@ const isCamView = () => view === "capture" || view === "ba";   // the two tabs w
 function showView(v) {
   if (v !== "capture") { endHoldSession(); closeLiveMic(); } else ensureLiveCtx();   // the hold-to-talk audio engine only lives on the Stocking tab
   if (v === "gallery" && view !== "gallery") { gal.slot = baSlot(); gal.kind = view === "capture" ? captureKind() : baKind(); }
+  const order = ["capture", "ba", "needed", "gallery", "more", "products"], from = order.indexOf(view), to = order.indexOf(v);
+  if (from !== to) document.body.dataset.dir = to > from ? "fwd" : "back";
   view = v;
   document.body.dataset.view = v;
   document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.id === "view-" + v));
@@ -2962,6 +3136,7 @@ function showView(v) {
   syncIndicator($("#tabs"));
   if (!isCamView()) { if (deferVoice() && queuedCount()) { stopCamera(); pump(); } else sleepCameraSoon(); } else wakeCamera();   // Base listens while the camera is off
   renderAll();
+  enterView(document.getElementById("view-" + v));
   window.scrollTo(0, 0);
 }
 function renderAll() {
@@ -3282,7 +3457,7 @@ function renderBA() {
   const on = !!cam.stream, k = baKind(), slot = baSlot(), st = storeOf(slot), row = slotsHTML(slot);
   $("#ba-slots").innerHTML = row;
   const cs = document.getElementById("cap-slots"); if (cs) cs.innerHTML = row;
-  $("#cap-band").textContent = `${st ? `#${st} · ` : ""}${captureKind() === "display" ? "DISPLAY" : "AISLE"}`;
+  setTextPop($("#cap-band"), `${st ? `#${st} · ` : ""}${captureKind() === "display" ? "DISPLAY" : "AISLE"}`);
   $("#ba-off").hidden = on || cam.starting;
   $("#ba-video").hidden = !on;
   $("#ba-starting").hidden = !cam.starting;
@@ -3296,7 +3471,7 @@ function renderBA() {
   if (view === "ba") syncIndicator($("#ba-kind-seg"), false);
   const sec = $("#view-ba");
   sec.classList.toggle("mode-display", k === "display"); sec.classList.toggle("mode-aisle", k === "aisle");
-  $("#ba-band").textContent = `${st ? `#${st} · ` : ""}AFTER · ${KIND_LABEL[k].toUpperCase()}`;
+  setTextPop($("#ba-band"), `${st ? `#${st} · ` : ""}AFTER · ${KIND_LABEL[k].toUpperCase()}`);
   $("#ba-hint").textContent = st ? `Snap the finished ${k}. Files under store#${st} · After · ${KIND_LABEL[k]}.` : "Tap a store slot above to set its store number.";
   $("#ba-shutter").setAttribute("aria-label", `Take the after photo of the ${k}`);
   const mine = afterItems(slot).map(i => i.shot).reverse(), last = mine.find(s => s.id === lastShotId) || mine[0], lb = $("#ba-last");
@@ -3342,7 +3517,7 @@ async function onShutterBA(forcePhone) {
   if (!storeOf(slot)) { await askStore(slot); return; }   // the first tap only asks for the store number; the next tap takes the photo
   primeShutter(); haptic("shutter"); pulse($("#ba-shutter"), "fire", 600);
   let blob = null;
-  if (cam.stream && !forcePhone) { blob = await grabPhoto("#ba-video", "#ba-camera"); box_flash("#ba-camera"); }
+  if (cam.stream && !forcePhone) { blob = await grabSharp("#ba-video", "#ba-camera"); box_flash("#ba-camera"); if (blob) flyToThumb(blob, $("#ba-camera"), $("#ba-last")); }
   else blob = await cameraPhoto();
   if (!blob) { if (cam.stream && !forcePhone) toast("The camera isn't ready yet. Try again."); return; }
   playShutter();
@@ -3639,7 +3814,7 @@ function editVariation(v, { prefill = "" } = {}) {
   };
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 64;
+const REVISION = 65;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -3658,9 +3833,9 @@ function renderMore() {
       <h3>Voice</h3>
       <p class="hint">Listening runs on this phone, so it works with no signal. The speech model downloads once (use Wi-Fi), then stays on the phone.</p>
       ${modelRow("asr")}
+      <p class="hint" style="margin:-4px 0 6px 21px">Turns your recording into words and gives you a list right away.</p>
       <div class="set-row"><label class="grow" for="word-timing">Highlight words while a note plays<br><span class="hint">Uses more memory while listening. If the app restarts after you tap Done, leave this off.</span></label><input type="checkbox" id="word-timing" ${state.settings.wordTiming ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
       <div class="set-row"><label class="grow" for="live-listen">Listen while recording<br><span class="hint">Turns each product into text while you say the next one, so the list is ready the moment you finish. Uses more memory at once: for newer iPhones. If the app restarts while you record, turn this off.</span></label><input type="checkbox" id="live-listen" ${liveListenOn() ? "checked" : ""} style="width:22px;height:22px;accent-color:var(--red)"></div>
-      <p class="hint" style="margin:-4px 0 6px 21px">Turns your recording into words and gives you a list right away.</p>
       ${dl ? `<div class="mprog" data-mprog><i></i></div><p class="hint" data-mprog-label style="margin-top:6px">Starting…</p>` : ""}
       ${ai.dl.error ? `<div class="banner warn" style="margin-top:8px">${icon("warn")}<span class="grow">${esc(ai.dl.error)}</span></div>` : ""}
       ${haveModel("asr") && !dl ? `<div class="stack" style="margin-top:10px"><button class="btn block quiet" id="btn-del-models">Delete the speech model</button></div>` : ""}
@@ -3689,7 +3864,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelfie 2.1.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 2.2.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
