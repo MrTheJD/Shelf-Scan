@@ -554,6 +554,69 @@ nav.tabs button:active svg.i { transform: scale(.82); }
 .camera .cam-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; opacity: 0; transition: opacity .35s ease; }
 .camera .cam-canvas.live { opacity: 1; }
 .camera video[hidden] + .cam-canvas { display: none; }
+
+/* ---------- 2.5.0: cleaner Needed rows ---------- */
+.list { border-radius: 18px; }
+.need.item { gap: 12px; padding: 10px 12px 10px 10px; min-height: 76px; }
+.need .shelf-thumb { width: 58px; height: 58px; border-radius: 13px; box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .1); }
+.need .blurb { font-size: 15.5px; line-height: 1.32; font-weight: 520; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.need .chips-row { margin-top: 3px; gap: 0; align-items: center; }
+.need .chip-sm { background: none; padding: 0; border-radius: 0; font-size: 12.5px; font-weight: 650; color: var(--muted); }
+.need .chip-sm + .chip-sm::before { content: " · "; white-space: pre; }
+.need .chips-row .flag-tag { margin-left: 8px; padding: 1px 7px; font-size: 11px; }
+.need .chips-row .flag-tag:first-child { margin-left: 0; }
+.need .pbtn { width: 34px; height: 34px; background: none; color: var(--muted); box-shadow: inset 0 0 0 1.5px var(--line); }
+.need .pbtn svg.i { width: 15px; height: 15px; }
+.need .pbtn.playing { background: var(--red); color: var(--on-red); box-shadow: none; }
+.need .check { width: 28px; height: 28px; border-width: 2px; }
+.list > .need + .need::before { left: 80px; }
+.need.flagged { box-shadow: none; }
+.need.flagged .shelf-thumb { box-shadow: 0 0 0 2px var(--warn); }
+.item.done .shelf-thumb { opacity: .4; filter: grayscale(.7); }
+.item.done .blurb { text-decoration-thickness: 1.5px; color: var(--faint); }
+.need-go { flex: none; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--warn-soft); color: var(--warn); }
+.need-go svg.i { width: 16px; height: 16px; }
+.cluster-h { font-size: 12.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 22px 8px 7px; }
+.cluster-h .n { font-size: 11px; font-weight: 800; color: var(--muted); background: var(--chip); border-radius: 999px; padding: 1px 7px; letter-spacing: 0; }
+
+/* ---------- 2.5.0: the photo comes first ---------- */
+.check-sheet { height: calc(100dvh - var(--safe-t) + 28px); max-height: none; display: flex; flex-direction: column; gap: 10px; overflow: hidden; padding-top: 8px; }
+.check-sheet > * { flex: none; margin-top: 0; margin-bottom: 0; }
+.check-sheet > .handle { margin-bottom: -4px; }
+.check-sheet > h2 { font-size: 14px; font-weight: 700; color: var(--muted); text-align: center; letter-spacing: 0; }
+.check-sheet .zoom-stage { flex: 1 1 auto; height: auto; min-height: 42dvh; border-radius: 18px; }
+.check-sheet .transcript { font-size: 15px; line-height: 1.35; padding: 10px 12px; max-height: 18dvh; overflow-y: auto; }
+.check-sheet .hint:empty, .check-sheet .chips-row:empty { display: none; }
+.check-sheet .chips-row { margin-top: 0; }
+.check-sheet > .btn.block { min-height: 46px; }
+
+/* ---------- 2.5.0: zoom ---------- */
+.zoom-stage { cursor: zoom-in; }
+.zoom-stage.zoomed { cursor: grab; }
+.zoom-stage img { animation: none; transform-origin: center center; backface-visibility: hidden; }
+.zoom-hint { left: 50%; bottom: 10px; transform: translateX(-50%); padding: 3px 10px; border-radius: 999px; background: rgba(0, 0, 0, .45); color: rgba(255, 255, 255, .85); font-weight: 650; white-space: nowrap; transition: opacity .25s ease; }
+.zoom-stage.zoomed .zoom-hint, .zoom-stage.empty-photo .zoom-hint { opacity: 0; }
+.zoom-level { position: absolute; top: 10px; left: 10px; z-index: 2; padding: 3px 9px; border-radius: 999px; background: rgba(0, 0, 0, .55); color: #fff; font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; pointer-events: none; opacity: 0; transform: scale(.85); transition: opacity .2s ease, transform .3s var(--spring); }
+.zoom-stage.zoomed .zoom-level { opacity: 1; transform: none; }
+.zoom-expand { position: absolute; top: 10px; right: 10px; z-index: 2; width: 36px; height: 36px; border-radius: 50%; border: 0; padding: 0; background: rgba(0, 0, 0, .5); color: #fff; display: flex; align-items: center; justify-content: center; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.zoom-expand:active { transform: scale(.9); }
+.zoom-stage.empty-photo .zoom-expand { display: none; }
+.photo-full { position: fixed; inset: 0; z-index: 200; background: #000; animation: fade .22s ease both; touch-action: none; }
+.photo-full.closing { animation: fadeOut .22s ease forwards; }
+.photo-full .zoom-stage { position: absolute; inset: 0; height: auto; border-radius: 0; background: transparent; }
+.photo-full .zoom-stage img { animation: pfIn .38s cubic-bezier(.2, .9, .25, 1) both; }
+@keyframes pfIn { from { opacity: 0; scale: .92; } to { opacity: 1; scale: 1; } }
+.photo-full .zoom-level { top: calc(var(--safe-t) + 16px); left: 16px; }
+.photo-full .zoom-hint { bottom: calc(var(--safe-b) + 18px); }
+.pf-close { position: absolute; top: calc(var(--safe-t) + 10px); right: 14px; z-index: 3; width: 42px; height: 42px; border-radius: 50%; border: 0; padding: 0; background: rgba(255, 255, 255, .16); color: #fff; display: flex; align-items: center; justify-content: center; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); transition: opacity .2s ease; }
+.pf-close svg.i { width: 20px; height: 20px; }
+.photo-full.chrome-off .pf-close, .photo-full.chrome-off .zoom-level, .photo-full.chrome-off .zoom-hint { opacity: 0; pointer-events: none; }
+
+.need .blurb { color: var(--muted); }
+.need .blurb .hl { background: none; padding: 0; border-radius: 0; font-weight: 750; color: var(--text); }
+.need .check:not(.on) svg.i { opacity: 0; }
+.need .check.on svg.i { opacity: 1; }
+.item.done .blurb, .item.done .blurb .hl { color: var(--faint); }
 </style>
 </head>
 <body data-view="capture">
@@ -3554,7 +3617,7 @@ function renderNeeded() {
 }
 // A photo that has no words yet (nothing was heard, or the app restarted while recording): tap to record it again.
 const waitRow = n => `<div class="item need tap flagged" data-n="${esc(n.id)}" data-k="?"><div class="shelf-thumb" data-photo-wrap>${n.photos[0] ? `<img data-photo="${esc(n.photos[0])}" alt="">` : icon("note")}</div>
-  <div class="grow"><div class="blurb">${esc(n.status === "error" ? (n.err || "Couldn't read this note") : "Nothing was heard. Tap to record it again.")}</div></div>${icon("jump")}</div>`;
+  <div class="grow"><div class="blurb">${esc(n.status === "error" ? (n.err || "Couldn't read this note") : "Nothing was heard. Tap to record it again.")}</div></div><span class="need-go">${icon("mic")}</span></div>`;
 // The blurb with the part about this product in bold.
 function markText(n, pid) {
   const t = n.text || "";
@@ -3568,11 +3631,10 @@ const chipsFor = (n, exceptVk) => { const bm = brandMap(); return [...new Set((n
 function needRow(n, a) {
   const done = !!(n.ticks || {})[a.key], chips = chipsFor(n, a.vk);
   return `<div class="item need tap${done ? " done" : ""}${n.flag ? " flagged" : ""}" data-n="${esc(n.id)}" data-k="${esc(a.key)}">
-    <button class="check${done ? " on" : ""}" data-a="toggle" aria-label="Mark as pulled">${icon("check")}</button>
     <div class="shelf-thumb" data-photo-wrap>${n.photos[0] ? `<img data-photo="${esc(n.photos[0])}" alt="">` : icon("note")}</div>
     <div class="grow"><div class="blurb">${noteTextHTML(n, a.vk)}</div>${chips || n.flag ? `<div class="chips-row">${chips}${n.flag ? `<span class="flag-tag">Check the text</span>` : ""}</div>` : ""}</div>
     ${n.audio ? `<button class="pbtn" data-a="play" data-n="${esc(n.id)}" aria-label="Play the recording">${icon("play")}</button>` : ""}
-    ${icon("jump")}</div>`;
+    <button class="check${done ? " on" : ""}" data-a="toggle" aria-label="Mark as pulled">${icon("check")}</button></div>`;
 }
 function clearAllNotes() {
   confirmDialog("Clear the whole list? This removes every note and photo from this phone.", { ok: "Clear list", danger: true }).then(ok => {
@@ -3594,9 +3656,10 @@ function openCheck(n, focusPid) {
   wirePlayerBar(s, n);
   s.querySelector("#ck-text").onclick = e => { const w = e.target.closest(".w"); if (w && n.audio) playerSeek(n, +w.dataset.s); };
   const img = s.querySelector("img");
-  zoomStage(img, s.querySelector("#ck-stage"));
+  const zs = zoomStage(img, s.querySelector("#ck-stage"));
   const showPhoto = async () => {
     const id = n.photos[photoIdx];
+    zs.reset();
     img.src = id ? (await photoURL(id)) || "" : "";
     if (id) heroInto(img);   // zoom out of the thumbnail that was tapped
     s.querySelector("#ck-stage").classList.toggle("empty-photo", !id);
@@ -3639,27 +3702,110 @@ function deleteNote(n) {
   toast("Note deleted", snap);
 }
 
-// Pinch to zoom, drag to pan, double-tap to toggle.
-function zoomStage(img, stage) {
-  let scale = 1, tx = 0, ty = 0, startDist = 0, startScale = 1, last = null, lastTap = 0;
-  const pts = new Map();
-  const apply = () => { img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`; };
-  const reset = () => { scale = 1; tx = ty = 0; apply(); };
+// Photo zoom. Pinch zooms around the fingers; double-tap zooms in on that spot (or back out); one finger pans, with a glide when let go;
+// the photo springs back if pulled past its edge, so it can't get lost. A badge shows how far in you are. In a sheet, a tap (or the corner
+// button) opens the photo full screen; full screen, a swipe down closes it and a tap hides the buttons.
+const EXPAND_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>';
+function zoomStage(img, stage, opt = {}) {
+  let s = 1, tx = 0, ty = 0, pull = 0, pinch = null, last = null, start = null, moved = false, dbl = false, lastUp = 0, vx = 0, vy = 0, glide = 0, tapTimer = 0;
+  const pts = new Map(), MAX = 8;
+  const lvl = document.createElement("span"); lvl.className = "zoom-level"; stage.appendChild(lvl);
+  const onTap = opt.full ? opt.onTap : () => openPhotoFull(img.src);
+  if (!opt.full) {
+    const b = document.createElement("button"); b.className = "zoom-expand"; b.setAttribute("aria-label", "Show the photo full screen"); b.innerHTML = EXPAND_SVG;
+    b.onclick = e => { e.stopPropagation(); openPhotoFull(img.src); };
+    stage.appendChild(b);
+  }
+  const hint = stage.querySelector(".zoom-hint"); if (hint) hint.textContent = "Pinch or double-tap to zoom";
+  const R = () => stage.getBoundingClientRect();
+  const lim = sc => { const r = R(); return { x: Math.max(0, (img.offsetWidth * sc - r.width) / 2), y: Math.max(0, (img.offsetHeight * sc - r.height) / 2) }; };
+  const clampT = () => { const b = lim(s); tx = Math.max(-b.x, Math.min(b.x, tx)); ty = Math.max(-b.y, Math.min(b.y, ty)); };
+  const apply = anim => {
+    img.style.transition = anim ? "transform .36s cubic-bezier(.2, .9, .25, 1)" : "none";
+    img.style.transform = `translate3d(${tx}px, ${ty + pull}px, 0) scale(${s})`;
+    const z = s > 1.04; stage.classList.toggle("zoomed", z); lvl.textContent = z ? `${s.toFixed(1)}×` : "";
+    if (opt.onPull) opt.onPull(pull);
+  };
+  const local = (x, y) => { const r = R(); return { x: x - r.left - r.width / 2, y: y - r.top - r.height / 2 }; };
+  const zoomTo = (ns, p) => { ns = Math.max(1, Math.min(MAX, ns)); tx = p.x - (p.x - tx) * ns / s; ty = p.y - (p.y - ty) * ns / s; s = ns; };
+  const reset = () => { s = 1; tx = ty = 0; pull = 0; };
   stage.addEventListener("pointerdown", e => {
-    stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pts.size === 2) { const [a, b] = [...pts.values()]; startDist = Math.hypot(a.x - b.x, a.y - b.y) || 1; startScale = scale; }
-    const now = Date.now(); if (pts.size === 1 && now - lastTap < 300) { scale > 1 ? reset() : ((scale = 2.5), apply()); } lastTap = now;
-    last = { x: e.clientX, y: e.clientY };
+    if (e.target.closest(".zoom-expand")) return;
+    try { stage.setPointerCapture(e.pointerId); } catch (_) {}
+    cancelAnimationFrame(glide); clearTimeout(tapTimer);
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 2) {
+      const [a, b] = [...pts.values()];
+      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, s, tx, ty, mid: local((a.x + b.x) / 2, (a.y + b.y) / 2) };
+      moved = true; pull = 0; return;
+    }
+    if (pts.size !== 1) return;
+    dbl = false;
+    if (e.timeStamp - lastUp < 300) {   // double-tap: in on this spot, or back out
+      if (s > 1.04) reset(); else zoomTo(3, local(e.clientX, e.clientY));
+      clampT(); apply(true); dbl = true; lastUp = 0;
+    }
+    start = last = { x: e.clientX, y: e.clientY, t: e.timeStamp }; moved = false; vx = vy = 0;
   });
   stage.addEventListener("pointermove", e => {
     if (!pts.has(e.pointerId)) return;
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pts.size === 2) { const [a, b] = [...pts.values()]; scale = Math.max(1, Math.min(6, startScale * Math.hypot(a.x - b.x, a.y - b.y) / startDist)); apply(); }
-    else if (pts.size === 1 && scale > 1) { tx += e.clientX - last.x; ty += e.clientY - last.y; apply(); }
-    last = { x: e.clientX, y: e.clientY };
+    if (pts.size >= 2 && pinch) {
+      const [a, b] = [...pts.values()], mid = local((a.x + b.x) / 2, (a.y + b.y) / 2);
+      s = pinch.s; tx = pinch.tx; ty = pinch.ty;
+      zoomTo(pinch.s * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d, pinch.mid);
+      tx += mid.x - pinch.mid.x; ty += mid.y - pinch.mid.y;
+      apply(false); return;
+    }
+    if (!last || dbl) return;
+    if (!moved && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 6) moved = true;
+    const dx = e.clientX - last.x, dy = e.clientY - last.y, dt = Math.max(1, e.timeStamp - last.t);
+    if (s > 1.04) {
+      const b = lim(s), rx = Math.abs(tx + dx) > b.x ? 0.35 : 1, ry = Math.abs(ty + dy) > b.y ? 0.35 : 1;   // past the edge: it resists
+      tx += dx * rx; ty += dy * ry; vx = 0.7 * vx + 0.3 * (dx / dt); vy = 0.7 * vy + 0.3 * (dy / dt);
+      apply(false);
+    } else if (opt.onSwipeDown && moved) { pull = Math.max(0, pull + dy); apply(false); }
+    last = { x: e.clientX, y: e.clientY, t: e.timeStamp };
   });
-  const up = e => { pts.delete(e.pointerId); if (scale <= 1.02) reset(); last = null; };
+  const up = e => {
+    if (!pts.has(e.pointerId)) return;
+    pts.delete(e.pointerId);
+    if (pts.size === 1) { const [p] = [...pts.values()]; last = { x: p.x, y: p.y, t: e.timeStamp }; pinch = null; return; }   // one finger stays: keep panning
+    if (pts.size) return;
+    pinch = null;
+    const lastMove = last ? e.timeStamp - last.t : 999; last = null;
+    if (pull) { if (pull > 110 && opt.onSwipeDown) { opt.onSwipeDown(); return; } pull = 0; apply(true); return; }
+    if (s <= 1.04) { if (s !== 1 || tx || ty) { reset(); apply(true); } }
+    else if (moved && lastMove < 80 && Math.hypot(vx, vy) > 0.25) {   // let go while moving: glide, slowing down
+      let px = vx * 16, py = vy * 16;
+      const step = () => {
+        tx += px; ty += py; px *= 0.92; py *= 0.92;
+        const b = lim(s); if (Math.abs(tx) > b.x) px *= 0.5; if (Math.abs(ty) > b.y) py *= 0.5;
+        if (Math.abs(px) + Math.abs(py) < 0.4) { clampT(); apply(true); return; }
+        apply(false); glide = requestAnimationFrame(step);
+      };
+      glide = requestAnimationFrame(step);
+    } else { clampT(); apply(true); }
+    if (!moved && !dbl) { lastUp = e.timeStamp; if (onTap) tapTimer = setTimeout(onTap, 300); } else lastUp = 0;
+    dbl = false;
+  };
   stage.addEventListener("pointerup", up); stage.addEventListener("pointercancel", up);
+  return { reset: () => { cancelAnimationFrame(glide); reset(); apply(false); } };
+}
+// Full screen, on black: the same zoom; swipe down (when not zoomed in) or the X closes it; a tap hides the buttons.
+function openPhotoFull(src) {
+  if (!src) return;
+  const v = el(`<div class="photo-full" role="dialog" aria-label="Photo"><div class="zoom-stage"><img alt=""></div><button class="pf-close" aria-label="Close">${icon("x")}</button></div>`);
+  v.querySelector("img").src = src;
+  document.body.appendChild(v); haptic();
+  let gone = false;
+  const close = () => { if (gone) return; gone = true; v.classList.add("closing"); setTimeout(() => v.remove(), 220); };
+  zoomStage(v.querySelector("img"), v.querySelector(".zoom-stage"), {
+    full: true, onSwipeDown: close,
+    onTap: () => v.classList.toggle("chrome-off"),
+    onPull: p => { v.style.backgroundColor = p ? `rgba(0, 0, 0, ${Math.max(0.35, 1 - p / 400)})` : ""; },
+  });
+  v.querySelector(".pf-close").onclick = close;
 }
 // ---------- Before and After ----------
 // Since 2.1 the shelf photos taken on the Before tab (the Needed-list notes) are the Before pictures, and the After tab takes the After
@@ -4089,7 +4235,7 @@ function editVariation(v, { prefill = "" } = {}) {
   };
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 69;
+const REVISION = 70;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -4139,7 +4285,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelfie 2.4.2 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 2.5.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
