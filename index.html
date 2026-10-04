@@ -771,6 +771,93 @@ body.gal-selecting #view-gallery .shot { animation: none; }
 /* 2.10.1: photos can't be dragged out (iOS image drag after a long hold) */
 img { -webkit-user-drag: none; user-drag: none; }
 .shot, .shelf-thumb, .deck-side, .zoom-stage { -webkit-user-drag: none; -webkit-touch-callout: none; }
+
+/* ---------- 2.11.0 ---------- */
+/* Still at…? */
+.still-dialog { text-align: center; }
+.still-h { font-size: 20px; margin: 4px 0 2px; }
+.still-sub { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+.still-yes { min-height: 52px; font-size: 17px; }
+.still-dialog .recent-stores { justify-content: center; }
+/* Texted */
+.tx-dot { width: 9px; height: 9px; border-radius: 50%; background: #F5A623; box-shadow: 0 0 0 2px rgba(255, 255, 255, .85); margin-left: 6px; flex: none; }
+.tx-ok { display: inline-flex; margin-left: 6px; opacity: .9; }
+.tx-ok svg.i { width: 15px; height: 15px; stroke-width: 3; }
+/* What's new */
+body[data-nav="push"] #view-changelog.active { animation: pushIn .5s cubic-bezier(.2, .9, .25, 1) both; background: var(--bg); }
+.cl-item.item { align-items: flex-start; padding: 13px 14px; }
+.cl-item .name { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+.cl-cur { font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; background: var(--red); color: var(--on-red); letter-spacing: .02em; }
+.cl-list { margin: 6px 0 0; padding-left: 18px; color: var(--muted); font-size: 14px; line-height: 1.4; display: grid; gap: 4px; }
+/* Practice run */
+.tut { position: fixed; inset: 0; z-index: 400; pointer-events: none; }
+.tut-shade { position: fixed; background: rgba(0, 0, 0, .58); pointer-events: auto; transition: left .3s var(--ease-out), top .3s var(--ease-out), width .3s var(--ease-out), height .3s var(--ease-out); }
+.tut-ring { position: fixed; border-radius: 14px; box-shadow: 0 0 0 2px rgba(255, 255, 255, .95), 0 0 0 6px rgba(255, 255, 255, .25); pointer-events: none; transition: left .3s var(--ease-out), top .3s var(--ease-out), width .3s var(--ease-out), height .3s var(--ease-out); animation: tutRing 1.8s ease-in-out infinite; }
+@keyframes tutRing { 50% { box-shadow: 0 0 0 2px rgba(255, 255, 255, .95), 0 0 0 11px rgba(255, 255, 255, .1); } }
+.tut-bubble { position: fixed; pointer-events: auto; background: var(--surface); color: var(--text); border-radius: 18px; padding: 14px 16px; box-shadow: 0 14px 40px rgba(0, 0, 0, .4); transition: left .3s var(--ease-out), top .3s var(--ease-out); }
+.tut-bubble[hidden] { display: none; }
+.tut-bubble.pop { animation: tutPop .42s var(--spring) both; }
+@keyframes tutPop { from { opacity: 0; transform: translateY(8px) scale(.94); } to { opacity: 1; transform: none; } }
+.tut-bubble[data-side]:not([data-side=""])::before { content: ""; position: absolute; left: calc(var(--ax, 50%) - 8px); width: 16px; height: 16px; background: var(--surface); transform: rotate(45deg); border-radius: 3px; }
+.tut-bubble[data-side="below"]::before { top: -7px; }
+.tut-bubble[data-side="above"]::before { bottom: -7px; }
+.tut-bubble[data-side="below"] { animation: tutBobDown 2.4s ease-in-out infinite; }
+.tut-bubble[data-side="above"] { animation: tutBobUp 2.4s ease-in-out infinite; }
+.tut-bubble.pop[data-side="below"], .tut-bubble.pop[data-side="above"] { animation: tutPop .42s var(--spring) both, tutBobDown 2.4s ease-in-out .42s infinite; }
+@keyframes tutBobDown { 50% { transform: translateY(3px); } }
+@keyframes tutBobUp { 50% { transform: translateY(-3px); } }
+.tut-step { font-size: 11.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.tut-step:empty { display: none; }
+.tut-body p { margin: 0; font-size: 15.5px; line-height: 1.4; font-weight: 600; }
+.tut-body h3 { margin: 8px 0 6px; font-size: 21px; text-align: center; }
+.tut-bubble.card .tut-body p { text-align: center; font-weight: 500; color: var(--muted); }
+.tut-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.tut-btns:empty { display: none; }
+.tut-bubble.card .tut-btns { justify-content: stretch; } .tut-bubble.card .tut-btns .btn { flex: 1; }
+.tut-badge { width: 54px; height: 54px; margin: 2px auto 0; border-radius: 16px; background: var(--red); color: var(--on-red); display: flex; align-items: center; justify-content: center; }
+.tut-badge svg.i { width: 26px; height: 26px; }
+.tut-x { position: fixed; top: calc(var(--safe-t) + 10px); right: 12px; z-index: 2; width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, .18); color: #fff; display: flex; align-items: center; justify-content: center; pointer-events: auto; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.tut-x svg.i { width: 18px; height: 18px; }
+/* the fingertip: tap, hold (a ring fills, with a little sound wave), press (hold to select) */
+.tut-finger { position: fixed; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: rgba(255, 255, 255, .78); box-shadow: 0 4px 16px rgba(0, 0, 0, .35); pointer-events: none; transition: left .3s var(--ease-out), top .3s var(--ease-out); }
+.tut-finger[hidden] { display: none; }
+.tut-finger svg { position: absolute; inset: -9px; width: 64px; height: 64px; transform: rotate(-90deg); display: none; }
+.tut-finger svg circle { fill: none; stroke: var(--red); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 170; stroke-dashoffset: 170; }
+.tut-finger.tap { animation: tutTap 1.8s ease-in-out infinite; }
+@keyframes tutTap { 0% { opacity: 0; transform: scale(1.5); } 22% { opacity: 1; transform: scale(1); } 34% { transform: scale(.78); } 48% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+.tut-finger.hold, .tut-finger.press { animation: tutHoldIn 2.2s ease-in-out infinite; }
+.tut-finger.hold svg, .tut-finger.press svg { display: block; }
+.tut-finger.hold svg circle, .tut-finger.press svg circle { animation: tutFill 2.2s ease-in-out infinite; }
+@keyframes tutHoldIn { 0% { opacity: 0; transform: scale(1.3); } 15% { opacity: 1; transform: scale(.86); } 80% { opacity: 1; transform: scale(.86); } 100% { opacity: 0; transform: scale(1); } }
+@keyframes tutFill { 0%, 15% { stroke-dashoffset: 170; } 70%, 100% { stroke-dashoffset: 0; } }
+.tut-wave { position: absolute; left: 54px; top: 12px; display: none; gap: 3px; align-items: center; height: 22px; }
+.tut-finger.hold .tut-wave { display: flex; }
+.tut-wave b { width: 4px; border-radius: 2px; background: #fff; animation: tutWave .9s ease-in-out infinite; }
+.tut-wave b:nth-child(2) { animation-delay: .15s; } .tut-wave b:nth-child(3) { animation-delay: .3s; }
+@keyframes tutWave { 0%, 100% { height: 6px; } 50% { height: 20px; } }
+/* hints on the app's own elements */
+.need .check.tut-ghost { border-color: var(--red); animation: tutGlowSm 1.8s ease-in-out infinite; }
+.need .check.tut-ghost svg.i { color: var(--red); animation: tutGhost 1.8s ease-in-out infinite; }
+@keyframes tutGhost { 0%, 100% { opacity: 0; } 40%, 65% { opacity: .75; } }
+@keyframes tutGlowSm { 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--red) 25%, transparent); } }
+.tut-glow { animation: tutGlow 1.6s ease-in-out infinite; }
+@keyframes tutGlow { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--red) 35%, transparent), 0 0 22px color-mix(in srgb, var(--red) 55%, transparent); } }
+.tut-pulse .tx-dot { animation: tutDot 1.1s ease-in-out infinite; }
+@keyframes tutDot { 50% { transform: scale(1.7); } }
+/* finish */
+.tut-done { position: relative; width: 74px; height: 74px; margin: 4px auto 0; }
+.tut-done svg { width: 74px; height: 74px; }
+.tut-done circle { fill: var(--ok); }
+.tut-done path { fill: none; stroke: #fff; stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40; animation: tutDraw .55s .2s var(--ease-out) forwards; }
+@keyframes tutDraw { to { stroke-dashoffset: 0; } }
+.tut-burst i { position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px; border-radius: 50%; background: var(--c); opacity: 0; animation: tutBurst .9s .25s var(--ease-out) forwards; }
+@keyframes tutBurst { 0% { opacity: 1; transform: rotate(var(--a)) translateY(0) scale(1); } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-58px) scale(.4); } }
+/* Reduce Motion: plain fades only */
+.tut.calm *, .tut.calm { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition: none !important; }
+/* 2.11.0: the photo warning inside the picker */
+.pick-warn { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 12px; border-radius: 14px; background: var(--warn-soft); color: var(--warn); font-size: 14px; font-weight: 700; animation: riseIn .3s var(--ease-out) both; }
+.pick-warn svg.i { width: 18px; height: 18px; flex: none; }
+.pick-warn .btn { background: var(--surface); color: var(--text); }
 </style>
 </head>
 <body data-view="capture">
@@ -855,6 +942,7 @@ img { -webkit-user-drag: none; user-drag: none; }
   <section class="view" id="view-needed"></section>
   <section class="view" id="view-gallery"></section>
   <section class="view" id="view-products"></section>
+  <section class="view" id="view-changelog"></section>
   <section class="view" id="view-more"></section>
 </main>
 <div class="dock solid" id="kind-dock" hidden></div>
@@ -1202,6 +1290,7 @@ const RETIRED_VARIATIONS = new Set(["bodyarmor|lyte sports drink peach mango", "
   "coca cola|starlight", "coca cola|starlight zero sugar", "coca cola|dreamworld", "coca cola|dreamworld zero sugar", "coca cola|move", "coca cola|move zero sugar", "coca cola|y3000", "coca cola|y3000 zero sugar", "coca cola|ultimate", "coca cola|ultimate zero sugar", "coca cola|oreo zero sugar", "coca cola|k wave zero sugar", "coca cola|happy tears zero sugar", "coca cola|marshmellos", "coca cola|marshmellos zero sugar", "coca cola|byte zero sugar"]);
 // ---------- State ----------
 let state;
+var firstRun = false;   // no saved data at all: a new phone (the practice run offers itself)
 // note.status: "queued" (voice clip waiting to be transcribed) → "heard" (has text, waiting to be read by the
 // quick read) → "done". Also "empty" (nothing said) and "error".
 function freshState() {
@@ -1215,6 +1304,7 @@ function freshState() {
     recents: [],
     stores: ["", "", "", "", ""],
     recentStores: [],
+    texted: {},                             // slot → { before: [photo ids sent], after: [...] } (Text all)
     displayMemory: {},                      // store number → { at, photos: [thumbnail ids, one per display] } from the last Clear
     pickUse: { b: {}, f: {} },              // picks per brand (sNorm) and per variation (vKey), so the picker puts them first                       // store numbers used lately, newest first (kept through Clear)            // the five store slots on the Before/After tab: the store number in each
     shots: [],                              // Before/After photos: { id, at, slot:0-4, when:"after" ("before" for photos from 2.0 and earlier), kind:"aisle"|"display", photo }
@@ -1226,7 +1316,7 @@ const PRODUCTS_KEY = STORAGE_KEY + ".products";   // the product list on its own
 function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) state = JSON.parse(raw);
+    if (raw) state = JSON.parse(raw); else firstRun = true;
     if (state && (state.productsApart || !Array.isArray(state.products))) {
       const p = JSON.parse(localStorage.getItem(PRODUCTS_KEY) || "null");
       state.products = Array.isArray(p) ? p : buildSeedProducts();   // never lose notes and photos over a missing product list
@@ -1256,6 +1346,7 @@ function migrate() {
   for (const [from, to] of [["diet coke", "coca cola"], ["diet dr pepper", "dr pepper"], ["bodyarmor lyte", "bodyarmor"], ["core power elite", "core power"], ["topo chico sabores", "topo chico"]])
     if (state.pickUse.b[from]) { state.pickUse.b[to] = (state.pickUse.b[to] || 0) + state.pickUse.b[from]; delete state.pickUse.b[from]; }
   if (!state.displayMemory || typeof state.displayMemory !== "object") state.displayMemory = {};
+  if (!state.texted || typeof state.texted !== "object") state.texted = {};
   state.recentStores = (Array.isArray(state.recentStores) ? state.recentStores : []).map(String).filter(Boolean).slice(0, 8);
   state.shots = (Array.isArray(state.shots) ? state.shots : []).filter(s => s && s.photo);
   { const old = Array.isArray(state.stores) ? state.stores : [];   // Beta 7 had six slots; a number in the sixth moves to the fifth when that one is free
@@ -1302,6 +1393,7 @@ function migrate() {
 }
 let savedProdRev = null;
 function save() {
+  if (tutorialActive) return;   // the practice run keeps the real data set aside; nothing is written until it ends
   try {
     const rev = prodRev();
     if (rev !== savedProdRev) { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(state.products)); savedProdRev = rev; }
@@ -1375,7 +1467,7 @@ function toast(msg, undoSnap) {
   const t = $("#toast");
   $("#toast-msg").textContent = msg;
   const u = $("#toast-undo");
-  u.style.display = undoSnap ? "" : "none";
+  u.style.display = undoSnap ? "" : "none"; u.textContent = "UNDO";   // toastAction (2.11) may have relabelled it
   u.onclick = () => { if (undoSnap) { restore(undoSnap); toast("Undone"); } };
   if (t.classList.contains("show")) bump(t.querySelector("#toast-msg"));   // replacing an open toast: small nudge
   t.classList.add("show");
@@ -1452,6 +1544,7 @@ function openLayer(node, { center = false, onClose, sticky = false } = {}) {
     setTimeout(done, 320);
     if (onClose) onClose();
   }
+  ov._close = close;   // so everything open can be closed at once (ending the practice run)
   return close;
 }
 function confirmDialog(message, { ok = "Confirm", cancel = "Cancel", danger = false } = {}) {
@@ -1565,6 +1658,7 @@ function backfillThumb(id) {
 }
 // Remove photos and clips no note points to (runs after deletes once the undo window has passed).
 async function sweepMedia() {
+  if (tutorialActive) return;   // during practice the real photos aren't in the state: never tidy then
   try {
     const keepP = new Set([...state.notes.flatMap(n => n.photos || []), ...(state.shots || []).map(s => s.photo), ...Object.values(state.displayMemory || {}).flatMap(m => m.photos || [])]), keepA = new Set(state.notes.map(n => n.audio).filter(Boolean));
     const rec = await getAudio("_recovery").catch(() => null); if (rec && rec.photos) rec.photos.forEach(p => keepP.add(p));
@@ -3217,6 +3311,7 @@ async function onShutter(forcePhone, kind = "aisle") {
   playShutter();
   const photoId = newId("p");
   try { await savePhoto(photoId, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
+  checkPhotoQuality(photoId);
   startRecording({ photos: [photoId], kind, slot: baSlot() });
 }
 function box_flash(id = "#camera") { const b = $(id); b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); setTimeout(() => b.classList.remove("flash"), 400); }
@@ -3541,7 +3636,7 @@ async function holdStart() {
     const id = newId("p");
     try { await savePhoto(id, blob); } catch (e) { holdAbort("Couldn't save the photo. Phone storage may be full."); return; }
     hold.session = { photo: id, kind: captureKind(), slot: baSlot(), at: Date.now(), count: 0, dg: takeDisplayDg(baSlot(), "before", captureKind()) };
-    renderHoldBar();
+    renderHoldBar(); checkPhotoQuality(id);
   }
   if (!(await (hold.micReady || openHoldMic()))) hold.noAudio = true;
 }
@@ -3664,7 +3759,7 @@ async function tapToPick() {
       const id = newId("p");
       try { await savePhoto(id, blob); } catch (e) { toast("Couldn't save the photo. Phone storage may be full."); return; }
       hold.session = { photo: id, kind: captureKind(), slot: baSlot(), at: Date.now(), count: 0, dg: takeDisplayDg(baSlot(), "before", captureKind()) };
-      renderHoldBar();
+      renderHoldBar(); checkPhotoQuality(id);
     }
     await openPicker(hold.session);
   } finally { picking = false; }
@@ -3932,16 +4027,17 @@ const isCamView = () => view === "capture" || view === "ba";   // the two tabs w
 function showView(v) {
   if (v !== "capture") { endHoldSession(); closeLiveMic(); } else ensureLiveCtx();   // the hold-to-talk audio engine only lives on the Stocking tab
   if (v === "gallery" && view !== "gallery") { gal.slot = baSlot(); gal.kind = view === "capture" ? captureKind() : baKind(); }
-  const order = ["capture", "ba", "needed", "gallery", "more", "products"], from = order.indexOf(view), to = order.indexOf(v);
+  const order = ["capture", "ba", "needed", "gallery", "more", "products", "changelog"], from = order.indexOf(view), to = order.indexOf(v);
   if (from !== to) document.body.dataset.dir = to > from ? "fwd" : "back";
-  document.body.dataset.nav = v === "products" ? "push" : view === "products" && v === "more" ? "pop" : "";   // Products is a page inside More
+  const subPage = x => x === "products" || x === "changelog";   // pages inside More
+  document.body.dataset.nav = subPage(v) ? "push" : subPage(view) && v === "more" ? "pop" : "";
   view = v;
   document.body.dataset.view = v;
   document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.id === "view-" + v));
   attachFeed();   // the live feed goes to the camera tab that is showing (if any), attached fresh
   const kd = document.getElementById("kind-dock"); if (kd) kd.hidden = v !== "needed";
   if (v !== "gallery" && typeof gsel !== "undefined" && gsel.on) galSelectEnd();   // leaving the Gallery ends selecting
-  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.view === (v === "products" ? "more" : v)));
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.view === (v === "products" || v === "changelog" ? "more" : v)));
   syncIndicator($("#tabs"));
   if (!isCamView()) { if (deferVoice() && queuedCount()) { stopCamera(); pump(); } else sleepCameraSoon(); } else wakeCamera();   // Base listens while the camera is off
   renderAll();
@@ -3958,6 +4054,7 @@ function renderAll() {
   if (view === "ba") renderBA();
   if (view === "needed") renderNeeded();
   if (view === "products") renderProducts();
+  if (view === "changelog") renderChangelog();
   if (view === "gallery") renderGallery();
   if (view === "more") renderMore();
   if (typeof playerPaint === "function") playerPaint();
@@ -4507,7 +4604,7 @@ async function onShutterBA(forcePhone) {
   const shot = { id: newId("s"), at: Date.now(), slot, when: "after", kind: baKind(), photo: newId("p") };
   const dg = takeDisplayDg(slot, "after", shot.kind); if (dg) shot.dg = dg;
   try { await savePhoto(shot.photo, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
-  state.shots.unshift(shot); lastShotId = shot.id; save(); renderAll(); pulse($("#ba-last"));
+  state.shots.unshift(shot); lastShotId = shot.id; save(); renderAll(); pulse($("#ba-last")); checkPhotoQuality(shot.photo);
   toast(`Saved to store#${storeOf(slot)} · After · ${KIND_LABEL[shot.kind]}`);
 }
 
@@ -4525,6 +4622,7 @@ async function snapBackstock(forcePhone) {
   try { await savePhoto(shot.photo, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
   state.shots.unshift(shot); save(); renderAll();
   toast(`Saved to store#${storeOf(slot)} · Before · Backstock`);
+  checkPhotoQuality(shot.photo);
 }
 
 function wireBA() {
@@ -4556,7 +4654,7 @@ function renderGallery() {
   const slot = gal.slot, kind = gal.kind, all = [...beforeItems(slot), ...afterItems(slot)], after = afterItems(slot);
   let html = `<div class="list-head"><h2>Gallery</h2><span class="muted small">${storeOf(slot) ? `store#${esc(storeOf(slot))}` : ""}</span></div>
     <div class="slots" id="gal-slots">${slotsHTML(slot)}</div>
-    <div class="row" id="gal-share">${["before", "after"].map(w => { const n = itemsOf(slot, w).length; return `<button class="btn sm primary grow" data-share="${w}"${n ? "" : " disabled"}>${icon("upload")}Text all ${WHEN_LABEL[w]} (${n})</button>`; }).join("")}</div>
+    <div class="row" id="gal-share">${["before", "after"].map(w => { const n = itemsOf(slot, w).length, u = untexted(slot, w); return `<button class="btn sm primary grow" data-share="${w}"${n ? "" : " disabled"}>${icon("upload")}Text all ${WHEN_LABEL[w]} (${n})${n ? (u ? `<i class="tx-dot" aria-label="not sent yet"></i>` : `<i class="tx-ok" aria-label="sent">${icon("check")}</i>`) : ""}</button>`; }).join("")}</div>
     <div class="seg" id="gal-seg">${KINDS.map(k => { const n = all.filter(x => x.kind === k).length; return `<button data-k="${k}" class="${k === kind ? "active" : ""}">${KIND_LABEL[k]} ${n ? `<span class="kcount">${n}</span>` : ""}</button>`; }).join("")}</div>`;
   for (const w of ["before", "after"]) {
     const list = itemsOf(slot, w).filter(x => x.kind === kind).reverse();
@@ -4608,7 +4706,7 @@ async function shareBatch(slot, w) {
   const when = new Date(list[0].at).toLocaleDateString([], { month: "short", day: "numeric" });
   const text = `store#${store} - ${WHEN_LABEL[w]} - ${when}`;
   try {
-    if (navigator.canShare && navigator.canShare({ files, text })) { await navigator.share({ files, text }); return; }
+    if (navigator.canShare && navigator.canShare({ files, text })) { await navigator.share({ files, text }); markTexted(slot, w); return; }
   } catch (e) { if (e && e.name === "AbortError") return; }
   toast("Sharing isn't available here. Open a photo and use Save to Photos.");
 }
@@ -4651,13 +4749,14 @@ function displayNumbers() {
 }
 function clearEverything() {
   const snap = snapshot();
-  state.shots = []; state.notes = []; lastNoteId = null; lastShotId = null; displayTarget = null;
+  state.shots = []; state.notes = []; lastNoteId = null; lastShotId = null; displayTarget = null; state.texted = {};
   state.stores = Array(SLOTS).fill(""); state.storeName = ""; state.settings.baSlot = 0;
   save(); renderAll(); scheduleSweep();
   toast("Cleared", snap); haptic("ok");
   return true;
 }
 async function saveAndClear() {
+  if (tutorialActive) { toast("That's for real work. Not during practice."); return false; }
   if (hold.session) endHoldSession();
   const list = allPhotoItems(), n = list.length;
   if (!n) {
@@ -4665,6 +4764,10 @@ async function saveAndClear() {
     if (!(await confirmDialog("Clear the store numbers and the Needed list?", { ok: "Clear", danger: true }))) return false;
     await rememberDisplays(); return clearEverything();
   }
+  // anything not texted yet? (Text all marks what it sent)
+  const unsent = [];
+  for (let i = 0; i < SLOTS; i++) for (const w of ["before", "after"]) if (untexted(i, w)) unsent.push(`${storeOf(i) ? "#" + storeOf(i) : "Slot " + (i + 1)} ${WHEN_LABEL[w]}`);
+  if (unsent.length && !(await confirmDialog(`Not texted yet: <b>${unsent.map(esc).join(", ")}</b>. Clear anyway?`, { ok: "Continue", cancel: "Go back" }))) return false;
   const choice = await askSaveFirst(n);
   if (!choice) return false;
   if (choice === "clear") { await rememberDisplays(); return clearEverything(); }
@@ -4951,6 +5054,13 @@ async function galDelete() {
   save(); galSelectEnd(true); renderAll(); scheduleSweep();
   toast(`Deleted ${n} photo${n === 1 ? "" : "s"}`, snap);
 }
+
+// ---- Texted: which photos "Text all" has sent, per store and Before / After ----
+const untexted = (slot, w) => { const sent = new Set(((state.texted || {})[slot] || {})[w] || []); return itemsOf(slot, w).filter(x => !sent.has(x.photo)).length; };
+function markTexted(slot, w) {
+  state.texted = state.texted || {}; (state.texted[slot] = state.texted[slot] || {})[w] = itemsOf(slot, w).map(x => x.photo);
+  save(); if (view === "gallery") renderGallery();
+}
 // ---------- Products: the brand + flavor combinations the list recognizes ----------
 // Size and pack don't matter here: they stay in the words you read. Edits apply to every size of a combination
 // and upload to the shared product list like before.
@@ -5063,8 +5173,436 @@ function editVariation(v, { prefill = "" } = {}) {
     save(); close(); renderAll(); toast("Deleted", snap);
   };
 }
+// ---------- "Still at #1234?" and the new-day prompt (2.11) ----------
+// When Shelfie comes back on screen after 15+ minutes away (another app, closed, or the phone locked), it asks whether you're still at the
+// same store, with your recent stores one tap away: so a drive to the next store can't file its photos under the last store's number.
+// The first time it opens after midnight with an earlier day's work still in it, it offers to save and clear that first.
+const AWAY_ASK_MS = 15 * 60 * 1000;
+const SEEN_KEY = STORAGE_KEY + ".seen";   // when Shelfie was last on screen (its own small entry, written often)
+let newDaySnooze = 0;
+const markSeen = () => { try { localStorage.setItem(SEEN_KEY, String(Date.now())); } catch (e) {} };
+const dayKey = t => { const d = new Date(t); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); };
+setInterval(() => { if (!document.hidden) markSeen(); }, 30000);
+document.addEventListener("visibilitychange", () => { if (document.hidden) markSeen(); else awayCheck(); });
+
+// Coming back: the new-day prompt first (it covers the store question too), else "Still at…?" after a long enough time away.
+function awayCheck() {
+  let last = 0; try { last = +localStorage.getItem(SEEN_KEY) || 0; } catch (e) {}
+  markSeen();
+  if (tutorialActive || document.querySelector("#layer .overlay:not(.closing)")) return;   // not over the practice run or an open sheet
+  if (newDayDue()) { askNewDay(); return; }
+  if (last && Date.now() - last >= AWAY_ASK_MS && storeOf(baSlot())) askStillHere(Date.now() - last);
+}
+
+// ---- Still at #1234? ----
+function askStillHere(awayMs) {
+  const cur = storeOf(baSlot()), mins = Math.round(awayMs / 60000);
+  const away = mins >= 120 ? `${Math.round(mins / 60)} hours` : `${mins} minutes`;
+  const others = [...new Set([...(state.recentStores || []), ...state.stores.filter(Boolean)])].filter(s => s !== cur).slice(0, 6);
+  const d = el(`<div class="dialog still-dialog"><p class="still-h">Still at <b>#${esc(cur)}</b>?</p><p class="still-sub">You were away ${esc(away)}.</p>
+    <button class="btn primary block still-yes" data-a="yes">Yes, still here</button>
+    ${others.length ? `<p class="recent-h">Switch to</p><div class="recent-stores">${others.map(s => `<button class="recent-store" data-st="${esc(s)}">#${esc(s)}</button>`).join("")}</div>` : ""}
+    <button class="btn block quiet" data-a="other" style="margin-top:10px">Other store…</button></div>`);
+  const close = openLayer(d, { center: true, sticky: true });
+  d.querySelector('[data-a="yes"]').onclick = () => { close(); haptic("tick"); };
+  d.querySelectorAll("[data-st]").forEach(b => (b.onclick = () => { close(); switchToStore(b.dataset.st); }));
+  d.querySelector('[data-a="other"]').onclick = () => {
+    close();
+    const e = state.stores.findIndex(s => !s);
+    if (e < 0) return toast("All five store buttons are in use. Tap one at the top to change its number.");
+    pickSlot(e);   // an empty slot asks for its number
+  };
+}
+// Open a store: its button if it's one of today's five, otherwise the first empty one.
+function switchToStore(v) {
+  let i = state.stores.findIndex(s => s === v);
+  if (i < 0) {
+    i = state.stores.findIndex(s => !s);
+    if (i < 0) return toast("All five store buttons are in use. Tap one at the top to change its number.");
+    state.stores[i] = v; state.recentStores = [v, ...(state.recentStores || []).filter(x => x !== v)].slice(0, 8); save();
+  }
+  if (i !== baSlot()) pickSlot(i);
+  toast(`Now at #${v}`);
+}
+
+// ---- New day ----
+function oldWork() {
+  const t0 = startOfToday(), photos = allPhotoItems().filter(x => x.at < t0), notes = state.notes.filter(n => n.at < t0 && n.status === "done");
+  return { photos, notes, oldest: Math.min(...photos.map(x => x.at), ...notes.map(n => n.at), Date.now()) };
+}
+function newDayDue() {
+  if (Date.now() < newDaySnooze || state.settings.newDayAsked === dayKey(Date.now())) return false;
+  const w = oldWork(); return w.photos.length + w.notes.length > 0;
+}
+function askNewDay() {
+  const w = oldWork(), y = new Date(startOfToday() - 1);
+  const fromYesterday = dayKey(w.oldest) === dayKey(y.getTime());
+  const title = fromYesterday ? "Yesterday's work is still here" : "Earlier work is still here";
+  const parts = [w.photos.length && `${w.photos.length} photo${w.photos.length === 1 ? "" : "s"}`, w.notes.length && `${w.notes.length} Needed item${w.notes.length === 1 ? "" : "s"}`].filter(Boolean);
+  const when = fromYesterday ? "yesterday" : new Date(w.oldest).toLocaleDateString([], { month: "short", day: "numeric" });
+  const d = el(`<div class="dialog"><p><b>${esc(title)}</b></p><p>${esc(parts.join(" and "))} from ${esc(when)}. Save and clear ${w.photos.length + w.notes.length === 1 ? "it" : "them"} to start today fresh?</p>
+    <div class="stack"><button class="btn primary block" data-a="save">${icon("download")}Save and clear</button>
+    <button class="btn block" data-a="keep">Keep it</button><button class="btn block quiet" data-a="later">Not now</button></div></div>`);
+  const close = openLayer(d, { center: true, sticky: true });
+  const asked = () => { state.settings.newDayAsked = dayKey(Date.now()); save(); };
+  d.querySelector('[data-a="save"]').onclick = () => { close(); asked(); setTimeout(saveAndClear, 300); };
+  d.querySelector('[data-a="keep"]').onclick = () => { close(); asked(); };
+  d.querySelector('[data-a="later"]').onclick = () => { close(); newDaySnooze = Date.now() + AWAY_ASK_MS; };
+}
+// ---------- Blurry or dark photo warning (2.11) ----------
+// Right after a photo is saved, its small thumbnail (made in the background anyway) is checked: how bright it is, and how much fine detail
+// it has (the spread of a Laplacian filter, which falls when a picture is blurred). A clearly bad one gets a notice with Retake, which
+// takes the picture again (after a moment to hold steady) and puts it in place of the old one: the items said for it stay with it.
+// It looks at about 256 x 192 pixels once per photo: a few milliseconds, never during the live camera.
+const PHOTO_DARK = 38;   // average brightness (0-255) below this: too dark
+const PHOTO_BLUR = 22;   // detail score below this: blurry ("normal": only clearly bad photos)
+const photoCheckOn = () => state.settings.photoCheck !== false;
+const qSleep = ms => new Promise(r => setTimeout(r, ms));
+
+// A notice with its own button (Retake) in place of UNDO.
+function toastAction(msg, label, fn, ms = 6000) {
+  toast(msg);
+  const t = $("#toast"), u = $("#toast-undo");
+  u.textContent = label; u.style.display = "";
+  u.onclick = () => { t.classList.remove("show"); fn(); };
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), ms);
+}
+// Decode a picture without waiting on the screen (createImageBitmap), falling back to an <img>; never longer than 3 seconds.
+function decodePic(blob, url) {
+  const viaImg = () => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+  const go = window.createImageBitmap ? createImageBitmap(blob).catch(viaImg) : viaImg();
+  return Promise.race([go, new Promise((_, rej) => setTimeout(() => rej(new Error("slow")), 3000))]);
+}
+async function measurePhoto(blob) {
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await decodePic(blob, url), iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    const W = 256, H = Math.max(8, Math.round(ih * W / iw));
+    const c = document.createElement("canvas"); c.width = W; c.height = H;
+    const g = c.getContext("2d", { willReadFrequently: true }); g.drawImage(img, 0, 0, W, H);
+    const d = g.getImageData(0, 0, W, H).data, gray = new Float32Array(W * H);
+    let sum = 0;
+    for (let i = 0, j = 0; i < d.length; i += 4, j++) { const y = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; gray[j] = y; sum += y; }
+    let n = 0, mean = 0, m2 = 0;   // running variance of the Laplacian
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+      const k = y * W + x, lap = 4 * gray[k] - gray[k - 1] - gray[k + 1] - gray[k - W] - gray[k + W];
+      n++; const dl = lap - mean; mean += dl / n; m2 += dl * (lap - mean);
+    }
+    const bright = sum / (W * H), detail = m2 / Math.max(1, n - 1);
+    let v2 = 0; for (let j = 0; j < gray.length; j += 3) v2 += (gray[j] - bright) ** 2;
+    const contrast = Math.sqrt(v2 / Math.ceil(gray.length / 3));   // a plain wall or an empty white shelf: nothing to judge sharpness by
+    return { bright, detail, contrast, dark: bright < PHOTO_DARK, blurry: detail < PHOTO_BLUR && contrast >= 12 };
+  } catch (e) { return null; } finally { URL.revokeObjectURL(url); }
+}
+const photoInUse = id => state.notes.some(n => (n.photos || []).includes(id)) || state.shots.some(s => s.photo === id) || !!(hold.session && hold.session.photo === id);
+async function checkPhotoQuality(id) {
+  if (!photoCheckOn() || tutorialActive) return;
+  let blob = null;
+  for (let i = 0; i < 20 && !blob; i++) { blob = await getPhoto(thumbId(id)).catch(() => null); if (!blob) await qSleep(150); }   // the thumbnail is made in the background
+  if (!blob) return;
+  const r = await measurePhoto(blob);
+  if (!r || !photoInUse(id) || (!r.dark && !r.blurry)) return;
+  const msg = r.dark ? "That one looks too dark" : "That one looks blurry";
+  // the picker is open for this shelf: say it there (a notice would be replaced by "1 item saved" when Done is tapped)
+  const sh = document.querySelector("#layer .overlay:not(.closing) .pick-sheet");
+  if (sh && hold.session && hold.session.photo === id) {
+    sh.querySelector(".pick-warn")?.remove();
+    const w = el(`<div class="pick-warn">${icon("warn")}<span class="grow">${esc(msg)}</span><button class="btn sm" data-a="retake">Retake</button></div>`);
+    w.querySelector("button").onclick = () => { w.remove(); retakePhoto(hold.session ? hold.session.photo : id); };
+    sh.querySelector(".pick-added").before(w);
+    return;
+  }
+  toastAction(msg, "RETAKE", () => retakePhoto(id));
+}
+// Take the picture again and put it in place of the old one everywhere it's used (notes, After/Before shots, an open shelf, displays).
+async function retakePhoto(oldId) {
+  if (!photoInUse(oldId)) return;
+  const onAfter = view === "ba", vid = onAfter ? "#ba-video" : "#cam-video", box = onAfter ? "#ba-camera" : "#camera";
+  const live = !!cam.stream && isCamView();
+  let blob = null;
+  if (live) { toast("Hold steady…"); await qSleep(700); primeShutter(); haptic("shutter"); blob = await grabSharp(vid, box); if (blob) box_flash(box); }
+  else blob = await cameraPhoto();
+  if (!blob) return toast("Couldn't retake it. Use the shutter again.");
+  playShutter();
+  const id = newId("p");
+  try { await savePhoto(id, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
+  for (const n of state.notes) if ((n.photos || []).includes(oldId)) n.photos = n.photos.map(p => (p === oldId ? id : p));
+  for (const s of state.shots) if (s.photo === oldId) s.photo = id;
+  for (const r of [...state.notes, ...state.shots]) if (r.dg === oldId) r.dg = id;   // a display that started with this photo
+  if (hold.session && hold.session.photo === oldId) hold.session.photo = id;
+  if (displayTarget && displayTarget.anchor === oldId) displayTarget.anchor = id;
+  save(); renderAll(); scheduleSweep();
+  toast("Retaken");
+  checkPhotoQuality(id);
+}
+// ---------- Practice run (2.11): a guided, hands-on walkthrough ----------
+// The screen dims except for the one thing to use next, with a bubble saying what to do and a small animated hint (a fingertip tapping,
+// a ring filling for "hold", a row nudging left for "swipe"). Each step waits for the real action, then moves on.
+// It's practice: the real data is set aside when it starts and put back when it ends, and nothing is saved meanwhile (save and the photo
+// cleanup are switched off), so even if the app is closed halfway, the real work is untouched. The practice photos are cleaned up after.
+var tutorialActive = false;   // var: other parts check it from the start
+const tut = { i: -1, saved: null, timer: 0, nudge: 0, el: null, key: "", hintKey: "", hintEl: null, notesAt: 0 };
+const pickSheetOpen = () => document.querySelector("#layer .overlay:not(.closing) .pick-sheet");
+function tutPickTarget() {
+  const sh = pickSheetOpen(); if (!sh) return $("#view-capture .shutter-wrap");
+  if (sh.querySelector(".pick-chip")) return sh.querySelector('[data-a="done"]');
+  const at = sh.querySelector(".pick-stage").dataset.at || "b";
+  return sh.querySelector(`.pick-page[data-p="${at}"] .pick-btn`);
+}
+function tutPickText() {
+  const sh = pickSheetOpen(); if (!sh) return "Tap the shutter to photograph the shelf.";
+  if (sh.querySelector(".pick-chip")) return "That's on the list. Tap Done to finish this shelf.";
+  const at = sh.querySelector(".pick-stage").dataset.at || "b";
+  return at === "l" ? "Now pick the kind." : at === "f" ? "Now the flavor." : "What's missing? Pick a brand.";
+}
+const T_STEPS = [
+  { id: "store", enter: () => { if (view !== "capture") showView("capture"); },
+    target: () => $("#cap-slots .slot[data-slot]"), text: "Tap a store button and type any store number, like 1234.",
+    layerText: "Type a store number, then tap Continue.", hint: "tap", done: () => !!storeOf(baSlot()) },
+  { id: "camera", skip: () => !!cam.stream, target: () => (cam.starting ? null : $("#btn-cam-start")), text: "Turn on the camera.",
+    hint: "tap", done: () => !!cam.stream, fail: () => !!cam.error },
+  { id: "snap", target: tutPickTarget, text: tutPickText, inLayer: true, hint: "tap", done: () => !pickSheetOpen() && state.notes.length > 0 },
+  { id: "talk", skip: () => !voiceReady() || !cam.stream, target: () => $("#view-capture .shutter-wrap"),
+    text: "You can also hold the shutter and say the product. Try it, or tap Next.", hint: "hold", next: true, done: () => state.notes.length > tut.notesAt },
+  { id: "needtab", target: () => $('#tabs [data-view="needed"]'), text: "Your items land on the Needed list.", hint: "tap", done: () => view === "needed" },
+  { id: "tick", target: () => $("#view-needed .need[data-n] .check"), text: "Tap the circle once you've pulled it from the back.", hint: "tick",
+    done: () => state.notes.some(n => Object.values(n.ticks || {}).some(Boolean)) },
+  { id: "swipe", target: () => $("#view-needed .need[data-n]"), text: "None left in the back? Swipe the row left. Swipe all the way to delete it.",
+    hint: "nudge", next: true, done: () => outItems().length > 0 },
+  { id: "gallerytab", target: () => $('#tabs [data-view="gallery"]'), text: "Your photos are in the Gallery.", hint: "tap", done: () => view === "gallery" },
+  { id: "text", target: () => $("#gal-share"), text: "Text all sends a store's photos to your boss. The orange dot means that batch isn't sent yet.", hint: "dot", next: true },
+  { id: "select", target: () => $("#view-gallery .shot"), text: "Hold a photo to select it. Then you can move it to another store, type or display.",
+    hint: "press", next: true, done: () => gsel.on },
+  { id: "clear", enter: () => { if (gsel.on) galSelectEnd(); }, target: () => $("#gal-slots .slot.act"),
+    text: "At the end of your shift, tap Clear to save your photos and start fresh. (Not now, this is practice.)", hint: "glow", next: true, last: true },
+];
+
+// ---- start and end ----
+function startTutorial() {
+  if (tutorialActive || tut.el) return;
+  tutBuild();
+  tutCard(`<div class="tut-badge">${icon("play")}</div><h3>Practice run</h3><p>A quick hands-on walkthrough, about two minutes. Nothing you do here is kept: your real work is set aside and comes back at the end.</p>`,
+    [{ label: "Skip", quiet: true, fn: () => tutEnd() }, { label: "Start", fn: tutBegin }]);
+}
+function tutBegin() {
+  if (hold.session) endHoldSession();
+  document.querySelectorAll("#layer .overlay").forEach(o => (o._close ? o._close() : o.remove()));
+  if (gsel.on) galSelectEnd(true);
+  tut.saved = snapshot(); tutorialActive = true;   // from here nothing is saved until it ends
+  const s = JSON.parse(tut.saved);
+  Object.assign(s, { notes: [], shots: [], stores: ["", "", "", "", ""], storeName: "", texted: {}, displayMemory: {}, recentStores: [] });
+  Object.assign(s.settings, { baSlot: 0, captureKind: "aisle", baKind: "aisle", needKind: "aisle", hideDone: false, photoCheck: false });   // practice: everything on Aisle, no photo warnings
+  state = s; lastNoteId = null; lastShotId = null; displayTarget = null;
+  renderAll(); showView("capture");
+  tut.timer = setInterval(tutTick, 150);
+  tutGo(0);
+}
+function tutEnd() {
+  clearInterval(tut.timer); clearInterval(tut.nudge); tutHint(null);
+  if (tut.el) { tut.el.remove(); tut.el = null; }
+  if (tutorialActive) {
+    if (hold.active) { hold.active = false; clearInterval(hold.tick); hold.chunks = []; renderHoldLive(false); }
+    hold.session = null; closeHoldMic();   // a practice shelf: nothing to file
+    document.querySelectorAll("#layer .overlay").forEach(o => (o._close ? o._close() : o.remove()));
+    if (gsel.on) galSelectEnd(true);
+    state = JSON.parse(tut.saved); tut.saved = null; lastNoteId = null; lastShotId = null; displayTarget = null;
+    tutorialActive = false;
+    renderHoldBar(); renderAll(); showView("capture");
+    scheduleSweep();   // the practice photos go
+  }
+  state.settings.tutorialSeen = true; save();
+  tut.i = -1; tut.key = "";
+}
+
+// ---- steps ----
+function tutGo(i) {
+  tut.i = i; tut.key = ""; const s = T_STEPS[i];
+  if (!s) return tutDone();
+  if (s.skip && s.skip()) return tutGo(i + 1);
+  tut.notesAt = state.notes.length;
+  if (s.enter) s.enter();
+  tutTick();
+}
+function tutTick() {
+  const s = T_STEPS[tut.i]; if (!s || !tut.el) return;
+  if (s.fail && s.fail()) { practiceSample(); return tutGo(T_STEPS.findIndex(x => x.id === "needtab")); }   // no camera here: practice with a sample shelf
+  if (s.done && s.done()) return tutGo(tut.i + 1);
+  let target = s.target ? s.target() : null, text = typeof s.text === "function" ? s.text() : s.text, hint = s.hint;
+  const top = [...document.querySelectorAll("#layer .overlay:not(.closing)")].pop();
+  if (top && !s.inLayer) { target = top.firstElementChild; text = s.layerText || ""; hint = null; }   // a dialog it opened (the store number): use it
+  let rect = target && target.getBoundingClientRect();
+  if (rect && (rect.bottom < 0 || rect.top > innerHeight)) { target.scrollIntoView({ block: "center" }); rect = target.getBoundingClientRect(); }
+  const ok = rect && rect.width > 0 && rect.height > 0;
+  tutPlace(ok ? rect : null);
+  tutBubble(text, s, ok ? rect : null);
+  tutHint(ok ? hint : null, ok ? target : null, ok ? rect : null);
+}
+// No live camera on this phone (or it was refused): a sample shelf with one item, so the rest can still be practised.
+async function practiceSample() {
+  const c = document.createElement("canvas"); c.width = 480; c.height = 360; const g = c.getContext("2d");
+  g.fillStyle = "#3a3a3a"; g.fillRect(0, 0, 480, 360);
+  for (let i = 0; i < 4; i++) { g.fillStyle = "#ddd"; g.fillRect(0, 80 + i * 80, 480, 6); for (let j = 0; j < 8; j++) { g.fillStyle = `hsl(${j * 45},65%,50%)`; g.fillRect(10 + j * 58, 20 + i * 80, 46, 58); } }
+  const blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.8)), id = newId("p");
+  try { await savePhoto(id, blob); } catch (e) { return; }
+  await saveNote({ photos: [id], kind: "aisle", slot: baSlot(), secs: 0, text: "Coca-Cola Cherry", status: "heard" }); pump();
+}
+
+// ---- drawing: four shades around a hole, a ring, a bubble, a hint ----
+function tutBuild() {
+  const o = el(`<div class="tut" id="tut"><div class="tut-shade"></div><div class="tut-shade"></div><div class="tut-shade"></div><div class="tut-shade"></div>
+    <div class="tut-ring" hidden></div><div class="tut-finger" hidden><svg viewBox="0 0 60 60" aria-hidden="true"><circle cx="30" cy="30" r="27"/></svg><i class="tut-wave"><b></b><b></b><b></b></i></div>
+    <div class="tut-bubble" role="dialog" aria-live="polite"><div class="tut-step"></div><div class="tut-body"></div><div class="tut-btns"></div></div>
+    <button class="tut-x" aria-label="End the practice run">${icon("x")}</button></div>`);
+  if (calmMotion()) o.classList.add("calm");
+  document.body.appendChild(o); tut.el = o;
+  o.querySelector(".tut-x").onclick = () => tutEnd();
+}
+function tutPlace(r) {
+  const [t, b, l, rt] = tut.el.querySelectorAll(".tut-shade"), W = innerWidth, H = innerHeight, ring = tut.el.querySelector(".tut-ring");
+  const set = (e, x, y, w, h) => Object.assign(e.style, { left: x + "px", top: y + "px", width: Math.max(0, w) + "px", height: Math.max(0, h) + "px" });
+  if (!r) { set(t, 0, 0, W, H); set(b, 0, H, W, 0); set(l, 0, 0, 0, 0); set(rt, W, 0, 0, 0); ring.hidden = true; return; }
+  const p = 6, x0 = Math.max(0, r.left - p), y0 = Math.max(0, r.top - p), x1 = Math.min(W, r.right + p), y1 = Math.min(H, r.bottom + p);
+  set(t, 0, 0, W, y0); set(b, 0, y1, W, H - y1); set(l, 0, y0, x0, y1 - y0); set(rt, x1, y0, W - x1, y1 - y0);
+  ring.hidden = false; set(ring, x0, y0, x1 - x0, y1 - y0);
+}
+function tutBubble(text, s, r) {
+  const bub = tut.el.querySelector(".tut-bubble");
+  const shown = T_STEPS.filter(x => !(x.skip && x.skip() && x !== s)), n = shown.indexOf(s) + 1;
+  const key = s.id + "|" + text + "|" + !!r;
+  if (key !== tut.key) {
+    tut.key = key; bub.classList.remove("card"); bub.hidden = !text;
+    bub.querySelector(".tut-step").textContent = `Practice · ${n} of ${shown.length}`;
+    bub.querySelector(".tut-body").innerHTML = `<p>${esc(text)}</p>`;
+    const btns = bub.querySelector(".tut-btns"); btns.innerHTML = "";
+    if (s.next) { const nb = el(`<button class="btn sm primary">${s.last ? "Finish" : "Next"}</button>`); nb.onclick = () => tutGo(tut.i + 1); btns.appendChild(nb); }
+    bub.classList.remove("pop"); void bub.offsetWidth; bub.classList.add("pop");
+  }
+  // below the hole when it's in the top part of the screen, above it otherwise; centred when there's no hole
+  const W = innerWidth, H = innerHeight, bw = Math.min(330, W - 32), bh = bub.offsetHeight || 120;
+  bub.style.width = bw + "px";
+  if (!r) { bub.style.left = (W - bw) / 2 + "px"; bub.style.top = Math.max(16, (H - bh) / 2) + "px"; bub.dataset.side = ""; return; }
+  const below = (r.top + r.bottom) / 2 < H * 0.55;
+  const left = Math.min(Math.max(16, (r.left + r.right) / 2 - bw / 2), W - bw - 16);
+  const top = below ? Math.min(r.bottom + 18, H - bh - 16) : Math.max(16, r.top - bh - 18);
+  bub.style.left = left + "px"; bub.style.top = top + "px"; bub.dataset.side = below ? "below" : "above";
+  bub.style.setProperty("--ax", Math.min(Math.max(18, (r.left + r.right) / 2 - left), bw - 18) + "px");   // where the little arrow points
+}
+function tutCard(html, buttons) {
+  tutPlace(null);
+  const bub = tut.el.querySelector(".tut-bubble"); bub.hidden = false; bub.classList.add("card"); bub.dataset.side = "";
+  bub.querySelector(".tut-step").textContent = "";
+  bub.querySelector(".tut-body").innerHTML = html;
+  const btns = bub.querySelector(".tut-btns"); btns.innerHTML = "";
+  for (const b of buttons) { const x = el(`<button class="btn ${b.quiet ? "quiet" : "primary"}">${esc(b.label)}</button>`); x.onclick = b.fn; btns.appendChild(x); }
+  const W = innerWidth, bw = Math.min(340, W - 32); bub.style.width = bw + "px"; bub.style.left = (W - bw) / 2 + "px";
+  bub.style.top = Math.max(24, (innerHeight - (bub.offsetHeight || 260)) / 2) + "px";
+  bub.classList.remove("pop"); void bub.offsetWidth; bub.classList.add("pop");
+}
+function tutDone() {
+  clearInterval(tut.timer); tutHint(null);
+  const burst = Array.from({ length: 12 }, (_, i) => `<i style="--a:${i * 30}deg;--c:${["var(--red)", "var(--ok)", "#F5A623", "#3B82F6"][i % 4]}"></i>`).join("");
+  tutCard(`<div class="tut-done"><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24"/><path d="M15 27l7 7 15-16"/></svg><span class="tut-burst">${burst}</span></div>
+    <h3>You're all set</h3><p>Your real work is back. You can run this again any time from More.</p>`, [{ label: "Finish", fn: () => tutEnd() }]);
+}
+
+// ---- hints ----
+function tutHint(kind, target, r) {
+  const f = tut.el && tut.el.querySelector(".tut-finger");
+  const key = kind && target ? kind + "|" + (target.dataset.n || target.dataset.p || target.id || target.className) : "";
+  if (f && r && kind && ["tap", "hold", "press"].includes(kind)) Object.assign(f.style, { left: (r.left + r.right) / 2 + "px", top: (r.top + r.bottom) / 2 + "px" });
+  if (key === tut.hintKey && target === tut.hintEl) return;
+  // clear the last one
+  clearInterval(tut.nudge);
+  document.querySelectorAll(".tut-ghost, .tut-glow, .tut-pulse").forEach(e => e.classList.remove("tut-ghost", "tut-glow", "tut-pulse"));
+  if (f) { f.hidden = true; f.className = "tut-finger"; }
+  tut.hintKey = key; tut.hintEl = target;
+  if (!kind || !target || (tut.el && tut.el.classList.contains("calm"))) return;   // Reduce Motion: the ring and bubble guide on their own
+  if (kind === "tap" || kind === "hold" || kind === "press") { f.hidden = false; f.classList.add(kind); }
+  else if (kind === "tick") target.classList.add("tut-ghost");
+  else if (kind === "glow") target.classList.add("tut-glow");
+  else if (kind === "dot") target.classList.add("tut-pulse");
+  else if (kind === "nudge") { const go = () => tutNudge(target); setTimeout(go, 400); tut.nudge = setInterval(go, 2800); }
+}
+// A Needed row slides a little to the left and back, twice, showing the orange "None in back" behind it.
+function tutNudge(row) {
+  if (!row.isConnected || row.classList.contains("swiping") || !row.animate) return;
+  const bg = document.createElement("div"); bg.className = "swipe-bg left armed";
+  bg.innerHTML = `<span class="sw-tick"></span><span class="sw-del"><b class="sw-lbl">None in back</b>${icon("x")}</span>`;
+  Object.assign(bg.style, { top: row.offsetTop + "px", height: row.offsetHeight + "px" });
+  row.parentElement.insertBefore(bg, row); row.classList.add("swiping");
+  const a = row.animate([{ transform: "translateX(0)" }, { transform: "translateX(-72px)", offset: 0.3 }, { transform: "translateX(0)", offset: 0.55 },
+    { transform: "translateX(-44px)", offset: 0.75 }, { transform: "translateX(0)" }], { duration: 1500, easing: "ease-in-out" });
+  const fin = () => { bg.remove(); row.classList.remove("swiping"); }; a.onfinish = fin; a.oncancel = fin;
+}
+addEventListener("resize", () => { if (tutorialActive) tutTick(); });
+// ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
+const CHANGELOG = [
+  { v: "2.11.0", notes: [
+    "Coming back after 15 minutes or more asks “Still at #1234?”, with your recent stores one tap away, so photos don't land under the last store.",
+    "The first time you open the app on a new day with yesterday's work still in it, it offers to save and clear it.",
+    "An orange dot on Text all until that batch is sent, then a check. Clear warns about anything not texted.",
+    "A blurry or too-dark photo gets a notice with Retake. It can be turned off in More.",
+    "Practice run: a hands-on walkthrough for new users. It starts on a new phone, and any time from More.",
+    "This list of what's changed." ] },
+  { v: "2.10.2", notes: [
+    "Move Gallery photos into, out of and between displays.",
+    "The Move menu is two short steps (store, type, display, Before or After), with Back, and every choice reads “Move to…”." ] },
+  { v: "2.10.1", notes: ["Holding a photo only selects it. The iPhone no longer lifts a copy to drag around."] },
+  { v: "2.10.0", notes: [
+    "Hold a photo in the Gallery to select it, tap more, then move them to another store, change Aisle, Display or Backstock, or delete them.",
+    "Every move and delete has Undo." ] },
+  { v: "2.9.2", notes: [
+    "Needed rows show their store when you have items from more than one store.",
+    "Display photos say which display they are.",
+    "Hide done on the Needed list.",
+    "Opens faster on weak signal, ticks and saves are quicker, and the camera uses less battery.",
+    "Fixes: no duplicate photo when a shelf is closed mid-recording, older photos get small previews, and the picker's Hold to talk resets after 30 seconds.",
+    "Backups also keep your recent stores and picker order." ] },
+  { v: "2.9.1", notes: ["Display photos are grouped as Display 1, Display 2… in the Gallery.", "Saved and texted file names include the display number."] },
+  { v: "2.9.0", notes: [
+    "Displays are counted: photos taken within 20 seconds of each other are one display.",
+    "A chip on the camera shows this visit against last time, with + Photo and Join above to fix the count." ] },
+  { v: "2.8.0", notes: ["More looks like iPhone Settings.", "The Product list has the Needed list's look: swipe left to retire, all the way to delete one you added."] },
+  { v: "2.7.2", notes: ["The bottom-left button adds a forgotten item to your last shelf.", "Hold to talk inside the picker."] },
+  { v: "2.7.1", notes: ["The picker goes brand, then kind (Regular, Diet, Zero Sugar…), then flavor."] },
+  { v: "2.7.0", notes: ["Tap the shutter to pick items from a list instead of talking. The brands you pick most move up."] },
+  { v: "2.6.0", notes: ["Recent stores as one-tap buttons when asked for a store number.", "“None in back”: swipe a Needed item part way left, then text the list to your boss."] },
+  { v: "2.5.0", notes: ["Cleaner Needed rows.", "Notes open with the photo first, and the zoom is new: pinch where your fingers are, double-tap, tap for full screen."] },
+  { v: "2.4.2", notes: ["The camera picture always fills its frame."] },
+  { v: "2.4.1", notes: ["Backstock photos are one tap, no voice note.", "The store number shows as you type it.", "The shutter stays put while held.", "The Save button is now Clear."] },
+  { v: "2.4.0", notes: ["Backstock next to Aisle and Display.", "The Before tab asks for the store number first."] },
+  { v: "2.3.0", notes: ["iPhone-style feel: switches, sliding pages, large titles.", "Swipe Needed rows right to tick, left to delete."] },
+  { v: "2.2.0", notes: ["Sharper photos at the camera's full size.", "The camera feed fills its frame, and the shutter stays still while held.", "Animations throughout."] },
+  { v: "2.1.0", notes: ["New tabs: Before, After, Needed, Gallery, More.", "Shelf photos are the Before pictures.", "Products moved into More.", "A photo is kept even when nothing is said."] },
+  { v: "2.0.0", notes: [
+    "Hold the shutter and talk; hold again for the next product on the same shelf.",
+    "Sharper whole-shelf photos.",
+    "Listen while recording, for newer iPhones.",
+    "Sharing between phones was removed; a backup file in More instead." ] },
+  { v: "1.2.0", notes: ["Send Before and After photos to a teammate."] },
+  { v: "1.1.0", notes: ["New name, Shelfie, with a new logo and home-screen icon."] },
+  { v: "1.0.1", name: "Shelf Scan", notes: ["A shutter tap you can feel on newer iPhones.", "Separate settings for shutter and button feedback.", "Swipe notices away."] },
+  { v: "1.0.0", name: "Shelf Scan", notes: [
+    "The first stable release: snap a shelf and say what's needed, and the Needed list sorts it by brand.",
+    "Before and After photos by store, texted to your boss.",
+    "Haptics and small animations." ] },
+];
+function renderChangelog() {
+  const v = $("#view-changelog");
+  const major = x => x.v.split(".")[0];
+  let html = `<button class="btn sm quiet back-btn" data-a="back">‹ More</button><div class="list-head"><h2>What's new</h2></div>`, cur = null;
+  CHANGELOG.forEach((e, i) => {
+    if (major(e) !== cur) { if (cur !== null) html += `</div>`; cur = major(e); html += `<div class="sec-h">${cur === "1" ? "Shelf Scan and Shelfie 1" : `Shelfie ${cur}`}</div><div class="list group">`; }
+    html += `<div class="item cl-item"><div class="grow"><div class="name">${e.name ? `${esc(e.name)} ` : ""}${esc(e.v)}${i === 0 ? `<span class="cl-cur">This version</span>` : ""}</div>
+      <ul class="cl-list">${e.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul></div></div>`;
+  });
+  html += `</div><p class="foot">Shelfie keeps everything on this phone.</p>`;
+  v.innerHTML = html;
+  v.querySelector('[data-a="back"]').onclick = () => showView("more");
+}
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 81;
+const REVISION = 82;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -5105,8 +5643,17 @@ function renderMore() {
       <button class="item row-btn" id="btn-restore">${icon("upload")}<span class="grow">Restore from a backup</span></button>
     </div>
     <p class="sec-foot">One small file with the product list, settings and store numbers. Keep it in Files or send it to yourself. Notes and photos aren't included.</p>
+    <div class="sec-h">Photos</div>
+    <div class="list group">
+      <div class="item set"><label class="grow" for="photo-check"><div class="name">Warn about blurry or dark photos</div><div class="sub">Right after a photo, if it looks blurry or too dark, you get a Retake button.</div></label><input type="checkbox" switch id="photo-check" ${photoCheckOn() ? "checked" : ""}></div>
+    </div>
+    <div class="sec-h">Help</div>
+    <div class="list group">
+      <button class="item row-btn" id="btn-practice">${icon("play")}<span class="grow">Practice run</span></button>
+      <button class="item row-btn nav" id="btn-whatsnew">${icon("note")}<span class="grow">What's new</span>${icon("jump")}</button>
+    </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
-    <p class="foot">Shelfie 2.10.2 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 2.11.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
@@ -5122,6 +5669,9 @@ function renderMore() {
   v.querySelector("#btn-products").onclick = () => showView("products");
   v.querySelector("#btn-backup").onclick = saveBackup;
   v.querySelector("#btn-restore").onclick = pickBackupFile;
+  v.querySelector("#photo-check").onchange = e => { state.settings.photoCheck = e.target.checked; save(); };
+  v.querySelector("#btn-practice").onclick = () => startTutorial();
+  v.querySelector("#btn-whatsnew").onclick = () => showView("changelog");
   v.querySelector("#btn-reset").onclick = async () => {
     if (!(await confirmDialog("Erase everything on this phone (notes, photos, store numbers and settings) and start fresh with the built-in product list? Save a backup first if you want to keep your product changes.", { ok: "Erase", danger: true }))) return;
     const models = state.settings.models;
@@ -5159,6 +5709,8 @@ save();
 syncAllIndicators(false);
 setTimeout(sweepMedia, 3000);   // tidy photos and recordings left over from deleted notes
 if (state.settings.camOK) startCamera();
+if (firstRun && !state.settings.tutorialSeen) setTimeout(startTutorial, 900);   // a new phone: offer the practice run
+else setTimeout(awayCheck, 800);
 checkLastCrash();
 recoverRecording();
 try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}   // ask iOS not to clear saved photos and recordings when space is low
