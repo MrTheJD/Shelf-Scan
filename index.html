@@ -898,6 +898,27 @@ body[data-nav="push"] #view-changelog.active { animation: pushIn .5s cubic-bezie
 .pf-count { position: absolute; left: 50%; top: calc(var(--safe-t) + 18px); transform: translateX(-50%); z-index: 2; padding: 4px 12px; border-radius: 999px; background: rgba(0, 0, 0, .5); color: #fff; font-size: 13px; font-weight: 750; font-variant-numeric: tabular-nums; pointer-events: none; transition: opacity .2s ease; }
 .pf-count:empty { display: none; }
 .photo-full.chrome-off .pf-count { opacity: 0; }
+
+/* ---------- 2.13.0: pairing After displays with Before ---------- */
+.pair-strip { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 4px; scrollbar-width: none; scroll-snap-type: x proximity; }
+.pair-strip::-webkit-scrollbar { display: none; }
+.pair-strip[hidden] { display: none; }
+.pair-btn { position: relative; flex: none; width: 52px; height: 52px; padding: 0; border: 0; border-radius: 13px; background: var(--chip); scroll-snap-align: center; transition: transform .3s var(--spring), box-shadow .2s ease; }
+.pair-btn .pair-img { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; }
+.pair-btn img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: .55; transition: opacity .2s ease; }
+.pair-btn b { position: absolute; left: 4px; bottom: 4px; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: rgba(0, 0, 0, .65); color: #fff; font-size: 12px; line-height: 20px; text-align: center; }
+.pair-btn .pair-ok { position: absolute; right: -4px; top: -4px; width: 20px; height: 20px; border-radius: 50%; background: var(--ok); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px var(--bg); }
+.pair-btn .pair-ok svg.i { width: 12px; height: 12px; stroke-width: 3.4; }
+.pair-btn.on { box-shadow: 0 0 0 3px var(--ink), 0 0 0 5px var(--bg); transform: scale(1.06); }
+.pair-btn.on img { opacity: 1; }
+.pair-btn:active { transform: scale(.94); }
+.pair-empty { margin: 0; padding: 10px 12px; border-radius: 14px; background: var(--warn-soft); color: var(--warn); font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; width: 100%; }
+.pair-empty svg.i { width: 17px; height: 17px; flex: none; }
+.pair-pip { position: absolute; right: 10px; top: 60px; z-index: 3; width: 74px; height: 98px; padding: 0; border: 2px solid #fff; border-radius: 12px; overflow: hidden; background: #000; box-shadow: 0 6px 18px rgba(0, 0, 0, .45); animation: softIn .3s var(--ease-out) both; }
+.pair-pip[hidden] { display: none; }
+.pair-pip img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pair-pip span { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0, 0, 0, .6); color: #fff; font-size: 10.5px; font-weight: 800; text-align: center; letter-spacing: .02em; }
+.shutter-big.off { opacity: .35; }
 </style>
 </head>
 <body data-view="capture">
@@ -963,8 +984,10 @@ body[data-nav="push"] #view-changelog.active { animation: pushIn .5s cubic-bezie
       <button class="cam-sound" aria-label="Shutter sound"></button>
       <div class="cam-lens" hidden><button data-lens="ultra" aria-label="Wide angle, 0.5 times">.5</button><button data-lens="wide" aria-label="Normal, 1 times">1×</button></div>
       <button class="cam-stop" id="ba-cam-stop" aria-label="Turn the camera off" hidden><span data-icon="x"></span></button>
+      <button class="pair-pip" id="pair-pip" hidden aria-label="This display's Before photo"><img alt=""><span></span></button>
     </div>
     <div class="deck">
+      <div class="pair-strip" id="pair-strip" hidden></div>
       <div class="seg cap-seg" id="ba-kind-seg">
         <button data-k="aisle" class="active">Aisle</button>
         <button data-k="display">Display</button>
@@ -4171,7 +4194,8 @@ function wirePlayerBar(root, n) {
 let view = "capture";
 const isCamView = () => view === "capture" || view === "ba";   // the two tabs with a viewfinder
 function showView(v) {
-  if (v !== "capture") { endHoldSession(); closeLiveMic(); } else ensureLiveCtx();   // the hold-to-talk audio engine only lives on the Stocking tab
+  if (v !== "capture") { endHoldSession(); closeLiveMic(); } else ensureLiveCtx();
+  if (v === "ba" && view !== "ba") afterPick = null;   // opening the After tab: start on the first display still missing its After   // the hold-to-talk audio engine only lives on the Stocking tab
   if (v === "gallery" && view !== "gallery") { gal.slot = baSlot(); gal.kind = view === "capture" ? captureKind() : baKind(); }
   const order = ["capture", "ba", "needed", "gallery", "more", "products", "changelog"], from = order.indexOf(view), to = order.indexOf(v);
   if (from !== to) document.body.dataset.dir = to > from ? "fwd" : "back";
@@ -4739,6 +4763,7 @@ function renderBA() {
   lb.style.visibility = last ? "visible" : "hidden";
   if (last && lb.dataset.shot !== last.photo) { lb.dataset.shot = last.photo; lb.innerHTML = `<img data-photo="${esc(last.photo)}" alt="">`; hydratePhotos(lb); }
   const n = slotCount(slot), c = $("#ba-count"); c.hidden = !n; c.textContent = n;
+  renderPairStrip(slot, k);
   renderDisplayChips();
 }
 
@@ -4788,6 +4813,8 @@ async function pickSlot(i) {
 async function onShutterBA(forcePhone) {
   const slot = baSlot();
   if (!storeOf(slot)) { await askStore(slot); return; }   // the first tap only asks for the store number; the next tap takes the photo
+  const pick = baKind() === "display" ? afterPickFor(slot) : null;
+  if (baKind() === "display" && !pick) { toast("Take this store's Before display photos first."); return; }   // every display has a Before and an After
   primeShutter(); haptic("shutter"); pulse($("#ba-shutter"), "fire", 600);
   let blob = null;
   if (cam.stream && !forcePhone) { blob = await grabSharp("#ba-video", "#ba-camera"); box_flash("#ba-camera"); if (blob) flyToThumb(blob, $("#ba-camera"), $("#ba-last")); }
@@ -4795,7 +4822,7 @@ async function onShutterBA(forcePhone) {
   if (!blob) { if (cam.stream && !forcePhone) toast("The camera isn't ready yet. Try again."); return; }
   playShutter();
   const shot = { id: newId("s"), at: Date.now(), slot, when: "after", kind: baKind(), photo: newId("p") };
-  const dg = takeDisplayDg(slot, "after", shot.kind); if (dg) shot.dg = dg;
+  if (pick) shot.pair = pick.anchor;   // filed under the display picked in the strip
   try { await savePhoto(shot.photo, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
   state.shots.unshift(shot); lastShotId = shot.id; save(); renderAll(); pulse($("#ba-last")); checkPhotoQuality(shot.photo);
   toast(`Saved to store#${storeOf(slot)} · After · ${KIND_LABEL[shot.kind]}`);
@@ -4819,6 +4846,7 @@ async function snapBackstock(forcePhone) {
 }
 
 function wireBA() {
+  wirePairStrip();
   $("#ba-cam-start").onclick = startCamera;
   $("#ba-cam-stop").onclick = () => { state.settings.camOK = false; save(); stopCamera(); };
   $("#ba-shutter").onclick = () => onShutterBA(false);
@@ -4854,7 +4882,7 @@ function renderGallery() {
     html += `<div class="cluster-h">${WHEN_LABEL[w]}<span class="n">${list.length}</span></div>`;
     const tile = x => `<button class="shot${gsel.keys.has(w + "|" + x.photo) ? " sel" : ""}" data-w="${w}" data-p="${esc(x.photo)}" data-photo-wrap><img data-photo="${esc(x.photo)}" alt=""><span>${esc(timeOf(x.at))}</span><i class="sel-mark">${icon("check")}</i></button>`;
     html += list.length && kind === "display"   // displays: one group each, numbered like the list on the camera
-      ? displayGroups(slot, w).map((g, i) => `<div class="disp-h">Display ${i + 1}<span>${g.items.length} photo${g.items.length === 1 ? "" : "s"}</span></div><div class="shot-grid">${g.items.map(tile).join("")}</div>`).join("")
+      ? displayGroups(slot, w).map(g => `<div class="disp-h">Display ${g.num}<span>${g.items.length} photo${g.items.length === 1 ? "" : "s"}</span></div><div class="shot-grid">${g.items.map(tile).join("")}</div>`).join("")
       : list.length ? `<div class="shot-grid">${list.map(tile).join("")}</div>`
       : `<p class="muted small" style="margin:4px 0 0">${w === "before" ? `No shelf photos of ${KIND_PLURAL[kind]} for this store yet. Take them on the Before tab.` : `No After photos of ${KIND_PLURAL[kind]} yet. Take them on the After tab.`}</p>`;
   }
@@ -4937,7 +4965,7 @@ function allPhotoItems() {
 // Display photos: "before|photo" → [display number, photo number within it], for file names
 function displayNumbers() {
   const m = new Map();
-  for (let sl = 0; sl < SLOTS; sl++) for (const w of ["before", "after"]) displayGroups(sl, w).forEach((g, i) => g.items.forEach((it, j) => m.set(w + "|" + it.photo, [i + 1, j + 1])));
+  for (let sl = 0; sl < SLOTS; sl++) for (const w of ["before", "after"]) displayGroups(sl, w).forEach(g => g.items.forEach((it, j) => m.set(w + "|" + it.photo, [g.num, j + 1])));
   return m;
 }
 function clearEverything() {
@@ -4961,6 +4989,9 @@ async function saveAndClear() {
   const unsent = [];
   for (let i = 0; i < SLOTS; i++) for (const w of ["before", "after"]) if (untexted(i, w)) unsent.push(`${storeOf(i) ? "#" + storeOf(i) : "Slot " + (i + 1)} ${WHEN_LABEL[w]}`);
   if (unsent.length && !(await confirmDialog(`Not texted yet: <b>${unsent.map(esc).join(", ")}</b>. Clear anyway?`, { ok: "Continue", cancel: "Go back" }))) return false;
+  const noAfter = [];
+  for (let i = 0; i < SLOTS; i++) for (const g of displayGroups(i, "after", { all: true })) if (!g.loose && !g.items.length) noAfter.push(`${storeOf(i) ? "#" + storeOf(i) : "Slot " + (i + 1)} Display ${g.num}`);
+  if (noAfter.length && !(await confirmDialog(`No After photo yet: <b>${noAfter.map(esc).join(", ")}</b>. Clear anyway?`, { ok: "Continue", cancel: "Go back" }))) return false;
   const choice = await askSaveFirst(n);
   if (!choice) return false;
   if (choice === "clear") { await rememberDisplays(); return clearEverything(); }
@@ -5040,8 +5071,9 @@ function openShot(x, onChange) {
 const DISPLAY_GAP = 20000;   // ms between photos that still counts as the same display
 let displayTarget = null;    // "+ Photo": { slot, when, anchor, n } — the next display photo of that kind joins display n
 const dgOf = x => (x.note ? x.note.dg : x.shot ? x.shot.dg : null) || null;
-function displayGroups(slot, when) {
-  const items = itemsOf(slot, when).filter(x => x.kind === "display").sort((a, b) => a.at - b.at);
+// Display photos grouped by time (20 seconds) and by "+ Photo" / "Join above" (dg)
+function groupByTime(items) {
+  items = [...items].sort((a, b) => a.at - b.at);
   const groups = [], byAnchor = new Map();
   let cur = null;
   for (const x of items) {
@@ -5056,6 +5088,33 @@ function displayGroups(slot, when) {
     g.items.push(x); g.start = Math.min(g.start, x.at); g.end = Math.max(g.end, x.at);
   }
   return groups.filter(g => g.items.length).sort((a, b) => a.start - b.start);
+}
+// The displays of a store. Before: by time, numbered 1, 2, 3… After: one per Before display, holding the After photos taken for it
+// (shot.pair: that display's anchor or one of its photos), with the same number; { all: true } keeps the ones with no After yet.
+// After photos with no Before display to go with (taken before pairing existed) follow, by time, numbered after them (loose).
+function displayGroups(slot, when, { all = false } = {}) {
+  const before = groupByTime(itemsOf(slot, "before").filter(x => x.kind === "display")).map((g, i) => ({ ...g, num: i + 1 }));
+  if (when === "before") return before;
+  const out = before.map(b => ({ anchor: b.anchor, num: b.num, before: b, items: [], start: Infinity, end: 0 }));
+  const find = p => out.findIndex(g => g.anchor === p || g.before.items.some(x => x.photo === p));
+  const loose = [];
+  for (const x of itemsOf(slot, "after").filter(x => x.kind === "display")) {
+    const i = x.shot && x.shot.pair ? find(x.shot.pair) : -1;
+    if (i < 0) { loose.push(x); continue; }
+    const g = out[i]; g.items.push(x); g.start = Math.min(g.start, x.at); g.end = Math.max(g.end, x.at);
+  }
+  for (const g of out) g.items.sort((a, b) => a.at - b.at);
+  let n = before.length;
+  return [...(all ? out : out.filter(g => g.items.length)), ...groupByTime(loose).map(g => ({ ...g, num: ++n, loose: true }))];
+}
+// The display the After camera is shooting: the one picked in the strip, or the first with no After yet.
+let afterPick = null;   // { slot, anchor }
+function afterPickFor(slot) {
+  const gs = displayGroups(slot, "after", { all: true }).filter(g => !g.loose);
+  if (!gs.length) return null;
+  let g = afterPick && afterPick.slot === slot ? gs.find(x => x.anchor === afterPick.anchor) : null;
+  if (!g) { g = gs.find(x => !x.items.length) || gs[0]; afterPick = { slot, anchor: g.anchor }; }
+  return g;
 }
 function setDg(x, anchor) {
   if (x.note) for (const n of state.notes) { if ((n.photos || [])[0] === x.photo) n.dg = anchor; }
@@ -5081,8 +5140,8 @@ function renderDisplayChips() {
     paint("cap-disp", captureKind() === "display" && (n || mem || t), t ? `Next photo joins display ${t.n} ${icon("x")}` : `${plural(n)}${mem ? ` · ${mem.photos.length} last time` : ""}`, t);
   }
   { // After tab
-    const t = tFor("after"), n = displayGroups(slot, "after").length, m = displayGroups(slot, "before").length;
-    paint("ba-disp", baKind() === "display" && (n || m || t), t ? `Next photo joins display ${t.n} ${icon("x")}` : m ? `${n} of ${plural(m)}` : plural(n), t);
+    const t = null, n = displayGroups(slot, "after").filter(g => !g.loose).length, m = displayGroups(slot, "before").length;
+    paint("ba-disp", baKind() === "display" && m > 0, `After: ${n} of ${plural(m)}`, t);
   }
 }
 // The list: this visit's displays (with + Photo and Join above), and last visit's for comparison
@@ -5092,18 +5151,24 @@ function openDisplays(when) {
     <button class="btn primary block" data-a="close">Done</button></div>`);
   const body = s.querySelector(".disp-body");
   const draw = () => {
-    const gs = displayGroups(slot, when), mem = (state.displayMemory || {})[st], before = when === "after" ? displayGroups(slot, "before").length : 0;
-    let html = `<div class="sec-h">This visit · ${WHEN_LABEL[when]}${before ? ` · ${gs.length} of ${before}` : ""}</div>`;
-    html += gs.length ? `<div class="list group">${gs.map((g, i) => `<div class="item disp-row">
+    const aft = when === "after", gs = aft ? displayGroups(slot, "after", { all: true }) : displayGroups(slot, when), mem = (state.displayMemory || {})[st];
+    const done = aft ? gs.filter(g => !g.loose && g.items.length).length : 0, total = aft ? gs.filter(g => !g.loose).length : 0;
+    let html = `<div class="sec-h">This visit · ${WHEN_LABEL[when]}${aft && total ? ` · ${done} of ${total} done` : ""}</div>`;
+    html += gs.length ? `<div class="list group">${gs.map((g, i) => aft ? `<div class="item disp-row">
+        <div class="disp-thumbs">${(g.before ? [g.before.items[0]] : []).concat(g.items.slice(0, 2)).map(x => `<span class="shelf-thumb"><img data-photo="${esc(x.photo)}" alt=""></span>`).join("")}</div>
+        <div class="grow"><div class="name">Display ${g.num}</div><div class="sub">${g.loose ? "After photos with no Before match" : g.items.length ? `${g.items.length} After photo${g.items.length === 1 ? "" : "s"}` : "No After photo yet"}</div></div>
+        <div class="disp-acts">${g.loose ? "" : `<button class="btn sm" data-sel="${esc(g.anchor)}">Shoot this one</button>`}</div></div>`
+      : `<div class="item disp-row">
         <div class="disp-thumbs">${g.items.slice(0, 3).map(x => `<span class="shelf-thumb"><img data-photo="${esc(x.photo)}" alt=""></span>`).join("")}</div>
-        <div class="grow"><div class="name">Display ${i + 1}</div><div class="sub">${g.items.length} photo${g.items.length === 1 ? "" : "s"} · ${esc(timeOf(g.start))}</div></div>
+        <div class="grow"><div class="name">Display ${g.num}</div><div class="sub">${g.items.length} photo${g.items.length === 1 ? "" : "s"} · ${esc(timeOf(g.start))}</div></div>
         <div class="disp-acts">${i ? `<button class="btn sm quiet" data-join="${i}">Join above</button>` : ""}<button class="btn sm" data-add="${i}">${icon("plus")}Photo</button></div></div>`).join("")}</div>`
-      : `<p class="sec-foot">No display photos yet. Photos taken within 20 seconds of each other count as one display.</p>`;
+      : `<p class="sec-foot">${aft ? "Take this store's Before display photos first." : "No display photos yet. Photos taken within 20 seconds of each other count as one display."}</p>`;
     if (mem && mem.photos.length) html += `<div class="sec-h">Last time · ${esc(new Date(mem.at).toLocaleDateString([], { month: "short", day: "numeric" }))} · ${plural2(mem.photos.length)}</div>
       <div class="disp-last">${mem.photos.map((p, i) => `<span class="shelf-thumb"><img data-photo="${esc(p)}" alt=""><b>${i + 1}</b></span>`).join("")}</div>`;
     body.innerHTML = html; hydratePhotos(body);
     body.onclick = e => {
-      const add = e.target.closest("[data-add]"), join = e.target.closest("[data-join]");
+      const add = e.target.closest("[data-add]"), join = e.target.closest("[data-join]"), sel = e.target.closest("[data-sel]");
+      if (sel) { afterPick = { slot, anchor: sel.dataset.sel }; close(); renderAll(); haptic("tick"); return; }
       if (add) { const i = +add.dataset.add; displayTarget = { slot, when, anchor: gs[i].anchor, n: i + 1 }; close(); renderDisplayChips(); toast(`Your next photo joins display ${i + 1}`); }
       else if (join) { const i = +join.dataset.join, snap = snapshot(); for (const x of gs[i].items) setDg(x, gs[i - 1].anchor); save(); renderAll(); draw(); toast("Joined", snap); }
     };
@@ -5135,8 +5200,8 @@ async function rememberDisplays() {
 
 // "Display 2" for a display photo (the same numbering as the displays list and the Gallery), or just "Display" if it can't be placed.
 function displayLabel(photo, slot, when) {
-  const i = Number.isInteger(slot) ? displayGroups(slot, when).findIndex(g => g.items.some(x => x.photo === photo)) : -1;
-  return i < 0 ? "Display" : `Display ${i + 1}`;
+  const g = Number.isInteger(slot) ? displayGroups(slot, when).find(g => g.items.some(x => x.photo === photo)) : null;
+  return g ? `Display ${g.num}` : "Display";
 }
 
 // ---- Gallery: hold to select, then move or delete ----
@@ -5198,8 +5263,10 @@ async function galMove() {
       .map(i => ({ label: storeOf(i) ? `Move to store #${storeOf(i)}` : `Move to empty slot ${i + 1}…`, value: "slot:" + i })) }),
     type: () => ({ title: "Change type", opts: KINDS.filter(k => !(k === "backstock" && hasNotes) && !(kinds.size === 1 && kinds.has(k)))
       .map(k => ({ label: `Move to ${KIND_LABEL[k]}`, value: "kind:" + k })) }),
-    disp: () => ({ title: "Change display", opts: [...displayGroups(cur, oneWhen).map((g, i) => ({ label: `Move to display ${i + 1} (${g.items.length} photo${g.items.length === 1 ? "" : "s"})`, value: "disp:" + i })),
-      { label: "Move to a new display", value: "disp:new" }] }),
+    disp: () => oneWhen === "after"
+      ? { title: "Change display", opts: displayGroups(cur, "before").map((g, i) => ({ label: `Move to display ${g.num}`, value: "disp:" + i })) }   // After photos follow a Before display
+      : { title: "Change display", opts: [...displayGroups(cur, oneWhen).map((g, i) => ({ label: `Move to display ${g.num} (${g.items.length} photo${g.items.length === 1 ? "" : "s"})`, value: "disp:" + i })),
+        { label: "Move to a new display", value: "disp:new" }] },
     when: () => ({ title: "Before or After", opts: ["before", "after"].filter(w => w !== oneWhen).map(w => ({ label: `Move to ${WHEN_LABEL[w]}`, value: "when:" + w })) }),
   };
   // step 1: what to change (displays first when the Gallery is showing displays)
@@ -5226,12 +5293,17 @@ async function galMove() {
     for (const x of sel) for (const r of [...x.notes, ...x.shots]) { r.kind = val; if (val !== "display") delete r.dg; }   // out of a display: its link goes
     save(); galSelectEnd(true); gal.kind = val; renderAll();
     toast(`Now ${KIND_LABEL[val]}`, snap);
+  } else if (what === "disp" && oneWhen === "after") {
+    const b = displayGroups(cur, "before")[+val]; if (!b) return;
+    for (const x of sel) for (const r of x.shots) { r.kind = "display"; r.pair = b.anchor; delete r.dg; }
+    save(); galSelectEnd(true); gal.kind = "display"; renderAll();
+    toast(`Moved to display ${b.num}`, snap);
   } else if (what === "disp") {
     const gs = displayGroups(cur, oneWhen), anchor = val === "new" ? "g" + newId("d") : gs[+val] && gs[+val].anchor;
     if (!anchor) return;
     for (const x of sel) for (const r of [...x.notes, ...x.shots]) { r.kind = "display"; r.dg = anchor; }
     save(); galSelectEnd(true); gal.kind = "display"; renderAll();
-    const num = displayGroups(cur, oneWhen).findIndex(g => g.anchor === anchor) + 1;
+    const num = (displayGroups(cur, oneWhen).find(g => g.anchor === anchor) || {}).num || "";
     toast(val === "new" ? `Made display ${num}` : `Moved to display ${num}`, snap);
   } else if (what === "when") {
     for (const x of sel) for (const r of x.shots) { r.when = val; delete r.dg; }
@@ -5272,6 +5344,35 @@ async function slotMenu(el) {
   else if (pick === "num") askStore(i);
   else if (pick === "gal") { gal.slot = i; showView("gallery"); gal.slot = i; renderGallery(); }
   else if (pick === "loc") spotActions(st, () => renderAll());
+}
+
+// ---- After tab, Display mode: which Before display this After is for ----
+function renderPairStrip(slot, k) {
+  const strip = $("#pair-strip"), pip = $("#pair-pip"), shutter = $("#ba-shutter"); if (!strip) return;
+  if (k !== "display") { strip.hidden = true; pip.hidden = true; strip.dataset.key = ""; shutter.classList.remove("off"); return; }
+  const gs = displayGroups(slot, "after", { all: true }).filter(g => !g.loose), cur = afterPickFor(slot);
+  strip.hidden = false; shutter.classList.toggle("off", !cur);
+  if (!cur) {
+    if (strip.dataset.key !== "none") { strip.dataset.key = "none"; strip.innerHTML = `<p class="pair-empty">${icon("warn")}Take this store's Before display photos first.</p>`; }
+    pip.hidden = true; $("#ba-hint").textContent = "Every display needs a Before photo before its After."; return;
+  }
+  const key = gs.map(g => g.anchor + ":" + g.items.length).join(",") + "|" + cur.anchor;
+  if (strip.dataset.key !== key) {
+    strip.dataset.key = key;
+    strip.innerHTML = gs.map(g => `<button class="pair-btn${g.anchor === cur.anchor ? " on" : ""}" data-pair="${esc(g.anchor)}" aria-label="Display ${g.num}${g.items.length ? ", has an After photo" : ""}">
+      <span class="pair-img"><img data-photo="${esc(g.before.items[0].photo)}" alt=""></span><b>${g.num}</b>${g.items.length ? `<i class="pair-ok">${icon("check")}</i>` : ""}</button>`).join("");
+    hydratePhotos(strip);
+    strip.querySelector(".pair-btn.on")?.scrollIntoView({ inline: "center", block: "nearest" });
+  }
+  const bp = cur.before.items[0].photo;
+  if (pip.dataset.p !== bp) { pip.dataset.p = bp; photoURL(thumbId(bp)).then(u => u || photoURL(bp)).then(u => { if (u && pip.dataset.p === bp) pip.querySelector("img").src = u; }); }
+  pip.querySelector("span").textContent = `Before · ${cur.num}`;
+  pip.hidden = !cam.stream;
+  $("#ba-hint").textContent = `Shooting display ${cur.num}${cur.items.length ? ` (${cur.items.length} so far)` : ""}. Tap another above to switch.`;
+}
+function wirePairStrip() {
+  $("#pair-strip").onclick = e => { const b = e.target.closest("[data-pair]"); if (!b) return; afterPick = { slot: baSlot(), anchor: b.dataset.pair }; haptic("tick"); pulse(b); renderBA(); };
+  $("#pair-pip").onclick = () => { const p = $("#pair-pip").dataset.p; if (p) photoURL(p).then(u => u && openPhotoFull(u)); };
 }
 // ---------- Products: the brand + flavor combinations the list recognizes ----------
 // Size and pack don't matter here: they stay in the words you read. Edits apply to every size of a combination
@@ -5808,7 +5909,7 @@ async function retakePhoto(oldId) {
   try { await savePhoto(id, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
   for (const n of state.notes) if ((n.photos || []).includes(oldId)) n.photos = n.photos.map(p => (p === oldId ? id : p));
   for (const s of state.shots) if (s.photo === oldId) s.photo = id;
-  for (const r of [...state.notes, ...state.shots]) if (r.dg === oldId) r.dg = id;   // a display that started with this photo
+  for (const r of [...state.notes, ...state.shots]) { if (r.dg === oldId) r.dg = id; if (r.pair === oldId) r.pair = id; }   // a display that started with this photo
   if (hold.session && hold.session.photo === oldId) hold.session.photo = id;
   if (displayTarget && displayTarget.anchor === oldId) displayTarget.anchor = id;
   save(); renderAll(); scheduleSweep();
@@ -6017,6 +6118,11 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "2.13.0", notes: [
+    "After display photos are paired with their Before display. A strip above the After shutter shows each Before display; the first one without an After is picked, and every photo goes to it until you tap another.",
+    "The Before photo of the display you're shooting sits small in the corner of the camera, to match the angle.",
+    "Before and After of a display share its number and name in the Gallery and in saved file names.",
+    "Clear warns if a display has no After photo yet." ] },
   { v: "2.12.3", notes: ["Swipe anywhere on the screen to change sets on the Needed list and in the Gallery, including the empty space below a short list.", "Changing sets slides like flipping pages: the page follows your finger and the next set slides in."] },
   { v: "2.12.2", notes: [
     "Swipe left or right to change sets: Aisle and Display on the Needed list (anywhere except on a row, which keeps its own swipes), and Aisle, Display and Backstock in the Gallery.",
@@ -6098,7 +6204,7 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 86;
+const REVISION = 87;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -6155,7 +6261,7 @@ function renderMore() {
       <button class="item row-btn nav" id="btn-whatsnew">${icon("note")}<span class="grow">What's new</span>${icon("jump")}</button>
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
-    <p class="foot">Shelfie 2.12.3 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 2.13.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
