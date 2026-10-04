@@ -522,6 +522,26 @@ html { background: #000; }
 /* tab labels and icons glide between states */
 nav.tabs button svg.i { transition: transform .4s var(--spring); }
 nav.tabs button:active svg.i { transform: scale(.82); }
+
+/* 2.4.0: Backstock, in cardboard brown (Aisle is red, Display is black) */
+:root { --box: #8E5E2E; --on-box: #fff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --box: #C08A52; --on-box: #1a1108; } }
+:root[data-theme="dark"] { --box: #C08A52; --on-box: #1a1108; }
+#view-capture.mode-backstock .camera, #view-ba.mode-backstock .camera { border-color: var(--box); }
+#view-capture.mode-backstock .cam-chip, #view-ba.mode-backstock .cam-chip { background: var(--box); color: var(--on-box); }
+#view-capture.mode-backstock .shutter-big, #view-ba.mode-backstock .shutter-big { border-color: var(--box); }
+#view-capture.mode-backstock .shutter-big span, #view-ba.mode-backstock .shutter-big span { background: var(--box); }
+#view-capture.mode-backstock .shutter-big.holding { box-shadow: 0 0 0 7px color-mix(in srgb, var(--box) 30%, transparent); }
+.pill.kind.backstock { background: var(--box); color: var(--on-box); }
+.seg button { min-width: 0; white-space: nowrap; }
+.cap-seg button, .dock.solid .seg button { font-size: 14px; }
+/* 2.4.0: the count on the buttons beside the shutter sits on the corner, not clipped by it */
+.deck-side { overflow: visible; }
+.deck-side img { border-radius: inherit; }
+.deck-side .ripple { display: none; }
+/* 2.4.0: Needed's switch lives outside the page */
+#kind-dock[hidden] { display: none; }
+#kind-dock:not([hidden]) { animation: fade .25s ease both; }
 </style>
 </head>
 <body data-view="capture">
@@ -557,6 +577,7 @@ nav.tabs button:active svg.i { transform: scale(.82); }
       <div class="seg cap-seg" id="cap-seg">
         <button data-k="aisle" class="active">Aisle</button>
         <button data-k="display">Display</button>
+        <button data-k="backstock">Backstock</button>
       </div>
       <div class="deck-row">
         <button class="deck-side left" id="last-note" aria-label="Open the last note" style="visibility:hidden"></button>
@@ -589,6 +610,7 @@ nav.tabs button:active svg.i { transform: scale(.82); }
       <div class="seg cap-seg" id="ba-kind-seg">
         <button data-k="aisle" class="active">Aisle</button>
         <button data-k="display">Display</button>
+        <button data-k="backstock">Backstock</button>
       </div>
       <div class="deck-row">
         <button class="deck-side left" id="ba-last" aria-label="Open the last photo" style="visibility:hidden"></button>
@@ -604,6 +626,7 @@ nav.tabs button:active svg.i { transform: scale(.82); }
   <section class="view" id="view-products"></section>
   <section class="view" id="view-more"></section>
 </main>
+<div class="dock solid" id="kind-dock" hidden></div>
 
 <nav class="tabs" id="tabs">
   <button data-view="capture" class="active"><span data-icon="camera"></span>Before</button>
@@ -993,7 +1016,7 @@ function migrate() {
     state.stores = Array.from({ length: 5 }, (_, i) => String(old[i] || ""));
     if (old[5] && !state.stores[4]) { state.stores[4] = String(old[5]); for (const s of state.shots) if (s.slot === 5) s.slot = 4; } }
   if (!state.stores.some(Boolean) && state.storeName) state.stores[0] = String(state.storeName);   // the store already set in More becomes the first slot
-  for (const s of state.shots) { if (s.when !== "after") s.when = "before"; if (s.kind !== "display") s.kind = "aisle"; if (!(s.slot >= 0 && s.slot < 6)) s.slot = 0; }
+  for (const s of state.shots) { if (s.when !== "after") s.when = "before"; if (s.kind !== "display" && s.kind !== "backstock") s.kind = "aisle"; if (!(s.slot >= 0 && s.slot < 6)) s.slot = 0; }
   state.notes = (Array.isArray(state.notes) ? state.notes : []).filter(n => !n.dev);   // notes that came from other phones
   for (const n of state.notes) { delete n.mod; delete n.pushed; delete n._sig; delete n.by; delete n.team; }
   for (const s of state.shots || []) { delete s.shared; delete s.pushed; }
@@ -1001,7 +1024,7 @@ function migrate() {
   // Work that was interrupted (app closed, phone ran low on memory) goes back in the queue.
   for (const n of state.notes) {
     n.photos = n.photos || [];
-    if (n.kind !== "display") n.kind = "aisle";   // notes from before aisle/display were separate
+    if (n.kind !== "display" && n.kind !== "backstock") n.kind = "aisle";   // notes from before aisle/display were separate
     if (n.status === "reading") n.status = "heard";
     // Beta 5.1.2: a note is its words plus the products the matcher found in them (no quantities or dots).
     delete n.items; delete n.rev; delete n.edited;
@@ -2788,6 +2811,7 @@ async function grabPhoto(vid = "#cam-video", boxId = "#camera") {
 }
 async function onShutter(forcePhone, kind = "aisle") {
   if (recorder) return;
+  if (!storeOf(baSlot())) { await askStore(baSlot()); return; }   // the first tap only asks for the store number; the next one takes the photo
   if (hold.session) endHoldSession();
   primeShutter(); haptic("shutter"); pulse($("#btn-shutter"), "fire", 600);
   let blob = null;
@@ -2824,12 +2848,12 @@ async function recoverRecording() {
   if (rec.pcm && rec.pcm.byteLength > 16000 * 2 * 0.6) items.push({ pcm: rec.pcm, secs: rec.secs || 0 });
   const t0 = rec.at || Date.now();
   if (!items.length) {
-    state.notes.unshift({ id: newId("n"), at: t0, slot: rec.slot, kind: rec.kind === "display" ? "display" : "aisle", photos: [...photos], audio: null, secs: 0, text: "", status: "error", parts: [], flag: false, ticks: {},
+    state.notes.unshift({ id: newId("n"), at: t0, slot: rec.slot, kind: normKind(rec.kind), photos: [...photos], audio: null, secs: 0, text: "", status: "error", parts: [], flag: false, ticks: {},
       err: "The app restarted while you were recording. Tap to record it again." });
   }
   for (const [i, it] of items.entries()) {
     const audioId = newId("a"); await putAudio(audioId, { pcm: it.pcm, rate: 16000 }).catch(() => {});
-    state.notes.unshift({ id: newId("n"), at: t0 + i, slot: rec.slot, kind: rec.kind === "display" ? "display" : "aisle", photos: [...photos], audio: audioId, secs: it.secs || 0, text: "", status: "queued", parts: [], flag: false, ticks: {}, err: "" });
+    state.notes.unshift({ id: newId("n"), at: t0 + i, slot: rec.slot, kind: normKind(rec.kind), photos: [...photos], audio: audioId, secs: it.secs || 0, text: "", status: "queued", parts: [], flag: false, ticks: {}, err: "" });
   }
   await clearRecovery();
   save(); renderAll(); pump();
@@ -2865,7 +2889,7 @@ async function startRecording(base) {
   if (recorder) return;
   const multi = !!base.photos;
   const sheet = el(`<div class="sheet rec-sheet"><div class="handle"></div>
-    <h2>What do you need ${base.kind === "display" ? "on this display" : base.note && base.note.kind === "display" ? "on this display" : "here"}?</h2>
+    <h2>What do you need ${{ display: "on this display", backstock: "from the back" }[base.note ? noteKind(base.note) : normKind(base.kind)] || "here"}?</h2>
     <p class="hint center" id="rec-hint">${multi ? "Say one product, then tap Next item. Tap Done after the last one." : "Say just the brand and flavor, like “Diet Coke” or “Dr Pepper Cherry”."}</p>
     <div class="rec-meter"><i id="rec-level"></i></div>
     <div class="rec-time" id="rec-time">0:00</div>
@@ -3009,7 +3033,7 @@ async function saveNote({ photos, note, audioRec, secs, text, status, kind, at, 
     if (old) delAudio(old).catch(() => {});
     save(); renderAll(); return note;
   }
-  const n = { id: newId("n"), at: at || Date.now(), slot: Number.isInteger(slot) ? slot : baSlot(), kind: kind === "display" ? "display" : "aisle", photos: [...(photos || [])], audio: audioId, secs, text, status, parts: [], flag: false, ticks: {}, err: "" };
+  const n = { id: newId("n"), at: at || Date.now(), slot: Number.isInteger(slot) ? slot : baSlot(), kind: normKind(kind), photos: [...(photos || [])], audio: audioId, secs, text, status, parts: [], flag: false, ticks: {}, err: "" };
   state.notes.unshift(n);
   save(); renderAll();
   lastNoteId = n.id;
@@ -3097,7 +3121,7 @@ function wireHoldToTalk() {
   const wrap = document.querySelector("#view-capture .shutter-wrap"), btn = $("#btn-shutter");
   if (!wrap) return;
   wrap.addEventListener("pointerdown", () => {
-    if (btn.disabled || recorder || !cam.stream) return;
+    if (btn.disabled || recorder || !cam.stream || !storeOf(baSlot())) return;   // no store number yet: the tap asks for it instead
     hold.pressing = true; hold.micReady = openHoldMic();   // the microphone opens while the hold is being recognized
     clearTimeout(hold.timer); hold.timer = setTimeout(() => { if (hold.pressing) holdStart(); }, HOLD_MS);
   });
@@ -3306,6 +3330,7 @@ function showView(v) {
   document.body.dataset.view = v;
   document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.id === "view-" + v));
   attachFeed();   // the live feed goes to the camera tab that is showing (if any), attached fresh
+  const kd = document.getElementById("kind-dock"); if (kd) kd.hidden = v !== "needed";
   document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b.dataset.view === (v === "products" ? "more" : v)));
   syncIndicator($("#tabs"));
   if (!isCamView()) { if (deferVoice() && queuedCount()) { stopCamera(); pump(); } else sleepCameraSoon(); } else wakeCamera();   // Base listens while the camera is off
@@ -3352,9 +3377,10 @@ function renderCapture() {
   document.querySelectorAll("#cap-seg button").forEach(b => b.classList.toggle("active", b.dataset.k === ck));
   syncIndicator($("#cap-seg"), false);
   const sec = $("#view-capture");
-  sec.classList.toggle("mode-display", ck === "display"); sec.classList.toggle("mode-aisle", ck === "aisle");
-  $("#cap-band").textContent = ck === "display" ? "DISPLAY" : "AISLE";
-  $("#shutter-label").textContent = cam.stream ? "Hold the shutter and say a product. Hold again for the next." : "Tap the shutter to use the phone camera.";
+  setModeClass(sec, ck);
+  $("#cap-band").textContent = KIND_LABEL[ck].toUpperCase();
+  $("#shutter-label").textContent = !storeOf(baSlot()) ? "Tap the shutter or a store slot above to set the store number."
+    : cam.stream ? "Hold the shutter and say a product. Hold again for the next." : "Tap the shutter to use the phone camera.";
   renderHoldBar();
   $("#btn-shutter").setAttribute("aria-label", `Hold to photograph the ${ck} and say a product`);
   const q = queueState();
@@ -3402,11 +3428,16 @@ function noteSummary(n) {
 // Each blurb is a row, word for word. The matcher only decides where it sits: a blurb shows up under every
 // product it mentions (so working through the back room one product at a time, nothing is missed), with a tick
 // of its own for each product. Aisle and display needs never mix.
-const KINDS = ["aisle", "display"];
-const noteKind = n => (n.kind === "display" ? "display" : "aisle");
-const KIND_LABEL = { aisle: "Aisle", display: "Display" };
-const captureKind = () => (state.settings.captureKind === "display" ? "display" : "aisle");
-const curKind = () => (state.settings.needKind === "display" ? "display" : "aisle");
+const KINDS = ["aisle", "display", "backstock"];
+const normKind = k => (k === "display" || k === "backstock" ? k : "aisle");
+const noteKind = n => normKind(n.kind);
+const KIND_LABEL = { aisle: "Aisle", display: "Display", backstock: "Backstock" };
+const KIND_PLURAL = { aisle: "aisles", display: "displays", backstock: "backstock" };
+const captureKind = () => normKind(state.settings.captureKind);
+const curKind = () => normKind(state.settings.needKind);
+// "Move to …" menu items for the two kinds something isn't, and the camera tab colours for the kind that's on
+const kindMoves = cur => KINDS.filter(k => k !== cur).map(k => ({ label: `Move to ${KIND_LABEL[k]}`, value: "kind:" + k }));
+const setModeClass = (sec, k) => KINDS.forEach(x => sec.classList.toggle("mode-" + x, x === k));
 const CHECK_GROUP = "Check the text";
 // The products (brand + flavor) a blurb is listed under: one appearance each, or a single "?" one when none were recognized.
 // The Needed list is organized by brand. The note keeps the flavor in its words; the matcher only has to get the brand right.
@@ -3433,7 +3464,7 @@ function neededGroups(kind) {
   return list;
 }
 function wireKindSeg(v) {
-  const seg = v.querySelector("#kind-seg"); if (!seg) return;
+  const seg = document.getElementById("kind-seg"); if (!seg) return;
   seg.querySelectorAll("button").forEach(b => (b.onclick = () => { if (state.settings.needKind === b.dataset.k) return; state.settings.needKind = b.dataset.k; save(); renderNeeded(); }));
   syncIndicator(seg, false);
 }
@@ -3441,14 +3472,16 @@ function renderNeeded() {
   const v = $("#view-needed");
   const kind = curKind(), q = queueState();
   const notes = listed(kind), open = notes.filter(n => !noteDone(n)).length;
-  // The Aisle | Display switch is docked at the bottom, where a thumb can reach it.
+  // The Aisle | Display | Backstock switch is docked at the bottom, where a thumb can reach it. It sits outside the page (#kind-dock),
+  // so the page sliding in can't carry it up over the list.
   const oc = {}; for (const k of KINDS) oc[k] = openCount(k);
-  const dock = `<div class="dock-space"></div><div class="dock solid"><div class="seg" id="kind-seg">${KINDS.map(k => `<button data-k="${k}" class="${k === kind ? "active" : ""}">${KIND_LABEL[k]}${oc[k] ? ` <span class="kcount">${oc[k]}</span>` : ""}</button>`).join("")}</div></div>`;
+  const dock = `<div class="dock-space"></div>`;
+  $("#kind-dock").innerHTML = `<div class="seg" id="kind-seg">${KINDS.map(k => `<button data-k="${k}" class="${k === kind ? "active" : ""}">${KIND_LABEL[k]}${oc[k] ? ` <span class="kcount">${oc[k]}</span>` : ""}</button>`).join("")}</div>`;
   let html = `<div class="list-head"><h2>Needed</h2><span class="muted small">${notes.length ? `${open} to go` : ""}</span></div>`;
   if (q.text) html += `<div class="banner ${q.busy ? "busy" : ""}"><span class="spin"></span><span class="grow">${esc(q.text)}</span></div>`;
   const waiting = state.notes.filter(n => noteKind(n) === kind && (n.status === "empty" || n.status === "error"));   // a photo with no words yet
   if (!notes.length && !waiting.length) {
-    html += `<div class="empty">${icon("list")}<h3>Nothing needed ${kind === "display" ? "on displays" : "in aisles"} yet</h3><p>Snap a ${kind === "display" ? "display" : "shelf"} and say what's missing. It lands here.</p></div>`;
+    html += `<div class="empty">${icon("list")}<h3>Nothing needed ${{ aisle: "in aisles", display: "on displays", backstock: "from the back" }[kind]} yet</h3><p>Snap ${{ aisle: "a shelf", display: "a display", backstock: "the back stock" }[kind]} and say what's missing. It lands here.</p></div>`;
     v.innerHTML = html + dock; wireKindSeg(v); v.onclick = null; return;
   }
   if (waiting.length) html += `<div class="group-h">${icon("mic")}Needs a recording</div><div class="list">${waiting.map(waitRow).join("")}</div>`;
@@ -3536,10 +3569,10 @@ function openCheck(n, focusPid) {
     a.querySelector('[data-a="more"]').onclick = async () => {
       const pick = await menu("This note", [
         { label: "Record again", value: "rerecord" }, { label: "Add another photo", value: "photo" },
-        { label: noteKind(n) === "aisle" ? "Move to Display" : "Move to Aisle", value: "kind" }, { label: "Delete note", value: "delete", danger: true }]);
+        ...kindMoves(noteKind(n)), { label: "Delete note", value: "delete", danger: true }]);
       if (pick === "rerecord") { close(); startRecording({ note: n }); }
       else if (pick === "photo") { await addPhoto(n); showPhoto(); }
-      else if (pick === "kind") { n.kind = noteKind(n) === "aisle" ? "display" : "aisle"; save(); renderAll(); toast(`Moved to ${KIND_LABEL[n.kind]}`); draw(); }
+      else if (String(pick).startsWith("kind:")) { n.kind = normKind(pick.slice(5)); save(); renderAll(); toast(`Moved to ${KIND_LABEL[n.kind]}`); draw(); }
       else if (pick === "delete") { close(); deleteNote(n); }
     };
   };
@@ -3591,14 +3624,14 @@ function zoomStage(img, stage) {
 // Notes carry the slot they were taken in (n.slot); After photos are state.shots ({ id, at, slot, when: "after", kind, photo }).
 // Shots with when "before" are Before photos from 2.0 and earlier (when the second tab took both).
 const SLOTS = 5;
-const baKind = () => (state.settings.baKind === "display" ? "display" : "aisle");
+const baKind = () => normKind(state.settings.baKind);
 const baSlot = () => { const n = +state.settings.baSlot; return n >= 0 && n < SLOTS ? n : 0; };
 const storeOf = i => String((state.stores || [])[i] || "").trim();
 const WHEN_LABEL = { before: "Before", after: "After" };
 let lastShotId = null;
 // A shelf photo where nothing was said: kept as a photo-only Before picture (it shows in the Gallery, not on the Needed list).
 function keepPhotoOnly(photo, slot, kind, at) {
-  state.shots.unshift({ id: newId("s"), at: at || Date.now(), slot: Number.isInteger(slot) ? slot : baSlot(), when: "before", kind: kind === "display" ? "display" : "aisle", photo });
+  state.shots.unshift({ id: newId("s"), at: at || Date.now(), slot: Number.isInteger(slot) ? slot : baSlot(), when: "before", kind: normKind(kind), photo });
   save(); renderAll();
   toast("Nothing was heard. The photo is in the Gallery.");
 }
@@ -3632,7 +3665,7 @@ function renderBA() {
   const on = !!cam.stream, k = baKind(), slot = baSlot(), st = storeOf(slot), row = slotsHTML(slot);
   $("#ba-slots").innerHTML = row;
   const cs = document.getElementById("cap-slots"); if (cs) cs.innerHTML = row;
-  setTextPop($("#cap-band"), `${st ? `#${st} · ` : ""}${captureKind() === "display" ? "DISPLAY" : "AISLE"}`);
+  setTextPop($("#cap-band"), `${st ? `#${st} · ` : ""}${KIND_LABEL[captureKind()].toUpperCase()}`);
   $("#ba-off").hidden = on || cam.starting;
   $("#ba-video").hidden = !on;
   $("#ba-starting").hidden = !cam.starting;
@@ -3645,7 +3678,7 @@ function renderBA() {
   document.querySelectorAll("#ba-kind-seg button").forEach(b => b.classList.toggle("active", b.dataset.k === k));
   if (view === "ba") syncIndicator($("#ba-kind-seg"), false);
   const sec = $("#view-ba");
-  sec.classList.toggle("mode-display", k === "display"); sec.classList.toggle("mode-aisle", k === "aisle");
+  setModeClass(sec, k);
   setTextPop($("#ba-band"), `${st ? `#${st} · ` : ""}AFTER · ${KIND_LABEL[k].toUpperCase()}`);
   $("#ba-hint").textContent = st ? `Snap the finished ${k}. Files under store#${st} · After · ${KIND_LABEL[k]}.` : "Tap a store slot above to set its store number.";
   $("#ba-shutter").setAttribute("aria-label", `Take the after photo of the ${k}`);
@@ -3731,7 +3764,7 @@ function renderGallery() {
     const list = itemsOf(slot, w).filter(x => x.kind === kind).reverse();
     html += `<div class="cluster-h">${WHEN_LABEL[w]}<span class="n">${list.length}</span></div>`;
     html += list.length ? `<div class="shot-grid">${list.map(x => `<button class="shot" data-w="${w}" data-p="${esc(x.photo)}" data-photo-wrap><img data-photo="${esc(x.photo)}" alt=""><span>${esc(timeOf(x.at))}</span></button>`).join("")}</div>`
-      : `<p class="muted small" style="margin:4px 0 0">${w === "before" ? `No shelf photos of ${kind === "display" ? "displays" : "aisles"} for this store yet. Take them on the Before tab.` : `No After photos of ${kind === "display" ? "displays" : "aisles"} yet. Take them on the After tab.`}</p>`;
+      : `<p class="muted small" style="margin:4px 0 0">${w === "before" ? `No shelf photos of ${KIND_PLURAL[kind]} for this store yet. Take them on the Before tab.` : `No After photos of ${KIND_PLURAL[kind]} yet. Take them on the After tab.`}</p>`;
   }
   const afterAll = state.shots.filter(x => x.when !== "before");
   if (after.length) html += `<button class="btn block quiet" data-a="clear" style="margin-top:20px">Clear ${storeOf(slot) ? `store#${esc(storeOf(slot))}` : "this store"}'s After photos</button>`;
@@ -3880,9 +3913,9 @@ function openShot(x, onChange) {
   };
   s.querySelector('[data-a="more"]').onclick = async () => {
     const pick = await menu("This photo", [
-      { label: x.kind === "aisle" ? "Move to Display" : "Move to Aisle", value: "kind" },
+      ...kindMoves(normKind(x.kind)),
       { label: "Delete photo", value: "delete", danger: true }]);
-    if (pick === "kind") { x.kind = x.kind === "aisle" ? "display" : "aisle"; save(); head(); toast(`Moved to ${KIND_LABEL[x.kind]}`); }
+    if (String(pick).startsWith("kind:")) { x.kind = normKind(pick.slice(5)); save(); head(); toast(`Moved to ${KIND_LABEL[x.kind]}`); }
     else if (pick === "delete") {
       const snap = snapshot();
       state.shots = state.shots.filter(y => y.id !== x.id); if (lastShotId === x.id) lastShotId = null;
@@ -3988,7 +4021,7 @@ function editVariation(v, { prefill = "" } = {}) {
   };
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 66;
+const REVISION = 67;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -4038,7 +4071,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelfie 2.3.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 2.4.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
@@ -4074,6 +4107,7 @@ document.querySelectorAll("#cap-seg button").forEach(b => (b.onclick = () => { s
 // live camera, where it opens the iPhone camera app and then the recording sheet.
 $("#btn-shutter").onclick = () => {
   if (hold.justHeld) { hold.justHeld = false; return; }   // the tap that ends a hold isn't a shutter tap
+  if (!storeOf(baSlot())) { askStore(baSlot()); return; }   // like the After tab: the first tap asks for the store number, nothing else
   if (!cam.stream) return onShutter(false, captureKind());
   toast("Hold the shutter while you say each product"); pulse($("#shutter-label"));
 };
