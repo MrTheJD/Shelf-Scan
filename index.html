@@ -919,6 +919,11 @@ body[data-nav="push"] #view-changelog.active { animation: pushIn .5s cubic-bezie
 .pair-pip img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .pair-pip span { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; background: rgba(0, 0, 0, .6); color: #fff; font-size: 10.5px; font-weight: 800; text-align: center; letter-spacing: .02em; }
 .shutter-big.off { opacity: .35; }
+
+/* 2.13.1: off-screen rows and photos aren't laid out or painted until scrolled to (iOS 18+; ignored before) */
+.list > .need { content-visibility: auto; contain-intrinsic-size: auto 76px; }
+.shot-grid > .shot { content-visibility: auto; contain-intrinsic-size: auto 110px; }
+.list > .need.swiping, .list > .need.leaving { content-visibility: visible; }
 </style>
 </head>
 <body data-view="capture">
@@ -1456,6 +1461,7 @@ function migrate() {
   for (const p of state.products) if (!p.updated && RETIRED_VARIATIONS.has(vKey(p))) p.retired = true;
   for (const id of DISCONTINUED) { const p = productById(id); if (p && !p.retired && !p.updated) p.retired = true; }
   state.version = 4;
+  prodDirty = true;   // the list may have been changed in place above
 }
 let savedProdRev = null;
 function save() {
@@ -1475,6 +1481,7 @@ function pName(p) { return p.flavor ? `${p.brand} ${p.flavor}` : p.brand; }
 
 // ---------- Change tracking (what needs uploading) ----------
 function markProduct(id) {
+  prodDirty = true;
   const p = productById(id); if (!p) return;
   p.updated = Date.now(); p._st = undefined;
   delete state.deleted.products[id];
@@ -1482,6 +1489,7 @@ function markProduct(id) {
   
 }
 function dropProduct(id) {
+  prodDirty = true;
   state.products = state.products.filter(p => p.id !== id);
   state.deleted.products[id] = Date.now();
   state.outbox.products[id] = 1;
@@ -1673,7 +1681,7 @@ const delPhoto = async id => {
 };
 async function savePhoto(id, blob) {
   await putPhoto(id, blob);
-  makeThumb(blob).then(t => t && putPhoto(thumbId(id), t)).catch(() => {});   // in the background, so the shutter isn't held up (lists fall back to the full photo until it's there)
+  (blob && blob._thumb ? blob._thumb : makeThumb(blob)).then(t => t && putPhoto(thumbId(id), t)).catch(() => {});   // made with the photo when it can be   // in the background, so the shutter isn't held up (lists fall back to the full photo until it's there)
 }
 async function makeThumb(blob) {
   const bmp = await createImageBitmap(blob), k = Math.min(1, 360 / Math.max(bmp.width, bmp.height));
@@ -1742,7 +1750,12 @@ function frameToBlob(source, sw, sh, sx = 0, sy = 0, cw = sw, ch = sh) {
   const k = Math.min(1, PHOTO_MAX / Math.max(cw, ch));
   const c = document.createElement("canvas"); c.width = Math.round(cw * k); c.height = Math.round(ch * k);
   c.getContext("2d").drawImage(source, sx, sy, cw, ch, 0, 0, c.width, c.height);
-  return new Promise(r => c.toBlob(r, "image/jpeg", 0.86));
+  // the thumbnail from the picture already in memory (no re-opening the saved JPEG later); savePhoto uses it
+  const k2 = Math.min(1, 360 / Math.max(c.width, c.height)), t = document.createElement("canvas");
+  t.width = Math.round(c.width * k2); t.height = Math.round(c.height * k2);
+  t.getContext("2d").drawImage(c, 0, 0, t.width, t.height);
+  const thumb = new Promise(r => t.toBlob(r, "image/jpeg", 0.7));
+  return new Promise(r => c.toBlob(b => { if (b) b._thumb = thumb; r(b); }, "image/jpeg", 0.86));
 }
 async function fileToBlob(file) {
   const bmp = await createImageBitmap(file);
@@ -2139,9 +2152,13 @@ const BRAND_SPOKEN = {
 const BRAND_ALIASES = {};
 for (const [brand, list] of Object.entries(BRAND_SPOKEN)) for (const a of list) BRAND_ALIASES[a] = brand;let brandIdx = null, brandIdxFor = -1;
 // Changes whenever the product list is swapped for another (Undo, Restore, Reset) or a product is added, removed, edited or retired.
-let prodRevN = 0, prodRevFor = null, prodRevSig = "";
+let prodRevN = 0, prodRevFor = null, prodRevSig = "", prodRevLen = -1;
+var prodDirty = true;   // set when the product list is changed in place (markProduct, dropProduct, start-up); a new list is noticed by itself
 function prodRev() {
-  const list = state.products; let sum = 0;
+  const list = state.products;
+  if (!prodDirty && list === prodRevFor && list.length === prodRevLen) return prodRevN;   // unchanged: no need to walk ~680 products
+  prodDirty = false; prodRevLen = list.length;
+  let sum = 0;
   for (const p of list) sum += (p.updated || 0) + (p.retired ? 1 : 0);
   const sig = list.length + ":" + sum;
   if (list !== prodRevFor || sig !== prodRevSig) { prodRevFor = list; prodRevSig = sig; prodRevN++; }
@@ -2684,7 +2701,7 @@ function quickRead(n) {
     }
     n.parts = r.parts; n.flag = r.flag;
   } catch (e) { n.parts = []; n.flag = true; }
-  n.ticks = {}; delete n.items;
+  n.ticks = {}; delete n.items; n.bk = 3;   // brand-level already: the 6.3 upgrade step needn't read it again at start-up
   n.status = "done"; n.err = "";
   save(); renderAll();
 }
@@ -3417,7 +3434,6 @@ function paintFeed(v) {
 }
 document.querySelectorAll(".camera video").forEach(v => v.addEventListener("playing", () => paintFeed(v)));
 document.addEventListener("visibilitychange", () => { if (!document.hidden) document.querySelectorAll(".camera video").forEach(v => { if (v.srcObject) paintFeed(v); }); });
-setInterval(() => { if (isCamView() && cam.stream && !document.hidden) fitVideos(); }, 500);   // a missed size change can't leave a gap for long
 document.querySelectorAll(".camera video").forEach(v => { for (const ev of ["loadedmetadata", "resize", "playing"]) v.addEventListener(ev, () => fitVideo(v)); });
 window.addEventListener("resize", fitVideos);
 window.addEventListener("orientationchange", () => setTimeout(fitVideos, 300));
@@ -3689,7 +3705,7 @@ async function saveNote({ photos, note, audioRec, secs, text, status, kind, at, 
     if (old) delAudio(old).catch(() => {});
     save(); renderAll(); return note;
   }
-  const n = { id: newId("n"), at: at || Date.now(), slot: Number.isInteger(slot) ? slot : baSlot(), kind: normKind(kind), photos: [...(photos || [])], audio: audioId, secs, text, status, parts: [], flag: false, ticks: {}, err: "", ...(dg ? { dg } : {}) };
+  const n = { id: newId("n"), at: at || Date.now(), slot: Number.isInteger(slot) ? slot : baSlot(), kind: normKind(kind), photos: [...(photos || [])], audio: audioId, secs, text, status, parts: [], flag: false, ticks: {}, err: "", bk: 3, ...(dg ? { dg } : {}) };
   state.notes.unshift(n);
   save(); renderAll();
   lastNoteId = n.id;
@@ -5693,7 +5709,14 @@ function suggestNames() {   // every product as it would be said, and each brand
   for (const v of variations()) { const name = pickText(v); m.set(name, { name, brand: v.brand, key: v.key, t: tri(sNorm(name)) }); m.set(v.brand, m.get(v.brand) || { name: v.brand, brand: v.brand, key: sNorm(v.brand) + "|", t: tri(sNorm(v.brand)) }); }
   sugRev = rev; return (sugCache = [...m.values()]);
 }
+const sugMemo = new Map();   // text → suggestions (for the same product list and learned words)
 function suggestFor(n) {
+  const key = (n.text || "") + "|" + prodRev() + "|" + Object.keys(state.learned || {}).length;
+  if (sugMemo.has(key)) return sugMemo.get(key);
+  if (sugMemo.size > 300) sugMemo.clear();
+  const out = suggestFor2(n); sugMemo.set(key, out); return out;
+}
+function suggestFor2(n) {
   const phrase = phraseOf(n.text || ""); if (!phrase) return [];
   const p = tri(phrase), learned = (state.learned || {})[phrase], use = pickUse();
   const scored = suggestNames().map(c => ({ c, s: dice(p, c.t) + (learned && learned.name === c.name ? 1 : 0) + Math.min(0.08, ((use.f[c.key] || 0) + (use.b[sNorm(c.brand)] || 0)) * 0.01) }))
@@ -6118,6 +6141,7 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "2.13.1", notes: ["Faster on older iPhones: the Needed list, Gallery and camera tabs redraw several times quicker, the app starts faster after a busy shift, and taking a photo uses much less memory. Photos are exactly the same quality."] },
   { v: "2.13.0", notes: [
     "After display photos are paired with their Before display. A strip above the After shutter shows each Before display; the first one without an After is picked, and every photo goes to it until you tap another.",
     "The Before photo of the display you're shooting sits small in the corner of the camera, to match the angle.",
@@ -6204,7 +6228,7 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 87;
+const REVISION = 88;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -6261,7 +6285,7 @@ function renderMore() {
       <button class="item row-btn nav" id="btn-whatsnew">${icon("note")}<span class="grow">What's new</span>${icon("jump")}</button>
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
-    <p class="foot">Shelfie 2.13.0 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 2.13.1 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
