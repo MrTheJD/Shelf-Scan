@@ -675,6 +675,20 @@ nav.tabs button:active svg.i { transform: scale(.82); }
 .pick-grid.l .pick-btn { min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 15px; }
 .pick-btn small { font-size: 11px; font-weight: 700; opacity: .7; letter-spacing: 0; }
 .pick-fhead b span { color: var(--muted); font-weight: 750; }
+
+/* 2.7.2: the last-shelf button adds to it: a small + on its corner */
+#last-note::after { content: "+"; position: absolute; right: -5px; bottom: -5px; width: 20px; height: 20px; border-radius: 50%; background: var(--red); color: var(--on-red); font-size: 16px; font-weight: 900; line-height: 19px; text-align: center; box-shadow: 0 0 0 2px var(--bg); pointer-events: none; }
+
+/* 2.7.2: Hold to talk inside the picker */
+.pick-foot { display: flex; gap: 10px; align-items: stretch; }
+.pick-foot .btn { min-height: 52px; }
+.pick-mic { flex: none; display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 16px; border: 0; border-radius: 14px; background: var(--chip); color: var(--text); font-weight: 800; font-size: 15px; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; transition: background-color .15s ease, color .15s ease, transform .3s var(--spring), box-shadow .3s ease; }
+.pick-mic svg.i { width: 20px; height: 20px; }
+.pick-mic.rec { background: var(--red); color: var(--on-red); transform: scale(1.03); box-shadow: 0 0 0 6px color-mix(in srgb, var(--red) 25%, transparent); }
+.pick-mic.rec svg.i { animation: micPulse 1s ease-in-out infinite; }
+@keyframes micPulse { 50% { transform: scale(1.2); } }
+.pick-mic-t { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pick-chip.voice { background: var(--chip); color: var(--text); }
 </style>
 </head>
 <body data-view="capture">
@@ -713,7 +727,7 @@ nav.tabs button:active svg.i { transform: scale(.82); }
         <button data-k="backstock">Backstock</button>
       </div>
       <div class="deck-row">
-        <button class="deck-side left" id="last-note" aria-label="Open the last note" style="visibility:hidden"></button>
+        <button class="deck-side left" id="last-note" aria-label="Add an item to the last shelf" style="visibility:hidden"></button>
         <div class="shutter-wrap"><button class="shutter-big" id="btn-shutter" aria-label="Take a photo, then say what you need"><span></span></button></div>
         <button class="deck-side right" id="btn-open-needed" aria-label="Open the Needed list"><span data-icon="list"></span><span class="badge" id="deck-badge" hidden></span></button>
       </div>
@@ -2407,7 +2421,7 @@ function renderQueueStatus() { if (view === "needed" || view === "capture") rend
 // scrolled to the top, and let go. Far enough, or fast enough, and it slides away; otherwise it springs back. Sheets that must stay
 // (the recorder) are not given this. Dragging on the photo zoom area, sliders and text boxes still does what it did.
 function attachSheetDrag(sheet, close) {
-  const SKIP = "input, textarea, select, .zoom-stage, .pbar, .pick-stage, .pick-added";
+  const SKIP = "input, textarea, select, .zoom-stage, .pbar, .pick-stage, .pick-added, .pick-mic";
   let y0 = 0, lastY = 0, lastT = 0, dy = 0, vel = 0, ok = false, drag = false;
   sheet.addEventListener("touchstart", e => {
     drag = false; dy = 0; vel = 0;
@@ -3343,7 +3357,7 @@ async function holdEnd() {
   setTimeout(() => (hold.justHeld = false), 600);   // the tap that ends a hold is not a shutter tap
   renderHoldLive(false);
   const s = hold.session; if (!s) return;
-  if (!chunks.length || secs < 0.5 || peak < 0.004) { toast(noAudio ? "Couldn't use the microphone. Allow it in Settings, or tap the shutter again and hold." : "Didn't hear that. Hold the shutter and say the product."); renderHoldBar(); return; }
+  if (!chunks.length || secs < 0.5 || peak < 0.004) { toast(noAudio ? "Couldn't use the microphone. Allow it in Settings, then hold again." : "Didn't hear that. Hold and say the product."); renderHoldBar(); return; }
   const x = resampleTo16k(chunks, hold.rate);
   await saveNote({ photos: [s.photo], kind: s.kind, slot: s.slot, audioRec: { pcm: x.pcm, rate: 16000 }, secs, text: "", status: "queued", at: s.at + s.count });
   s.count++; renderHoldBar(); pulse($("#hold-bar"));
@@ -3450,19 +3464,35 @@ async function tapToPick() {
     await openPicker(hold.session);
   } finally { picking = false; }
 }
+// Reopen a shelf (the last one) and pick more for it. Its photo, store and Aisle/Display stay as they were.
+async function addToShelf(n) {
+  if (picking || recorder || hold.active || !n) return;
+  const photo = (n.photos || [])[0];
+  if (!photo) return openCheck(n);   // a note without a photo: just show it
+  if (hold.session && hold.session.photo !== photo) endHoldSession();
+  if (!hold.session) {
+    const same = state.notes.filter(x => (x.photos || [])[0] === photo), last = Math.max(n.at, ...same.map(x => x.at));
+    hold.session = { photo, kind: noteKind(n), slot: Number.isInteger(n.slot) ? n.slot : baSlot(), at: last + 1 - same.length, count: same.length, reopened: true };
+    renderHoldBar();
+  }
+  haptic("tick"); pulse($("#last-note"));
+  picking = true;
+  try { await openPicker(hold.session); } finally { picking = false; }
+}
 function openPicker(s) {
   return new Promise(resolve => {
     const fams = pickTree(), added = [], pickOf = new Map();   // the order is fixed while the picker is open, so nothing jumps under a finger; pickOf: note id → what was picked
     let fam = null, line = null, lines = [], flavors = [];
     const sh = el(`<div class="sheet pick-sheet"><div class="handle"></div>
-      <div class="pick-top"><h2>What's needed?</h2><span class="pick-where">${esc(KIND_LABEL[s.kind])}${storeOf(s.slot) ? ` · #${esc(storeOf(s.slot))}` : ""}</span></div>
+      <div class="pick-top"><h2>${s.reopened ? "Add to that shelf" : "What's needed?"}</h2><span class="pick-where">${esc(KIND_LABEL[s.kind])}${storeOf(s.slot) ? ` · #${esc(storeOf(s.slot))}` : ""}</span></div>
       <div class="pick-added"></div>
       <div class="pick-stage" data-at="b"><div class="pick-page" data-p="b"><div class="pick-grid b">${fams.map((f, i) => `<button class="pick-btn${i < 3 ? " top" : ""}" data-b="${i}">${esc(f.brand)}</button>`).join("")}</div></div><div class="pick-page" data-p="l"></div><div class="pick-page" data-p="f"></div></div>
-      <button class="btn primary block" data-a="done">Done</button></div>`);
+      <div class="pick-foot"><button class="pick-mic" aria-label="Hold and say an item">${icon("mic")}<span class="pick-mic-t">Hold to talk</span></button><button class="btn primary grow" data-a="done">Done</button></div></div>`);
     const stage = sh.querySelector(".pick-stage"), lpage = sh.querySelector('[data-p="l"]'), fpage = sh.querySelector('[data-p="f"]'), tray = sh.querySelector(".pick-added");
     const go = at => { stage.dataset.at = at; };
     const drawTray = () => {
-      tray.innerHTML = added.length ? added.map(n => `<button class="pick-chip" data-n="${esc(n.id)}" aria-label="Remove ${esc(n.text)}">${esc(n.text)}${icon("x")}</button>`).join("")
+      tray.innerHTML = added.length ? added.map(n => n.audio && !n.text ? `<button class="pick-chip voice" data-n="${esc(n.id)}" aria-label="Remove this voice item">${icon("mic")}Said${icon("x")}</button>`
+        : `<button class="pick-chip" data-n="${esc(n.id)}" aria-label="Remove ${esc(n.text)}">${esc(n.text)}${icon("x")}</button>`).join("")
         : `<p class="hint">Tap a brand, then the kind, then the flavor.</p>`;
       tray.scrollLeft = tray.scrollWidth;
     };
@@ -3507,10 +3537,40 @@ function openPicker(s) {
       state.notes = state.notes.filter(n => n.id !== added[i].id); added.splice(i, 1); s.count = Math.max(0, s.count - 1);
       save(); renderAll(); renderHoldBar(); drawTray();
     };
+    // Hold to talk, right here: the same recording as holding the shutter, into this shelf
+    const mic = sh.querySelector(".pick-mic"), micT = sh.querySelector(".pick-mic-t");
+    let micTimer = 0, micTick = 0;
+    const micUI = on => {
+      mic.classList.toggle("rec", on); clearInterval(micTick);
+      if (!on) { micT.textContent = "Hold to talk"; return; }
+      const t0 = Date.now(), paint = () => { const s2 = Math.floor((Date.now() - t0) / 1000); micT.textContent = `${Math.floor(s2 / 60)}:${String(s2 % 60).padStart(2, "0")} · let go to add`; };
+      paint(); micTick = setInterval(paint, 250);
+    };
+    mic.addEventListener("pointerdown", e => {
+      if (recorder || hold.active || hold.session !== s) return;
+      try { mic.setPointerCapture(e.pointerId); } catch (_) {}
+      hold.pressing = true; hold.micReady = openHoldMic();
+      clearTimeout(micTimer); micTimer = setTimeout(() => { if (hold.pressing) { holdStart(); micUI(true); } }, 150);
+    });
+    const micUp = async () => {
+      hold.pressing = false; clearTimeout(micTimer);
+      if (!hold.active) return;
+      micUI(false);
+      const before = new Set(state.notes.map(n => n.id));
+      await holdEnd();
+      const n = state.notes.find(x => !before.has(x.id) && (x.photos || [])[0] === s.photo);
+      if (n) { added.push(n); drawTray(); haptic("tick"); }
+    };
+    mic.addEventListener("pointerup", micUp); mic.addEventListener("pointercancel", micUp);
+    mic.addEventListener("contextmenu", e => e.preventDefault());
     let done = false;
     const finish = () => {
       if (done) return; done = true;
-      if (hold.session === s) {
+      clearTimeout(micTimer); clearInterval(micTick); if (hold.active) holdEnd();
+      if (hold.session === s && s.reopened) {   // a reopened shelf: just say what was added
+        hold.session = null; closeHoldMic(); renderHoldBar(); pump();
+        if (added.length) toast(`Added ${added.length} more item${added.length === 1 ? "" : "s"} to that shelf`);
+      } else if (hold.session === s) {
         if (!s.count) { hold.session = null; closeHoldMic(); keepPhotoOnly(s.photo, s.slot, s.kind, s.at, "Nothing picked. The photo is in the Gallery."); renderHoldBar(); }
         else endHoldSession(true);
       }
@@ -3735,7 +3795,7 @@ function renderCapture() {
   lb.style.visibility = last ? "visible" : "hidden";
   if (last) {
     lb.innerHTML = last.photos[0] ? `<img data-photo="${esc(last.photos[0])}" alt="">` : icon("note");
-    lb.onclick = () => openCheck(last);
+    lb.onclick = () => addToShelf(last);   // for the item you forgot on the last shelf
     hydratePhotos(lb);
   }
   const open = NEED_KINDS.reduce((t, k) => t + openCount(k), 0), db = $("#deck-badge");
@@ -4489,7 +4549,7 @@ function editVariation(v, { prefill = "" } = {}) {
   };
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 73;
+const REVISION = 74;
 // More
 function modelRow(key) {
   const i = MODEL_INFO[key], have = haveModel(key), busy = ai.dl.key === key;
@@ -4539,7 +4599,7 @@ function renderMore() {
       <h3>Danger zone</h3>
       <div class="stack" style="margin-top:10px"><button class="btn block danger" id="btn-reset">Reset this phone</button></div>
     </div>
-    <p class="foot">Shelfie 2.7.1 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 2.7.2 · revision ${REVISION} · ${state.products.length} products · ${state.notes.length} note${state.notes.length === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   if (dl) updateModelProgress();
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
