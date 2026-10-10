@@ -421,7 +421,7 @@ nav.tabs { animation: barIn .55s var(--ease-out) both; }
 .cam-off:not([hidden]) > *:nth-child(3) { animation-delay: .12s; }
 .cam-off:not([hidden]) > *:nth-child(4) { animation-delay: .18s; }
 .cam-lens:not([hidden]), .cam-sound, .cam-stop:not([hidden]) { animation: softIn .4s var(--spring) both; }
-.camera.flash::after { animation: fadeOut .45s ease forwards; }
+.camera.flash::after { animation: fadeOut .15s ease-out forwards; }   /* 3.1: short, like the iPhone camera, so the viewfinder is back at once */
 .fly-photo { position: fixed; z-index: 90; object-fit: cover; pointer-events: none; box-shadow: 0 10px 30px rgba(0, 0, 0, .35); transform-origin: center; }
 
 /* hold to talk */
@@ -1011,17 +1011,18 @@ body.gal-selecting .shelf-card :is(.tick, .out-badge) { display: none; }
     <div class="deck">
       <div class="seg cap-seg" id="cap-seg">
         <button data-k="aisle" class="active">Aisle</button>
+        <button data-k="shelf">Shelf</button>
         <button data-k="display">Display</button>
         <button data-k="backstock">Backstock</button>
       </div>
       <div class="cat-row" id="cat-row" hidden aria-label="What's low on this shelf"></div>
       <div class="deck-row">
-        <button class="deck-side left" id="last-note" aria-label="Open the last shelf again" style="visibility:hidden"></button>
-        <div class="shutter-wrap"><button class="shutter-big" id="btn-shutter" aria-label="Take a photo of the shelf"><span></span></button></div>
-        <button class="deck-side right" id="btn-open-needed" aria-label="Open Shelves"><span data-icon="grid"></span><span class="badge" id="deck-badge" hidden></span></button>
+        <button class="deck-side left" id="last-note" aria-label="Open the last photos again" style="visibility:hidden"></button>
+        <div class="shutter-wrap"><button class="shutter-big" id="btn-shutter" aria-label="Take a photo of the aisle"><span></span></button></div>
+        <button class="deck-side right" id="btn-open-needed" aria-label="Open the Gallery"><span data-icon="grid"></span><span class="badge" id="deck-badge" hidden></span></button>
       </div>
       <div class="hold-bar" id="hold-bar" hidden><span class="grow" id="hold-text"></span><button class="btn sm primary" id="hold-done">Next shelf</button></div>
-      <p class="cap-hint" id="shutter-label">Tap the shutter for the shelf, then again for close-ups of what's low.</p>
+      <p class="cap-hint" id="shutter-label">Tap the shutter for the aisle, then again for close-ups of what's low.</p>
     </div>
   </section>
 
@@ -1048,13 +1049,14 @@ body.gal-selecting .shelf-card :is(.tick, .out-badge) { display: none; }
       <div class="pair-strip" id="pair-strip" hidden></div>
       <div class="seg cap-seg" id="ba-kind-seg">
         <button data-k="aisle" class="active">Aisle</button>
+        <button data-k="shelf">Shelf</button>
         <button data-k="display">Display</button>
         <button data-k="backstock">Backstock</button>
       </div>
       <div class="deck-row">
         <button class="deck-side left" id="ba-last" aria-label="Open the last photo" style="visibility:hidden"></button>
         <div class="shutter-wrap"><button class="shutter-big" id="ba-shutter" aria-label="Take a photo"><span></span></button></div>
-        <button class="deck-side right" id="ba-gallery" aria-label="Open Shelves"><span data-icon="image"></span><span class="badge" id="ba-count" hidden></span></button>
+        <button class="deck-side right" id="ba-gallery" aria-label="Open the Gallery"><span data-icon="image"></span><span class="badge" id="ba-count" hidden></span></button>
       </div>
       <p class="cap-hint" id="ba-hint"></p>
     </div>
@@ -1069,7 +1071,7 @@ body.gal-selecting .shelf-card :is(.tick, .out-badge) { display: none; }
 <nav class="tabs" id="tabs">
   <button data-view="capture" class="active"><span data-icon="camera"></span>Before</button>
   <button data-view="ba"><span data-icon="image"></span>After</button>
-  <button data-view="gallery"><span data-icon="grid"></span>Shelves<span class="badge" id="need-badge" hidden></span></button>
+  <button data-view="gallery"><span data-icon="grid"></span>Gallery<span class="badge" id="need-badge" hidden></span></button>
   <button data-view="more"><span data-icon="sliders"></span>More</button>
 </nav>
 
@@ -1469,7 +1471,7 @@ function migrate() {
     state.stores = Array.from({ length: 5 }, (_, i) => String(old[i] || ""));
     if (old[5] && !state.stores[4]) { state.stores[4] = String(old[5]); for (const s of state.shots) if (s.slot === 5) s.slot = 4; } }
   if (!state.stores.some(Boolean) && state.storeName) state.stores[0] = String(state.storeName);   // the store already set in More becomes the first slot
-  for (const s of state.shots) { if (s.when !== "after") s.when = "before"; if (s.kind !== "display" && s.kind !== "backstock") s.kind = "aisle"; if (!(s.slot >= 0 && s.slot < 6)) s.slot = 0; }
+  for (const s of state.shots) { if (s.when !== "after") s.when = "before"; if (s.kind !== "display" && s.kind !== "backstock" && s.kind !== "shelf") s.kind = "aisle"; if (!(s.slot >= 0 && s.slot < 6)) s.slot = 0; }
   state.notes = (Array.isArray(state.notes) ? state.notes : []).filter(n => !n.dev);   // notes that came from other phones
   for (const n of state.notes) { delete n.mod; delete n.pushed; delete n._sig; delete n.by; delete n.team; }
   for (const s of state.shots || []) { delete s.shared; delete s.pushed; }
@@ -1477,7 +1479,7 @@ function migrate() {
   // Work that was interrupted (app closed, phone ran low on memory) goes back in the queue.
   for (const n of state.notes) {
     n.photos = n.photos || [];
-    if (n.kind !== "display") n.kind = "aisle";   // notes are Aisle or Display (Backstock is photo only)   // notes from before aisle/display were separate
+    if (n.kind !== "display" && n.kind !== "shelf") n.kind = "aisle";   // notes are Aisle or Display (Backstock is photo only)   // notes from before aisle/display were separate
     if (n.status === "reading") n.status = "heard";
     // Beta 5.1.2: a note is its words plus the products the matcher found in them (no quantities or dots).
     delete n.items; delete n.rev; delete n.edited;
@@ -3166,12 +3168,16 @@ if (window.ResizeObserver) { const ro = new ResizeObserver(fitVideos); document.
 const ENC_SRC = `self.onmessage = async e => {
   const { id, bmp, w, h } = e.data;
   try {
-    const c = new OffscreenCanvas(w, h); c.getContext("2d").drawImage(bmp, 0, 0, w, h); bmp.close();
+    const c = new OffscreenCanvas(w, h), g = c.getContext("2d"); g.drawImage(bmp, 0, 0, w, h); bmp.close();
+    // a fully see-through frame means the phone handed over an empty copy: say so, so the page draws it itself
+    const p = new OffscreenCanvas(8, 8), pg = p.getContext("2d"); pg.drawImage(c, 0, 0, 8, 8);
+    const d = pg.getImageData(0, 0, 8, 8).data;
+    if (!d.some((x, i) => i % 4 === 3 && x)) { self.postMessage({ id, blank: true }); return; }
     const full = await c.convertToBlob({ type: "image/jpeg", quality: 0.86 });
     self.postMessage({ id, full });
   } catch (err) { try { bmp.close(); } catch (_) {} self.postMessage({ id, error: String((err && err.message) || err) }); }
 };`;
-const enc = { worker: null, broken: false, jobs: new Map(), waits: new Map() };   // jobs: id → resolve (worker answers); waits: id → promise of the saved photo
+const enc = { worker: null, broken: false, jobs: new Map(), waits: new Map(), last: {} };   // last: timings of the last photo (More shows them)   // jobs: id → resolve (worker answers); waits: id → promise of the saved photo
 function encWorker() {
   if (enc.worker || enc.broken) return enc.worker;
   try {
@@ -3197,6 +3203,9 @@ function encTest() {
 }
 // The frame on screen, cropped to the viewfinder's shape (what you see is what's saved). Returns { id, preview } straight away (preview: a
 // promise of the thumbnail), or null when the camera has no picture yet. The photo is saved in the background; getPhoto waits for it.
+// 3.1: nothing big happens during the tap. The full frame is copied by the phone in the background (createImageBitmap) and handed to the
+// worker; only the small thumbnail is drawn here, from the live picture. (3.0 copied all 12 MP here first, which froze the app for a moment
+// on iPhone before the next tap could register.)
 function captureFast(vid = "#cam-video", boxId = "#camera") {
   const v = $(vid), box = $(boxId);
   const vw = v && v.videoWidth, vh = v && v.videoHeight;
@@ -3205,31 +3214,38 @@ function captureFast(vid = "#cam-video", boxId = "#camera") {
   let cw = vw, ch = vh, sx = 0, sy = 0;
   if (have > want) { cw = Math.round(vh * want); sx = Math.round((vw - cw) / 2); } else { ch = Math.round(vw / want); sy = Math.round((vh - ch) / 2); }
   const k = Math.min(1, PHOTO_MAX / Math.max(cw, ch)), W = Math.round(cw * k), H = Math.round(ch * k);
-  const off = typeof OffscreenCanvas !== "undefined";
-  const c = off ? new OffscreenCanvas(W, H) : Object.assign(document.createElement("canvas"), { width: W, height: H });
-  try { c.getContext("2d").drawImage(v, sx, sy, cw, ch, 0, 0, W, H); } catch (e) { return null; }
-  // the thumbnail now, from the same pixels
+  // the thumbnail, straight from the video at its small size (cheap)
   const k2 = Math.min(1, 360 / Math.max(W, H)), t = document.createElement("canvas");
   t.width = Math.round(W * k2); t.height = Math.round(H * k2);
-  t.getContext("2d").drawImage(c, 0, 0, t.width, t.height);
+  try { t.getContext("2d").drawImage(v, sx, sy, cw, ch, 0, 0, t.width, t.height); } catch (e) { return null; }
   const id = newId("p");
+  // the full picture: copied in the background and made into a JPEG by the worker; or, without one, drawn and encoded here
+  const wk = enc.ok && !enc.broken && !enc.noBitmap && window.createImageBitmap ? enc.worker : null;
+  const here = () => {
+    const c = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(W, H) : Object.assign(document.createElement("canvas"), { width: W, height: H });
+    try { c.getContext("2d").drawImage(v, sx, sy, cw, ch, 0, 0, W, H); } catch (e) { return Promise.resolve(null); }
+    return mainEncode(c, W, H);
+  };
+  const full = wk
+    ? createImageBitmap(v, sx, sy, cw, ch)
+      .then(bmp => new Promise(r => { enc.jobs.set(id, r); wk.postMessage({ id, bmp, w: W, h: H }, [bmp]); }))
+      .then(m => {
+        if (m.blank) { enc.noBitmap = true; return here(); }   // this phone hands back empty frames: draw them here from now on
+        return m.full || here();
+      })
+      .catch(() => { enc.noBitmap = true; return here(); })
+    : here();
   const preview = new Promise(r => t.toBlob(r, "image/jpeg", 0.7)).then(b => {
     if (b) { dropURL(thumbId(id)); photoURLs.set(thumbId(id), URL.createObjectURL(b)); }
     return b;
   });
   const thumbSaved = preview.then(b => b && putPhoto(thumbId(id), b)).catch(() => {}).finally(() => enc.waits.delete(thumbId(id)));
   enc.waits.set(thumbId(id), thumbSaved);
-  // the full picture: in the worker when the phone has one, otherwise here
-  const wk = off && c.transferToImageBitmap && enc.ok && !enc.broken ? enc.worker : null;
-  let full;
-  if (wk) {
-    const bmp = c.transferToImageBitmap();
-    full = new Promise(r => { enc.jobs.set(id, r); wk.postMessage({ id, bmp, w: W, h: H }, [bmp]); })
-      .then(m => m.full || null);
-  } else full = mainEncode(c, W, H);
+  const t0 = performance.now();
   const saved = full.then(async b => {
     if (!b) throw new Error("encode");
     await putPhoto(id, b); await thumbSaved;
+    enc.last.saved = Math.round(performance.now() - t0); enc.last.path = wk && !enc.noBitmap ? "background" : "on screen";
   }).catch(() => { toast("Couldn't save a photo. Phone storage may be full."); })
     .finally(() => enc.waits.delete(id));
   enc.waits.set(id, saved);
@@ -3242,10 +3258,12 @@ function mainEncode(c, W, H) {
 }
 // Everything a shutter tap does on screen, at the moment of the tap: sound, blip, flash, and the thumbnail flying to its button.
 function snapNow(vid, boxId, shutterSel, flyTo) {
+  const t0 = performance.now();
   primeShutter(); haptic("shutter");
   const r = captureFast(vid, boxId);
   if (!r) { toast("The camera isn't ready yet. Try again."); return null; }
   playShutter(); box_flash(boxId); pulse($(shutterSel), "fire", 600);
+  setTimeout(() => { enc.last.ready = Math.round(performance.now() - t0); }, 0);   // when the app could take the next tap
   r.preview.then(b => { if (b && flyTo) flyToThumb(b, $(boxId), flyTo); });
   return r;
 }
@@ -3261,7 +3279,7 @@ async function onShutter(forcePhone, kind = "aisle") {
   try { await savePhoto(id, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
   shelfAddPhoto(id);
 }
-function box_flash(id = "#camera") { const b = $(id); b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); setTimeout(() => b.classList.remove("flash"), 400); }
+function box_flash(id = "#camera") { const b = $(id); b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); setTimeout(() => b.classList.remove("flash"), 200); }
 
 // A small text box (for typed notes and fixing what was heard).
 function textPrompt(title, value = "", { ok = "Save" } = {}) {
@@ -3303,6 +3321,7 @@ const sessNote = () => (hold.session ? state.notes.find(n => n.id === hold.sessi
 function endHoldSession() {
   if (!hold.session) return;
   hold.session = null;
+  if (afterShot.t) { clearTimeout(afterShot.t); afterShot.t = 0; save(); const ids = afterShot.ids.splice(0); for (const id of ids) checkPhotoQuality(id); }
   if (typeof renderCapture === "function" && view === "capture") renderCapture(); else renderHoldBar();
 }
 
@@ -3318,7 +3337,7 @@ function shelfShot() {
 function shelfAddPhoto(id) {
   const n = sessNote();
   if (n) {
-    n.photos.push(id); save(); renderAll();
+    n.photos.push(id); renderHoldBar(); afterShot();
     pulse($("#hold-bar"));
   } else {
     const kind = captureKind(), slot = baSlot(), dg = takeDisplayDg(slot, "before", kind);
@@ -3326,11 +3345,21 @@ function shelfAddPhoto(id) {
       ticks: {}, out: {}, err: "", bk: 3, cats: [], v3: 1, ...(dg ? { dg } : {}) };
     state.notes.unshift(s); lastNoteId = s.id;
     hold.session = { note: s.id, kind, slot };
-    save(); renderAll();
+    renderCapture(); afterShot();
     pulse($("#cat-row"));
   }
-  checkPhotoQuality(id);
+  afterShot.ids.push(id);
 }
+// Saving, redrawing the other parts and the blur check run once the taps pause (half a second, or when the phone is idle).
+function afterShot() {
+  clearTimeout(afterShot.t);
+  afterShot.t = setTimeout(() => {
+    const go = () => { afterShot.t = 0; save(); renderAll(); const ids = afterShot.ids.splice(0); for (const id of ids) checkPhotoQuality(id); };
+    if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 600 }); else go();
+  }, 450);
+}
+afterShot.ids = [];
+document.addEventListener("visibilitychange", () => { if (document.hidden && afterShot.t) { clearTimeout(afterShot.t); afterShot.t = 0; save(); } });   // the app going away: save now
 // The thumbnail button: open the last shelf again (more close-ups or categories), or, if it's the one open, look at it.
 function addToShelf(n) {
   if (!n) return;
@@ -3340,7 +3369,7 @@ function addToShelf(n) {
   if (noteKind(n) !== captureKind()) state.settings.captureKind = noteKind(n);
   hold.session = { note: n.id, kind: noteKind(n), slot: baSlot() }; lastNoteId = n.id;
   save(); renderAll(); haptic("tick"); pulse($("#last-note"));
-  toast("That shelf is open again. Tap the shutter for more close-ups.");
+  toast(`${shelfLabel(n)} is open again. Tap the shutter for more close-ups.`);
 }
 function toggleCat(n, c) {
   n.cats = n.cats || [];
@@ -3356,9 +3385,9 @@ function renderHoldBar() {
   const row = $("#cat-row"), seg = $("#cap-seg");
   row.hidden = !on; seg.hidden = on;
   if (!on) return;
-  const disp = noteKind(n) === "display", num = shelfLabel(n), cu = n.photos.length - 1;
+  const kind = noteKind(n), disp = kind === "display", num = shelfLabel(n), cu = n.photos.length - 1;
   $("#hold-text").innerHTML = `<b>${esc(num)}</b> · ${disp ? `${n.photos.length} photo${n.photos.length === 1 ? "" : "s"}` : `${cu} close-up${cu === 1 ? "" : "s"}`}`;
-  $("#hold-done").textContent = disp ? "Next display" : "Next shelf";
+  $("#hold-done").textContent = `Next ${KIND_LABEL[kind].toLowerCase()}`;
   const cats = noteCats(n), key = cats.join(",");
   if (row.dataset.key !== key || !row.children.length) {
     row.dataset.key = key;
@@ -3375,11 +3404,12 @@ const shelfNotes = (slot, kind) => state.notes.filter(n => (slot == null || n.sl
 // what's left to pull: one per category not ticked off (or marked none in the back) on each shelf
 const openCount = (kind, slot = null) => shelfNotes(slot, kind).reduce((t, n) => t + noteCats(n).filter(c => !catDone(n, c)).length, 0);
 const openTotal = slot => openCount(null, slot);
-// "Shelf 3" / "Display 2": numbered by time within the store, the same numbers as the saved file names
+// "Aisle 3" / "Shelf 1" / "Display 2": numbered by time within the store and type, the same numbers as the saved file names
 function shelfLabel(n) {
-  if (noteKind(n) === "display") return displayLabel((n.photos || [])[0], n.slot, "before");
-  const list = beforeItems(n.slot).filter(x => x.kind === noteKind(n)), i = list.findIndex(x => x.photo === (n.photos || [])[0]);
-  return i < 0 ? "Shelf" : `Shelf ${i + 1}`;
+  const kind = noteKind(n);
+  if (kind === "display") return displayLabel((n.photos || [])[0], n.slot, "before");
+  const list = beforeItems(n.slot).filter(x => x.kind === kind), i = list.findIndex(x => x.photo === (n.photos || [])[0]);
+  return i < 0 ? KIND_LABEL[kind] : `${KIND_LABEL[kind]} ${i + 1}`;
 }
 const outList = slot => shelfNotes(slot).flatMap(n => noteCats(n).filter(c => isOut(n, c)).map(c => ({ n, c })));
 // The text for the boss: per store, what was out in the back, by category
@@ -3403,7 +3433,7 @@ function setOut(n, c, on) {
   save();
 }
 
-// ---- The Shelves tab: one store at a time; Aisle / Display / Backstock; Before grouped by category, then After ----
+// ---- The Gallery tab (3.0 called it Shelves): one store at a time; Aisle / Shelf / Display / Backstock; Before grouped by category, then After ----
 const gal = { slot: null, kind: null };
 function openGallery() { showView("gallery"); }
 function renderGallery() {
@@ -3415,7 +3445,7 @@ function renderGallery() {
   const before = beforeItems(slot), after = afterItems(slot), left = openTotal(slot);
   const anyCats = shelfNotes(slot).some(n => noteCats(n).length);
   const hideBtn = anyCats ? `<button class="hide-done" data-a="hide-done">${hide ? "Show done" : "Hide done"}</button>` : "";
-  let html = `<div class="list-head"><h2>Shelves</h2><span class="muted small">${left ? `${left} to pull` : st ? `store#${esc(st)}` : ""}</span>${hideBtn}</div>
+  let html = `<div class="list-head"><h2>Gallery</h2><span class="muted small">${left ? `${left} to pull` : st ? `store#${esc(st)}` : ""}</span>${hideBtn}</div>
     <div class="slots" id="gal-slots">${slotsHTML(slot)}</div>
     <div class="row" id="gal-share">${["before", "after"].map(w => { const n = itemsOf(slot, w).length, u = untexted(slot, w); return `<button class="btn sm primary grow" data-share="${w}"${n ? "" : " disabled"}>${icon("upload")}Text all ${WHEN_LABEL[w]} (${n})${n ? (u ? `<i class="tx-dot" aria-label="not sent yet"></i>` : `<i class="tx-ok" aria-label="sent">${icon("check")}</i>`) : ""}</button>`; }).join("")}</div>`;
   const outs = outList(slot).length;
@@ -3426,7 +3456,7 @@ function renderGallery() {
   // Before
   const mine = before.filter(x => x.kind === kind);
   html += `<div class="cluster-h">Before<span class="n">${mine.length}</span></div>`;
-  if (!mine.length) html += `<p class="muted small" style="margin:4px 0 0">${kind === "backstock" ? "No back stock photos for this store yet." : `No ${KIND_PLURAL[kind]} for this store yet. Snap ${kind === "display" ? "a display" : "a shelf"} on the Before tab, then tap what's low.`}</p>`;
+  if (!mine.length) html += `<p class="muted small" style="margin:4px 0 0">${kind === "backstock" ? "No back stock photos for this store yet." : `No ${KIND_PLURAL[kind]} for this store yet. Snap ${{ aisle: "an aisle", shelf: "a shelf", display: "a display" }[kind]} on the Before tab, then tap what's low.`}</p>`;
   else if (kind === "backstock") html += `<div class="shot-grid">${[...mine].reverse().map(x => tile("before", x)).join("")}</div>`;
   else {
     const label = new Map(mine.map(x => [x.photo, x.note ? shelfLabel(x.note) : timeOf(x.at)]));
@@ -3513,7 +3543,7 @@ function openShelf(n, focusCat) {
     img.src = u || "";
     stage.classList.toggle("empty-photo", !id);
     const strip = s.querySelector("#sh-strip");
-    strip.innerHTML = n.photos.length > 1 ? n.photos.map((p, i) => `<button class="sh-th${i === idx ? " on" : ""}" data-i="${i}" aria-label="${i ? `Close-up ${i}` : "The shelf"}"><img data-photo="${esc(p)}" alt=""><small>${i ? i : "Shelf"}</small></button>`).join("") : "";
+    strip.innerHTML = n.photos.length > 1 ? n.photos.map((p, i) => `<button class="sh-th${i === idx ? " on" : ""}" data-i="${i}" aria-label="${i ? `Close-up ${i}` : "The whole photo"}"><img data-photo="${esc(p)}" alt=""><small>${i ? i : KIND_LABEL[noteKind(n)]}</small></button>`).join("") : "";
     hydratePhotos(strip);
     strip.querySelector(".sh-th.on")?.scrollIntoView({ inline: "center", block: "nearest" });
   };
@@ -3542,14 +3572,14 @@ function openShelf(n, focusCat) {
     state.settings.captureKind = noteKind(n); save();
     showView("capture");
     hold.session = { note: n.id, kind: noteKind(n), slot: baSlot() }; lastNoteId = n.id; renderAll();
-    toast("Tap the shutter to add close-ups to this shelf");
+    toast(`Tap the shutter to add close-ups to ${shelfLabel(n)}`);
   };
   s.querySelector('[data-a="more"]').onclick = async () => {
     const pick = await menu(shelfLabel(n), [
       { label: "Save this photo to Photos", value: "save" },
       ...kindMoves(noteKind(n)).filter(m => m.value !== "kind:backstock"),
       ...(idx > 0 ? [{ label: `Delete close-up ${idx}`, value: "delphoto", danger: true }] : []),
-      { label: n.photos.length > 1 ? "Delete this shelf and its close-ups" : "Delete this shelf", value: "delete", danger: true }]);
+      { label: n.photos.length > 1 ? `Delete ${shelfLabel(n)} and its close-ups` : `Delete ${shelfLabel(n)}`, value: "delete", danger: true }]);
     if (pick === "save") savePhotoToPhotos(n.photos[idx], `${shelfLabel(n).replace(/\s+/g, "")}${idx ? `-closeup${idx}` : ""}.jpg`);
     else if (String(pick).startsWith("kind:")) { const snap = snapshot(); n.kind = normKind(pick.slice(5)); delete n.dg; save(); renderAll(); draw(); toast(`Moved to ${KIND_LABEL[n.kind]}`, snap); }
     else if (pick === "delphoto") { const snap = snapshot(); n.photos.splice(idx, 1); idx = Math.max(0, idx - 1); save(); renderAll(); scheduleSweep(); show(); toast("Close-up deleted", snap); }
@@ -3565,7 +3595,7 @@ function deleteShelf(n) {
   if (hold.session && hold.session.note === n.id) endHoldSession();
   if (lastNoteId === n.id) lastNoteId = null;
   save(); renderAll(); scheduleSweep();
-  toast("Shelf deleted", snap);
+  toast("Deleted", snap);
 }
 async function savePhotoToPhotos(id, name) {
   const blob = await getPhoto(id).catch(() => null); if (!blob) return toast("This photo is missing");
@@ -3676,17 +3706,17 @@ function renderCapture() {
   $("#shutter-label").textContent = !storeOf(baSlot()) ? "Tap the shutter or a store slot above to set the store number."
     : ck === "backstock" ? "Tap the shutter to photograph the back stock."
     : !cam.stream ? "Tap the shutter to use the phone camera."
-    : ck === "display" ? "Tap the shutter for the display, then again for more of it." : "Tap the shutter for the shelf, then again for close-ups of what's low.";
+    : ck === "display" ? "Tap the shutter for the display, then again for more of it." : `Tap the shutter for ${KIND_ONE[ck]}, then again for close-ups of what's low.`;
   const n = sessNote();
   $("#btn-shutter").setAttribute("aria-label", ck === "backstock" ? "Take a photo of the back stock" : n ? "Take a close-up" : `Take a photo of the ${ck}`);
-  // Under the thumb: the last shelf on the left (tap to open it again), Shelves on the right.
+  // Under the thumb: the last photo set on the left (tap to open it again), the Gallery on the right.
   const last = state.notes.find(x => x.id === lastNoteId && x.slot === baSlot()) || state.notes.find(x => x.slot === baSlot() && (x.photos || [])[0]);
   const lb = $("#last-note");
   lb.style.visibility = last ? "visible" : "hidden";
   if (last) {
     if (lb.dataset.p !== last.photos[0]) { lb.dataset.p = last.photos[0]; lb.innerHTML = `<img data-photo="${esc(last.photos[0])}" alt="">`; hydratePhotos(lb); }
     lb.onclick = () => addToShelf(last);
-    lb.setAttribute("aria-label", hold.session && hold.session.note === last.id ? "Look at this shelf" : "Open the last shelf again");
+    lb.setAttribute("aria-label", hold.session && hold.session.note === last.id ? "Look at these photos" : "Open the last photos again");
   } else lb.dataset.p = "";
   const open = openTotal(baSlot()), db = $("#deck-badge");
   db.hidden = !open; db.textContent = open;
@@ -3694,11 +3724,12 @@ function renderCapture() {
   renderBA();
 }
 
-const KINDS = ["aisle", "display", "backstock"];
-const normKind = k => (k === "display" || k === "backstock" ? k : "aisle");
+const KINDS = ["aisle", "shelf", "display", "backstock"];   // 3.1: Shelf, for shelves outside the main aisle
+const normKind = k => (k === "display" || k === "backstock" || k === "shelf" ? k : "aisle");
 const noteKind = n => normKind(n.kind);
-const KIND_LABEL = { aisle: "Aisle", display: "Display", backstock: "Backstock" };
-const KIND_PLURAL = { aisle: "aisles", display: "displays", backstock: "backstock" };
+const KIND_LABEL = { aisle: "Aisle", shelf: "Shelf", display: "Display", backstock: "Backstock" };
+const KIND_PLURAL = { aisle: "aisles", shelf: "shelves", display: "displays", backstock: "backstock" };
+const KIND_ONE = { aisle: "the aisle", shelf: "the shelf", display: "the display", backstock: "the back stock" };
 const captureKind = () => normKind(state.settings.captureKind);
 // "Move to …" menu items for the two kinds something isn't, and the camera tab colours for the kind that's on
 const kindMoves = cur => KINDS.filter(k => k !== cur).map(k => ({ label: `Move to ${KIND_LABEL[k]}`, value: "kind:" + k }));
@@ -4812,15 +4843,15 @@ const T_STEPS = [
     layerText: "Type a store number, then tap Continue.", hint: "tap", done: () => !!storeOf(baSlot()) },
   { id: "camera", skip: () => !!cam.stream, target: () => (cam.starting ? null : $("#btn-cam-start")), text: "Turn on the camera.",
     hint: "tap", done: () => !!cam.stream, fail: () => !!cam.error },
-  { id: "shelf", target: () => $("#view-capture .shutter-wrap"), text: "Tap the shutter to photograph the whole shelf.", hint: "tap", done: () => !!sessNote() },
-  { id: "closeup", target: () => $("#view-capture .shutter-wrap"), text: "Something low? Get close and tap again. Each tap is a close-up of this shelf.", hint: "tap",
+  { id: "shelf", target: () => $("#view-capture .shutter-wrap"), text: "Tap the shutter to photograph the aisle.", hint: "tap", done: () => !!sessNote() },
+  { id: "closeup", target: () => $("#view-capture .shutter-wrap"), text: "Something low? Get close and tap again. Each tap is a close-up of this spot.", hint: "tap",
     done: () => !!sessNote() && sessNote().photos.length > 1 },
-  { id: "cat", target: () => $("#cat-row"), text: "Tap what's low on this shelf. Pick as many as you need.", hint: "glow", done: () => !!sessNote() && noteCats(sessNote()).length > 0 },
-  { id: "next", target: () => $("#hold-done"), text: "Moving on? Tap Next shelf, then snap the next one.", hint: "tap", done: () => !hold.session },
-  { id: "shelvestab", target: () => $('#tabs [data-view="gallery"]'), text: "Your shelves are on the Shelves tab, sorted by category.", hint: "tap", done: () => view === "gallery" },
+  { id: "cat", target: () => $("#cat-row"), text: "Tap what's low here. Pick as many as you need.", hint: "glow", done: () => !!sessNote() && noteCats(sessNote()).length > 0 },
+  { id: "next", target: () => $("#hold-done"), text: "Moving on? Tap Next aisle, then snap the next spot.", hint: "tap", done: () => !hold.session },
+  { id: "shelvestab", target: () => $('#tabs [data-view="gallery"]'), text: "Your photos are on the Gallery tab, sorted by category.", hint: "tap", done: () => view === "gallery" },
   { id: "tick", target: () => $("#view-gallery .shelf-card .tick"), text: "Tap the check once you've pulled it from the back.", hint: "tick",
     done: () => state.notes.some(n => Object.values(n.ticks || {}).some(Boolean)) },
-  { id: "open", target: () => $("#view-gallery .shelf-card"), text: "Tap a shelf to see it with its close-ups.", hint: "tap", done: () => !!shelfSheetOpen() },
+  { id: "open", target: () => $("#view-gallery .shelf-card"), text: "Tap a photo to see it with its close-ups.", hint: "tap", done: () => !!shelfSheetOpen() },
   { id: "look", inLayer: true, target: () => shelfSheetOpen() && shelfSheetOpen().querySelector('[data-a="close"]'),
     text: "Swipe sideways through the close-ups. None left in the back? Mark it here. Then tap Done.", hint: "glow", done: () => !shelfSheetOpen() },
   { id: "text", target: () => $("#gal-share"), text: "Text all sends a store's photos, close-ups included, to your boss. The orange dot means that batch isn't sent yet.", hint: "dot", next: true },
@@ -4995,6 +5026,12 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "3.1.0", notes: [
+    "The shutter no longer holds up the next tap: the full-size photo is copied and saved in the background, so you can keep tapping. The flash is shorter, too.",
+    "Shelf, next to Aisle, Display and Backstock, for shelves outside the main aisle (energy drinks and the like). It works like Aisle: close-ups, categories and After photos.",
+    "Photos are named by type: Aisle 3, Shelf 1, Display 2. The button under the camera says Next aisle, Next shelf or Next display.",
+    "The Shelves tab is called Gallery again.",
+    "More shows how long the last photo took, to check the shutter on your phone." ] },
   { v: "3.0.0", notes: [
     "A much faster shutter: the camera stays at full size, so a tap saves the picture at once and you can tap again straight away. Photos are the same quality.",
     "Tap the shutter for the shelf, then keep tapping for close-ups of whatever is low. The close-ups stay with that shelf photo. Tap Next shelf when you move on.",
@@ -5089,13 +5126,13 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 89;
+const REVISION = 90;
 // More
 function renderMore() {
   const v = $("#view-more");
   const a = document.activeElement;
   if (a && v.contains(a) && a.matches("input, textarea, select")) return;   // don't wipe what is being typed; it redraws when focus leaves
-  const shelves = state.notes.length, photos = state.notes.reduce((t, n) => t + (n.photos || []).length, 0) + state.shots.length;
+  const photos = state.notes.reduce((t, n) => t + (n.photos || []).length, 0) + state.shots.length;
   v.innerHTML = `
     <div class="list-head"><h2>More</h2></div>
     <div class="sec-h">Feedback</div>
@@ -5126,7 +5163,8 @@ function renderMore() {
       <button class="item row-btn nav" id="btn-whatsnew">${icon("note")}<span class="grow">What's new</span>${icon("jump")}</button>
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
-    <p class="foot">Shelfie 3.0.0 · revision ${REVISION} · ${shelves} shel${shelves === 1 ? "f" : "ves"} · ${photos} photo${photos === 1 ? "" : "s"}<br>
+    ${enc.last.ready != null ? `<p class="sec-foot">Last photo: ready for the next tap in ${enc.last.ready} ms${enc.last.saved != null ? `, saved in ${enc.last.saved} ms (${enc.last.path})` : ""}.</p>` : ""}
+    <p class="foot">Shelfie 3.1.0 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
   v.querySelector("#haptic-shutter").onchange = e => { state.settings.hapticShutter = e.target.checked; save(); syncHaptics(); };
