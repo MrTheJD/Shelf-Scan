@@ -1,8 +1,8 @@
-// Offline support for Shelfie (formerly Shelf Scan): the app shell is cached on install; the voice library and its
-// runtime are cached the first time they load. The downloaded voice models are NOT handled here: the
+// Offline support for Shelfie (formerly Shelf Scan): the app shell is cached on install. (Up to 2.13 the voice library and its
+// runtime were cached here too; 3.0 has no voice. Old caches are deleted on activate.) Downloaded models were never handled here: the
 // model library keeps them in its own cache, and they must never be fetched behind the person's back.
-const CACHE = "shelfscan-v2131-v56";
-const SHELL = ["./", "index.html", "ai-worker.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
+const CACHE = "shelfscan-v300-v57";
+const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 const NEVER = ["api.github.com", "huggingface.co", "hf.co", "cdn-lfs.huggingface.co", "xethub.hf.co", "raw.githubusercontent.com", "objects.githubusercontent.com"];
 
 self.addEventListener("install", e => {
