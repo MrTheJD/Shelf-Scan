@@ -1027,6 +1027,19 @@ body.gal-selecting .shelf-card .cu { display: none; }
 .gal-filter .cat { min-height: 40px; font-size: 13px; }
 .sh-done svg.i { width: 18px; height: 18px; stroke-width: 3; }
 .sh-done.on { background: var(--ok); border-color: var(--ok); color: #fff; }
+
+/* ---------- 3.4: one store button ---------- */
+header.top .store { border: 0; background: rgba(255, 255, 255, .16); color: var(--on-red); font: inherit; font-size: 14px; font-weight: 750; opacity: 1; min-height: 36px; padding: 0 12px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; transition: background-color .15s ease, transform .4s var(--spring); }
+header.top .store:active { background: rgba(255, 255, 255, .3); transform: scale(.95); }
+header.top .store .caret { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid currentColor; opacity: .85; }
+.st-row { gap: 6px; padding: 4px 6px 4px 14px; }
+.st-row.on { background: color-mix(in srgb, var(--red) 6%, var(--surface)); }
+.st-pick { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-height: 52px; justify-content: center; border: 0; background: none; color: var(--text); text-align: left; font: inherit; padding: 0; }
+.st-pick b { font-size: 17px; font-weight: 800; }
+.st-pick small { font-size: 13px; color: var(--muted); }
+.st-cur { color: var(--red); display: flex; } .st-cur svg.i { width: 20px; height: 20px; stroke-width: 3; }
+.st-more { width: 44px; height: 44px; border: 0; background: none; color: var(--muted); display: flex; align-items: center; justify-content: center; border-radius: 12px; }
+.shift-clear { margin-top: 28px; color: var(--red); }
 </style>
 </head>
 <body data-view="capture">
@@ -1034,13 +1047,12 @@ body.gal-selecting .shelf-card .cu { display: none; }
   <h1><img class="brand" src="data:image/png;base64,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" alt="Shelfie" width="97" height="24"></h1>
   <span class="spacer"></span>
   <span class="hdr-title" id="hdr-title" aria-hidden="true"></span>
-  <span class="store" id="hdr-store"></span>
+  <button class="store" id="hdr-store" aria-label="Change store"></button>
 </header>
 
 <main>
   <!-- BEFORE: a big viewfinder, with everything you tap sitting in the bottom third. Tap: the shelf; tap again: close-ups (shelf.js) -->
   <section class="view active mode-aisle" id="view-capture">
-    <div class="slots" id="cap-slots"></div>
     <div class="camera" id="camera">
       <video id="cam-video" playsinline muted autoplay hidden></video><canvas class="cam-canvas" aria-hidden="true"></canvas>
       <div class="cam-wait" id="cam-starting" hidden>Starting the camera…</div>
@@ -1077,7 +1089,6 @@ body.gal-selecting .shelf-card .cu { display: none; }
 
   <!-- BEFORE/AFTER: the same viewfinder, photo only. Each shot is filed by the two switches. -->
   <section class="view mode-aisle" id="view-ba">
-    <div class="slots" id="ba-slots"></div>
     <div class="camera" id="ba-camera">
       <video id="ba-video" playsinline muted autoplay hidden></video><canvas class="cam-canvas" aria-hidden="true"></canvas>
       <div class="cam-wait" id="ba-starting" hidden>Starting the camera…</div>
@@ -1173,291 +1184,6 @@ function fillIcons(root = document) {
   root.querySelectorAll("[data-icon]").forEach(s => { s.outerHTML = icon(s.dataset.icon); });
 }
 
-// ---------- Starter product list ----------
-// Brand/flavor/format combos only. No UPCs are pre-filled: barcodes are
-// learned the first time they're scanned. Verify against the bottler order guide.
-const FORMATS = {
-  c12_12:  { size: "12oz can",    pack: "12pk",   category: "12oz Cans",         unit: "pack" },
-  c12_24:  { size: "12oz can",    pack: "24pk",   category: "12oz Cans",         unit: "pack" },
-  c12_35:  { size: "12oz can",    pack: "35pk",   category: "12oz Cans",         unit: "pack" },
-  c12_8:   { size: "12oz can",    pack: "8pk",    category: "12oz Cans",         unit: "pack" },
-  c75_10:  { size: "7.5oz can",   pack: "10pk",   category: "Mini Cans",         unit: "pack" },
-  b20:     { size: "20oz bottle", pack: "Single", category: "20oz",              unit: "bottle" },
-  b20_6:   { size: "20oz bottle", pack: "6pk",    category: "Bottle Multipacks", unit: "pack" },
-  b169_6:  { size: "16.9oz bottle", pack: "6pk",  category: "Bottle Multipacks", unit: "pack" },
-  b169_24: { size: "16.9oz bottle", pack: "24pk", category: "Bottle Multipacks", unit: "pack" },
-  b12_8:   { size: "12oz bottle", pack: "8pk",    category: "Bottle Multipacks", unit: "pack" },
-  l2:      { size: "2L bottle",   pack: "Single", category: "2L & 1L",           unit: "bottle" },
-  l1:      { size: "1L bottle",   pack: "Single", category: "2L & 1L",           unit: "bottle" },
-  l125:    { size: "1.25L bottle", pack: "Single", category: "2L & 1L",          unit: "bottle" },
-  g12_4:   { size: "12oz glass",  pack: "4pk",    category: "Glass",             unit: "pack" },
-  g8_6:    { size: "8oz glass",   pack: "6pk",    category: "Glass",             unit: "pack" },
-  g12_12:  { size: "12oz glass",  pack: "12pk",   category: "Glass",             unit: "pack" },
-  w20:     { size: "20oz bottle", pack: "Single", category: "Water",             unit: "bottle" },
-  w1l:     { size: "1L bottle",   pack: "Single", category: "Water",             unit: "bottle" },
-  w15l:    { size: "1.5L bottle", pack: "Single", category: "Water",             unit: "bottle" },
-  w169_24: { size: "16.9oz bottle", pack: "24pk", category: "Water",             unit: "pack" },
-  w169_6:  { size: "16.9oz bottle", pack: "6pk",  category: "Water",             unit: "pack" },
-  s28:     { size: "28oz bottle", pack: "Single", category: "Sports Drinks",     unit: "bottle" },
-  s20_8:   { size: "20oz bottle", pack: "8pk",    category: "Sports Drinks",     unit: "pack" },
-  s16:     { size: "16oz bottle", pack: "Single", category: "Sports Drinks",     unit: "bottle" },
-  vw20:    { size: "20oz bottle", pack: "Single", category: "Sports Drinks",     unit: "bottle" },
-  t185:    { size: "18.5oz bottle", pack: "Single", category: "Tea & Juice",     unit: "bottle" },
-  t185_6:  { size: "18.5oz bottle", pack: "6pk",  category: "Tea & Juice",       unit: "pack" },
-  t23:     { size: "23oz can",    pack: "Single", category: "Tea & Juice",       unit: "can" },
-  j12_12:  { size: "12oz can",    pack: "12pk",   category: "Tea & Juice",       unit: "pack" },
-  j20:     { size: "20oz bottle", pack: "Single", category: "Tea & Juice",       unit: "bottle" },
-  e16:     { size: "16oz can",    pack: "Single", category: "Energy",            unit: "can" },
-  e16_4:   { size: "16oz can",    pack: "4pk",    category: "Energy",            unit: "pack" },
-  // Added in Beta 3 (cross-checked against a bottler order sheet by package)
-  c12_6:   { size: "12oz can",    pack: "6pk",    category: "12oz Cans",         unit: "pack" },
-  c75_6:   { size: "7.5oz can",   pack: "6pk",    category: "Mini Cans",         unit: "pack" },
-  b169_8:  { size: "16.9oz bottle", pack: "8pk",  category: "Bottle Multipacks", unit: "pack" },
-  g12:     { size: "12oz glass",  pack: "Single", category: "Glass",             unit: "bottle" },
-  w237:    { size: "23.7oz bottle", pack: "Single", category: "Water",           unit: "bottle" },
-  w169_12: { size: "16.9oz bottle", pack: "12pk", category: "Water",             unit: "pack" },
-  w12_8:   { size: "12oz can",    pack: "8pk",    category: "Water",             unit: "pack" },
-  s20:     { size: "20oz bottle", pack: "Single", category: "Sports Drinks",     unit: "bottle" },
-  s12_8:   { size: "12oz bottle", pack: "8pk",    category: "Sports Drinks",     unit: "pack" },
-  s12_6:   { size: "12oz bottle", pack: "6pk",    category: "Sports Drinks",     unit: "pack" },
-  s1l:     { size: "1L bottle",   pack: "Single", category: "Sports Drinks",     unit: "bottle" },
-  s700:    { size: "700ml bottle", pack: "Single", category: "Sports Drinks",    unit: "bottle" },
-  vw169_6: { size: "16.9oz bottle", pack: "6pk",  category: "Sports Drinks",     unit: "pack" },
-  cp14:    { size: "14oz bottle", pack: "Single", category: "Sports Drinks",     unit: "bottle" },
-  cp14_4:  { size: "14oz bottle", pack: "4pk",    category: "Sports Drinks",     unit: "pack" },
-  t52:     { size: "52oz bottle", pack: "Single", category: "Tea & Juice",       unit: "bottle" },
-  t169_6:  { size: "16.9oz bottle", pack: "6pk",  category: "Tea & Juice",       unit: "pack" },
-  t20:     { size: "20oz bottle", pack: "Single", category: "Tea & Juice",       unit: "bottle" },
-  t1l:     { size: "1L bottle",   pack: "Single", category: "Tea & Juice",       unit: "bottle" },
-  j2l:     { size: "2L bottle",   pack: "Single", category: "Tea & Juice",       unit: "bottle" },
-  j16:     { size: "16oz bottle", pack: "Single", category: "Tea & Juice",       unit: "bottle" },
-  e12_12:  { size: "12oz can",    pack: "12pk",   category: "Energy",            unit: "pack" },
-  e16_15:  { size: "16oz can",    pack: "15pk",   category: "Energy",            unit: "pack" },
-  e24:     { size: "24oz can",    pack: "Single", category: "Energy",            unit: "can" },
-  c12_1:   { size: "12oz can",    pack: "Single", category: "12oz Cans",         unit: "can" },
-  w12_4:   { size: "12oz can",    pack: "4pk",    category: "Water",             unit: "pack" },
-  t24:     { size: "24oz bottle", pack: "Single", category: "Tea & Juice",       unit: "bottle" },
-  hc6_8:   { size: "6oz carton",  pack: "8pk",    category: "Tea & Juice",       unit: "pack" },
-  // Added after checking every product's "Available Sizes" on coca-cola.com
-  b8_6:    { size: "8oz bottle",  pack: "6pk",    category: "Bottle Multipacks", unit: "pack" },
-  b132_6:  { size: "13.2oz bottle", pack: "6pk",  category: "Bottle Multipacks", unit: "pack" },
-  b10_6:   { size: "10oz bottle", pack: "6pk",    category: "Bottle Multipacks", unit: "pack" },
-  c16:     { size: "16oz can",    pack: "Single", category: "16oz Cans",         unit: "can" },
-  b24:     { size: "24oz bottle", pack: "Single", category: "20oz",              unit: "bottle" },
-  l3:      { size: "3L bottle",   pack: "Single", category: "2L & 1L",           unit: "bottle" },
-  g169:    { size: "16.9oz glass", pack: "Single", category: "Glass",            unit: "bottle" },
-  g65_6:   { size: "6.5oz glass", pack: "6pk",    category: "Glass",             unit: "pack" },
-  g254:    { size: "25.4oz glass", pack: "Single", category: "Glass",            unit: "bottle" },
-  w10_6:   { size: "10oz bottle", pack: "6pk",    category: "Water",             unit: "pack" },
-  w12b_8:  { size: "12oz bottle", pack: "8pk",    category: "Water",             unit: "pack" },
-  a16:     { size: "16oz can",    pack: "Single", category: "Water",             unit: "can" },
-  t12_12:  { size: "12oz can",    pack: "12pk",   category: "Tea & Juice",       unit: "pack" },
-  t16c:    { size: "16oz can",    pack: "Single", category: "Tea & Juice",       unit: "can" },
-  j169_6:  { size: "16.9oz bottle", pack: "6pk",  category: "Tea & Juice",       unit: "pack" },
-};
-// Sizes below follow each product's "Available Sizes" on coca-cola.com (checked Sept 2026).
-// A container size maps to the packs Walmart carries it in: 7.5oz cans → 6pk & 10pk,
-// 8oz & 13.2oz bottles → 6pk, 12oz cans → 12pk (+8/24/35pk for the big brands),
-// 16oz cans → single, 16.9oz bottles → 6pk (+24pk core), 20oz → single, 1–3L → single.
-const MINI = ["c75_6","c75_10"];
-const SODA_CORE = ["c12_8","c12_12","c12_24","c12_35", ...MINI, "b8_6","b169_6","b169_24","b20","b20_6","b12_8","l1","l125","l2"];
-const SEED_LINES = [
-  // Coca-Cola
-  ["Coca-Cola", ["Original", "Zero Sugar"], [...SODA_CORE, "c16"]],
-  ["Coca-Cola", ["Original", "Zero Sugar"], ["g8_6"]],
-  ["Coca-Cola", ["Caffeine-Free", "Caffeine-Free Zero Sugar"], ["c12_12","c12_24","l2","b20"]],
-  ["Coca-Cola", ["Original (Mexican)"], ["g12","g12_4","g169"]],
-  ["Coca-Cola", ["Cherry"], ["c12_12","c12_24", ...MINI, "b169_6","l2","b20"]],
-  ["Coca-Cola", ["Cherry Zero Sugar"], ["c12_12","c12_24", ...MINI, "b169_6","b20","l2"]],
-  ["Coca-Cola", ["Vanilla"], ["c12_12","c12_24","b169_6","b20","l2"]],
-  ["Coca-Cola", ["Vanilla Zero Sugar"], ["c12_12","c12_24","b20","l2"]],
-  ["Coca-Cola", ["Cherry Float", "Zero Sugar Cherry Float"], ["c12_12","b20"]],
-  ["Coca-Cola", ["Georgia Peach", "California Raspberry"], ["c12_12"]],
-  ["Diet Coke", [""], [...SODA_CORE, "b132_6"]],
-  ["Diet Coke", ["Caffeine-Free"], ["c12_12","c12_24","l2","b20"]],
-  ["Diet Coke", ["Cherry"], ["c12_12","b20"]],
-  // Sprite
-  ["Sprite", [""], [...SODA_CORE, "b132_6","l3"]],
-  ["Sprite", ["Zero Sugar"], ["c12_12","c12_24", ...MINI, "b169_6","b20","l2"]],
-  ["Sprite", ["(Mexican)"], ["g12_4","g169"]],
-  ["Sprite", ["Chill"], ["c12_1","c12_12","c75_6","b20"]],
-  ["Sprite", ["Chill Zero Sugar", "Chill Mango Citrus", "+ Tea Zero Sugar", "+ Tea Peach"], ["c12_1","c12_12"]],
-  ["Sprite", ["+ Tea"], ["c12_1","c12_12","b20"]],
-  ["Sprite", ["Cherry", "Lymonade"], ["c12_12","b20"]],
-  ["Sprite", ["Tropical Mix"], ["b20"]],
-  // Fanta
-  ["Fanta", ["Orange"], ["c12_8","c12_12","c12_24", ...MINI, "b132_6","c16","b169_6","b20","l2"]],
-  ["Fanta", ["Zero Sugar Orange"], ["c12_12","b20","l2"]],
-  ["Fanta", ["Strawberry", "Pineapple"], ["c12_12","c16","b20","l2"]],
-  ["Fanta", ["Grape"], ["c12_12","b20","l2"]],
-  ["Fanta", ["Berry"], ["c12_12","b20"]],
-  ["Fanta", ["Peach", "Piña Colada"], ["b20"]],
-  ["Fanta", ["Orange (Mexican)"], ["g12_4","g169"]],
-  // Fresca, Barq's, Mello Yello, Mr. Pibb, Seagram's
-  ["Fresca", ["Grapefruit Citrus"], ["c12_8","c12_12","b169_6","b20","l2"]],
-  ["Fresca", ["Black Cherry Citrus", "Peach Citrus"], ["c12_8","c12_12"]],
-  ["Barq's", ["Root Beer"], ["c12_12","c12_24", ...MINI, "b169_6","b20","l2"]],
-  ["Barq's", ["Zero Sugar Root Beer"], ["c12_12","b169_6","b20","l2"]],
-  ["Barq's", ["Red Creme Soda", "Creme Soda French Vanilla"], ["c12_12"]],
-  ["Mello Yello", [""], ["c12_12","c12_24","b169_6","b20","b24","l2"]],
-  ["Mello Yello", ["Zero Sugar"], ["c12_12","b20"]],
-  ["Mr. Pibb", [""], ["c12_12","b20","l2"]],
-  ["Mr. Pibb", ["Zero Sugar", "Thrillin' Vanilla", "Punchin' Peach"], ["c12_12","b20"]],
-  ["Seagram's", ["Ginger Ale"], ["c12_12","c12_24", ...MINI, "b10_6","b169_6","b20","l1","l125","l2"]],
-  ["Seagram's", ["Zero Sugar Ginger Ale"], ["c12_12", ...MINI, "b20","l2","l1"]],
-  ["Seagram's", ["Club Soda", "Tonic"], ["c12_12", ...MINI, "b10_6","l1"]],
-  ["Seagram's", ["Seltzer Water"], ["c12_12","b20"]],
-  ["Simply Pop", ["Raspberry", "Strawberry", "Pineapple Mango", "Fruit Punch", "Citrus Punch"], ["c12_1"]],
-  // Dr Pepper — only some Coca-Cola bottlers carry it. Retire these if yours doesn't.
-  ["Dr Pepper", [""], ["c12_12","c12_24", ...MINI, "b169_6","b20","l1","l2"]],
-  ["Dr Pepper", ["Zero Sugar"], ["c12_12","c12_24","b20","l2"]],
-  ["Diet Dr Pepper", [""], ["c12_12","c12_24","b20","l2"]],
-  ["Dr Pepper", ["Cherry", "Cream Soda"], ["c12_12","b20","l2"]],
-  // Water
-  ["Dasani", ["Purified Water"], ["w10_6","w12b_8","w169_6","w169_12","w169_24","w20","w1l","w15l"]],
-  ["smartwater", ["", "Alkaline with Antioxidant"], ["w20","w237","w1l","w15l","w12_8"]],
-  ["smartwater", [""], ["w169_6"]],
-  ["Topo Chico", ["Mineral Water"], ["g65_6","g12","g12_4","g12_12","g254","w12_8"]],
-  ["Topo Chico", ["Twist of Lime", "Grapefruit"], ["g12_4","w12_8"]],
-  ["Topo Chico Sabores", ["Passionfruit", "Raspberry with Lemon", "Lime with Mint", "Tangerine with Ginger", "Tropical Mango", "Blueberry with Hibiscus"], ["w12_8"]],
-  ["AHA", ["Lime Watermelon", "Orange Grapefruit", "Blueberry Pomegranate", "Peach Honey", "Blackberry Lemon", "Pineapple Passionfruit"], ["w12_8"]],
-  ["AHA", ["Lime Watermelon", "Blueberry Pomegranate"], ["a16"]],
-  // Sports & enhanced water
-  ["Powerade", ["Mountain Berry Blast", "Fruit Punch", "Lemon Lime", "Grape", "Orange", "Strawberry Lemonade", "Glacier Cherry"], ["s28","s20","s20_8"]],
-  ["Powerade", ["Mountain Berry Blast", "Fruit Punch"], ["s12_8"]],
-  ["Powerade", ["Zero Mixed Berry", "Zero Grape", "Zero Fruit Punch", "Zero Lemon Lime", "Zero Orange", "Zero Strawberry Lemonade"], ["s28","s20_8"]],
-  ["BODYARMOR", ["Strawberry Banana", "Fruit Punch", "Tropical Punch", "Blue Raspberry", "Orange Mango", "Mixed Berry", "Watermelon Strawberry", "Cherry Lime", "Kiwi Strawberry"], ["s16","s28"]],
-  ["BODYARMOR", ["Strawberry Banana", "Fruit Punch"], ["s12_8"]],
-  ["BODYARMOR LYTE", ["Peach Mango", "Blueberry Pomegranate", "Berry Punch", "Tropical Coconut"], ["s16"]],
-  ["BODYARMOR", ["SportWater"], ["s700","s1l"]],
-  ["vitaminwater", ["XXX", "Power-C", "Focus", "Energy", "Essential", "Elevate", "Refresh"], ["vw20"]],
-  ["vitaminwater", ["XXX", "Power-C", "Elevate"], ["vw169_6"]],
-  ["vitaminwater", ["Zero Rise", "Zero Squeezed", "Zero XXX", "Zero Power-C", "Zero Re-hydrate", "Zero Shine"], ["vw20"]],
-  ["vitaminwater", ["Zero Rise", "Zero Squeezed", "Zero XXX", "Zero Re-hydrate"], ["vw169_6"]],
-  ["Core Power", ["Chocolate", "Vanilla", "Strawberry Banana"], ["cp14","cp14_4"]],
-  ["Core Power Elite", ["Chocolate", "Vanilla"], ["cp14"]],
-  // Tea, lemonade & juice
-  ["Gold Peak", ["Sweet Tea", "Unsweetened Tea"], ["t185","t185_6","t52"]],
-  ["Gold Peak", ["Diet Tea", "Raspberry Tea", "Green Tea", "Lemonade Tea", "Slightly Sweet Tea"], ["t185"]],
-  ["Peace Tea", ["Just Peachy", "Razzleberry", "Sno-Berry", "Caddy Shack"], ["t16c","t23"]],
-  ["Peace Tea", ["Just Peachy", "Razzleberry", "Caddy Shack"], ["t12_12"]],
-  ["FUZE", ["Lemon + Sweet Tea", "Pineapple + Mango", "Strawberry + Peach", "Watermelon + Lime", "Blueberry + Lemonade"], ["t24","t1l"]],
-  ["FUZE", ["Lemon + Sweet Tea"], ["t12_12"]],
-  ["Minute Maid", ["Lemonade"], ["j12_12", ...MINI, "j169_6","j20","j2l"]],
-  ["Minute Maid", ["Fruit Punch"], ["j12_12","j169_6","j20","j2l"]],
-  ["Minute Maid", ["Pink Lemonade", "Blue Raspberry"], ["j12_12","j20","j2l"]],
-  ["Minute Maid", ["Zero Sugar Lemonade"], ["j12_12","j20"]],
-  ["Minute Maid", ["Peach"], ["j20","j2l"]],
-  ["Minute Maid", ["Tropical Punch", "Berry Punch", "Watermelon Punch", "Kiwi Strawberry", "Pineapple Burst"], ["j20"]],
-  ["Hubert's", ["Lemonade", "Strawberry Guava", "Blackberry Basil", "Tangerine Passionfruit", "Lavender Blueberry Mint", "Pomegranate Limeade"], ["j16"]],
-  ["Hi-C", ["Flashin' Fruit Punch", "Orange Lavaburst", "Torrential Tropical Punch", "Boppin' Strawberry", "Grabbin' Grape", "Strawberry Kiwi Kraze"], ["hc6_8"]],
-  // Energy (Monster family is distributed by Coca-Cola bottlers)
-  ["Monster Energy", ["Original", "Zero Ultra", "Ultra Paradise", "Ultra Violet", "Ultra Red", "Ultra Blue", "Ultra Sunrise", "Lo-Carb", "Mango Loco", "Pipeline Punch", "Pacific Punch", "Rehab Tea + Lemonade"], ["e16"]],
-  ["Monster Energy", ["Original", "Zero Ultra", "Lo-Carb"], ["e16_4","e16_15","e24"]],
-  ["Monster Energy", ["Ultra Paradise", "Ultra Violet", "Mango Loco"], ["e16_4"]],
-  ["Monster Energy", ["Java Mean Bean"], ["e16"]],
-  ["Reign", ["Melon Mania", "Razzle Berry", "Orange Dreamsicle"], ["e16"]],
-  ["NOS", ["Original", "Grape"], ["e16"]],
-  ["Full Throttle", ["Original"], ["e16"]],
-];
-// Products from earlier catalogs that are no longer made. Hidden automatically unless someone has linked them.
-const DISCONTINUED = ["vitaminwater-revive-20oz-bottle-single",
-  // Sizes coca-cola.com no longer lists for these flavors
-  "fanta-peach-12oz-can-12pk", "fanta-peach-2l-bottle-single", "fanta-berry-2l-bottle-single"];
-const BRAND_COLORS = {
-  "Coca-Cola": "#F40009", "Diet Coke": "#8C8F93", "Sprite": "#00843D", "Fanta": "#F58220",
-  "Fresca": "#5E9E47", "Barq's": "#6B3E26", "Mello Yello": "#8DAE1B", "Mr. Pibb": "#7A1B2A", "Simply Pop": "#E4572E",
-  "Topo Chico Sabores": "#C7852B", "Hi-C": "#E03A3E",
-  "Seagram's": "#1D4F91", "Dr Pepper": "#711F25", "Diet Dr Pepper": "#9A9FA5", "Dasani": "#1F7FD1", "smartwater": "#4A90C2", "Topo Chico": "#B8921F",
-  "AHA": "#0E8F9A", "Powerade": "#0057B8", "BODYARMOR": "#D6002A", "BODYARMOR LYTE": "#E0588A", "vitaminwater": "#7B3FA0",
-  "Core Power": "#00205B", "Core Power Elite": "#111B3C",
-  "Gold Peak": "#A87B0A", "Peace Tea": "#D14F86", "FUZE": "#E35205", "Minute Maid": "#D9A400", "Hubert's": "#C99700",
-  "Monster Energy": "#1E1E1E", "Reign": "#5B2BB5", "NOS": "#0055A5", "Full Throttle": "#3A3A3A",
-};
-
-function slug(s) { return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
-
-// Products Coca-Cola renamed. The new name is shown, but the product keeps the id it was
-// created with, so shelf tags and barcodes already linked to it stay linked.
-const RENAMED = {
-  "Mr. Pibb|": "Pibb Xtra|",
-  "Barq's|Zero Sugar Root Beer": "Barq's|Diet Root Beer",
-  "Seagram's|Zero Sugar Ginger Ale": "Seagram's|Diet Ginger Ale",
-  "Peace Tea|Just Peachy": "Peace Tea|Georgia Peach",
-  "smartwater|Alkaline with Antioxidant": "smartwater|Alkaline",
-  "Sprite|Zero Sugar": "Sprite|Zero",
-  "Mello Yello|Zero Sugar": "Mello Yello|Zero",
-  "Fanta|Zero Sugar Orange": "Fanta|Orange Zero",
-};
-function buildSeedProducts() {
-  const out = [], seen = new Set();
-  for (const [brand, flavors, fmts] of SEED_LINES) {
-    for (const flavor of flavors) {
-      for (const f of fmts) {
-        const fmt = FORMATS[f];
-        const [idBrand, idFlavor] = (RENAMED[`${brand}|${flavor}`] || `${brand}|${flavor}`).split("|");
-        const id = slug(`${idBrand} ${idFlavor} ${fmt.size} ${fmt.pack}`);
-        if (seen.has(id)) continue;
-        seen.add(id);
-        out.push({ id, brand, flavor, size: fmt.size, pack: fmt.pack, category: fmt.category,
-                   unit: fmt.unit, img: "", custom: false, retired: false, updated: 0 });
-      }
-    }
-  }
-  for (const [brand, flavors] of EXTRA_VARIATIONS) for (const flavor of flavors) {
-    const id = slug(`${brand} ${flavor || "plain"}`);
-    if (seen.has(id)) continue;
-    seen.add(id);
-    out.push({ id, brand, flavor, size: "", pack: "", category: "Other", unit: "pack", img: "", custom: false, retired: false, updated: 0 });
-  }
-  return out;
-}
-// Starter products always show the app's current name (e.g. after a rename), wherever their data came from.
-let SEED_NAMES = null;
-function canonicalize(products) {
-  SEED_NAMES = SEED_NAMES || Object.fromEntries(buildSeedProducts().map(p => [p.id, p]));
-  for (const p of products) {
-    const s = !p.custom && SEED_NAMES[p.id];
-    if (s && (p.brand !== s.brand || p.flavor !== s.flavor)) { p.brand = s.brand; p.flavor = s.flavor; p._st = undefined; }
-  }
-}
-
-// ---------- Added flavors (checked against the brands' own sites, 2026-10-01) ----------
-// Sources: coca-cola.com/us/en/brands/* product pages, powerade.com/products, drinkbodyarmor.com sitemap, fairlife.com/core-power,
-// monsterenergy.com/en-us/energy-drinks, and Wikipedia's Dr Pepper article (drpepper.com is script-rendered and can't be read here).
-// Sizes and packs don't matter to the list, so each of these is one record with none.
-const EXTRA_VARIATIONS = [
-  ["Coca-Cola", ["Orange Cream", "Starlight", "Starlight Zero Sugar", "Dreamworld", "Dreamworld Zero Sugar", "Move", "Move Zero Sugar", "Y3000", "Y3000 Zero Sugar", "Ultimate", "Ultimate Zero Sugar", "Oreo Zero Sugar", "K-Wave Zero Sugar", "Happy Tears Zero Sugar", "Marshmello's", "Marshmello's Zero Sugar", "Byte Zero Sugar"]],
-  ["Simply Pop", ["Orange", "Cherry Pomegranate"]],
-  ["Simply", ["Orange", "Orange Pulp Free", "Orange High Pulp", "Orange Low Acid", "Orange Calcium", "Orange Medium Pulp Calcium and Vitamin D", "Orange Mango", "Orange Pineapple", "Lemonade", "Lemonade Raspberry", "Lemonade Blueberry", "Limeade", "Limeade Cherry", "Grape", "Peach", "Apple", "Cranberry Cocktail", "Fruit Punch", "Watermelon", "Grapefruit", "Pineapple", "Light Orange Pulp Free", "Light Lemonade"]],
-  ["Minute Maid", ["Orange Juice", "Orange Juice Pulp Free", "100% Apple Juice", "Cranberry Apple Raspberry", "Cranberry Grape", "Pineapple Orange", "Peach Mango", "Tropical Blend", "Cranberry Cocktail", "Zero Sugar Mango Passion Fruit", "Zero Sugar Pink Lemonade", "Zero Sugar Fruit Punch", "Zero Sugar Orange Pineapple"]],
-  ["Hi-C", ["Mashin' Mango Melon"]],
-  ["Honest Kids", ["Appley Ever After", "Super Fruit Punch", "Goodness Grapeness", "Bananas About Strawberries", "Strawberry Peachy Keen", "Berry Good Lemonade"]],
-  ["Tum-e Yummies", ["Edgy Orange Burst", "Epic Apple Flip", "Big Berry Blast", "Fruit Punch Party", "Rad Raspberry Zing"]],
-  ["Moxie", ["", "Diet"]],
-  ["Gold Peak", ["Zero Sugar Sweet Tea", "Extra Sweet Tea", "Georgia Peach Tea", "California Raspberry Tea", "Lemon Tea", "Black Tea with Simply Lemonade", "Tea with Simply Raspberry", "Black Tea with Simply Peach"]],
-  ["Topo Chico Sabores", ["Raspberry"]],
-  ["Powerade", ["Island Burst", "Melon", "Zero Strawberry Smash", "Power Water Mountain Berry Blast", "Power Water Strawberry Kiwi", "Power Water Tropical Pineapple", "Power Water Watermelon", "Xtra Sour Green Apple", "Xtra Sour Peach Pucker"]],
-  ["BODYARMOR", ["Blackout Berry", "Pineapple Coconut", "Strawberry Grape", "Tropical Passionfruit", "Zero Sugar Cherry Berry Lemonade", "Zero Sugar Cherry Lime", "Zero Sugar Fruit Punch", "Zero Sugar Lemon Lime", "Zero Sugar Orange", "Zero Sugar Watermelon Strawberry",
-    "Fit Citrus Grapefruit", "Fit Mixed Berry", "Fit Orange Mango", "Fit Tropical Passionfruit", "Fit Watermelon Lime", "Flash IV Cucumber Lime", "Flash IV Grape", "Flash IV Lemon Lime", "Flash IV Orange", "Flash IV Strawberry Kiwi", "Flash IV Tropical Punch"]],
-  ["BODYARMOR LYTE", ["Dragonfruit Berry", "Strawberry Banana"]],
-  ["Core Power Elite", ["Strawberry"]],
-  ["Monster Energy", ["Zero Sugar", "Strawberry Shot", "Zero Sugar Strawberry Shot", "Electric Blue", "Orange Dreamsicle", "Reserve Orange Dreamsicle", "Reserve Peaches n' Crème", "Nitro Super Dry", "Red White Blue Razz", "Punk Punch", "Blue Hawaiian", "Vice Guava", "Wild Passion",
-    "Ultra Strawberry Dreams", "Ultra Peachy Keen", "Ultra Fantasy Ruby Red", "Ultra Fiesta Mango", "Ultra Watermelon", "Ultra Rosá", "Ultra Black",
-    "Java Dubai Chocolate", "Java Loca Moca", "Java Salted Caramel", "Java Café Latte", "Java Irish Crème", "Juice Voodoo Grape", "Juice Strawberry Lemonade", "Juice Viking Berry", "Juice Bad Apple", "Juice Rio Punch", "Rehab Peach Tea", "Rehab Wild Berry Tea", "Rehab Green Tea"]],
-  ["Reign", ["Watermelon Sour Gummy", "White Gummy Bear", "Sour Gummy Worm", "White Haze", "REIGNbow Sherbet", "Lilikoi Lychee"]],
-  ["Dr Pepper", ["Caffeine Free", "Cherry Zero Sugar", "Cream Soda Zero Sugar", "Strawberries and Cream", "Strawberries and Cream Zero Sugar", "Creamy Coconut", "Creamy Coconut Zero Sugar", "Blackberry", "Blackberry Zero Sugar", "Vanilla Float", "Dark Berry", "Cherry Vanilla", "Made with Real Sugar", "Berries and Cream"]],
-  ["Diet Dr Pepper", ["Caffeine Free", "Cherry Vanilla"]],
-  ["NOS", ["Sonic Sour", "Nitro Mango", "Zero Sugar", "Grand Prix Guava", "Active Fruit Punch", "Active Raspberry Lemonade", "Active Acai Blueberry Pomegranate", "Charged Citrus", "Zero Charged Citrus"]],
-  ["Full Throttle", ["True Blue", "Red Apple"]],
-  ["Fanta", ["Ghost Face Punch"]],
-  ["Sprite", ["Winter Spiced Cranberry"]],
-];
-
-// Records left over from earlier imports that duplicate a real product, and products that are no longer made (kept, but no longer recognized).
-const RETIRED_VARIATIONS = new Set(["bodyarmor|lyte sports drink peach mango", "fairlife|core power", "gold peak|raspberry tea", "coca cola|zero sugar caffeine free",
-  // Coca-Cola Creations: coca-cola.com lists every one as no longer available in stores
-  "coca cola|starlight", "coca cola|starlight zero sugar", "coca cola|dreamworld", "coca cola|dreamworld zero sugar", "coca cola|move", "coca cola|move zero sugar", "coca cola|y3000", "coca cola|y3000 zero sugar", "coca cola|ultimate", "coca cola|ultimate zero sugar", "coca cola|oreo zero sugar", "coca cola|k wave zero sugar", "coca cola|happy tears zero sugar", "coca cola|marshmellos", "coca cola|marshmellos zero sugar", "coca cola|byte zero sugar"]);
 // ---------- State ----------
 let state;
 var firstRun = false;   // no saved data at all: a new phone (the practice run offers itself)
@@ -1465,161 +1191,63 @@ var firstRun = false;   // no saved data at all: a new phone (the practice run o
 // (see shelf.js). Notes from 2.x (voice or picked items) are merged into shelves once at start-up.
 function freshState() {
   return {
-    version: 4,
+    version: 5,
     storeName: "",
-    products: buildSeedProducts(),
-    deleted: { products: {} },              // tombstones: id -> time deleted
-    outbox: { products: {} },               // changed since last upload
     notes: [],                              // shelves, newest first (see above)
-    recents: [],
-    stores: ["", "", "", "", ""],
-    recentStores: [],
+    stores: ["", "", "", "", ""],           // the five store spots: the store number in each
+    recentStores: [],                       // store numbers used lately, newest first (kept through Clear)
     storeSpots: {},                         // store number → { lat, lon, n } where it is (2.12, kept through Clear)
-    learned: {},                            // misheard phrase → { name, at } (2.12, kept through Clear)
     texted: {},                             // slot → { before: [photo ids sent], after: [...] } (Text all)
-    displayMemory: {},
-    storeDisplays: {},                      // 3.2: store number → { list: [{ id, area, photo, at, gone }], areas } (the Displays tab; kept through Clear)                      // store number → { at, photos: [thumbnail ids, one per display] } from the last Clear
-    pickUse: { b: {}, f: {} },              // picks per brand (sNorm) and per variation (vKey), so the picker puts them first                       // store numbers used lately, newest first (kept through Clear)            // the five store slots on the Before/After tab: the store number in each
-    shots: [],                              // Before/After photos: { id, at, slot:0-4, when:"after" ("before" for photos from 2.0 and earlier), kind:"aisle"|"display", photo }
-    settings: { beep: true, camOK: false, captureKind: "aisle", baWhen: "before", baKind: "aisle", baSlot: 0, lens: "wide", hapticShutter: true, hapticTaps: true, hideDone: false },
-    sync: { lastPull: 0, lastPush: 0, error: "" },
+    displayMemory: {},                      // 2.9–3.1 "last time" thumbnails (3.2 starts each store's display list from them)
+    storeDisplays: {},                      // 3.2: store number → { list: [{ id, area, photo, at, gone }], areas } (the Displays tab; kept through Clear)
+    shots: [],                              // Before/After photos: { id, at, slot:0-4, when, kind, photo }
+    settings: { beep: true, camOK: false, captureKind: "aisle", baWhen: "before", baKind: "aisle", baSlot: 0, lens: "wide", hapticShutter: true, hapticTaps: true },
   };
 }
-const PRODUCTS_KEY = STORAGE_KEY + ".products";   // the product list on its own, written only when it changes (see save)
 function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) state = JSON.parse(raw); else firstRun = true;
-    if (state && (state.productsApart || !Array.isArray(state.products))) {
-      const p = JSON.parse(localStorage.getItem(PRODUCTS_KEY) || "null");
-      state.products = Array.isArray(p) ? p : buildSeedProducts();   // never lose notes and photos over a missing product list
-    }
   } catch (e) { /* storage unavailable */ }
-  if (!state || !Array.isArray(state.products)) state = freshState();
+  if (!state || typeof state !== "object" || !Array.isArray(state.notes || [])) state = freshState();
   migrate();
 }
 function migrate() {
-  delete state.productsApart;
   const f = freshState();
-  for (const k of ["deleted", "outbox", "sync", "settings"]) state[k] = Object.assign(f[k], state[k] || {});
+  state.settings = Object.assign(f.settings, state.settings || {});
   if (state.settings.haptics === false) { state.settings.hapticShutter = false; state.settings.hapticTaps = false; }   // the single haptics switch of 1.0.0 became two
   delete state.settings.haptics;
-  delete state.settings.smart; delete state.settings.smartV; delete state.settings.smartId;   // smart reading was removed in Beta 5.1.1
-  state.deleted = { products: state.deleted.products || {} };
-  state.outbox = { products: {} };   // 2.0 removed uploading: nothing waits to go anywhere
-  delete state.tags; delete state.config;   // left over from the scanning app
-  // 2.0: no sync. Teammates' notes and photos, the team settings and the saved database key leave this phone.
-  delete state.team; delete state.received;
-  try { localStorage.removeItem(PASS_KEY); localStorage.removeItem("shelfscan.dev"); } catch (e) {}
-  state.recents = state.recents || [];
-  state.pickUse = { b: Object.assign({}, state.pickUse && state.pickUse.b), l: Object.assign({}, state.pickUse && state.pickUse.l), f: Object.assign({}, state.pickUse && state.pickUse.f) };
-  for (const [from, to] of [["diet coke", "coca cola"], ["diet dr pepper", "dr pepper"], ["bodyarmor lyte", "bodyarmor"], ["core power elite", "core power"], ["topo chico sabores", "topo chico"]])
-    if (state.pickUse.b[from]) { state.pickUse.b[to] = (state.pickUse.b[to] || 0) + state.pickUse.b[from]; delete state.pickUse.b[from]; }
-  if (!state.displayMemory || typeof state.displayMemory !== "object") state.displayMemory = {};
-  if (!state.texted || typeof state.texted !== "object") state.texted = {};
-  for (const k of ["storeSpots", "learned", "storeDisplays"]) if (!state[k] || typeof state[k] !== "object" || Array.isArray(state[k])) state[k] = {};
+  // 3.4: what voice notes and the product list kept is gone (the product list was written to its own key since 2.9.2)
+  for (const k of ["products", "productsApart", "deleted", "outbox", "sync", "recents", "pickUse", "learned", "tags", "config", "team", "received"]) delete state[k];
+  try { localStorage.removeItem(STORAGE_KEY + ".products"); localStorage.removeItem(PASS_KEY); localStorage.removeItem("shelfscan.dev"); } catch (e) {}
+  for (const k of ["displayMemory", "texted", "storeSpots", "storeDisplays"]) if (!state[k] || typeof state[k] !== "object" || Array.isArray(state[k])) state[k] = {};
   state.recentStores = (Array.isArray(state.recentStores) ? state.recentStores : []).map(String).filter(Boolean).slice(0, 8);
   state.shots = (Array.isArray(state.shots) ? state.shots : []).filter(s => s && s.photo);
   { const old = Array.isArray(state.stores) ? state.stores : [];   // Beta 7 had six slots; a number in the sixth moves to the fifth when that one is free
     state.stores = Array.from({ length: 5 }, (_, i) => String(old[i] || ""));
     if (old[5] && !state.stores[4]) { state.stores[4] = String(old[5]); for (const s of state.shots) if (s.slot === 5) s.slot = 4; } }
-  if (!state.stores.some(Boolean) && state.storeName) state.stores[0] = String(state.storeName);   // the store already set in More becomes the first slot
-  for (const s of state.shots) { if (s.when !== "after") s.when = "before"; if (s.kind !== "display" && s.kind !== "backstock" && s.kind !== "shelf") s.kind = "aisle"; if (!(s.slot >= 0 && s.slot < 6)) s.slot = 0; }
-  state.notes = (Array.isArray(state.notes) ? state.notes : []).filter(n => !n.dev);   // notes that came from other phones
-  for (const n of state.notes) { delete n.mod; delete n.pushed; delete n._sig; delete n.by; delete n.team; }
-  for (const s of state.shots || []) { delete s.shared; delete s.pushed; }
-  for (const p of state.products) if (p.updated === undefined) p.updated = 0;
-  // Work that was interrupted (app closed, phone ran low on memory) goes back in the queue.
+  if (!state.stores.some(Boolean) && state.storeName) state.stores[0] = String(state.storeName);
+  for (const s of state.shots) { if (s.when !== "after") s.when = "before"; if (s.kind !== "display" && s.kind !== "backstock" && s.kind !== "shelf") s.kind = "aisle"; if (!(s.slot >= 0 && s.slot < 6)) s.slot = 0; delete s.shared; delete s.pushed; }
+  state.notes = (Array.isArray(state.notes) ? state.notes : []).filter(n => n && !n.dev);   // notes that came from other phones
   for (const n of state.notes) {
+    for (const k of ["mod", "pushed", "_sig", "by", "team", "items", "rev", "edited"]) delete n[k];
     n.photos = n.photos || [];
-    if (n.kind !== "display" && n.kind !== "shelf") n.kind = "aisle";   // notes are Aisle or Display (Backstock is photo only)   // notes from before aisle/display were separate
-    if (n.status === "reading") n.status = "heard";
-    // Beta 5.1.2: a note is its words plus the products the matcher found in them (no quantities or dots).
-    delete n.items; delete n.rev; delete n.edited;
+    if (n.kind !== "display" && n.kind !== "shelf") n.kind = "aisle";
     n.ticks = n.ticks || {};
-    if (!n.out || typeof n.out !== "object") n.out = {};   // 2.6: appearances marked "none in the back"
-    if ((n.parts || []).some(p => p.pid)) {   // Beta 5.1.2 notes pointed at exact products: re-read them, keeping their ticks
-      const t = {};
-      for (const k in n.ticks) { if (!n.ticks[k]) continue; const p = k === "?" ? null : productById(k); t[p ? vKey(p) : k] = true; }
-      n.ticks = t; n.parts = undefined;
-    }
-    if (n.status === "done" && n.text && !n.parts) { try { const r = readBlurb(n.text); n.parts = r.parts; n.flag = r.flag; } catch (e) { n.parts = []; n.flag = true; } }
+    if (!n.out || typeof n.out !== "object") n.out = {};
   }
-  // Beta 6.3: the Needed list is organized by brand, so old product-level parts and ticks become brand-level ones.
-  for (const n of state.notes) {
-    if (n.bk >= 3 || n.status !== "done" || !n.text) continue;   // 1 = brand-only (6.3), 2 = Diet Dr Pepper under Dr Pepper, 3 = Diet Coke under Coca-Cola (6.3.5)
-    const byBrand = {};
-    for (const k in n.ticks || {}) { let b = k === "?" ? "?" : k.split("|")[0]; b = { "diet dr pepper": "dr pepper", "diet coke": "coca cola" }[b] || b; (byBrand[b] = byBrand[b] || []).push(!!n.ticks[k]); }
-    try { const r = readBlurb(n.text); n.parts = r.parts; n.flag = r.flag; } catch (e) { n.parts = []; n.flag = true; }
-    n.ticks = {}; for (const b in byBrand) if (byBrand[b].every(Boolean)) n.ticks[b] = true;
-    n.bk = 3;
-  }
-  // New starter products added to the app show up for existing users.
-  const have = new Set(state.products.map(p => p.id));
-  for (const p of buildSeedProducts()) if (!have.has(p.id) && !state.deleted.products[p.id]) state.products.push(p);
-  canonicalize(state.products);
-  for (const p of state.products) if (!p.updated && RETIRED_VARIATIONS.has(vKey(p))) p.retired = true;
-  for (const id of DISCONTINUED) { const p = productById(id); if (p && !p.retired && !p.updated) p.retired = true; }
-  migrateShelves();   // 3.0: 2.x notes become shelves (needs the brands read above)
+  migrateShelves();   // 3.0: 2.x notes become shelves (their brands were read when they were made)
   migrateCats();      // 3.2.2: Coke, Dr Pepper and Sprite became Soda
-  state.version = 4;
-  prodDirty = true;   // the list may have been changed in place above
+  state.version = 5;
 }
-let savedProdRev = null;
 function save() {
   if (tutorialActive) return;   // the practice run keeps the real data set aside; nothing is written until it ends
-  try {
-    const rev = prodRev();
-    if (rev !== savedProdRev) { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(state.products)); savedProdRev = rev; }
-    const { products, ...rest } = state;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...rest, products: [], productsApart: true }));   // an empty list here keeps older versions from resetting
-  }
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
   catch (e) { toast("Couldn't save. Phone storage is full or blocked."); }
 }
 function snapshot() { return JSON.stringify(state); }
-
-const productById = id => state.products.find(p => p.id === id);
-function pName(p) { return p.flavor ? `${p.brand} ${p.flavor}` : p.brand; }
-
-// ---------- Change tracking (what needs uploading) ----------
-function markProduct(id) {
-  prodDirty = true;
-  const p = productById(id); if (!p) return;
-  p.updated = Date.now(); p._st = undefined;
-  delete state.deleted.products[id];
-  state.outbox.products[id] = 1;
-  
-}
-function dropProduct(id) {
-  prodDirty = true;
-  state.products = state.products.filter(p => p.id !== id);
-  state.deleted.products[id] = Date.now();
-  state.outbox.products[id] = 1;
-  
-}
-const shareable = p => { const { _st, ...rest } = p; return rest; };
-function pendingCount() { return Object.keys(state.outbox.products).length; }
-
-// Undo restores an earlier snapshot; anything that differs is re-marked so the undo also uploads.
-function restore(snap) {
-  const prev = state;
-  state = JSON.parse(snap);
-  migrate();
-  const now = Date.now();
-  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-  const prevP = Object.fromEntries(prev.products.map(p => [p.id, p]));
-  const nextP = Object.fromEntries(state.products.map(p => [p.id, p]));
-  for (const id of new Set([...Object.keys(prevP), ...Object.keys(nextP)])) {
-    const a = prevP[id] && { ...shareable(prevP[id]), updated: 0 }, b = nextP[id] && { ...shareable(nextP[id]), updated: 0 };
-    if (same(a, b)) continue;
-    if (nextP[id]) { nextP[id].updated = now; delete state.deleted.products[id]; }
-    else state.deleted.products[id] = now;
-    state.outbox.products[id] = 1;
-  }
-  for (const id in prev.outbox.products) state.outbox.products[id] = 1;
-  state.sync = prev.sync;
-  save(); renderAll(); 
-}
+// Undo: put a snapshot back
+function restore(snap) { state = JSON.parse(snap); migrate(); save(); renderAll(); }
 
 // ---------- Utilities ----------
 const $ = sel => document.querySelector(sel);
@@ -1874,705 +1502,6 @@ function cameraPhoto() {
   });
 }
 
-// ---------- How Whisper writes flavors ----------
-// [brand, flavor, [other ways the flavor may be said or written]]: sound-alikes, plurals, dropped words, spoken forms.
-// Brand misspellings live in BRAND_SPOKEN (resolve.js). Built from checking Whisper's output on every flavor (see .claude/lab/catalog).
-const FLAVOR_ALIASES = [
-  ["Coca-Cola", "Zero Sugar", ["zero", "zero sugar", "zero calorie", "no sugar", "zero sugar coke"]],
-  ["Coca-Cola", "Caffeine-Free", ["caffeine free", "decaf", "no caffeine", "caffeinefree"]],
-  ["Coca-Cola", "Zero Sugar Caffeine-Free", ["zero caffeine free", "caffeine free zero", "caffeine free zero sugar", "decaf zero"]],
-  ["Coca-Cola", "Cherry", ["cherry", "cherry coke", "cherries"]],
-  ["Coca-Cola", "Cherry Zero Sugar", ["cherry zero", "cherry zero sugar", "zero cherry", "zero sugar cherry"]],
-  ["Coca-Cola", "Vanilla", ["vanilla", "vanilla coke"]],
-  ["Coca-Cola", "Vanilla Zero Sugar", ["vanilla zero", "zero vanilla", "zero sugar vanilla"]],
-  ["Coca-Cola", "Cherry Float", ["cherry float", "cherry floats"]],
-  ["Coca-Cola", "Zero Sugar Cherry Float", ["cherry float zero", "zero cherry float", "cherry float zero sugar"]],
-  ["Coca-Cola", "Original (Mexican)", ["mexican", "mexican coke", "mexico", "glass bottle", "mexican coca cola"]],
-  ["Coca-Cola", "Georgia Peach", ["georgia peach", "peach", "georgia"]],
-  ["Coca-Cola", "California Raspberry", ["california raspberry", "raspberry", "california"]],
-  ["Diet Coke", "Caffeine-Free", ["caffeine free", "decaf", "no caffeine"]],
-  ["Diet Coke", "Cherry", ["cherry", "diet cherry", "cherries"]],
-  ["Sprite", "Zero Sugar", ["zero", "zero sugar", "zero calorie"]],
-  ["Sprite", "Chill", ["chill", "chilled", "chills"]],
-  ["Sprite", "Zero Sugar Chill", ["chill zero", "zero chill", "chill zero sugar", "zero sugar chill"]],
-  ["Sprite", "Chill Mango Citrus", ["chill mango", "mango citrus", "mango chill", "chill mango citrus"]],
-  ["Sprite", "Tropical Mix", ["tropical mix", "tropical", "tropic mix", "tropical mixed"]],
-  ["Sprite", "Lymonade", ["lymonade", "lemonade", "lime and lemonade", "limonade", "lymon aid"]],
-  ["Sprite", "Cherry", ["cherry", "cherries"]],
-  ["Sprite", "+ Tea", ["plus tea", "and tea", "with tea", "tea", "sprite tea"]],
-  ["Sprite", "+ Tea Zero Sugar", ["plus tea zero", "tea zero", "tea zero sugar", "zero tea"]],
-  ["Sprite", "+ Tea Peach", ["plus tea peach", "tea peach", "peach tea", "peach"]],
-  ["Sprite", "(Mexican)", ["mexican", "mexico", "glass bottle"]],
-  ["Fanta", "Orange", ["orange", "oranges", "orange soda"]],
-  ["Fanta", "Zero Sugar Orange", ["zero orange", "orange zero", "zero sugar orange", "orange zero sugar"]],
-  ["Fanta", "Strawberry", ["strawberry", "strawberries", "straw berry"]],
-  ["Fanta", "Grape", ["grape", "grapes"]],
-  ["Fanta", "Peach", ["peach", "peaches"]],
-  ["Fanta", "Pineapple", ["pineapple", "pine apple", "pineapples"]],
-  ["Fanta", "Piña Colada", ["pina colada", "pena colada", "peña colada", "pineapple colada", "pina colata", "colada"]],
-  ["Fanta", "Berry", ["berry", "berries", "blue berry"]],
-  ["Fanta", "Orange (Mexican)", ["mexican orange", "orange mexican", "mexico orange", "mexican"]],
-  ["Fresca", "Grapefruit Citrus", ["grapefruit", "grape fruit", "grapefruit citrus", "citrus", "grapefruits"]],
-  ["Fresca", "Black Cherry Citrus", ["black cherry", "black cherry citrus", "cherry"]],
-  ["Fresca", "Peach Citrus", ["peach", "peach citrus", "peaches"]],
-  ["Barq's", "Root Beer", ["root beer", "rootbeer", "root bear", "root beers", "root beer original"]],
-  ["Barq's", "Zero Sugar Root Beer", ["zero root beer", "zero sugar root beer", "root beer zero", "diet root beer", "zero"]],
-  ["Barq's", "Creme Soda French Vanilla", ["cream soda french vanilla", "creme soda", "cream soda", "french vanilla", "french vanilla cream soda"]],
-  ["Barq's", "Red Creme Soda", ["red cream soda", "red creme soda", "red soda"]],
-  ["Mr. Pibb", "Zero Sugar", ["zero", "zero sugar", "zero calorie"]],
-  ["Mr. Pibb", "Thrillin' Vanilla", ["thrilling vanilla", "thrillin vanilla", "thrillin' vanilla", "thrill in vanilla", "thriller vanilla", "vanilla"]],
-  ["Mr. Pibb", "Punchin' Peach", ["punching peach", "punchin peach", "punchin' peach", "punch in peach", "punchy peach", "peach"]],
-  ["Mello Yello", "Zero Sugar", ["zero", "zero sugar", "zero calorie"]],
-  ["Seagram's", "Ginger Ale", ["ginger ale", "ginger ail", "ginger", "ginger aisle", "ginger al"]],
-  ["Seagram's", "Zero Sugar Ginger Ale", ["zero ginger ale", "zero sugar ginger ale", "diet ginger ale", "ginger ale zero", "zero ginger"]],
-  ["Seagram's", "Club Soda", ["club soda", "club sodas", "soda water", "club"]],
-  ["Seagram's", "Seltzer Water", ["seltzer", "selzer", "seltzer water", "seltzers", "sell tzer"]],
-  ["Seagram's", "Tonic", ["tonic", "tonic water", "tonics"]],
-  ["Moxie", "Diet", ["diet", "diet moxie", "zero"]],
-  ["Simply Pop", "Strawberry", ["strawberry", "strawberries"]],
-  ["Simply Pop", "Orange", ["orange", "oranges"]],
-  ["Simply Pop", "Pineapple Mango", ["pineapple mango", "mango pineapple", "pineapple and mango"]],
-  ["Simply Pop", "Cherry Pomegranate", ["cherry pomegranate", "cherry pomegranite", "cherry pom", "pomegranate cherry", "cherry pomegranates"]],
-  ["Simply Pop", "Raspberry", ["raspberry", "raspberries", "rasp berry"]],
-  ["Simply Pop", "Fruit Punch", ["fruit punch", "fruit punches"]],
-  ["Simply Pop", "Citrus Punch", ["citrus punch", "citrus punches", "citrus"]],
-  ["Simply", "Orange", ["orange", "orange juice", "oj", "original orange"]],
-  ["Simply", "Orange Pulp Free", ["pulp free", "no pulp", "pulpfree", "orange pulp free", "pulp-free", "without pulp"]],
-  ["Simply", "Orange High Pulp", ["high pulp", "extra pulp", "lots of pulp", "orange high pulp", "most pulp"]],
-  ["Simply", "Orange Low Acid", ["low acid", "orange low acid", "low acidity"]],
-  ["Simply", "Orange Calcium", ["calcium", "orange calcium", "with calcium"]],
-  ["Simply", "Orange Medium Pulp Calcium and Vitamin D", ["medium pulp", "calcium and vitamin d", "vitamin d", "calcium vitamin d"]],
-  ["Simply", "Orange Mango", ["orange mango", "mango orange", "with mango"]],
-  ["Simply", "Orange Pineapple", ["orange pineapple", "pineapple orange", "with pineapple"]],
-  ["Simply", "Lemonade Raspberry", ["lemonade raspberry", "raspberry lemonade", "lemonade with raspberry"]],
-  ["Simply", "Lemonade Blueberry", ["lemonade blueberry", "blueberry lemonade", "lemonade with blueberry"]],
-  ["Simply", "Limeade Cherry", ["limeade cherry", "cherry limeade", "limeade with cherry"]],
-  ["Simply", "Cranberry Cocktail", ["cranberry cocktail", "cranberry", "cranberry juice"]],
-  ["Simply", "Apple", ["apple", "apple juice"]],
-  ["Simply", "Grape", ["grape", "grape juice"]],
-  ["Simply", "Light Orange Pulp Free", ["light orange", "light pulp free", "light orange pulp free", "simply light orange"]],
-  ["Simply", "Light Lemonade", ["light lemonade", "lite lemonade", "simply light lemonade"]],
-  ["Minute Maid", "Orange Juice", ["orange juice", "orange", "oj", "orange juices"]],
-  ["Minute Maid", "Orange Juice Pulp Free", ["pulp free", "no pulp", "orange juice pulp free", "pulpfree", "pulp-free orange"]],
-  ["Minute Maid", "100% Apple Juice", ["apple juice", "apple", "100 apple", "hundred percent apple juice", "100 percent apple"]],
-  ["Minute Maid", "Cranberry Apple Raspberry", ["cranberry apple raspberry", "cranberry apple", "cran apple raspberry", "cran raspberry"]],
-  ["Minute Maid", "Cranberry Grape", ["cranberry grape", "cran grape", "grape cranberry"]],
-  ["Minute Maid", "Cranberry Cocktail", ["cranberry cocktail", "cranberry", "cran cocktail", "cranberry juice"]],
-  ["Minute Maid", "Pineapple Orange", ["pineapple orange", "orange pineapple"]],
-  ["Minute Maid", "Peach Mango", ["peach mango", "mango peach"]],
-  ["Minute Maid", "Tropical Blend", ["tropical blend", "tropical", "tropical blends"]],
-  ["Minute Maid", "Fruit Punch", ["fruit punch", "fruit punches"]],
-  ["Minute Maid", "Lemonade", ["lemonade", "lemonades", "lemon aid"]],
-  ["Minute Maid", "Tropical Punch", ["tropical punch", "tropical punches"]],
-  ["Minute Maid", "Berry Punch", ["berry punch", "berries punch"]],
-  ["Minute Maid", "Watermelon Punch", ["watermelon punch", "watermelon", "water melon punch"]],
-  ["Minute Maid", "Pink Lemonade", ["pink lemonade", "pink lemon aid", "pink lemonades"]],
-  ["Minute Maid", "Kiwi Strawberry", ["kiwi strawberry", "strawberry kiwi"]],
-  ["Minute Maid", "Blue Raspberry", ["blue raspberry", "blue rasberry", "blue razz"]],
-  ["Minute Maid", "Pineapple Burst", ["pineapple burst", "pineapple bursts"]],
-  ["Minute Maid", "Zero Sugar Lemonade", ["zero lemonade", "zero sugar lemonade", "lemonade zero", "diet lemonade"]],
-  ["Minute Maid", "Zero Sugar Fruit Punch", ["zero fruit punch", "zero sugar fruit punch", "fruit punch zero"]],
-  ["Minute Maid", "Zero Sugar Pink Lemonade", ["zero pink lemonade", "zero sugar pink lemonade", "pink lemonade zero"]],
-  ["Minute Maid", "Zero Sugar Mango Passion Fruit", ["zero mango passion fruit", "mango passion fruit", "mango passionfruit", "zero sugar mango passionfruit"]],
-  ["Minute Maid", "Zero Sugar Orange Pineapple", ["zero orange pineapple", "orange pineapple zero", "zero sugar orange pineapple"]],
-  ["Hi-C", "Flashin' Fruit Punch", ["flashing fruit punch", "flashin fruit punch", "flashin' fruit punch", "flash in fruit punch", "fruit punch"]],
-  ["Hi-C", "Orange Lavaburst", ["orange lava burst", "orange lavaburst", "orange lava brust", "lava burst", "lavaburst", "orange"]],
-  ["Hi-C", "Torrential Tropical Punch", ["torrential tropical punch", "torrential tropic punch", "tropical punch", "torrential"]],
-  ["Hi-C", "Boppin' Strawberry", ["bopping strawberry", "boppin strawberry", "boppin' strawberry", "bop in strawberry", "strawberry"]],
-  ["Hi-C", "Grabbin' Grape", ["grabbing grape", "grabbin grape", "grabbin' grape", "grab in grape", "grape"]],
-  ["Hi-C", "Strawberry Kiwi Kraze", ["strawberry kiwi craze", "strawberry kiwi kraze", "kiwi craze", "strawberry kiwi"]],
-  ["Hi-C", "Mashin' Mango Melon", ["mashing mango melon", "mashin mango melon", "mashin' mango melon", "mash in mango melon", "mango melon"]],
-  ["Honest Kids", "Appley Ever After", ["apple ever after", "appley ever after", "apply ever after", "happily ever after", "appley", "apple"]],
-  ["Honest Kids", "Super Fruit Punch", ["super fruit punch", "fruit punch"]],
-  ["Honest Kids", "Goodness Grapeness", ["goodness grapeness", "goodness grape ness", "goodness grapes", "grapeness", "grape"]],
-  ["Honest Kids", "Bananas About Strawberries", ["bananas about strawberries", "banana about strawberry", "bananas about strawberry", "bananas", "strawberry banana"]],
-  ["Honest Kids", "Strawberry Peachy Keen", ["strawberry peachy keen", "peachy keen", "strawberry peach"]],
-  ["Honest Kids", "Berry Good Lemonade", ["berry good lemonade", "very good lemonade", "berry good", "lemonade"]],
-  ["Tum-e Yummies", "Edgy Orange Burst", ["edgy orange burst", "edgy orange", "orange burst", "orange"]],
-  ["Tum-e Yummies", "Epic Apple Flip", ["epic apple flip", "epic apple", "apple flip", "apple"]],
-  ["Tum-e Yummies", "Big Berry Blast", ["big berry blast", "big berry", "berry blast"]],
-  ["Tum-e Yummies", "Fruit Punch Party", ["fruit punch party", "fruit punch", "punch party"]],
-  ["Tum-e Yummies", "Rad Raspberry Zing", ["rad raspberry zing", "rad raspberry", "raspberry zing", "red raspberry zing"]],
-  ["Hubert's", "Blackberry Basil", ["blackberry basil", "black berry basil", "blackberry basel"]],
-  ["Hubert's", "Lavender Blueberry Mint", ["lavender blueberry mint", "lavender blueberry", "lavender"]],
-  ["Hubert's", "Pomegranate Limeade", ["pomegranate limeade", "pomegranate lime aid", "pomegranite limeade", "pomegranate lime"]],
-  ["Hubert's", "Strawberry Guava", ["strawberry guava", "strawberry guava lemonade", "guava"]],
-  ["Hubert's", "Tangerine Passionfruit", ["tangerine passionfruit", "tangerine passion fruit", "tangerine"]],
-  ["Peace Tea", "Just Peachy", ["just peachy", "just peach", "peachy", "georgia peach"]],
-  ["Peace Tea", "Razzleberry", ["razzleberry", "razzle berry", "razzle berries", "razzleberries", "raspberry"]],
-  ["Peace Tea", "Sno-Berry", ["snoberry", "sno berry", "snow berry", "snowberry", "snow berries"]],
-  ["Peace Tea", "Caddy Shack", ["caddy shack", "caddyshack", "caddy shak", "caddie shack"]],
-  ["Gold Peak", "Sweet Tea", ["sweet tea", "sweetened tea", "sweetened", "sweet", "sweet teas"]],
-  ["Gold Peak", "Zero Sugar Sweet Tea", ["zero sweet tea", "zero sugar sweet tea", "sweet tea zero", "zero sugar tea"]],
-  ["Gold Peak", "Unsweetened Tea", ["on sweetened", "un sweetened", "unsweetened", "unsweet", "un sweet", "unsweetened tea", "unsweetened black tea", "no sugar tea"]],
-  ["Gold Peak", "Green Tea", ["green tea", "sweetened green tea", "green"]],
-  ["Gold Peak", "Extra Sweet Tea", ["extra sweet", "extra sweet tea", "extra sweetened"]],
-  ["Gold Peak", "Slightly Sweet Tea", ["slightly sweet", "slightly sweet tea", "lightly sweet", "lightly sweetened"]],
-  ["Gold Peak", "Georgia Peach Tea", ["georgia peach", "georgia peach tea", "peach tea", "peach"]],
-  ["Gold Peak", "California Raspberry Tea", ["california raspberry", "california raspberry tea", "raspberry tea", "raspberry"]],
- ["Gold Peak", "Lemon Tea", ["lemon tea", "lemon", "tea with lemon"]],
-  ["Gold Peak", "Lemonade Tea", ["lemonade tea", "tea and lemonade", "tea lemonade", "tea & lemonade", "half and half"]],
-  ["Gold Peak", "Diet Tea", ["diet tea", "diet", "zero tea"]],
-  ["Gold Peak", "Black Tea with Simply Lemonade", ["simply lemonade", "tea with simply lemonade", "black tea simply lemonade"]],
-  ["Gold Peak", "Tea with Simply Raspberry", ["simply raspberry", "tea with simply raspberry"]],
-  ["Gold Peak", "Black Tea with Simply Peach", ["simply peach", "tea with simply peach", "black tea simply peach"]],
-  ["FUZE", "Lemon + Sweet Tea", ["lemon sweet tea", "lemon and sweet tea", "lemon plus sweet tea", "lemon tea", "lemon"]],
-  ["FUZE", "Pineapple + Mango", ["pineapple mango", "mango pineapple", "pineapple and mango", "mango and pineapple"]],
-  ["FUZE", "Strawberry + Peach", ["strawberry peach", "strawberry and peach", "strawberry plus peach", "peach strawberry"]],
-  ["FUZE", "Watermelon + Lime", ["watermelon lime", "watermelon and lime", "water melon lime"]],
-  ["FUZE", "Blueberry + Lemonade", ["blueberry lemonade", "blueberry and lemonade", "blue berry lemonade"]],
-  ["vitaminwater", "XXX", ["triple x", "triple ex", "three x", "x x x", "xxx", "triple eggs", "acai blueberry pomegranate"]],
-  ["vitaminwater", "Zero XXX", ["zero triple x", "zero x x x", "triple x zero", "zero xxx"]],
-  ["vitaminwater", "Power-C", ["power c", "power see", "power sea", "powerc", "power-c", "dragonfruit"]],
-  ["vitaminwater", "Zero Power-C", ["zero power c", "power c zero", "zero power see"]],
-  ["vitaminwater", "Zero Re-hydrate", ["rehydrate", "re hydrate", "rehydrate zero", "zero rehydrate", "re-hydrate", "hydrate"]],
-  ["vitaminwater", "Zero Squeezed", ["squeezed", "zero squeezed", "squeeze", "zero squeeze"]],
-  ["vitaminwater", "Zero Shine", ["shine", "zero shine"]],
-  ["vitaminwater", "Zero Rise", ["rise", "zero rise", "rise zero"]],
-  ["vitaminwater", "Elevate", ["elevate", "elevated", "a levate", "elevate blue raspberry"]],
-  ["vitaminwater", "Refresh", ["refresh", "refreshed"]],
-  ["vitaminwater", "Focus", ["focus", "focused"]],
-  ["vitaminwater", "Essential", ["essential", "essentials"]],
-  ["vitaminwater", "Energy", ["energy", "energize"]],
-  ["Topo Chico", "Mineral Water", ["mineral water", "mineral", "original", "plain", "regular", "topo chico mineral"]],
-  ["Topo Chico", "Twist of Lime", ["twist of lime", "lime", "twist lime", "lime twist", "twist of lyme"]],
-  ["Topo Chico", "Grapefruit", ["grapefruit", "twist of grapefruit", "grape fruit", "grapefruit twist"]],
-  ["Topo Chico Sabores", "Passionfruit", ["passion fruit", "passionfruit", "passion"]],
-  ["Topo Chico Sabores", "Tangerine with Ginger", ["tangerine with ginger", "tangerine ginger", "tangerine and ginger", "tangerine"]],
-  ["Topo Chico Sabores", "Lime with Mint", ["lime with mint", "lime mint", "lime and mint"]],
-  ["Topo Chico Sabores", "Blueberry with Hibiscus", ["blueberry with hibiscus", "blueberry hibiscus", "blueberry and hibiscus", "hibiscus"]],
-  ["Topo Chico Sabores", "Raspberry with Lemon", ["raspberry with lemon", "raspberry lemon", "raspberry and lemon"]],
-  ["Topo Chico Sabores", "Tropical Mango", ["tropical mango", "mango", "tropical"]],
-  ["smartwater", "Alkaline with Antioxidant", ["alkaline", "alkaline with antioxidant", "alkaline water", "antioxidant", "alkaline antioxidant", "alkalized"]],
-  ["AHA", "Blackberry Lemon", ["blackberry lemon", "blackberry and lemon", "blackberry plus lemon", "black berry lemon"]],
-  ["AHA", "Blueberry Pomegranate", ["blueberry pomegranate", "blueberry pomegranite", "blue berry pomegranate"]],
-  ["AHA", "Lime Watermelon", ["lime watermelon", "lime and watermelon", "watermelon lime"]],
-  ["AHA", "Orange Grapefruit", ["orange grapefruit", "orange and grapefruit", "grapefruit orange"]],
-  ["AHA", "Peach Honey", ["peach honey", "peach and honey", "honey peach"]],
-  ["AHA", "Pineapple Passionfruit", ["pineapple passionfruit", "pineapple passion fruit", "pineapple and passionfruit", "pineapple plus passionfruit"]],
-  ["Powerade", "Mountain Berry Blast", ["mountain berry blast", "mountain berry", "mountain berries blast", "berry blast", "mbb", "mountain blast"]],
-  ["Powerade", "Fruit Punch", ["fruit punch", "fruit punches"]],
-  ["Powerade", "Lemon Lime", ["lemon lime", "lemon and lime", "lemon-lime", "lemon line"]],
-  ["Powerade", "Strawberry Lemonade", ["strawberry lemonade", "strawberry lemon aid"]],
-  ["Powerade", "Island Burst", ["island burst", "island bursts", "eye land burst"]],
-  ["Powerade", "Glacier Cherry", ["glacier cherry", "glacial cherry", "glacier cherries"]],
-  ["Powerade", "Zero Mixed Berry", ["zero mixed berry", "mixed berry zero", "mixed berry", "zero mix berry"]],
-  ["Powerade", "Zero Fruit Punch", ["zero fruit punch", "fruit punch zero"]],
-  ["Powerade", "Zero Grape", ["zero grape", "grape zero"]],
-  ["Powerade", "Zero Orange", ["zero orange", "orange zero"]],
-  ["Powerade", "Zero Lemon Lime", ["zero lemon lime", "lemon lime zero"]],
-  ["Powerade", "Zero Strawberry Smash", ["zero strawberry smash", "strawberry smash", "strawberry smash zero"]],
-  ["Powerade", "Zero Strawberry Lemonade", ["zero strawberry lemonade", "strawberry lemonade zero"]],
-  ["Powerade", "Xtra Sour Green Apple", ["extra sour green apple", "xtra sour green apple", "extra sour apple", "sour green apple", "green apple", "x tra sour green apple"]],
-  ["Powerade", "Xtra Sour Peach Pucker", ["extra sour peach pucker", "xtra sour peach pucker", "peach pucker", "sour peach", "extra sour peach"]],
-  ["Powerade", "Power Water Mountain Berry Blast", ["power water mountain berry blast", "power water mountain berry"]],
-  ["Powerade", "Power Water Strawberry Kiwi", ["power water strawberry kiwi", "power water strawberry", "strawberry kiwi power water"]],
-  ["Powerade", "Power Water Tropical Pineapple", ["power water tropical pineapple", "power water tropical", "power water pineapple"]],
-  ["Powerade", "Power Water Watermelon", ["power water watermelon", "power water water melon"]],
-  ["BODYARMOR", "Fruit Punch", ["fruit punch", "fruit punches"]],
-  ["BODYARMOR", "Strawberry Banana", ["strawberry banana", "banana strawberry", "strawberry bananas"]],
-  ["BODYARMOR", "Tropical Punch", ["tropical punch", "tropical punches"]],
-  ["BODYARMOR", "Orange Mango", ["orange mango", "mango orange", "orange and mango"]],
-  ["BODYARMOR", "Blue Raspberry", ["blue raspberry", "blue rasberry", "blue razz"]],
-  ["BODYARMOR", "Mixed Berry", ["mixed berry", "mix berry", "mixed berries", "berry mix"]],
-  ["BODYARMOR", "Watermelon Strawberry", ["watermelon strawberry", "strawberry watermelon", "water melon strawberry"]],
-  ["BODYARMOR", "Cherry Lime", ["cherry lime", "cherry and lime", "cherry lyme"]],
-  ["BODYARMOR", "Kiwi Strawberry", ["kiwi strawberry", "strawberry kiwi"]],
-  ["BODYARMOR", "Blackout Berry", ["blackout berry", "black out berry", "blackout berries", "black berry"]],
-  ["BODYARMOR", "Pineapple Coconut", ["pineapple coconut", "pineapple and coconut", "pina colada"]],
-  ["BODYARMOR", "Strawberry Grape", ["strawberry grape", "grape strawberry"]],
-  ["BODYARMOR", "Tropical Passionfruit", ["tropical passionfruit", "tropical passion fruit", "passion fruit", "passionfruit"]],
-  ["BODYARMOR", "SportWater", ["sport water", "sports water", "sportwater", "sport waters", "water"]],
-  ["BODYARMOR", "Zero Sugar Cherry Berry Lemonade", ["cherry berry lemonade", "zero cherry berry lemonade", "zero sugar cherry berry lemonade"]],
-  ["BODYARMOR", "Zero Sugar Cherry Lime", ["zero cherry lime", "zero sugar cherry lime", "cherry lime zero"]],
-  ["BODYARMOR", "Zero Sugar Fruit Punch", ["zero fruit punch", "zero sugar fruit punch", "fruit punch zero"]],
-  ["BODYARMOR", "Zero Sugar Lemon Lime", ["zero lemon lime", "zero sugar lemon lime", "lemon lime zero"]],
-  ["BODYARMOR", "Zero Sugar Orange", ["zero orange", "zero sugar orange", "orange zero"]],
-  ["BODYARMOR", "Zero Sugar Watermelon Strawberry", ["zero watermelon strawberry", "zero sugar watermelon strawberry", "watermelon strawberry zero"]],
-  ["BODYARMOR", "Fit Citrus Grapefruit", ["fit citrus grapefruit", "fit grapefruit", "fit citrus", "body armor fit grapefruit"]],
-  ["BODYARMOR", "Fit Mixed Berry", ["fit mixed berry", "fit berry"]],
-  ["BODYARMOR", "Fit Orange Mango", ["fit orange mango", "fit mango"]],
-  ["BODYARMOR", "Fit Tropical Passionfruit", ["fit tropical passionfruit", "fit passionfruit", "fit passion fruit"]],
-  ["BODYARMOR", "Fit Watermelon Lime", ["fit watermelon lime", "fit watermelon"]],
-  ["BODYARMOR", "Flash IV Cucumber Lime", ["flash iv cucumber lime", "flash i v cucumber lime", "flash four cucumber lime", "flash cucumber lime", "cucumber lime"]],
-  ["BODYARMOR", "Flash IV Grape", ["flash iv grape", "flash i v grape", "flash four grape", "flash grape"]],
-  ["BODYARMOR", "Flash IV Lemon Lime", ["flash iv lemon lime", "flash i v lemon lime", "flash four lemon lime", "flash lemon lime"]],
-  ["BODYARMOR", "Flash IV Orange", ["flash iv orange", "flash i v orange", "flash four orange", "flash orange"]],
-  ["BODYARMOR", "Flash IV Strawberry Kiwi", ["flash iv strawberry kiwi", "flash i v strawberry kiwi", "flash four strawberry kiwi", "flash strawberry kiwi"]],
-  ["BODYARMOR", "Flash IV Tropical Punch", ["flash iv tropical punch", "flash i v tropical punch", "flash four tropical punch", "flash tropical punch"]],
-  ["BODYARMOR LYTE", "Blueberry Pomegranate", ["blueberry pomegranate", "blueberry pomegranite", "blue berry pomegranate"]],
-  ["BODYARMOR LYTE", "Peach Mango", ["peach mango", "mango peach"]],
-  ["BODYARMOR LYTE", "Tropical Coconut", ["tropical coconut", "coconut", "tropical cocoanut"]],
-  ["BODYARMOR LYTE", "Berry Punch", ["berry punch", "berries punch"]],
-  ["BODYARMOR LYTE", "Dragonfruit Berry", ["dragonfruit berry", "dragon fruit berry", "dragon fruit", "dragonfruit"]],
-  ["BODYARMOR LYTE", "Strawberry Banana", ["strawberry banana", "banana strawberry"]],
-  ["Core Power", "Strawberry Banana", ["strawberry banana", "banana strawberry", "strawberry"]],
-  ["Core Power Elite", "Strawberry", ["strawberry", "strawberries"]],
-  ["Dr Pepper", "Zero Sugar", ["zero", "zero sugar", "zero calorie"]],
-  ["Dr Pepper", "Cherry", ["cherry", "cherries"]],
-  ["Dr Pepper", "Cherry Zero Sugar", ["cherry zero", "zero cherry", "cherry zero sugar", "zero sugar cherry"]],
-  ["Dr Pepper", "Cream Soda", ["cream soda", "and cream soda", "creme soda"]],
-  ["Dr Pepper", "Cream Soda Zero Sugar", ["cream soda zero", "zero cream soda", "zero sugar cream soda", "and cream soda zero"]],
-  ["Dr Pepper", "Strawberries and Cream", ["strawberries and cream", "strawberries & cream", "strawberry and cream", "strawberries n cream", "strawberry cream", "strawberries cream"]],
-  ["Dr Pepper", "Strawberries and Cream Zero Sugar", ["strawberries and cream zero", "zero strawberries and cream", "strawberry cream zero", "strawberries cream zero"]],
-  ["Dr Pepper", "Creamy Coconut", ["creamy coconut", "cream coconut", "coconut", "creamy cocoanut"]],
-  ["Dr Pepper", "Creamy Coconut Zero Sugar", ["creamy coconut zero", "coconut zero", "zero creamy coconut", "zero coconut"]],
-  ["Dr Pepper", "Blackberry", ["blackberry", "black berry", "blackberries"]],
-  ["Dr Pepper", "Blackberry Zero Sugar", ["blackberry zero", "zero blackberry", "black berry zero"]],
-  ["Dr Pepper", "Vanilla Float", ["vanilla float", "vanilla floats", "float"]],
-  ["Dr Pepper", "Dark Berry", ["dark berry", "dark berries", "darkberry"]],
-  ["Dr Pepper", "Cherry Vanilla", ["cherry vanilla", "vanilla cherry"]],
-  ["Dr Pepper", "Caffeine Free", ["caffeine free", "decaf", "no caffeine"]],
-  ["Dr Pepper", "Made with Real Sugar", ["real sugar", "made with real sugar", "made with sugar", "cane sugar"]],
-  ["Monster Energy", "Original", ["original", "regular", "og", "o g"]],
-  ["Monster Energy", "Zero Sugar", ["zero sugar", "zero", "zero calorie"]],
-  ["Monster Energy", "Zero Ultra", ["zero ultra", "ultra white", "white monster", "white", "ultra zero"]],
-  ["Monster Energy", "Strawberry Shot", ["strawberry shot", "strawberry shots"]],
-  ["Monster Energy", "Zero Sugar Strawberry Shot", ["zero strawberry shot", "zero sugar strawberry shot", "strawberry shot zero"]],
-  ["Monster Energy", "Electric Blue", ["electric blue", "electric blues"]],
-  ["Monster Energy", "Orange Dreamsicle", ["orange dreamsicle", "orange dream sickle", "orange dream sicle", "orange dreamsicles", "dreamsicle"]],
-  ["Monster Energy", "Reserve Orange Dreamsicle", ["reserve orange dreamsicle", "reserve dreamsicle"]],
-  ["Monster Energy", "Reserve Peaches n' Crème", ["peaches and cream", "peaches n cream", "peaches and creme", "peaches n creme", "reserve peaches and cream", "peaches cream"]],
-  ["Monster Energy", "Nitro Super Dry", ["nitro super dry", "nitro superdry", "nitro", "super dry"]],
-  ["Monster Energy", "Lo-Carb", ["lo carb", "low carb", "locarb", "lo-carb", "low carbs"]],
-  ["Monster Energy", "Red White Blue Razz", ["red white blue razz", "red white and blue razz", "red white blue", "rwb razz", "red white and blue"]],
-  ["Monster Energy", "Punk Punch", ["punk punch", "punk punches"]],
-  ["Monster Energy", "Blue Hawaiian", ["blue hawaiian", "blue hawaii", "blue hawaiians"]],
-  ["Monster Energy", "Vice Guava", ["vice guava", "vise guava", "vice guave", "guava"]],
-  ["Monster Energy", "Wild Passion", ["wild passion", "wild passions"]],
-  ["Monster Energy", "Mango Loco", ["mango loco", "mango local", "mango low co", "mango loko", "mango crazy"]],
-  ["Monster Energy", "Pipeline Punch", ["pipeline punch", "pipe line punch", "pipeline punches"]],
-  ["Monster Energy", "Pacific Punch", ["pacific punch", "pacific punches"]],
-  ["Monster Energy", "Ultra Strawberry Dreams", ["ultra strawberry dreams", "strawberry dreams", "strawberry dream"]],
-  ["Monster Energy", "Ultra Sunrise", ["ultra sunrise", "sunrise", "sun rise"]],
-  ["Monster Energy", "Ultra Violet", ["ultra violet", "violet", "ultraviolet"]],
-  ["Monster Energy", "Ultra Peachy Keen", ["ultra peachy keen", "peachy keen", "peachy keen ultra"]],
-  ["Monster Energy", "Ultra Fantasy Ruby Red", ["ultra fantasy ruby red", "fantasy ruby red", "ruby red", "fantasy ruby"]],
-  ["Monster Energy", "Ultra Paradise", ["ultra paradise", "paradise", "ultra paradise zero"]],
-  ["Monster Energy", "Ultra Fiesta Mango", ["ultra fiesta mango", "fiesta mango", "fiesta"]],
-  ["Monster Energy", "Ultra Watermelon", ["ultra watermelon", "watermelon", "ultra water melon"]],
-  ["Monster Energy", "Ultra Rosá", ["ultra rosa", "rosa", "rose", "rosé", "ultra rose"]],
-  ["Monster Energy", "Ultra Red", ["ultra red"]],
-  ["Monster Energy", "Ultra Blue", ["ultra blue"]],
-  ["Monster Energy", "Ultra Black", ["ultra black"]],
-  ["Monster Energy", "Java Mean Bean", ["mean bean", "java mean bean", "mean been", "meme bean", "mean beans"]],
-  ["Monster Energy", "Java Dubai Chocolate", ["dubai chocolate", "java dubai chocolate", "dubai", "dubai chocolates"]],
-  ["Monster Energy", "Java Loca Moca", ["loca moca", "loco moca", "local moca", "java loca moca", "loca moka", "low co moca"]],
-  ["Monster Energy", "Java Salted Caramel", ["salted caramel", "java salted caramel", "salt caramel", "salted caramels"]],
-  ["Monster Energy", "Java Café Latte", ["cafe latte", "café latte", "java cafe latte", "coffee latte", "caffe latte", "cafe late"]],
-  ["Monster Energy", "Java Irish Crème", ["irish creme", "irish cream", "java irish creme", "irish crème", "irish cream coffee"]],
-  ["Monster Energy", "Juice Voodoo Grape", ["voodoo grape", "voodoo", "voodoo grapes", "juice voodoo grape"]],
-  ["Monster Energy", "Juice Strawberry Lemonade", ["juice strawberry lemonade", "monster strawberry lemonade"]],
-  ["Monster Energy", "Juice Viking Berry", ["viking berry", "viking berries", "juice viking berry", "viking"]],
-  ["Monster Energy", "Juice Bad Apple", ["bad apple", "bad apples", "juice bad apple"]],
-  ["Monster Energy", "Juice Rio Punch", ["rio punch", "juice rio punch", "reo punch"]],
-  ["Monster Energy", "Rehab Tea + Lemonade", ["rehab tea and lemonade", "rehab tea lemonade", "rehab lemonade", "tea and lemonade", "tea lemonade"]],
-  ["Monster Energy", "Rehab Peach Tea", ["rehab peach tea", "rehab peach", "peach tea"]],
-  ["Monster Energy", "Rehab Wild Berry Tea", ["rehab wild berry tea", "rehab wild berry", "wild berry tea", "wild berry"]],
-  ["Monster Energy", "Rehab Green Tea", ["rehab green tea", "rehab green", "green tea"]],
-  ["Reign", "Melon Mania", ["melon mania", "melon manea", "watermelon mania"]],
-  ["Reign", "Orange Dreamsicle", ["orange dreamsicle", "orange dream sickle", "dreamsicle"]],
-  ["Reign", "Watermelon Sour Gummy", ["watermelon sour gummy", "sour gummy watermelon", "watermelon gummy", "water melon sour gummy"]],
-  ["Reign", "White Gummy Bear", ["white gummy bear", "white gummy bears", "white gummy", "gummy bear"]],
-  ["Reign", "Sour Gummy Worm", ["sour gummy worm", "sour gummy worms", "gummy worm", "gummy worms"]],
-  ["Reign", "White Haze", ["white haze", "white hay s", "white haze energy"]],
-  ["Reign", "REIGNbow Sherbet", ["reignbow sherbet", "rainbow sherbet", "reign bow sherbet", "rainbow sherbert", "sherbet", "sherbert"]],
-  ["Reign", "Lilikoi Lychee", ["lilikoi lychee", "lilikoi lichee", "lily koi lychee", "lilikoi lychee", "lychee", "lichee", "lilikoi"]],
-  ["Reign", "Razzle Berry", ["razzle berry", "razzleberry", "razz berry"]],
-  ["Dasani", "Purified Water", ["purified", "purified water", "water", "plain water"]],
-  ["Dr Pepper", "Berries and Cream", ["berries and cream", "berries & cream", "berry and cream", "berries n cream", "berry cream"]],
-  ["Diet Dr Pepper", "Caffeine Free", ["caffeine free", "caffeine free diet", "decaf", "no caffeine", "diet caffeine free"]],
-  ["Diet Dr Pepper", "Cherry Vanilla", ["cherry vanilla", "vanilla cherry", "diet cherry vanilla"]],
-  ["NOS", "Grape", ["gt grape", "g t grape", "grape"]],
-  ["NOS", "Sonic Sour", ["sonic sour", "sonic sower", "sonic", "sour"]],
-  ["NOS", "Nitro Mango", ["nitro mango", "night row mango", "nitro mangoes"]],
-  ["NOS", "Zero Sugar", ["zero", "zero sugar"]],
-  ["NOS", "Grand Prix Guava", ["grand prix guava", "grand pre guava", "grand prix", "guava"]],
-  ["NOS", "Active Fruit Punch", ["active fruit punch", "fruit punch"]],
-  ["NOS", "Active Raspberry Lemonade", ["active raspberry lemonade", "raspberry lemonade"]],
-  ["NOS", "Active Acai Blueberry Pomegranate", ["active acai blueberry pomegranate", "acai blueberry pomegranate", "acai", "a sigh"]],
-  ["NOS", "Charged Citrus", ["charged citrus", "charge citrus"]],
-  ["NOS", "Zero Charged Citrus", ["zero charged citrus", "charged citrus zero", "zero citrus"]],
-  ["Full Throttle", "True Blue", ["true blue", "true blues", "blue"]],
-  ["Full Throttle", "Red Apple", ["red apple", "apple"]],
-  ["Fanta", "Ghost Face Punch", ["ghost face punch", "ghost face", "ghostface punch", "ghostface", "ghost punch"]],
-  ["Sprite", "Winter Spiced Cranberry", ["winter spiced cranberry", "winter spice cranberry", "spiced cranberry", "cranberry", "winter cranberry"]],
-  ["Coca-Cola", "Orange Cream", ["orange cream", "orange creme", "creamsicle", "orange cream soda"]],
-  ["Coca-Cola", "Caffeine-Free Zero Sugar", ["caffeine free zero", "zero caffeine free", "zero sugar caffeine free", "caffeine free zero sugar", "caffeine free coke zero", "decaf zero", "zero decaf"]],
-  ["Coca-Cola", "Zero Sugar Cherry Float", ["cherry float zero", "cherry float zero sugar", "zero cherry float", "zero sugar cherry float", "float zero"]],
-];
-// ---------- Turning what was said into catalog products ----------
-// The language model splits a note into items ("diet coke 12 pack" x 3); this code finds the closest real product.
-// Ported from the benchmark lab (.claude/lab/bench), where this combination read 36 to 42 of 49 test notes fully right.
-const sNorm = s => String(s ?? "").toLowerCase().replace(/[’'`]/g, "").replace(/[^a-z0-9. ]+/g, " ").replace(/\s+/g, " ").trim();
-function lev(a, b) {
-  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
-  for (let j = 1; j <= b.length; j++) d[0][j] = j;
-  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
-    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-  return d[a.length][b.length];
-}
-// Spoken / misheard forms of each brand → catalog brand.
-const BRAND_SPOKEN = {
-  "Coca-Cola": ["coke", "coca cola", "cocacola", "coke classic", "coco cola", "cocoa cola", "coca coal", "regular coke", "classic coke"],
-  "Diet Coke": ["diet coke", "diet cola", "diet coat", "diet cope", "diet cook", "diet cokes"],
-  "Mello Yello": ["mellow yellow", "mello yello", "mello", "mellow yello", "melo yellow", "mello yellow", "melo yelo"],
-  "Mr. Pibb": ["mr pibb", "mister pibb", "pibb", "pibb xtra", "mr pib", "mr pip", "mister pib", "mr pibs", "mr bib", "mister pip"],
-  "Seagram's": ["seagrams", "sea grams", "seagram", "seagram s", "sea gram", "see grams", "seagrams s", "sea gram s", "see graham s", "see grahams", "see gram", "see gram s", "c grams", "c gram", "seed grams", "sea graham s"],
-  "Barq's": ["barqs", "barks", "bark s", "barq", "bark", "barkes", "barques", "bar ks"],
-  "Dr Pepper": ["dr pepper", "doctor pepper", "drpepper", "dr pepa", "doctor peppa", "dr peppers", "doctor peppers"],
-  "Diet Dr Pepper": ["diet dr pepper", "diet doctor pepper", "diet dr pepa"],
-  "Powerade": ["powerade", "power aid", "power ade", "powerate", "power aide", "powerade s", "power raid", "power rate", "power water", "powerwater", "power aides", "power raids"],
-  "BODYARMOR": ["body armor", "bodyarmor", "body armour", "bodyarmour", "body arm or", "buddy armor", "body armors"],
-  "BODYARMOR LYTE": ["body armor", "body armour", "bodyarmor", "bodyarmour"].flatMap(b => ["lyte", "light", "lite"].map(s => `${b} ${s}`)),
-  "vitaminwater": ["vitamin water", "vitaminwater", "vitamin waters", "vitamin wader", "vitamin waiter"],
-  "smartwater": ["smart water", "smartwater", "smart waters", "smart wader"],
-  "Topo Chico": ["topo chico", "topochico", "topo chicco", "tulo chico", "topo cheeko", "toppo chico", "topo chica", "topo chicos", "topo chico s"],
-  "Topo Chico Sabores": ["topo chico sabores", "topo chico savores", "topo chico sabors", "sabores"],
-  "Minute Maid": ["minute maid", "minute made", "minute mate", "minute maids", "minutemaid"],
-  "Peace Tea": ["peace tea", "piece tea", "peas tea", "peace t", "peace teas", "piece t", "piece to", "peace to", "peace tee", "piece tee", "pease tea", "peas t"],
-  "Gold Peak": ["gold peak", "gold pique", "gold peek", "goldpeak", "gold peaks"],
-  "Hi-C": ["hi c", "high c", "hic", "hi see", "high see", "hy c", "hi-c", "high sea", "hi sea", "hy sea", "high seed", "hi seed", "high c s"],
-  "Hubert's": ["huberts", "hubert s", "hubert", "hugh berts", "hubberts", "hubbert s"],
-  "Honest Kids": ["honest kids", "honest kid", "honesty kids", "honest tea kids"],
-  "Tum-e Yummies": ["tum e yummies", "tummy yummies", "tumi yummies", "tum e yummy", "tumeyummies", "tummy yummy", "tum yummies"],
-  "Moxie": ["moxie", "moxy", "maxie", "moxi"],
-  "Fresca": ["fresca", "fresco", "frescas", "fresh ca", "fresk a"],
-  "Fanta": ["fanta", "fonta", "phanta", "fantah", "fantas", "fanta s", "font a", "font of", "fonda", "fonte", "fontah"],
-  "Sprite": ["sprite", "spright", "sprites", "sprit"],
-  "Simply": ["simply", "simply s"],
-  "Simply Pop": ["simply pop", "simple pop", "simply pap", "simply pops"],
-  "FUZE": ["fuze", "fuse", "fews", "fuze tea", "fuse tea", "few tea", "fuze s"],
-  "AHA": ["aha", "a ha", "ah ha", "ahah", "aha sparkling", "ah ah"],
-  "Dasani": ["dasani", "da sani", "dazani", "dassani", "desani", "dasanny", "da zanny", "dasanis"],
-  "Core Power": ["core power", "corepower", "core powers"],
-  "Core Power Elite": ["core power elite", "corepower elite"],
-  "fairlife": ["fairlife", "fair life", "fair lives"],
-  "Reign": ["reign", "reign energy", "reign total body fuel", "rain", "rain energy", "rein", "rain total body fuel"],
-  "NOS": ["nos", "n o s", "n.o.s", "nos energy", "an os", "an o s", "nose", "nos s"],
-  "Monster Energy": ["monster", "monster energy", "monsters"],
-  "Full Throttle": ["full throttle", "full throttel", "full throttles"],
-};
-const BRAND_ALIASES = {};
-for (const [brand, list] of Object.entries(BRAND_SPOKEN)) for (const a of list) BRAND_ALIASES[a] = brand;let brandIdx = null, brandIdxFor = -1;
-// Changes whenever the product list is swapped for another (Undo, Restore, Reset) or a product is added, removed, edited or retired.
-let prodRevN = 0, prodRevFor = null, prodRevSig = "", prodRevLen = -1;
-var prodDirty = true;   // set when the product list is changed in place (markProduct, dropProduct, start-up); a new list is noticed by itself
-function prodRev() {
-  const list = state.products;
-  if (!prodDirty && list === prodRevFor && list.length === prodRevLen) return prodRevN;   // unchanged: no need to walk ~680 products
-  prodDirty = false; prodRevLen = list.length;
-  let sum = 0;
-  for (const p of list) sum += (p.updated || 0) + (p.retired ? 1 : 0);
-  const sig = list.length + ":" + sum;
-  if (list !== prodRevFor || sig !== prodRevSig) { prodRevFor = list; prodRevSig = sig; prodRevN++; }
-  return prodRevN;
-}
-function brandIndex() {
-  const rev = prodRev();
-  if (brandIdx && brandIdxFor === rev) return brandIdx;
-  brandIdx = new Map(); brandIdxFor = rev;
-  for (const b of new Set(state.products.map(p => p.brand))) brandIdx.set(sNorm(b), b);
-  const have = new Set(brandIdx.values());
-  for (const [k, v] of Object.entries(BRAND_ALIASES)) if (have.has(v)) brandIdx.set(sNorm(k), v);
-  return brandIdx;
-}
-const NOT_BRANDS = new Set(["fantasy", "fantastic", "fantasies"]);
-function resolveBrand(text) {
-  const n = sNorm(text), idx = brandIndex();
-  if (!n) return null;
-  if (idx.has(n)) return idx.get(n);
-  if (NOT_BRANDS.has(n)) return null;   // ordinary words that sit one letter from a brand ("fantasy" is not Fanta)
-  let best = null, bestD = 99;
-  for (const [k, v] of idx) { const d = lev(n, k); if (d < bestD) { bestD = d; best = v; } }
-  // A small typo (about 1 letter in 5) is fine; a wholly different word (Gatorade vs Dasani) is not.
-  // Short words must match exactly (otherwise "bare" becomes Barq's).
-  return bestD <= (n.length < 6 ? 0 : 1) ? best : null;
-}
-
-const ONES = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19 };
-const TENS = { twenty: 20, thirty: 30, forty: 40, fifty: 50 };
-// "twenty four" -> "24", "sixteen point nine" -> "16.9", "eighteen and a half" -> "18.5"
-function speechToDigits(text) {
-  const t = sNorm(text).replace(/\.+(?=\s|$)/g, "").replace(/\b(\d+)\s+point\s+(\d)\b/g, "$1.$2").split(" ");   // periods ending a word are punctuation
-  const out = [];
-  for (let i = 0; i < t.length; i++) {
-    const w = t[i];
-    if (TENS[w] != null) { const nx = ONES[t[i + 1]]; if (nx > 0 && nx < 10) { out.push(String(TENS[w] + nx)); i++; } else out.push(String(TENS[w])); }
-    else if (ONES[w] != null) out.push(String(ONES[w]));
-    else out.push(w);
-  }
-  return out.join(" ").replace(/\b(\d+) and a half\b/g, (_, n) => `${n}.5`).replace(/\b(\d+)\s+point\s+(\d+)\b/g, "$1.$2");
-}
-const FLAVOR_SYN = [[/\b(?:zero|0)(?:[ -]sugar|[ -]calorie)?\b/g, "zero"], [/\bgeorgia peach\b/g, "just peachy"], [/\b(regular|classic|original|plain)\b/g, "original"],
-  [/\bgrape fruit\b/g, "grapefruit"], [/\bpassion fruit\b/g, "passionfruit"], [/\bdragon fruit\b/g, "dragonfruit"], [/\bwater melon\b/g, "watermelon"], [/\bblack berry\b/g, "blackberry"], [/\bblue berry\b/g, "blueberry"], [/\bstraw berry\b/g, "strawberry"], [/\brasp berry\b/g, "raspberry"], [/\bpine apple\b/g, "pineapple"], [/\bdream world\b/g, "dreamworld"], [/\bstar light\b/g, "starlight"], [/\by ?3000\b/g, "y3000"], [/\bmarshmall?(?:o|e)ws?\b|\bmarshmellos?\b/g, "marshmellos"], [/\bmellow yellow\b/g, "mello yello"]];
-FLAVOR_SYN.push([/\bcaffeine (?:for|fear|pre|free of)\b/g, "caffeine free"], [/\bcaf(?:f)?ein(?:e)? free\b/g, "caffeine free"], [/\b(y3000|ultimate|starlight|dreamworld|move) sugar\b/g, "$1 zero"], [/\bdream sickles?\b/g, "dreamsicle"], [/\bplus t0\b/g, "plus tea zero"], [/\bplus t\b/g, "plus tea"]);   // heard-as fixes that need regex, not an alias list
-const FLAVOR_STOP = new Set(["just", "the", "a", "of", "and", "with"]);
-const flavorTokens = f => { let n = sNorm(f); for (const [re, to] of FLAVOR_SYN) n = n.replace(re, to); return n.split(" ").filter(w => w && !FLAVOR_STOP.has(w)); };
-
-// Longest brand names win ("diet coke" is not also "coke"); a separate "coke" later in the note still counts.
-// Returns where each brand was said: [{ start, end, brand }] in speaking order (end is exclusive).
-function brandSpans(tokens) {
-  const idx = brandIndex(), spans = [], taken = new Array(tokens.length).fill(false);
-  for (let n = 3; n >= 1; n--) for (let i = 0; i + n <= tokens.length; i++) {
-    if (taken.slice(i, i + n).some(Boolean)) continue;
-    const g = tokens.slice(i, i + n).join(" ");
-    const b = idx.has(g) ? idx.get(g) : (n === 1 && g.length >= 4 ? resolveBrand(g) : null);   // typos are only forgiven in single words; misheard phrases are listed in BRAND_SPOKEN
-    if (b) { spans.push({ start: i, end: i + n, brand: b }); for (let k = i; k < i + n; k++) taken[k] = true; }
-  }
-  return spans.sort((x, y) => x.start - y.start);
-}
-const detectBrands = tokens => new Set(brandSpans(tokens).map(s => s.brand));
-
-// ---------- Variations: a brand and a flavor ----------
-// The product list holds one record per size and pack, but everything here works on brand + flavor ("variations").
-const vKey = p => `${sNorm(p.brand)}|${sNorm(p.flavor)}`;
-const vName = v => (v.flavor ? `${v.brand} ${v.flavor}` : v.brand);
-let vCache = null, vRev = -1;
-function vmap() {
-  const rev = prodRev();
-  if (vCache && rev === vRev) return vCache;
-  const m = new Map();
-  for (const p of state.products) {
-    const k = vKey(p);
-    let v = m.get(k);
-    if (!v) m.set(k, v = { key: k, brand: p.brand, flavor: p.flavor || "", records: [], retired: true, custom: true });
-    v.records.push(p);
-    if (!p.retired) v.retired = false;
-    if (!p.custom) v.custom = false;
-  }
-  vRev = rev; return (vCache = m);
-}
-const variations = ({ includeRetired = false } = {}) => [...vmap().values()].filter(v => includeRetired || !v.retired);
-
-const BASE_WORDS = new Set(["original", "purified", "mineral", "water", "classic", "regular"]);
-// Aliases: [brand, flavor, [other ways it gets written]] from aliases.js, looked up by variation.
-let aliasCache = null; const aliasRaw = new Map();
-function flavorAliases() {
-  if (aliasCache) return aliasCache;
-  aliasCache = new Map();
-  for (const [brand, flavor, list] of FLAVOR_ALIASES) {
-    const k = vKey({ brand, flavor });
-    const norm = list.map(a => { let t = sNorm(a); for (const [re, to] of FLAVOR_SYN) t = t.replace(re, to); return t; }).filter(Boolean);
-    aliasCache.set(k, [...(aliasCache.get(k) || []), ...norm]);
-    aliasRaw.set(k, [...(aliasRaw.get(k) || []), ...list.map(a => sNorm(a)).filter(Boolean)]);
-  }
-  return aliasCache;
-}// Are all of a flavor's words said right next to each other (in any order)?
-function adjacent(ft, ptoks) {
-  const want = [...ft].sort().join(" ");
-  for (let i = 0; i + ft.length <= ptoks.length; i++) if (ptoks.slice(i, i + ft.length).sort().join(" ") === want) return true;
-  return false;
-}
-// Scored brand + flavor candidates for a phrase, best first.
-function rankPhrase(phrase) {
-  const s = sNorm(phrase).replace(/\.+(?=\s|$)/g, "").replace(/^need(?=[a-z]{3,})(?!(ed|s|le|les|y|ier|iest)\b)/, "need "), tokens = s.split(" ");   // a period ending a word is punctuation ("Dr. Pepper")
-  const spans = brandSpans(tokens), brands = new Set(spans.map(sp => sp.brand));
-  if (!brands.size) return [];
-  // The brand's own words ("coke" in "cherry coke zero sugar") don't count as flavor words and don't break up the flavor.
-  const inBrand = new Set(); for (const sp of spans) for (let k = sp.start; k < sp.end; k++) inBrand.add(k);
-  // "Diet Cherry Coke": the "diet" is not next to "coke", but it is still Diet Coke (and cherry is the flavor).
-  if (brands.has("Coca-Cola") && !brands.has("Diet Coke")) { const di = tokens.indexOf("diet"); if (di >= 0 && !inBrand.has(di)) { brands.delete("Coca-Cola"); brands.add("Diet Coke"); inBrand.add(di); } }
-  let n = tokens.filter((t, i) => !inBrand.has(i)).join(" "); for (const [re, to] of FLAVOR_SYN) n = n.replace(re, to);
-  const ptoks = n.split(" "), tset = new Set(ptoks);  const all = variations(), out = [], phrase2 = ` ${n} `;
-  for (const b of brands) {
-    const pool = all.filter(v => v.brand === b);
-    // How Whisper tends to write a flavor (see aliases.js): saying any of them counts as saying the flavor.
-    // The score is how many words the longest matching alias used, so a longer flavor beats a shorter one nested inside it.
-    const aliasWords = v => Math.max(0, ...(flavorAliases().get(v.key) || []).filter(a => phrase2.includes(` ${a} `)).map(a => a.split(" ").length));
-    const am = new Map(pool.map(v => [v.key, aliasWords(v)]));
-    // Did the speaker name any flavor at all for this brand? If not, the plain one is the answer.
-    const named = pool.some(v => am.get(v.key) > 0 || flavorTokens(v.flavor).some(w => !BASE_WORDS.has(w) && tset.has(w)));
-    for (const v of pool) {
-      const ft = flavorTokens(v.flavor), viaAlias = am.get(v.key) > 0;
-      const hit = Math.max(viaAlias ? am.get(v.key) : 0, ft.filter(t => tset.has(t)).length);
-      const plain = !ft.length || ft.every(w => BASE_WORDS.has(w));
-      const whole = viaAlias || (hit === ft.length && adjacent(ft, ptoks));
-      out.push({ v, hit, full: !plain && whole && hit > 0, sc: plain ? (named ? (hit ? 3 : 0) : 3) : viaAlias ? 3 : hit ? 3 * hit / ft.length : -1 });
-    }
-  }  return out.sort((a, b) => b.sc - a.sc || b.hit - a.hit);
-}
-// A phrase ("diet coke twelve packs") -> { v, clear, why } or null when no brand we carry is named.
-// clear is false when the top two candidates are too close to call (no flavor said for a brand that has several).
-function resolvePhrase(phrase) {
-  const r = rankPhrase(phrase);
-  if (!r.length) return null;
-  const top = r[0], next = r.find(x => x.v.key !== top.v.key);
-  const gap = next ? top.sc - next.sc : 9;
-  // "Powerade power water mountain berry blast" fits both Mountain Berry Blast and Power Water Mountain Berry Blast fully: the one that uses more of the words wins.
-  const dominates = top.full && next && (!next.full || top.hit > next.hit);
-  return { v: top.v, clear: (gap >= 1 || dominates) && top.sc >= 1.5, why: gap < 1 && !dominates ? "which flavor?" : top.sc < 1.5 ? "weak match" : "" };
-}
-
-// ---------- Reading a blurb (organizing only) ----------
-// Works out which products (brand + flavor) a blurb mentions so blurbs about the same product can sit together on the list.
-// It never changes the words: the list shows exactly what was said.
-const UNIT_WORDS = new Set(["oz", "ounce", "ounces", "l", "liter", "liters", "litre", "litres", "leader", "leaders", "litter", "litters", "ml", "pack", "packs", "pk", "ct", "count", "fl"]);
-const FILLER_WORDS = new Set(["classic", "regular", "taste", "of", "the", "a", "an", "and", "or", "more", "need", "needs", "needed", "like", "about", "maybe", "case", "cases", "we", "i", "just", "some", "them", "those", "these", "that", "this", "each", "too", "please", "it", "is", "are", "to", "get", "got", "bottle", "bottles", "can", "cans", "single", "singles", "also", "plus", "out", "empty", "bare", "low", "shelf", "here", "there", "yeah", "okay", "um", "uh", "so", "then", "for", "with", "in", "on", "at", "no", "not", "any", "one", "ones", "back", "check", "extra", "full", "all", "make", "actually", "sorry", "wait", "mean", "think", "guess", "ill", "thats", "lets", "see", "say", "will", "would", "could", "should", "have", "has", "had", "be", "been", "was", "were", "my", "your", "their", "they", "you", "what", "when", "where", "which", "who", "how", "why", "now", "still", "again", "only", "even", "really", "very", "much", "many", "lot", "lots", "flat", "flats", "tray", "trays", "pallet", "pallets", "box", "boxes", "going", "gonna", "let", "know", "idea", "goes", "mini", "big", "small", "large", "tall", "little", "giant", "huge", "double", "glass", "plastic", "bottled", "canned", "kind"]);
-const TRAIL_NEXT = new RegExp("[\\s,;.]*\\b(?:and|plus|also)\\b(?:[\\s,;.]+(?:a|an|of|the|couple|pair|dozen|\\d+|" + [...Object.keys(ONES), ...Object.keys(TENS)].join("|") + "))*[\\s,;.]*$", "i");
-// Lowercase letter/number words with their positions in the original text. Apostrophes join (barq's -> barqs); anything else splits.
-function tokenize(text) {
-  const out = []; let cur = null;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i], lc = c.toLowerCase();
-    if (/[a-z0-9]/.test(lc)) { if (!cur) cur = { t: "", s: i, e: i }; cur.t += lc; cur.e = i + 1; }
-    else if ((c === "'" || c === "’" || c === "`") && cur) { /* joins */ }
-    else if (cur) { out.push(cur); cur = null; }
-  }
-  if (cur) out.push(cur);
-  // Whisper sometimes glues the opening word onto the brand ("Needbark's", "Needcore power"): split it back off.
-  if (out.length && /^need.{3,}$/.test(out[0].t) && !/^need(ed|s|le|les|y|ier|iest)$/.test(out[0].t)) { const f = out[0]; out.splice(0, 1, { t: "need", s: f.s, e: f.s + 4 }, { t: f.t.slice(4), s: f.s + 4, e: f.e }); }
-  return out;
-}
-// Words we recognize for a brand: its flavors (as written and as normalized), their aliases, and everyday filler.
-const knownCache = new Map();
-function knownWords(brand) {
-  const sig = prodRev(), hit = knownCache.get(brand);
-  if (hit && hit.sig === sig) return hit.set;
-  const set = new Set();
-  const add = s => { for (const w of sNorm(s).split(" ")) if (w) set.add(w); };
-  for (const v of variations()) if (v.brand === brand) { add(v.flavor); flavorTokens(v.flavor).forEach(w => set.add(w)); flavorAliases(); for (const a of aliasRaw.get(v.key) || []) add(a); }
-  for (const w of ["zero", "sugar", "diet", "free", "caffeine", "calorie", "with", "and", "plus", "of"]) set.add(w);
-  knownCache.set(brand, { sig, set });
-  return set;
-}
-// Is one of the (up to) two words right after the brand something we don't recognize? That's how a misheard flavor shows up,
-// and it shouldn't quietly turn into the plain product.
-function oddWordAfter(toks, sp, brand) {
-  const known = knownWords(brand);
-  for (let k = sp.end; k < Math.min(toks.length, sp.end + 2); k++) {
-    const w = toks[k].t;
-    if (/^\d+$/.test(w) || ONES[w] != null || TENS[w] != null || UNIT_WORDS.has(w) || FILLER_WORDS.has(w) || w === "dozen" || w === "couple") return false;
-    if (!known.has(w)) return true;
-  }
-  return false;
-}// -> { parts: [{ vk, s, e }], flag }. Each part is one brand + flavor and the stretch of the text about it.
-// flag = "check the text": nothing was recognized, or a clause with a number mentions something we didn't recognize.
-function readBlurbDetailed(text) {
-  text = String(text || "");
-  const toks = tokenize(text), spans = brandSpans(toks.map(x => x.t));
-  const parts = [], named = new Set(); let unsure = false;
-  spans.forEach((sp, k) => {
-    const from = k === 0 ? 0 : toks[sp.start].s, to = k + 1 < spans.length ? toks[spans[k + 1].start].s : text.length;
-    const r = resolvePhrase(text.slice(from, to));
-    if (!r) return;
-    if (!r.clear) unsure = true;
-    if (oddWordAfter(toks, sp, r.v.brand)) unsure = true;   // e.g. "coca cola ariasiro sugar": something was said that we don't know
-    if (r.why === "which flavor?") return;   // a brand with several flavors and none said ("Fanta"): leave it for a person to place
-    // The part about this product ends before "and two ..." (that quantity belongs to the next product).
-    const s = toks[sp.start].s, seg = text.slice(s, to).replace(TRAIL_NEXT, "").replace(/[\s,;.]+$/, "");
-    parts.push({ vk: r.v.key, s, e: s + seg.length });
-    for (const w of tokenize(vName(r.v)).map(x => x.t)) named.add(w);
-  });
-  let flag = !parts.length || unsure;
-  if (!flag) {
-    // A clause with a number and unfamiliar words but no brand ("two of the cherry ones") might be a product we missed.
-    for (const clause of text.split(/,|;|\band\b|\bplus\b/i)) {
-      const cs = text.indexOf(clause), ce = cs + clause.length;
-      if (spans.some(sp => toks[sp.start].s >= cs && toks[sp.start].s < ce)) continue;
-      if (!/\d/.test(speechToDigits(clause))) continue;
-      const words = tokenize(clause).map(x => x.t).filter(w => w.length > 2 && !/^\d+$/.test(w) && !ONES[w] && !TENS[w] && !UNIT_WORDS.has(w) && !FILLER_WORDS.has(w) && w !== "dozen" && w !== "couple");
-      if (words.length && !words.every(w => named.has(w))) { flag = true; break; }   // "Coke, cherry 4": the comma split the flavor off its brand
-    }
-  }
-  return { parts, flag, fixes };
-}
-
-// ---------- Brand-only reading (the Needed list is organized by brand; the flavor stays in the words) ----------
-const bKey = b => sNorm(b);
-// Sub-brands, company names and diet / sugar-free versions are listed under their parent brand.
-const BRAND_GROUP = { "BODYARMOR LYTE": "BODYARMOR", "Core Power Elite": "Core Power", "fairlife": "Core Power", "Diet Dr Pepper": "Dr Pepper", "Diet Coke": "Coca-Cola", "Topo Chico Sabores": "Topo Chico" };
-// -> { parts: [{ vk: brand key, brand, s, e }], flag }. flag = "check the text": no brand was recognized, or a clause with a number names something we did not recognize.
-// ---- When no brand is recognized: the nearest-sounding one ----
-// Whisper writes "Coke Zero" as "Cocosero", "Code 0", "Hook zero", and "Fanta" as "Phantom". Every note names a brand first, so if nothing matched,
-// the first few words are tried against (1) a short list of known mishearings, (2) words that start with one, and (3) brands that sound alike.
-// The first kind is trusted; the others place the note under the guess but leave the "Check the text" tag on.
-const WEAK_BRAND = {
-  "Coca-Cola": ["coco", "cocot", "coko", "koko", "code", "cokes", "hook", "cook", "cope", "coat", "coach", "cocoa", "cokie"],
-  "Fanta": ["phantom", "phantoms", "fandom", "fantom", "fantum", "fanto", "fonda", "fonta"],
-  "Sprite": ["spright", "spry", "sprites", "spite", "spirit", "sprint"],
-  "Fresca": ["fresco", "frescos", "fresko", "frescas"],
-  "Dasani": ["dasanni", "dosani", "dasanie", "desani", "dassani"],
-  "Powerade": ["powerate", "powered", "powerades", "power ade"],
-  "Monster Energy": ["monsta", "monsters", "monstro"],
-  "Gold Peak": ["goldpeak", "gold peek", "goal peak"],
-  "Minute Maid": ["minutemaid", "minute made"],
-  "Seagram's": ["seagrams", "seagram", "sea grams"],
-  "Mello Yello": ["mellow", "mello", "yellow"],
-};
-let weakIdx = null, weakFor = -1;
-function phon(w) {
-  w = String(w).toLowerCase().replace(/[^a-z]/g, "");
-  w = w.replace(/^(kn|gn|pn|wr)/, "n").replace(/^x/, "s").replace(/^wh/, "w").replace(/ph/g, "f").replace(/ck/g, "k").replace(/c(?=[eiy])/g, "s").replace(/c/g, "k")
-    .replace(/q/g, "k").replace(/x/g, "ks").replace(/z/g, "s").replace(/dg/g, "j").replace(/gh/g, "").replace(/h(?![aeiou])/g, "").replace(/(.)\1+/g, "$1");
-  return w ? w[0] + w.slice(1).replace(/[aeiouywh]/g, "") : "";
-}
-function weakIndex() {
-  if (weakIdx && weakFor === prodRev()) return weakIdx;
-  weakFor = prodRev(); weakIdx = { exact: new Map(), phon: [] };
-  for (const [b, list] of Object.entries(WEAK_BRAND)) for (const w of list) weakIdx.exact.set(w.replace(/\s+/g, ""), b);
-  for (const [k, b] of brandIndex()) if (!k.includes(" ") && k.length >= 4) weakIdx.phon.push([phon(k), b]);
-  return weakIdx;
-}
-function weakSpans(toks) {
-  const wi = weakIndex();
-  for (let i = 0; i < Math.min(toks.length, 6); i++) {
-    const t = toks[i].t;
-    if (t.length < 3 || /^\d+$/.test(t) || ONES[t] != null || TENS[t] != null || FILLER_WORDS.has(t) || UNIT_WORDS.has(t)) continue;
-    if (wi.exact.has(t)) return [{ start: i, end: i + 1, brand: wi.exact.get(t), weak: "known" }];
-    for (const [k, b] of wi.exact) if (k.length >= 4 && t.startsWith(k) && t.length <= k.length + 5) return [{ start: i, end: i + 1, brand: b, weak: "prefix", rest: t.slice(k.length) }];
-    if (t.length >= 4) {
-      const c = phon(t); let best = null, bd = 9;
-      for (const [pc, b] of wi.phon) { const d = pc === c ? 0 : lev(pc, c); if (d < bd) { bd = d; best = b; } else if (d === bd && best !== b) best = null; }
-      if (best && c.length >= 3 && bd <= (c.length >= 5 ? 1 : 0)) return [{ start: i, end: i + 1, brand: best, weak: "sound" }];
-    }
-  }
-  return [];
-}
-// How people normally say a brand (anything else that matched it is a mishearing, and the note's text gets corrected).
-const SAYS_OK = new Set(["coke", "cokeclassic", "classiccoke", "regularcoke", "doctorpepper", "dietdoctorpepper", "mrpibb", "misterpibb", "pibb", "pibbxtra", "mellowyellow", "mello", "monster", "monsterenergy"]);
-const ZERO_MIS = new Set(["sero", "cero", "zeero", "zeroo", "sera", "zera"]);
-const squash = s => String(s).toLowerCase().replace(/[^a-z0-9]/g, "");
-function applyFixes(text, fixes) {
-  let out = text; for (const f of [...fixes].sort((a, b) => b.s - a.s)) out = out.slice(0, f.s) + f.to + out.slice(f.e);
-  return out;
-}
-function readBlurb(text) {
-  text = String(text || "");
-  const toks = tokenize(text); let spans = brandSpans(toks.map(x => x.t)), unsure = false;
-  const parts = [], fixes = [];
-  // "Powerade Power Water Strawberry Kiwi": a second mention of the same brand right after the first is part of the flavor, not another brand.
-  spans = spans.filter((sp, k) => !(k && spans[k - 1].brand === sp.brand && sp.start - spans[k - 1].end <= 1));
-  if (!spans.length) { spans = weakSpans(toks); if (spans.length && spans[0].weak !== "known") unsure = true; }
-  spans.forEach((sp, k) => {
-    // "Gold Peak tea with Simply lemonade": the Simply is an ingredient, not another product.
-    if (sp.brand === "Simply" && k && spans[k - 1].brand === "Gold Peak" && sp.start && toks[sp.start - 1].t === "with") return;
-    // A brand that was heard wrong is rewritten in the note ("Phantom Orange" becomes "Fanta Orange").
-    const spoken = text.slice(toks[sp.start].s, toks[sp.end - 1].e), sq = squash(spoken);
-    if (sq !== squash(sp.brand) && !SAYS_OK.has(sq)) {
-      const rest = sp.rest ? (ZERO_MIS.has(sp.rest) ? " Zero" : " " + sp.rest) : "";
-      fixes.push({ s: toks[sp.start].s, e: toks[sp.end - 1].e, to: sp.brand + rest });
-    }
-    let brand = sp.brand, first = sp.start;
-    // "Diet Cherry Coke": the diet is not next to the coke, but it is still Diet Coke.
-    if (brand === "Coca-Cola") for (let d = 1; d <= 2; d++) { const q = sp.start - d; if (q >= 0 && toks[q].t === "diet" && !spans.some(o => o !== sp && q >= o.start && q < o.end)) { brand = "Diet Coke"; first = q; break; } }
-    const s = toks[first].s, to = k + 1 < spans.length ? toks[spans[k + 1].start].s : text.length;
-    const seg = text.slice(s, to).replace(TRAIL_NEXT, "").replace(/[\s,;.]+$/, "");
-    brand = BRAND_GROUP[brand] || brand;
-    parts.push({ vk: bKey(brand), brand, s, e: s + seg.length });
-  });
-  let flag = !parts.length || unsure;
-  if (!flag) {
-    for (const clause of text.split(/,|;|\band\b|\bplus\b/i)) {
-      const cs = text.indexOf(clause), ce = cs + clause.length;
-      if (spans.some(sp => toks[sp.start].s >= cs && toks[sp.start].s < ce)) continue;
-      if (!/\d/.test(speechToDigits(clause))) continue;
-      const words = tokenize(clause).map(x => x.t).filter(w => w.length > 2 && !/^\d+$/.test(w) && !ONES[w] && !TENS[w] && !UNIT_WORDS.has(w) && !FILLER_WORDS.has(w) && w !== "dozen" && w !== "couple");
-      if (words.length) { flag = true; break; }
-    }
-  }
-  return { parts, flag, fixes };
-}
 // ---------- Swipe a bottom sheet down to close it ----------
 // Like pushing a drawer shut: drag the sheet down from anywhere that isn't a control (the handle, the title, empty space) while it is
 // scrolled to the top, and let go. Far enough, or fast enough, and it slides away; otherwise it springs back. Sheets that must stay
@@ -3017,16 +1946,16 @@ function wireSoundBtn() {
   document.querySelectorAll(".cam-sound").forEach(b => (b.onclick = () => { state.settings.beep = !shutterOn(); save(); renderSoundBtn(); pulse(b); if (shutterOn()) { primeShutter(); playShutter(); } }));
 }
 // ---------- Backup (on this phone) ----------
-// A backup is one small file: the settings, the store numbers and store locations (and the 2.x product list). "Save a backup" hands it to the phone's share sheet
-// (Save to Files, AirDrop, Mail...), and "Restore from a backup" reads such a file back. Nothing goes to any server.
-// The file format is the same as the GitHub backups of 1.0 to 1.2, so those files can be restored too.
-const BK_SETTINGS = ["beep", "captureKind", "baWhen", "baKind", "baSlot", "lens", "hapticShutter", "hapticTaps", "hideDone", "photoCheck", "geo"];   // (pad2 is in beforeafter.js)
+// A backup is one small file: the settings, the store numbers, store locations and each store's display list (areas, not photos).
+// "Save a backup" hands it to the phone's share sheet (Save to Files, AirDrop, Mail...), and "Restore from a backup" reads it back.
+// Nothing goes to any server. Backups from 2.x (with a product list) can still be restored: the product list is ignored.
+const BK_SETTINGS = ["beep", "captureKind", "baWhen", "baKind", "baSlot", "lens", "hapticShutter", "hapticTaps", "photoCheck", "geo", "nextCats"];   // (pad2 is in beforeafter.js)
 
 function bkSnapshot() {
   const settings = {}; for (const k of BK_SETTINGS) settings[k] = state.settings[k];
-  return { v: 1, app: "Shelfie", at: Date.now(), settings, stores: state.stores, storeName: state.storeName || "",
-    products: state.products.map(shareable), deleted: { products: state.deleted.products },
-    recentStores: state.recentStores || [], pickUse: state.pickUse || {}, storeSpots: state.storeSpots || {}, learned: state.learned || {} };
+  const storeDisplays = Object.fromEntries(Object.entries(state.storeDisplays || {}).map(([st, s]) => [st, { list: (s.list || []).map(({ photo, ...d }) => d), areas: s.areas || [] }]));
+  return { v: 2, app: "Shelfie", at: Date.now(), settings, stores: state.stores, storeName: state.storeName || "",
+    recentStores: state.recentStores || [], storeSpots: state.storeSpots || {}, storeDisplays };
 }
 
 async function saveBackup() {
@@ -3052,25 +1981,23 @@ function pickBackupFile() {
   document.body.appendChild(inp); inp.click();
 }
 async function restoreBackup(data) {
-  const okProd = p => p && typeof p.id === "string" && typeof p.brand === "string" && typeof (p.flavor ?? "") === "string" && p.id.length < 200 && p.brand.length < 120;
-  if (!data || !Array.isArray(data.products) || data.products.length > 5000 || !data.products.every(okProd)) return toast("That isn't a usable Shelfie backup");
-  const hasShots = state.shots.length > 0, when = data.at ? new Date(data.at).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "";
-  if (!(await confirmDialog(`Restore the backup${when ? ` from <b>${esc(when)}</b>` : ""}? This replaces this phone's product list and settings${hasShots ? "" : " and store numbers"}. Your notes and photos stay.`, { ok: "Restore", danger: true }))) return;
-  const snap = snapshot(), next = JSON.parse(snap);
-  next.products = data.products.map(p => ({ ...p }));
-  next.deleted = { products: (data.deleted && data.deleted.products) || {} };
-  for (const k of BK_SETTINGS) { const x = data.settings && data.settings[k]; if (x !== undefined && typeof x === typeof next.settings[k]) next.settings[k] = x; }   // same kind of value only
-  if (!hasShots && Array.isArray(data.stores)) { next.stores = data.stores.slice(0, 5).map(x => String(x || "").slice(0, 20)); next.storeName = String(data.storeName || "").slice(0, 20); }   // photos are filed by slot, so store numbers only change when there are none
-  if (Array.isArray(data.recentStores)) next.recentStores = data.recentStores.map(x => String(x || "").slice(0, 20)).filter(Boolean).slice(0, 8);
-  if (data.pickUse && typeof data.pickUse === "object") {   // counts only: { b: {key: n}, l: {...}, f: {...} }
-    const clean = o => Object.fromEntries(Object.entries(o && typeof o === "object" ? o : {}).filter(([k, v]) => k.length < 200 && Number.isFinite(v) && v >= 0).slice(0, 3000).map(([k, v]) => [k, Math.min(v, 100000)]));
-    next.pickUse = { b: clean(data.pickUse.b), l: clean(data.pickUse.l), f: clean(data.pickUse.f) };
-  }
+  if (!data || typeof data !== "object" || !(data.settings || Array.isArray(data.stores))) return toast("That isn't a usable Shelfie backup");
+  const hasPhotos = state.shots.length > 0 || state.notes.length > 0, when = data.at ? new Date(data.at).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "";
+  if (!(await confirmDialog(`Restore the backup${when ? ` from <b>${esc(when)}</b>` : ""}? This replaces this phone's settings, store locations and display lists${hasPhotos ? "" : " and store numbers"}. Your photos stay.`, { ok: "Restore", danger: true }))) return;
+  const snap = snapshot(), next = JSON.parse(snap), str = (x, n) => String(x || "").slice(0, n);
+  for (const k of BK_SETTINGS) { const x = data.settings && data.settings[k]; if (x !== undefined && (next.settings[k] === undefined || typeof x === typeof next.settings[k])) next.settings[k] = x; }   // same kind of value only
+  if (!Array.isArray(next.settings.nextCats)) delete next.settings.nextCats;
+  if (!hasPhotos && Array.isArray(data.stores)) { next.stores = data.stores.slice(0, 5).map(x => str(x, 20)); next.storeName = str(data.storeName, 20); }   // photos are filed by slot, so store numbers only change when there are none
+  if (Array.isArray(data.recentStores)) next.recentStores = data.recentStores.map(x => str(x, 20)).filter(Boolean).slice(0, 8);
   if (data.storeSpots && typeof data.storeSpots === "object") next.storeSpots = Object.fromEntries(Object.entries(data.storeSpots)
     .filter(([k, v]) => k.length <= 20 && v && Number.isFinite(v.lat) && Number.isFinite(v.lon) && Math.abs(v.lat) <= 90 && Math.abs(v.lon) <= 180).slice(0, 200)
     .map(([k, v]) => [k, { lat: v.lat, lon: v.lon, n: Math.max(1, Math.min(10, v.n | 0)) }]));
-  if (data.learned && typeof data.learned === "object") next.learned = Object.fromEntries(Object.entries(data.learned)
-    .filter(([k, v]) => k.length <= 80 && v && typeof v.name === "string" && v.name.length <= 80).slice(0, 400).map(([k, v]) => [k, { name: v.name, at: +v.at || Date.now() }]));
+  if (data.storeDisplays && typeof data.storeDisplays === "object") for (const [st, s] of Object.entries(data.storeDisplays).slice(0, 200)) {
+    if (st.length > 20 || !s || !Array.isArray(s.list)) continue;
+    const mine = (next.storeDisplays[st] = next.storeDisplays[st] || { list: [], areas: [] }), have = new Set(mine.list.map(d => d.id));
+    for (const d of s.list.slice(0, 100)) if (d && typeof d.id === "string" && !have.has(d.id)) mine.list.push({ id: str(d.id, 60), area: str(d.area, 60), photo: null, at: +d.at || 0, gone: !!d.gone });
+    mine.areas = [...new Set([...(mine.areas || []), ...(Array.isArray(s.areas) ? s.areas.map(a => str(a, 60)).filter(Boolean) : [])])].slice(0, 12);
+  }
   state = next; migrate(); save(); renderAll();
   toast("Backup restored", snap);
 }
@@ -3486,13 +2413,12 @@ const gal = { slot: null, kind: null, cat: null };
 function openGallery() { showView("gallery"); }
 function renderGallery() {
   const v = $("#view-gallery");
-  if (gal.slot == null) gal.slot = baSlot();
   if (!gal.kind) gal.kind = captureKind();
+  gal.slot = baSlot();   // 3.4: the store at the top
   if (gsel.on && gsel.slot !== gal.slot) galSelectEnd(true);   // a selection belongs to one store
   const slot = gal.slot, kind = gal.kind, st = storeOf(slot);
   const before = beforeItems(slot), after = afterItems(slot);
   let html = `<div class="list-head"><h2>Gallery</h2><span class="muted small">${st ? `store#${esc(st)}` : ""}</span></div>
-    <div class="slots" id="gal-slots">${slotsHTML(slot)}</div>
     <div class="row" id="gal-share">${["before", "after"].map(w => { const n = itemsOf(slot, w).length, u = untexted(slot, w); return `<button class="btn sm primary grow" data-share="${w}"${n ? "" : " disabled"}>${icon("upload")}Text all ${WHEN_LABEL[w]} (${n})${n ? (u ? `<i class="tx-dot" aria-label="not sent yet"></i>` : `<i class="tx-ok" aria-label="sent">${icon("check")}</i>`) : ""}</button>`; }).join("")}</div>`;
   html += `<div class="seg" id="gal-seg">${KINDS.map(k => { const n = [...before, ...after].filter(x => x.kind === k).length;
     return `<button data-k="${k}" class="${k === kind ? "active" : ""}">${KIND_LABEL[k]} ${n ? `<span class="kcount grey">${n}</span>` : ""}</button>`; }).join("")}</div>`;
@@ -3529,9 +2455,8 @@ function renderGallery() {
       : list.length ? `<div class="shot-grid">${list.map(x => tile("after", x)).join("")}</div>`
       : `<p class="muted small" style="margin:4px 0 0">No After photos of ${KIND_PLURAL[kind]} yet. Take them on the After tab.</p>`;
   }
-  const afterAll = state.shots.filter(x => x.when !== "before");
-  if (after.length) html += `<button class="btn block quiet" data-a="clear" style="margin-top:20px">Clear ${st ? `store#${esc(st)}` : "this store"}'s After photos</button>`;
-  if (afterAll.length > after.length) html += `<button class="btn block quiet" data-a="clearall" style="margin-top:8px">Clear all stores' After photos</button>`;
+  html += `<button class="btn block shift-clear" data-a="shift">${icon("download")}Save &amp; clear the shift</button>
+    <p class="sec-foot">End of shift: saves every store's photos to your phone, then empties the stores and photos. Display lists and store locations stay.</p>`;
   v.innerHTML = html;
   syncIndicator(v.querySelector("#gal-seg"), false);
   hydratePhotos(v);
@@ -3540,8 +2465,7 @@ function renderGallery() {
   v.onclick = e => {
     if (galPress.fired) { galPress.fired = false; return; }   // the click that ends a long press
     if (gsel.on) { const t = e.target.closest(".shot"); if (t) { galToggle(t.dataset.w + "|" + t.dataset.p); return; } }
-    if (e.target.closest("#gal-slots [data-act]")) { saveAndClear(); return; }
-    const sb = e.target.closest("#gal-slots [data-slot]"); if (sb) { gal.slot = +sb.dataset.slot; gal.cat = null; renderGallery(); return; }
+    if (e.target.closest('[data-a="shift"]')) { saveAndClear(); return; }
     const kb = e.target.closest("#gal-seg [data-k]"); if (kb) { gal.kind = kb.dataset.k; gal.cat = null; renderGallery(); return; }
     const fb = e.target.closest("[data-fcat]"); if (fb) { gal.cat = gal.cat === fb.dataset.fcat ? null : fb.dataset.fcat; haptic("tick"); renderGallery(); return; }
     const sh = e.target.closest("[data-share]"); if (sh) { if (!sh.disabled) shareBatch(slot, sh.dataset.share); return; }
@@ -3553,8 +2477,6 @@ function renderGallery() {
       if (x.note) openShelf(x.note); else openShot(x.shot);
       return;
     }
-    if (e.target.closest('[data-a="clear"]')) clearShots(slot);
-    if (e.target.closest('[data-a="clearall"]')) clearShots(null);
   };
 }
 
@@ -3682,8 +2604,7 @@ const isCamView = () => view === "capture" || view === "ba";   // the two tabs w
 function showView(v) {
   if (v !== "capture") endHoldSession();   // leaving the Before tab closes the open shelf
   if (v === "ba" && view !== "ba") afterPick = null;   // opening the After tab: start on the first display still missing its After
-  if (v === "gallery" && view !== "gallery") { gal.slot = baSlot(); gal.kind = view === "capture" ? captureKind() : baKind(); }
-  if (v === "displays" && view !== "displays") dsp.slot = baSlot();
+  if (v === "gallery" && view !== "gallery") gal.kind = view === "capture" ? captureKind() : baKind();
   const order = ["capture", "ba", "displays", "gallery", "more", "changelog"], from = order.indexOf(view), to = order.indexOf(v);
   if (from !== to) document.body.dataset.dir = to > from ? "fwd" : "back";
   const subPage = x => x === "changelog";   // pages inside More
@@ -3701,7 +2622,8 @@ function showView(v) {
   window.scrollTo(0, 0); dockTitle();
 }
 function renderAll() {
-  const hs = storeOf(baSlot()); $("#hdr-store").textContent = hs ? "Store " + hs : "";   // the store that's open on the camera tabs
+  const hs = storeOf(baSlot()), hb = $("#hdr-store");   // 3.4: the one store button, top right, on every tab
+  hb.innerHTML = `${hs ? `Store ${esc(hs)}` : "Set store"}<i class="caret"></i>`;
   const dc = dispCounts(hs), left = dc ? dc.total - dc.found : 0, db = $("#dsp-badge");   // displays still to find at this store   // displays still to find at this store
   db.hidden = !left; db.textContent = left;
   if (view === "capture") renderCapture();
@@ -3732,7 +2654,7 @@ function renderCapture() {
   const sec = $("#view-capture");
   setModeClass(sec, ck);
   $("#cap-band").textContent = KIND_LABEL[ck].toUpperCase();
-  $("#shutter-label").textContent = !storeOf(baSlot()) ? "Tap the shutter or a store slot above to set the store number."
+  $("#shutter-label").textContent = !storeOf(baSlot()) ? "Tap the shutter or Set store at the top to set the store number."
     : ck === "backstock" ? "Tap the shutter to photograph the back stock."
     : !cam.stream ? "Tap the shutter to use the phone camera."
     : ck === "display" ? "Pick what it holds, tap the shutter for the display, then again for more of it." : `Pick what it holds, tap the shutter for ${KIND_ONE[ck]}, then again for close-ups.`;
@@ -3914,20 +2836,9 @@ const afterItems = slot => state.shots.filter(x => x.slot === slot && x.when !==
 const itemsOf = (slot, w) => (w === "before" ? beforeItems(slot) : afterItems(slot));
 const slotCount = i => beforeItems(i).length + afterItems(i).length;
 
-// The store buttons: the store number (or + when the slot is empty) and how many photos it holds, then the Save and clear button.
-function slotsHTML(active) {
-  const act = `<button class="slot act" data-act="save" aria-label="Clear the stores and photos (you can save the photos first)">${icon("x")}<small>Clear</small></button>`;
-  return Array.from({ length: SLOTS }, (_, i) => {
-    const st = storeOf(i), n = slotCount(i);
-    return `<button class="slot${i === active ? " active" : ""}" data-slot="${i}" aria-label="${st ? `Store ${esc(st)}` : `Empty store slot ${i + 1}`}${n ? `, ${n} photo${n === 1 ? "" : "s"}` : ""}"><b>${st ? esc(st) : "+"}</b><small>${n || ""}</small></button>`;
-  }).join("") + act;
-}
-
 // Draws the After tab, and the parts of the Before tab that belong to the stores (its slot row and the store on its camera label).
 function renderBA() {
-  const on = !!cam.stream, k = baKind(), slot = baSlot(), st = storeOf(slot), row = slotsHTML(slot);
-  $("#ba-slots").innerHTML = row;
-  const cs = document.getElementById("cap-slots"); if (cs) cs.innerHTML = row;
+  const on = !!cam.stream, k = baKind(), slot = baSlot(), st = storeOf(slot);
   setTextPop($("#cap-band"), `${st ? `#${st} · ` : ""}${KIND_LABEL[captureKind()].toUpperCase()}`);
   $("#ba-off").hidden = on || cam.starting;
   $("#ba-video").hidden = !on;
@@ -3943,7 +2854,7 @@ function renderBA() {
   const sec = $("#view-ba");
   setModeClass(sec, k);
   setTextPop($("#ba-band"), `${st ? `#${st} · ` : ""}AFTER · ${KIND_LABEL[k].toUpperCase()}`);
-  $("#ba-hint").textContent = st ? `Snap the finished ${k}. Files under store#${st} · After · ${KIND_LABEL[k]}.` : "Tap a store slot above to set its store number.";
+  $("#ba-hint").textContent = st ? `Snap the finished ${k}. Files under store#${st} · After · ${KIND_LABEL[k]}.` : "Tap Set store at the top to set the store number.";
   $("#ba-shutter").setAttribute("aria-label", `Take the after photo of the ${k}`);
   const mine = afterItems(slot).map(i => i.shot).reverse(), last = mine.find(s => s.id === lastShotId) || mine[0], lb = $("#ba-last");
   lb.style.visibility = last ? "visible" : "hidden";
@@ -3963,12 +2874,11 @@ function askStore(slot) {
     const inp = d.querySelector("input"); inp.value = storeOf(slot);
     const clean = v => String(v).trim().replace(/^store\s*#?\s*/i, "").replace(/^#\s*/, "");
     let done = false;
-    const btns = () => document.querySelectorAll(`#cap-slots [data-slot="${slot}"], #ba-slots [data-slot="${slot}"], #gal-slots [data-slot="${slot}"], #dsp-slots [data-slot="${slot}"]`);
+    const btns = () => document.querySelectorAll("#hdr-store");
     // what's typed shows at the top straight away (the store button and the header), and goes back if cancelled
     inp.oninput = () => {
       const v = clean(inp.value);
-      btns().forEach(b => { const t = b.querySelector("b"); if (t) t.textContent = v || "+"; });
-      if (slot === baSlot()) $("#hdr-store").textContent = v ? "Store " + v : "";
+      if (slot === baSlot()) $("#hdr-store").innerHTML = `${v ? `Store ${esc(v)}` : "Set store"}<i class="caret"></i>`;
     };
     const close = openLayer(d, { center: true, sticky: true, onClose: () => { if (!done) { renderAll(); resolve(null); } } });
     const go = () => {
@@ -3985,6 +2895,28 @@ function askStore(slot) {
     if (!(state.recentStores || []).length) setTimeout(() => { inp.focus(); inp.select(); }, 50);   // with recent stores to tap, no keyboard until asked
   });
 }
+// 3.4: the store button at the top opens this: today's stores (tap to switch, ••• for its menu) and Add a store.
+function openStores() {
+  if (!state.stores.some(Boolean)) { askStore(baSlot()); return; }   // none yet: straight to the number
+  const s = el(`<div class="sheet store-sheet"><div class="handle"></div><h2>Stores</h2><div class="list group" id="st-list"></div>
+    <p class="sec-foot">Tap a store to switch to it. Clear at the end of your shift (bottom of the Gallery) empties the list.</p></div>`);
+  const close = openLayer(s, { onClose: () => renderAll() });
+  const list = s.querySelector("#st-list");
+  const draw = () => {
+    const cur = baSlot(), used = [0, 1, 2, 3, 4].filter(i => storeOf(i)), free = [0, 1, 2, 3, 4].find(i => !storeOf(i));
+    list.innerHTML = used.map(i => { const n = slotCount(i), dc = dispCounts(storeOf(i));
+      return `<div class="item st-row${i === cur ? " on" : ""}"><button class="st-pick grow" data-pick="${i}"><b>#${esc(storeOf(i))}</b><small>${n} photo${n === 1 ? "" : "s"}${dc ? ` · ${dc.found} of ${dc.total} displays` : ""}</small></button>
+        ${i === cur ? `<i class="st-cur">${icon("check")}</i>` : ""}<button class="st-more" data-more="${i}" aria-label="Options for #${esc(storeOf(i))}">${icon("dots")}</button></div>`; }).join("")
+      + (free != null ? `<button class="item row-btn" data-add="${free}">${icon("plus")}<span class="grow">Add a store</span></button>` : "");
+  };
+  list.onclick = async e => {
+    const p = e.target.closest("[data-pick]"), m = e.target.closest("[data-more]"), a = e.target.closest("[data-add]");
+    if (p) { const i = +p.dataset.pick; close(); if (i !== baSlot()) pickSlot(i); return; }
+    if (m) { await slotMenu({ dataset: { slot: m.dataset.more } }); draw(); return; }
+    if (a) { const i = +a.dataset.add; close(); const v = await askStore(i); if (v) pickSlot(i); }
+  };
+  draw();
+}
 // Tapping a slot opens it (asking for the store number if it is empty); tapping the open slot again changes its number. Both tabs share it.
 async function pickSlot(i) {
   if (i === baSlot() && storeOf(i)) { await askStore(i); return; }
@@ -3992,7 +2924,7 @@ async function pickSlot(i) {
   if (displayTarget && displayTarget.slot !== i) displayTarget = null;   // "+ Photo" was for the other store
   state.settings.baSlot = i; lastShotId = null;
   if (storeOf(i)) state.storeName = storeOf(i);
-  save(); renderAll(); document.querySelectorAll(`#ba-slots [data-slot="${i}"], #cap-slots [data-slot="${i}"]`).forEach(b => pulse(b));
+  save(); renderAll(); pulse($("#hdr-store"));
   if (!storeOf(i)) await askStore(i);
 }
 
@@ -4037,9 +2969,7 @@ function wireBA() {
   $("#ba-cam-stop").onclick = () => { state.settings.camOK = false; save(); stopCamera(); };
   $("#ba-shutter").onclick = () => onShutterBA(false);
   $("#ba-phonecam").onclick = () => onShutterBA(true);
-  const slotTap = e => { if (e.target.closest("[data-act]")) return saveAndClear(); const b = e.target.closest("[data-slot]"); if (b) pickSlot(+b.dataset.slot); };
-  $("#ba-slots").onclick = slotTap;
-  const cs = document.getElementById("cap-slots"); if (cs) cs.onclick = slotTap;
+  $("#hdr-store").onclick = openStores;
   document.querySelectorAll("#ba-kind-seg button").forEach(b => (b.onclick = () => { state.settings.baKind = b.dataset.k; save(); renderBA(); }));
   $("#ba-gallery").onclick = () => openGallery();
   for (const id of ["#cap-disp", "#ba-disp"]) $(id).onclick = () => showView("displays");   // 3.2: the Displays tab
@@ -4120,7 +3050,7 @@ async function saveAndClear() {
   if (!n) {
     if (!state.stores.some(Boolean) && !state.notes.length) { toast("Nothing to clear"); return false; }
     if (!(await confirmDialog("Clear the store numbers?", { ok: "Clear", danger: true }))) return false;
-    await rememberDisplays(); return clearEverything();
+    return clearEverything();
   }
   // anything not texted yet? (Text all marks what it sent)
   const unsent = [];
@@ -4131,7 +3061,7 @@ async function saveAndClear() {
   if (noAfter.length && !(await confirmDialog(`No After photo yet: <b>${noAfter.map(esc).join(", ")}</b>. Clear anyway?`, { ok: "Continue", cancel: "Go back" }))) return false;
   const choice = await askSaveFirst(list.reduce((t, x) => t + photosOf(x).length, 0));
   if (!choice) return false;
-  if (choice === "clear") { await rememberDisplays(); return clearEverything(); }
+  if (choice === "clear") return clearEverything();
   const count = {}, files = [], dnum = displayNumbers();
   let want = 0;
   for (const x of list) {
@@ -4154,23 +3084,8 @@ async function saveAndClear() {
     return false;
   }
   hideHint();
-  await rememberDisplays();
   return clearEverything();
 }
-// After photos only (Before photos are the shelves; they go with Clear). slot = one store, or null for all.
-function clearShots(slot) {
-  const msg = slot == null ? "Remove the After photos of every store from this phone? Save or send the ones you need first."
-    : `Remove the After photos of ${storeOf(slot) ? `store#${esc(storeOf(slot))}` : "this store"} from this phone? Save or send them first.`;
-  return confirmDialog(msg, { ok: "Remove", danger: true }).then(ok => {
-    if (!ok) return false;
-    const snap = snapshot();
-    state.shots = state.shots.filter(x => x.when === "before" || (slot != null && x.slot !== slot));
-    lastShotId = null; save(); renderAll(); scheduleSweep();
-    toast("Photos removed", snap);
-    return true;
-  });
-}
-
 // ---- One After photo: zoom, save to the phone's Photos, move, delete ----
 function openShot(x, onChange) {
   const name = () => `${KIND_LABEL[x.kind]}-${WHEN_LABEL[x.when === "before" ? "before" : "after"]}-${new Date(x.at).toISOString().slice(0, 16).replace(/[-:T]/g, "")}.jpg`;
@@ -4288,60 +3203,6 @@ function renderDisplayChips() {
     paint("ba-disp", baKind() === "display" && m > 0, `After: ${n} of ${plural(m)}`, t);
   }
 }
-// The list: this visit's displays (with + Photo and Join above), and last visit's for comparison
-function openDisplays(when) {
-  const slot = baSlot(), st = storeOf(slot);
-  const s = el(`<div class="sheet disp-sheet"><div class="handle"></div><h2>Displays${st ? ` at #${esc(st)}` : ""}</h2><div class="disp-body"></div>
-    <button class="btn primary block" data-a="close">Done</button></div>`);
-  const body = s.querySelector(".disp-body");
-  const draw = () => {
-    const aft = when === "after", gs = aft ? displayGroups(slot, "after", { all: true }) : displayGroups(slot, when), mem = (state.displayMemory || {})[st];
-    const done = aft ? gs.filter(g => !g.loose && g.items.length).length : 0, total = aft ? gs.filter(g => !g.loose).length : 0;
-    let html = `<div class="sec-h">This visit · ${WHEN_LABEL[when]}${aft && total ? ` · ${done} of ${total} done` : ""}</div>`;
-    html += gs.length ? `<div class="list group">${gs.map((g, i) => aft ? `<div class="item disp-row">
-        <div class="disp-thumbs">${(g.before ? [g.before.items[0]] : []).concat(g.items.slice(0, 2)).map(x => `<span class="shelf-thumb"><img data-photo="${esc(x.photo)}" alt=""></span>`).join("")}</div>
-        <div class="grow"><div class="name">Display ${g.num}</div><div class="sub">${g.loose ? "After photos with no Before match" : g.items.length ? `${g.items.length} After photo${g.items.length === 1 ? "" : "s"}` : "No After photo yet"}</div></div>
-        <div class="disp-acts">${g.loose ? "" : `<button class="btn sm" data-sel="${esc(g.anchor)}">Shoot this one</button>`}</div></div>`
-      : `<div class="item disp-row">
-        <div class="disp-thumbs">${g.items.slice(0, 3).map(x => `<span class="shelf-thumb"><img data-photo="${esc(x.photo)}" alt=""></span>`).join("")}</div>
-        <div class="grow"><div class="name">Display ${g.num}</div><div class="sub">${g.items.length} photo${g.items.length === 1 ? "" : "s"} · ${esc(timeOf(g.start))}</div></div>
-        <div class="disp-acts">${i ? `<button class="btn sm quiet" data-join="${i}">Join above</button>` : ""}<button class="btn sm" data-add="${i}">${icon("plus")}Photo</button></div></div>`).join("")}</div>`
-      : `<p class="sec-foot">${aft ? "Take this store's Before display photos first." : "No display photos yet. Photos taken within 20 seconds of each other count as one display."}</p>`;
-    if (mem && mem.photos.length) html += `<div class="sec-h">Last time · ${esc(new Date(mem.at).toLocaleDateString([], { month: "short", day: "numeric" }))} · ${plural2(mem.photos.length)}</div>
-      <div class="disp-last">${mem.photos.map((p, i) => `<span class="shelf-thumb"><img data-photo="${esc(p)}" alt=""><b>${i + 1}</b></span>`).join("")}</div>`;
-    body.innerHTML = html; hydratePhotos(body);
-    body.onclick = e => {
-      const add = e.target.closest("[data-add]"), join = e.target.closest("[data-join]"), sel = e.target.closest("[data-sel]");
-      if (sel) { afterPick = { slot, anchor: sel.dataset.sel }; close(); renderAll(); haptic("tick"); return; }
-      if (add) { const i = +add.dataset.add; displayTarget = { slot, when, anchor: gs[i].anchor, n: i + 1 }; close(); renderDisplayChips(); toast(`Your next photo joins display ${i + 1}`); }
-      else if (join) { const i = +join.dataset.join, snap = snapshot(); for (const x of gs[i].items) setDg(x, gs[i - 1].anchor); save(); renderAll(); draw(); toast("Joined", snap); }
-    };
-  };
-  const plural2 = n => `${n} display${n === 1 ? "" : "s"}`;
-  const close = openLayer(s, { onClose: () => renderAll() });
-  s.querySelector('[data-a="close"]').onclick = close;
-  draw();
-}
-// At Clear: one small thumbnail per Before display for each store, so the next visit can show "6 last time"
-async function rememberDisplays() {
-  const mem = (state.displayMemory = state.displayMemory || {});
-  for (let slot = 0; slot < SLOTS; slot++) {
-    const st = storeOf(slot); if (!st || (state.storeDisplays || {})[st]) continue;   // 3.2: a store with a Displays list keeps that instead
-    const gs = displayGroups(slot, "before"); if (!gs.length) continue;
-    const photos = [];
-    for (const g of gs) {
-      const p = g.items[0].photo;
-      let b = await getPhoto(thumbId(p)).catch(() => null);
-      if (!b) { const full = await getPhoto(p).catch(() => null); b = full ? await makeThumb(full).catch(() => null) : null; }
-      if (!b) continue;
-      const id = newId("dm"); try { await putPhoto(id, b); photos.push(id); } catch (e) {}
-    }
-    const old = mem[st]; mem[st] = { at: Date.now(), photos };
-    if (old) for (const id of old.photos || []) delPhoto(id).catch(() => {});
-  }
-  save();
-}
-
 // "Display 2" for a display photo (the same numbering as the displays list and the Gallery), or just "Display" if it can't be placed.
 function displayLabel(photo, slot, when) {
   const g = Number.isInteger(slot) ? displayGroups(slot, when).find(g => g.items.some(x => x.photo === photo)) : null;
@@ -4480,16 +3341,10 @@ async function slotMenu(el) {
   if (!st) return pickSlot(i);
   const spot = (state.storeSpots || {})[st];
   const pick = await menu(`#${st}`, [
-    ...(i !== baSlot() ? [{ label: "Open this store", value: "open" }] : []),
     { label: "Change store number", value: "num" },
-    { label: "See its photos", value: "gal" },
-    { label: "Its displays", value: "dsp" },
     { label: spot ? "Store location…" : "Set store location…", value: "loc" }]);
-  if (pick === "open") pickSlot(i);
-  else if (pick === "num") askStore(i);
-  else if (pick === "gal") { gal.slot = i; showView("gallery"); gal.slot = i; renderGallery(); }
-  else if (pick === "loc") spotActions(st, () => renderAll());
-  else if (pick === "dsp") { showView("displays"); dsp.slot = i; renderDisplays(); }
+  if (pick === "num") await askStore(i);
+  else if (pick === "loc") await new Promise(r => spotActions(st, () => { renderAll(); r(); }));
 }
 
 // ---- After tab, Display mode: which Before display this After is for ----
@@ -4637,11 +3492,10 @@ function pickDisplayFor(n) {
 // ---- the tab ----
 function renderDisplays() {
   const v = $("#view-displays");
-  if (dsp.slot == null) dsp.slot = baSlot();
+  dsp.slot = baSlot();   // 3.4: the store at the top
   const slot = dsp.slot, st = storeOf(slot), c = dispCounts(st);
-  let html = `<div class="list-head"><h2>Displays</h2><span class="muted small">${c ? `${c.found} of ${c.total} found` : st ? `store#${esc(st)}` : ""}</span></div>
-    <div class="slots" id="dsp-slots">${slotsHTML(slot)}</div>`;
-  if (!st) html += `<div class="empty">${icon("camera")}<h3>Pick a store</h3><p>Tap a store button above. Each store keeps its own list of displays.</p></div>`;
+  let html = `<div class="list-head"><h2>Displays</h2><span class="muted small">${st ? `store#${esc(st)}` : ""}${c ? ` · ${c.found} of ${c.total} found` : ""}</span></div>`;
+  if (!st) html += `<div class="empty">${icon("camera")}<h3>Pick a store</h3><p>Tap Set store at the top. Each store keeps its own list of displays.</p></div>`;
   else {
     const sd = storeDisp(st), f = dispFound(st), act = dispActive(sd), gone = sd ? sd.list.filter(d => d.gone) : [];
     const before = displayGroups(slot, "before"), afterGs = displayGroups(slot, "after", { all: true });
@@ -4668,9 +3522,6 @@ function renderDisplays() {
   v.innerHTML = html;
   hydratePhotos(v);
   v.onclick = e => {
-    if (e.target.closest("#dsp-slots [data-act]")) { saveAndClear(); return; }
-    const sb = e.target.closest("#dsp-slots [data-slot]");
-    if (sb) { const i = +sb.dataset.slot; if (!storeOf(i)) { pickSlot(i).then(() => { dsp.slot = i; renderDisplays(); }); return; } dsp.slot = i; renderDisplays(); return; }
     const nb = e.target.closest("[data-n]"); if (nb) { const n = state.notes.find(x => x.id === nb.dataset.n); if (n) pickDisplayFor(n); return; }
     const db = e.target.closest("[data-d]"); if (db) { const d = (storeDisp(st) || { list: [] }).list.find(x => x.id === db.dataset.d); if (d) openStoreDisplay(slot, d); }
   };
@@ -5058,7 +3909,7 @@ const tut = { i: -1, saved: null, timer: 0, nudge: 0, el: null, key: "", hintKey
 const shelfSheetOpen = () => document.querySelector("#layer .overlay:not(.closing) .shelf-sheet");
 const T_STEPS = [
   { id: "store", enter: () => { if (view !== "capture") showView("capture"); },
-    target: () => $("#cap-slots .slot[data-slot]"), text: "Tap a store button and type any store number, like 1234.",
+    target: () => $("#hdr-store"), text: "Tap Set store at the top and type any store number, like 1234.",
     layerText: "Type a store number, then tap Continue.", hint: "tap", done: () => !!storeOf(baSlot()) },
   { id: "camera", skip: () => !!cam.stream, target: () => (cam.starting ? null : $("#btn-cam-start")), text: "Turn on the camera.",
     hint: "tap", done: () => !!cam.stream, fail: () => !!cam.error },
@@ -5075,8 +3926,8 @@ const T_STEPS = [
   { id: "text", target: () => $("#gal-share"), text: "Text all sends a store's photos, close-ups included, to your boss. The orange dot means that batch isn't sent yet.", hint: "dot", next: true },
   { id: "select", target: () => $("#view-gallery .shot"), text: "Hold a photo to select it. Then you can move it to another store, type or display.",
     hint: "press", next: true, done: () => gsel.on },
-  { id: "clear", enter: () => { if (gsel.on) galSelectEnd(); }, target: () => $("#gal-slots .slot.act"),
-    text: "At the end of your shift, tap Clear to save your photos and start fresh. (Not now, this is practice.)", hint: "glow", next: true, last: true },
+  { id: "clear", enter: () => { if (gsel.on) galSelectEnd(); }, target: () => $('#view-gallery [data-a="shift"]'),
+    text: "At the end of your shift, Save & clear the shift saves your photos and starts fresh. (Not now, this is practice.)", hint: "glow", next: true, last: true },
 ];
 
 // ---- start and end ----
@@ -5244,6 +4095,12 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "3.4.0", notes: [
+    "One store button at the top right instead of a row of five: tap it to switch stores, add one, or change a number. The camera picture is bigger.",
+    "Clear is now Save & clear the shift, at the bottom of the Gallery, away from the store buttons.",
+    "One Vibrate on shutter switch in More.",
+    "The Clear After photos buttons are gone; Save & clear the shift does it.",
+    "Lighter: code left over from voice notes and the product list was removed." ] },
   { v: "3.3.0", notes: ["The Soda / Sport / Energy / Protein buttons are always above the shutter: pick what the shelf holds first, then take the photo. Your pick stays lit for the next shelves until you change it, and the bar under the camera shows it."] },
   { v: "3.2.2", notes: ["Four broader labels: Soda, Sport, Energy and Protein. Photos labelled Coke, Dr Pepper or Sprite are now Soda."] },
   { v: "3.2.1", notes: [
@@ -5356,7 +4213,7 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 94;
+const REVISION = 95;
 // More
 function renderMore() {
   const v = $("#view-more");
@@ -5365,13 +4222,11 @@ function renderMore() {
   const photos = state.notes.reduce((t, n) => t + (n.photos || []).length, 0) + state.shots.length;
   v.innerHTML = `
     <div class="list-head"><h2>More</h2></div>
-    <div class="sec-h">Feedback</div>
+    <div class="sec-h">Vibration</div>
     <div class="list group">
-      <div class="item set"><label class="grow" for="haptic-shutter"><div class="name">Shutter feedback</div><div class="sub">A tiny blip when you press the shutter. Needs iOS 17.4 or later.</div></label><input type="checkbox" switch id="haptic-shutter" ${hapticShutterOn() ? "checked" : ""}></div>
-      <div class="try-wrap" id="haptic-try"><button type="button" class="item row-btn">${icon("sliders")}<span class="grow">Try the shutter blip</span></button></div>
-      <div class="item set"><label class="grow" for="haptic-taps"><div class="name">Button feedback</div><div class="sub">A light tap on buttons, tabs and switches. iOS 26.5 and later don't allow it, so it only works on older iPhones.</div></label><input type="checkbox" switch id="haptic-taps" ${hapticTapsOn() ? "checked" : ""}></div>
+      <div class="item set"><label class="grow" for="haptic-shutter"><div class="name">Vibrate on shutter</div><div class="sub">A tiny blip when you take a photo (iOS 17.4 or later).</div></label><input type="checkbox" switch id="haptic-shutter" ${hapticShutterOn() ? "checked" : ""}></div>
     </div>
-    <p class="sec-foot">No tap felt? Check Settings › Sounds &amp; Haptics › System Haptics on your iPhone.</p>
+    <p class="sec-foot">No blip? Check Settings › Sounds &amp; Haptics › System Haptics on your iPhone.</p>
     <div class="sec-h">Photos</div>
     <div class="list group">
       <div class="item set"><label class="grow" for="photo-check"><div class="name">Warn about blurry or dark photos</div><div class="sub">Right after a photo, if it looks blurry or too dark, you get a Retake button.</div></label><input type="checkbox" switch id="photo-check" ${photoCheckOn() ? "checked" : ""}></div>
@@ -5394,11 +4249,9 @@ function renderMore() {
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
     ${enc.last.ready != null ? `<p class="sec-foot">Last photo: ready for the next tap in ${enc.last.ready} ms${enc.last.saved != null ? `, saved in ${enc.last.saved} ms (${enc.last.path})` : ""}.</p>` : ""}
-    <p class="foot">Shelfie 3.3.0 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 3.4.0 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
-  attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
-  v.querySelector("#haptic-shutter").onchange = e => { state.settings.hapticShutter = e.target.checked; save(); syncHaptics(); };
-  v.querySelector("#haptic-taps").onchange = e => { state.settings.hapticTaps = e.target.checked; save(); };
+  v.querySelector("#haptic-shutter").onchange = e => { state.settings.hapticShutter = state.settings.hapticTaps = e.target.checked; save(); syncHaptics(); };   // one switch for both (3.4)
   v.querySelector("#btn-backup").onclick = saveBackup;
   v.querySelector("#btn-restore").onclick = pickBackupFile;
   v.querySelector("#photo-check").onchange = e => { state.settings.photoCheck = e.target.checked; save(); };
@@ -5438,7 +4291,6 @@ wireBA();
 wireSoundBtn();
 wireHaptics();
 wireToastSwipe();
-for (const id of ["#cap-slots", "#ba-slots", "#view-gallery", "#view-displays"]) wireHold($(id), ".slot[data-slot]", slotMenu);   // hold a store button: its menu
 wireEdgeBack("#view-changelog.active", () => showView("more"));   // swipe in from the left edge: back to More
 // 2.12.2: swipe sideways to change sets
 wirePageSwipe([
