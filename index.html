@@ -926,10 +926,10 @@ body[data-nav="push"] #view-changelog.active { animation: pushIn .5s cubic-bezie
 .list > .need.swiping, .list > .need.leaving { content-visibility: visible; }
 
 /* ---------- 3.0: shelves, close-ups and five categories ---------- */
-:root { --c-coke: #E4002B; --c-drpepper: #7B1E30; --c-sprite: #00874A; --c-sport: #0B63B5; --c-energy: #1F1F1F; --on-energy: #FFFFFF; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --c-drpepper: #A3324A; --c-energy: #E6E2DE; --on-energy: #141414; } }
-:root[data-theme="dark"] { --c-drpepper: #A3324A; --c-energy: #E6E2DE; --on-energy: #141414; }
-.c-coke { --cat: var(--c-coke); } .c-drpepper { --cat: var(--c-drpepper); } .c-sprite { --cat: var(--c-sprite); } .c-sport { --cat: var(--c-sport); } .c-energy { --cat: var(--c-energy); --on-cat: var(--on-energy); }
+:root { --c-soda: #E4002B; --c-sport: #0B63B5; --c-energy: #1F1F1F; --on-energy: #FFFFFF; --c-protein: #7A4FC9; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --c-protein: #9B7BE0; --c-energy: #E6E2DE; --on-energy: #141414; } }
+:root[data-theme="dark"] { --c-protein: #9B7BE0; --c-energy: #E6E2DE; --on-energy: #141414; }
+.c-soda { --cat: var(--c-soda); } .c-sport { --cat: var(--c-sport); } .c-energy { --cat: var(--c-energy); --on-cat: var(--on-energy); } .c-protein { --cat: var(--c-protein); }
 .cat-row { display: flex; gap: 6px; }
 .cat-row:not([hidden]) { animation: riseIn .3s var(--spring) both; }
 .cat-row .cat { flex: 1 1 auto; min-width: 0; min-height: 48px; padding: 0 6px; border: 0; border-radius: 12px; background: var(--chip); color: var(--text); font-size: 14px; font-weight: 750; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background-color .18s ease, color .18s ease, transform .4s var(--spring); }
@@ -1461,7 +1461,7 @@ const RETIRED_VARIATIONS = new Set(["bodyarmor|lyte sports drink peach mango", "
 // ---------- State ----------
 let state;
 var firstRun = false;   // no saved data at all: a new phone (the practice run offers itself)
-// 3.0: a note is a shelf: { id, at, slot, kind, photos: [shelf photo, close-ups…], cats: ["coke"…], ticks: {cat: true}, out: {cat: true}, v3: 1 }
+// 3.0: a note is a shelf: { id, at, slot, kind, photos: [shelf photo, close-ups…], cats: ["soda"…] (what it mostly holds), done, v3: 1 }
 // (see shelf.js). Notes from 2.x (voice or picked items) are merged into shelves once at start-up.
 function freshState() {
   return {
@@ -1561,6 +1561,7 @@ function migrate() {
   for (const p of state.products) if (!p.updated && RETIRED_VARIATIONS.has(vKey(p))) p.retired = true;
   for (const id of DISCONTINUED) { const p = productById(id); if (p && !p.retired && !p.updated) p.retired = true; }
   migrateShelves();   // 3.0: 2.x notes become shelves (needs the brands read above)
+  migrateCats();      // 3.2.2: Coke, Dr Pepper and Sprite became Soda
   state.version = 4;
   prodDirty = true;   // the list may have been changed in place above
 }
@@ -3353,16 +3354,21 @@ function textPrompt(title, value = "", { ok = "Save", placeholder = "" } = {}) {
 
 // ---------- 3.0: shelves, close-ups and five categories ----------
 // Tap the shutter: the shelf photo. The camera stays live, and every tap after that is a close-up of a low spot on the same shelf, until
-// Next shelf (or changing tab or store). While a shelf is open, five category buttons sit where the Aisle | Display | Backstock switch was:
-// tap what it mostly holds (3.2.1: the categories are for finding it again, not what's needed; the close-ups show what's low).
+// Next shelf (or changing tab or store). 3.3: the category buttons are always there, above the shutter: pick what the next shelf holds
+// before the photo (the choice stays lit for the shelves after it, until changed); while a shelf is open they change that shelf. Tap what it mostly holds (3.2.1: the categories are for finding it again, not what's needed; the close-ups show what's low).
 // A shelf is one note: { photos: [shelf, close-up, close-up…], cats: ["coke", "sprite"], done: true once what it needed is pulled }.
 // 2.x voice notes are merged into shelves once, at start-up (migrateShelves).
-const CATS = ["coke", "drpepper", "sprite", "sport", "energy"];
-const CAT_LABEL = { coke: "Coke", drpepper: "Dr Pepper", sprite: "Sprite", sport: "Sport drinks", energy: "Energy drinks" };
-const CAT_SHORT = { coke: "Coke", drpepper: "Dr Pepper", sprite: "Sprite", sport: "Sport", energy: "Energy" };
+const CATS = ["soda", "sport", "energy", "protein"];   // 3.2.2: four broad ones (3.0–3.2.1 had Coke, Dr Pepper and Sprite; they became Soda)
+const CAT_LABEL = { soda: "Soda", sport: "Sport drinks", energy: "Energy drinks", protein: "Protein drinks" };
+const CAT_SHORT = { soda: "Soda", sport: "Sport", energy: "Energy", protein: "Protein" };
+const OLD_CAT = { coke: "soda", drpepper: "soda", sprite: "soda" };
+// once at start-up: 3.0–3.2.1 categories become the 3.2.2 ones
+function migrateCats() {
+  for (const n of state.notes) if ((n.cats || []).some(c => OLD_CAT[c])) n.cats = [...new Set(n.cats.map(c => OLD_CAT[c] || c))].filter(c => CAT_LABEL[c]);
+}
 // 2.x brands (as the old product list knew them) → category
-const BRAND_CAT = { "coca cola": "coke", "diet coke": "coke", "dr pepper": "drpepper", "diet dr pepper": "drpepper", sprite: "sprite",
-  powerade: "sport", bodyarmor: "sport", "bodyarmor lyte": "sport", "monster energy": "energy", reign: "energy", nos: "energy", "full throttle": "energy" };
+const BRAND_CAT = { "coca cola": "soda", "diet coke": "soda", "dr pepper": "soda", "diet dr pepper": "soda", sprite: "soda", fanta: "soda", "barqs": "soda", fresca: "soda", "mello yello": "soda", "mr. pibb": "soda", seagrams: "soda",
+  powerade: "sport", bodyarmor: "sport", "bodyarmor lyte": "sport", "monster energy": "energy", reign: "energy", nos: "energy", "full throttle": "energy", "core power": "protein", "core power elite": "protein", fairlife: "protein" };
 const noteCats = n => CATS.filter(c => (n.cats || []).includes(c));   // always in the usual order
 const MAX_CLOSEUPS = 24;
 let lastNoteId = null;
@@ -3394,7 +3400,7 @@ function shelfAddPhoto(id) {
   } else {
     const kind = captureKind(), slot = baSlot(), dg = takeDisplayDg(slot, "before", kind);
     const s = { id: newId("n"), at: Date.now(), slot, kind, photos: [id], audio: null, secs: 0, text: "", status: "done", parts: [], flag: false,
-      ticks: {}, out: {}, err: "", bk: 3, cats: [], v3: 1, ...(dg ? { dg } : {}) };
+      ticks: {}, out: {}, err: "", bk: 3, cats: nextCats(), v3: 1, ...(dg ? { dg } : {}) };
     if (kind === "display" && dspPending && dspPending.store === storeOf(slot)) { const d = dispActive(storeDisp(storeOf(slot))).find(x => x.id === dspPending.id); if (d) { s.sd = d.id; d.at = Date.now(); setTimeout(() => keepDisplayPhoto(d, id), 800); } dspPending = null; }   // "Shoot this one"
     state.notes.unshift(s); lastNoteId = s.id;
     hold.session = { note: s.id, kind, slot };
@@ -3430,26 +3436,35 @@ function toggleCat(n, c) {
   else n.cats.push(c);
   haptic("tick"); save(); renderAll();
 }
-// The bar under the camera while a shelf is open, and the category buttons over the Aisle | Display switch
+// The labels the next shelf gets (sticky: they stay lit until changed)
+const nextCats = () => CATS.filter(c => (state.settings.nextCats || []).includes(c));
+// The bar under the camera while a shelf is open, and the category buttons above the shutter (always, except for Backstock)
 function renderHoldBar() {
   const bar = document.getElementById("hold-bar"), n = sessNote(); if (!bar) return;
   const on = !!n && hold.session.slot === baSlot();
   bar.hidden = !on; $("#shutter-label").style.visibility = on ? "hidden" : "";   // the hint keeps its space; the bar sits over it
-  const row = $("#cat-row"), seg = $("#cap-seg");
-  row.hidden = !on; seg.hidden = on;
+  const row = $("#cat-row");
+  row.hidden = captureKind() === "backstock" && !on;
   renderDispPick(n, on);   // 3.2: an untagged display: which one is it?
-  if (!on) return;
-  const kind = noteKind(n), disp = kind === "display", num = shelfLabel(n), cu = n.photos.length - 1;
-  $("#hold-text").innerHTML = `<b>${esc(num)}</b> · ${disp ? `${n.photos.length} photo${n.photos.length === 1 ? "" : "s"}` : `${cu} close-up${cu === 1 ? "" : "s"}`}`;
-  $("#hold-done").textContent = `Next ${KIND_LABEL[kind].toLowerCase()}`;
-  const cats = noteCats(n), key = cats.join(",");
+  const cats = on ? noteCats(n) : nextCats(), key = (on ? n.id : "next") + "|" + cats.join(",");
+  if (on) {
+    const kind = noteKind(n), disp = kind === "display", num = shelfLabel(n), cu = n.photos.length - 1;
+    $("#hold-text").innerHTML = `<b>${esc(num)}</b>${cats.length ? ` · ${esc(cats.map(c => CAT_SHORT[c]).join(", "))}` : ""} · ${disp ? `${n.photos.length} photo${n.photos.length === 1 ? "" : "s"}` : `${cu} close-up${cu === 1 ? "" : "s"}`}`;
+    $("#hold-done").textContent = `Next ${KIND_LABEL[kind].toLowerCase()}`;
+  }
   if (row.dataset.key !== key || !row.children.length) {
     row.dataset.key = key;
     row.innerHTML = CATS.map(c => `<button class="cat c-${c}${cats.includes(c) ? " on" : ""}" data-cat="${c}" aria-pressed="${cats.includes(c)}">${esc(CAT_SHORT[c])}</button>`).join("");
   }
 }
 function wireShelfCapture() {
-  $("#cat-row").onclick = e => { const b = e.target.closest("[data-cat]"), n = sessNote(); if (!b || !n) return; toggleCat(n, b.dataset.cat); pulse(b); };
+  $("#cat-row").onclick = e => {
+    const b = e.target.closest("[data-cat]"); if (!b) return;
+    const c = b.dataset.cat, n = sessNote();
+    if (n) { toggleCat(n, c); state.settings.nextCats = noteCats(n); }   // the open shelf, and the ones after it
+    else { const cur = nextCats(); state.settings.nextCats = cur.includes(c) ? cur.filter(x => x !== c) : [...cur, c]; haptic("tick"); save(); renderHoldBar(); }
+    save(); pulse($(`#cat-row [data-cat="${c}"]`));
+  };
   wireDispPick();
   $("#hold-done").onclick = () => { const n = sessNote(); endHoldSession(); if (n) { haptic("ok"); pulse($("#last-note")); } };
 }
@@ -3720,7 +3735,7 @@ function renderCapture() {
   $("#shutter-label").textContent = !storeOf(baSlot()) ? "Tap the shutter or a store slot above to set the store number."
     : ck === "backstock" ? "Tap the shutter to photograph the back stock."
     : !cam.stream ? "Tap the shutter to use the phone camera."
-    : ck === "display" ? "Tap the shutter for the display, then again for more of it." : `Tap the shutter for ${KIND_ONE[ck]}, then again for close-ups of what's low.`;
+    : ck === "display" ? "Pick what it holds, tap the shutter for the display, then again for more of it." : `Pick what it holds, tap the shutter for ${KIND_ONE[ck]}, then again for close-ups.`;
   const n = sessNote();
   $("#btn-shutter").setAttribute("aria-label", ck === "backstock" ? "Take a photo of the back stock" : n ? "Take a close-up" : `Take a photo of the ${ck}`);
   // Under the thumb: the last photo set on the left (tap to open it again), the Gallery on the right.
@@ -5047,10 +5062,10 @@ const T_STEPS = [
     layerText: "Type a store number, then tap Continue.", hint: "tap", done: () => !!storeOf(baSlot()) },
   { id: "camera", skip: () => !!cam.stream, target: () => (cam.starting ? null : $("#btn-cam-start")), text: "Turn on the camera.",
     hint: "tap", done: () => !!cam.stream, fail: () => !!cam.error },
-  { id: "shelf", target: () => $("#view-capture .shutter-wrap"), text: "Tap the shutter to photograph the aisle.", hint: "tap", done: () => !!sessNote() },
+  { id: "cat", target: () => $("#cat-row"), text: "First, tap what this spot mostly holds. It stays picked for the next ones until you change it.", hint: "glow", done: () => nextCats().length > 0 || (!!sessNote() && noteCats(sessNote()).length > 0) },
+  { id: "shelf", target: () => $("#view-capture .shutter-wrap"), text: "Now tap the shutter to photograph the aisle.", hint: "tap", done: () => !!sessNote() },
   { id: "closeup", target: () => $("#view-capture .shutter-wrap"), text: "Something low? Get close and tap again. Each tap is a close-up of this spot.", hint: "tap",
     done: () => !!sessNote() && sessNote().photos.length > 1 },
-  { id: "cat", target: () => $("#cat-row"), text: "Tap what this spot mostly holds, so it's easy to find later. Pick as many as fit.", hint: "glow", done: () => !!sessNote() && noteCats(sessNote()).length > 0 },
   { id: "next", target: () => $("#hold-done"), text: "Moving on? Tap Next aisle, then snap the next spot.", hint: "tap", done: () => !hold.session },
   { id: "shelvestab", target: () => $('#tabs [data-view="gallery"]'), text: "Your photos are on the Gallery tab, aisles with aisles, shelves with shelves.", hint: "tap", done: () => view === "gallery" },
   { id: "tick", target: () => $("#view-gallery .shelf-card .tick"), text: "Pulled what this one needed? Tap its check.", hint: "tick", done: () => state.notes.some(n => n.done) },
@@ -5078,7 +5093,7 @@ function tutBegin() {
   tut.saved = snapshot(); tutorialActive = true;   // from here nothing is saved until it ends
   const s = JSON.parse(tut.saved);
   Object.assign(s, { notes: [], shots: [], stores: ["", "", "", "", ""], storeName: "", texted: {}, displayMemory: {}, recentStores: [] });
-  Object.assign(s.settings, { baSlot: 0, captureKind: "aisle", baKind: "aisle", hideDone: false, photoCheck: false });   // practice: everything on Aisle, no photo warnings
+  Object.assign(s.settings, { baSlot: 0, captureKind: "aisle", baKind: "aisle", hideDone: false, photoCheck: false, nextCats: [] });   // practice: everything on Aisle, no photo warnings
   state = s; lastNoteId = null; lastShotId = null; displayTarget = null;
   renderAll(); showView("capture");
   tut.timer = setInterval(tutTick, 150);
@@ -5135,7 +5150,7 @@ async function practiceSample() {
     ids.push(id);
   }
   state.notes.unshift({ id: newId("n"), at: Date.now(), slot: baSlot(), kind: "aisle", photos: ids, audio: null, secs: 0, text: "", status: "done", parts: [], flag: false,
-    ticks: {}, out: {}, err: "", bk: 3, cats: ["coke"], v3: 1 });
+    ticks: {}, out: {}, err: "", bk: 3, cats: ["soda"], v3: 1 });
   renderAll();
 }
 
@@ -5229,6 +5244,8 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "3.3.0", notes: ["The Soda / Sport / Energy / Protein buttons are always above the shutter: pick what the shelf holds first, then take the photo. Your pick stays lit for the next shelves until you change it, and the bar under the camera shows it."] },
+  { v: "3.2.2", notes: ["Four broader labels: Soda, Sport, Energy and Protein. Photos labelled Coke, Dr Pepper or Sprite are now Soda."] },
   { v: "3.2.1", notes: [
     "The Gallery shows each type's photos in order (Aisle 1, 2, 3…), each labelled with what it mostly holds: Coke, Dr Pepper, Sprite, Sport, Energy.",
     "Tap a category at the top of the Gallery to see only those photos, to find a shelf quickly.",
@@ -5339,7 +5356,7 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 93;
+const REVISION = 94;
 // More
 function renderMore() {
   const v = $("#view-more");
@@ -5377,7 +5394,7 @@ function renderMore() {
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
     ${enc.last.ready != null ? `<p class="sec-foot">Last photo: ready for the next tap in ${enc.last.ready} ms${enc.last.saved != null ? `, saved in ${enc.last.saved} ms (${enc.last.path})` : ""}.</p>` : ""}
-    <p class="foot">Shelfie 3.2.1 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 3.3.0 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
   v.querySelector("#haptic-shutter").onchange = e => { state.settings.hapticShutter = e.target.checked; save(); syncHaptics(); };
