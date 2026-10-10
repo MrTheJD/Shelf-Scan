@@ -66,7 +66,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-si
 /* ---------- Brand bar ---------- */
 header.top {
   position: sticky; top: 0; z-index: 20; background: var(--red); color: var(--on-red);
-  padding: calc(6px + var(--safe-t)) 16px 6px; min-height: calc(44px + var(--safe-t));
+  padding: calc(6px + var(--safe-t)) 16px 6px; min-height: calc(48px + var(--safe-t));
   display: flex; align-items: center; gap: 10px;
 }
 header.top h1 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -.02em; }
@@ -173,8 +173,8 @@ body.kb-open .dock { display: none; }
 /* ---------- Capture: a viewfinder with the controls under the thumb ---------- */
 #view-capture { padding: 0; }
 #view-ba { padding: 0; }
-#view-capture.active { display: flex; flex-direction: column; gap: 12px; height: calc(100vh - 44px - var(--safe-t) - var(--tab-h) - var(--safe-b)); height: calc(100dvh - 44px - var(--safe-t) - var(--tab-h) - var(--safe-b)); min-height: 440px; padding: 12px 16px 12px; }
-#view-ba.active { display: flex; flex-direction: column; gap: 12px; height: calc(100vh - 44px - var(--safe-t) - var(--tab-h) - var(--safe-b)); height: calc(100dvh - 44px - var(--safe-t) - var(--tab-h) - var(--safe-b)); min-height: 440px; padding: 12px 16px 12px; }
+#view-capture.active { display: flex; flex-direction: column; gap: 12px; height: calc(100vh - 48px - var(--safe-t) - var(--tab-h) - var(--safe-b)); height: calc(100dvh - 48px - var(--safe-t) - var(--tab-h) - var(--safe-b)); min-height: 440px; padding: 12px 16px 12px; }
+#view-ba.active { display: flex; flex-direction: column; gap: 12px; height: calc(100vh - 48px - var(--safe-t) - var(--tab-h) - var(--safe-b)); height: calc(100dvh - 48px - var(--safe-t) - var(--tab-h) - var(--safe-b)); min-height: 440px; padding: 12px 16px 12px; }
 #view-capture > * + * { margin-top: 0; }
 #view-ba > * + * { margin-top: 0; }
 .camera { position: relative; flex: 1 1 auto; min-height: 220px; border-radius: 24px; overflow: hidden; background: #000; border: 3px solid var(--red); transition: border-color .3s ease; }
@@ -1419,11 +1419,24 @@ const putAudio = (id, rec) => mediaTx("audio", "readwrite", s => s.put(rec, id))
 const getAudio = id => mediaTx("audio", "readonly", s => s.get(id));
 const delAudio = id => mediaTx("audio", "readwrite", s => s.delete(id));
 const newId = prefix => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
-async function photoURL(id) {
-  if (photoURLs.has(id)) return photoURLs.get(id);
-  const blob = await getPhoto(id).catch(() => null);
-  if (!blob) return null;
-  const u = URL.createObjectURL(blob); photoURLs.set(id, u); return u;
+// 3.6.1: full-size photos are 2–3 MB each; only the last dozen opened keep their address (browsing a hundred shouldn't fill an older phone's memory).
+// `keep`: a full-size photo standing in for a missing thumbnail in a grid stays until deleted.
+const urlWait = new Map(), fullSeen = [];
+async function photoURL(id, keep) {
+  if (photoURLs.has(id)) { if (!keep) noteFull(id); return photoURLs.get(id); }
+  if (urlWait.has(id)) return urlWait.get(id);
+  const p = (async () => {
+    const blob = await getPhoto(id).catch(() => null);
+    if (!blob) return null;
+    const u = URL.createObjectURL(blob); photoURLs.set(id, u); if (!keep) noteFull(id); return u;
+  })().finally(() => urlWait.delete(id));
+  urlWait.set(id, p); return p;
+}
+function noteFull(id) {
+  if (String(id).endsWith("~t") || String(id).startsWith("dm")) return;   // thumbnails are small: they stay
+  const i = fullSeen.indexOf(id); if (i >= 0) fullSeen.splice(i, 1);
+  fullSeen.push(id);
+  while (fullSeen.length > 12) dropURL(fullSeen.shift());
 }
 // Fill <img data-photo="id"> placeholders after a render, with the thumbnail when there is one (photos from before 2.0 have none).
 function hydratePhotos(root) {
@@ -1431,7 +1444,7 @@ function hydratePhotos(root) {
     img.draggable = false;   // no iPhone drag-and-drop of photos (a long hold selects in the Gallery)
     const id = img.dataset.photo;
     let u = await photoURL(thumbId(id));
-    if (!u) { u = await photoURL(id); if (u) backfillThumb(id); }   // no thumbnail yet: show the photo, and make one for next time
+    if (!u) { u = await photoURL(id, true); if (u) backfillThumb(id); }   // no thumbnail yet: show the photo, and make one for next time
     if (u) { img.addEventListener("load", () => img.classList.add("in"), { once: true }); img.src = u; if (img.complete && img.naturalWidth) img.classList.add("in"); }
     else img.closest("[data-photo-wrap]")?.classList.add("missing");
   });
@@ -1974,7 +1987,7 @@ function pickBackupFile() {
   document.body.appendChild(inp); inp.click();
 }
 async function restoreBackup(data) {
-  if (!data || typeof data !== "object" || !(data.settings || Array.isArray(data.stores))) return toast("That isn't a usable Shelfie backup");
+  if (!data || typeof data !== "object" || Array.isArray(data) || !((data.settings && typeof data.settings === "object") || Array.isArray(data.stores))) return toast("That isn't a usable Shelfie backup");
   const hasPhotos = state.shots.length > 0 || state.notes.length > 0, when = data.at ? new Date(data.at).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "";
   if (!(await confirmDialog(`Restore the backup${when ? ` from <b>${esc(when)}</b>` : ""}? This replaces this phone's settings, store locations and display lists${hasPhotos ? "" : " and store numbers"}. Your photos stay.`, { ok: "Restore", danger: true }))) return;
   const snap = snapshot(), next = JSON.parse(snap), str = (x, n) => String(x || "").slice(0, n);
@@ -2295,17 +2308,18 @@ let lastNoteId = null;
 
 // The open shelf (kept under the 2.x name "hold": other parts check hold.session)
 const hold = { session: null };   // { note: id, kind, slot }
+const newSession = (n, slot = baSlot()) => ({ note: n.id, kind: noteKind(n), slot, last: Date.now() });   // last: when a photo was last added (a shelf left open for 10 minutes closes itself)
 const sessNote = () => (hold.session ? state.notes.find(n => n.id === hold.session.note) || null : null);
 function endHoldSession() {
   if (!hold.session) return;
   hold.session = null;
-  if (afterShot.t) { clearTimeout(afterShot.t); afterShot.t = 0; save(); const ids = afterShot.ids.splice(0); for (const id of ids) checkPhotoQuality(id); }
+  flushShots();
   if (typeof renderCapture === "function" && view === "capture") renderCapture(); else renderHoldBar();
 }
 
 // ---- Taking the photos ----
 function shelfShot() {
-  if (hold.session && (!sessNote() || hold.session.slot !== baSlot() || hold.session.kind !== captureKind())) endHoldSession();   // deleted or moved meanwhile
+  if (hold.session && (!sessNote() || hold.session.slot !== baSlot() || hold.session.kind !== captureKind() || Date.now() - (hold.session.last || 0) > 10 * 60000)) endHoldSession();   // deleted, moved, or left alone a long while: this tap starts a new one
   const n = sessNote();
   if (n && n.photos.length > MAX_CLOSEUPS) { toast("That's the most close-ups for one shelf. Tap Next shelf."); pulse($("#hold-done")); return; }
   const r = snapNow("#cam-video", "#camera", "#btn-shutter", $("#last-note")); if (!r) return;
@@ -2315,15 +2329,15 @@ function shelfShot() {
 function shelfAddPhoto(id) {
   const n = sessNote();
   if (n) {
-    n.photos.push(id); renderHoldBar(); afterShot();
+    n.photos.push(id); hold.session.last = Date.now(); renderHoldBar(); afterShot();
     pulse($("#hold-bar"));
   } else {
     const kind = captureKind(), slot = baSlot(), dg = takeDisplayDg(slot, "before", kind);
     const s = { id: newId("n"), at: Date.now(), slot, kind, photos: [id], audio: null, secs: 0, text: "", status: "done", parts: [], flag: false,
       ticks: {}, out: {}, err: "", bk: 3, cats: nextCats(), v3: 1, ...(dg ? { dg } : {}) };
-    if (kind === "display" && dspPending && dspPending.store === storeOf(slot)) { const d = dispActive(storeDisp(storeOf(slot))).find(x => x.id === dspPending.id); if (d) { s.sd = d.id; d.at = Date.now(); setTimeout(() => keepDisplayPhoto(d, id), 800); } dspPending = null; }   // "Shoot this one"
+    if (kind === "display" && dspPending && dspPending.store === storeOf(slot) && Date.now() - (dspPending.at || 0) < 10 * 60000) { const d = dispActive(storeDisp(storeOf(slot))).find(x => x.id === dspPending.id); if (d) { s.sd = d.id; d.at = Date.now(); setTimeout(() => keepDisplayPhoto(d, id), 800); } dspPending = null; }   // "Shoot this one"
     state.notes.unshift(s); lastNoteId = s.id;
-    hold.session = { note: s.id, kind, slot };
+    hold.session = newSession(s, slot);
     renderCapture(); afterShot();
     pulse($("#cat-row"));
   }
@@ -2331,14 +2345,23 @@ function shelfAddPhoto(id) {
 }
 // Saving, redrawing the other parts and the blur check run once the taps pause (half a second, or when the phone is idle).
 function afterShot() {
-  clearTimeout(afterShot.t);
+  afterShot.dirty = true; clearTimeout(afterShot.t);
   afterShot.t = setTimeout(() => {
-    const go = () => { afterShot.t = 0; save(); renderAll(); const ids = afterShot.ids.splice(0); for (const id of ids) checkPhotoQuality(id); };
-    if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 600 }); else go();
+    afterShot.t = 0;
+    if (window.requestIdleCallback) requestIdleCallback(() => flushShots(true), { timeout: 600 }); else flushShots(true);
   }, 450);
 }
-afterShot.ids = [];
-document.addEventListener("visibilitychange", () => { if (document.hidden && afterShot.t) { clearTimeout(afterShot.t); afterShot.t = 0; save(); } });   // the app going away: save now
+afterShot.ids = []; afterShot.dirty = false; afterShot.t = 0;
+// Save now, and check the new photos' quality (and redraw if asked). Runs when the taps pause, when a shelf closes, and when the app goes away.
+function flushShots(redraw) {
+  clearTimeout(afterShot.t); afterShot.t = 0;
+  if (!afterShot.dirty && !afterShot.ids.length) return;
+  afterShot.dirty = false; save();
+  const ids = afterShot.ids.splice(0);
+  if (redraw) renderAll();
+  for (const id of ids) checkPhotoQuality(id);
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden) flushShots(); });   // the app going away: save now
 // The thumbnail button: open the last shelf again (more close-ups or categories), or, if it's the one open, look at it.
 function addToShelf(n) {
   if (!n) return;
@@ -2346,7 +2369,8 @@ function addToShelf(n) {
   endHoldSession();
   if (Number.isInteger(n.slot) && n.slot !== baSlot()) { state.settings.baSlot = n.slot; }
   if (noteKind(n) !== captureKind()) state.settings.captureKind = noteKind(n);
-  hold.session = { note: n.id, kind: noteKind(n), slot: baSlot() }; lastNoteId = n.id;
+  state.settings.camWhen = "before";   // close-ups are Before photos
+  hold.session = newSession(n); lastNoteId = n.id;
   save(); renderAll(); haptic("tick"); pulse($("#last-note"));
   toast(`${shelfLabel(n)} is open again. Tap the shutter for more close-ups.`);
 }
@@ -2526,9 +2550,9 @@ function openShelf(n) {
   s.querySelector('[data-a="add"]').onclick = () => {
     close();
     if (Number.isInteger(n.slot)) state.settings.baSlot = n.slot;
-    state.settings.captureKind = noteKind(n); save();
+    state.settings.captureKind = noteKind(n); state.settings.camWhen = "before"; save();
     showView("capture");
-    hold.session = { note: n.id, kind: noteKind(n), slot: baSlot() }; lastNoteId = n.id; renderAll();
+    hold.session = newSession(n); lastNoteId = n.id; renderAll();
     toast(`Tap the shutter to add close-ups to ${shelfLabel(n)}`);
   };
   s.querySelector('[data-a="more"]').onclick = async () => {
@@ -2631,7 +2655,7 @@ function showView(v) {
 function renderAll() {
   const hs = storeOf(baSlot()), hb = $("#hdr-store");   // 3.4: the one store button, top right, on every tab
   hb.innerHTML = `${hs ? `Store ${esc(hs)}` : "Set store"}<i class="caret"></i>`;
-  const dc = dispCounts(hs), left = dc ? dc.total - dc.found : 0, db = $("#dsp-badge");   // displays still to find at this store   // displays still to find at this store
+  const dc = dispCounts(hs), left = dc ? dc.total - dc.found : 0, db = $("#dsp-badge");   // displays still to find at this store
   db.hidden = !left; db.textContent = left;
   if (view === "capture") renderCapture();
   if (view === "displays") renderDisplays();
@@ -2918,7 +2942,7 @@ function askStore(slot) {
   return new Promise(resolve => {
     const d = el(`<div class="dialog"><p><b>Which store is this?</b></p>
       <input class="field" inputmode="numeric" autocomplete="off" placeholder="Store number, like 1234" aria-label="Store number">
-      ${(state.recentStores || []).length ? `<p class="recent-h">Recent stores</p><div class="recent-stores">${state.recentStores.map(s => `<button class="recent-store" data-st="${esc(s)}">#${esc(s)}</button>`).join("")}</div>` : ""}
+      ${(state.recentStores || []).filter(s => !state.stores.includes(s)).length ? `<p class="recent-h">Recent stores</p><div class="recent-stores">${state.recentStores.filter(s => !state.stores.includes(s)).map(s => `<button class="recent-store" data-st="${esc(s)}">#${esc(s)}</button>`).join("")}</div>` : ""}
       <div class="btns" style="margin-top:14px"><button class="btn" data-a="c">Cancel</button><button class="btn primary" data-a="ok">Continue</button></div></div>`);
     const inp = d.querySelector("input"); inp.value = storeOf(slot);
     const clean = v => String(v).trim().replace(/^store\s*#?\s*/i, "").replace(/^#\s*/, "");
@@ -2932,6 +2956,8 @@ function askStore(slot) {
     const close = openLayer(d, { center: true, sticky: true, onClose: () => { if (!done) { renderAll(); resolve(null); } } });
     const go = () => {
       const v = clean(inp.value); if (!v) { inp.focus(); return; }
+      const dup = state.stores.findIndex((x, i) => i !== slot && x === v);
+      if (dup >= 0) { done = true; close(); toast(`#${v} is already open`); if (dup !== baSlot()) pickSlot(dup); else renderAll(); resolve(null); return; }
       done = true; state.stores[slot] = v; if (slot === baSlot()) state.storeName = v;
       state.recentStores = [v, ...(state.recentStores || []).filter(x => x !== v)].slice(0, 8);
       save(); renderAll(); close(); resolve(v);
@@ -2941,7 +2967,7 @@ function askStore(slot) {
     d.querySelector('[data-a="ok"]').onclick = go;
     inp.onkeydown = e => { if (e.key === "Enter") go(); };
     d.querySelectorAll(".recent-store").forEach(b => (b.onclick = () => { inp.value = b.dataset.st; inp.oninput(); go(); }));
-    if (!(state.recentStores || []).length) setTimeout(() => { inp.focus(); inp.select(); }, 50);   // with recent stores to tap, no keyboard until asked
+    if (!d.querySelector(".recent-store")) setTimeout(() => { inp.focus(); inp.select(); }, 50);   // with recent stores to tap, no keyboard until asked
   });
 }
 // 3.4: the store button at the top opens this: today's stores (tap to switch, ••• for its menu) and Add a store.
@@ -2991,7 +3017,7 @@ async function onShutterBA(forcePhone) {
     playShutter(); shot.photo = newId("p");
     try { await savePhoto(shot.photo, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
   }
-  state.shots.unshift(shot); lastShotId = shot.id; save(); renderAll(); pulse($("#last-note")); checkPhotoQuality(shot.photo);
+  state.shots.unshift(shot); lastShotId = shot.id; afterShot.ids.push(shot.photo); afterShot(); renderCapture(); pulse($("#last-note"));   // saved and checked once the taps pause (shelf.js)
   toast(`Saved to store#${storeOf(slot)} · After · ${KIND_LABEL[shot.kind]}`);
 }
 
@@ -3007,9 +3033,8 @@ async function snapBackstock(forcePhone) {
     playShutter(); shot.photo = newId("p");
     try { await savePhoto(shot.photo, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
   }
-  state.shots.unshift(shot); save(); renderAll();
+  state.shots.unshift(shot); afterShot.ids.push(shot.photo); afterShot(); renderCapture();
   toast(`Saved to store#${storeOf(slot)} · Before · Backstock`);
-  checkPhotoQuality(shot.photo);
 }
 
 function wireBA() {
@@ -3442,6 +3467,7 @@ function storeDisp(st, make) {
     const mem = (state.displayMemory || {})[st];
     if (!mem && !make) return null;
     all[st] = { list: (mem ? mem.photos : []).map(p => ({ id: newId("sd"), area: "", photo: p, at: mem.at })), areas: [] };
+    if (mem) delete state.displayMemory[st];   // the list owns those thumbnails now
   }
   return all[st];
 }
@@ -3495,9 +3521,9 @@ function askArea(st, cur) {
       const b = e.target.closest(".area-btn"); if (!b) return;
       done = true; close();
       if (!b.dataset.type) return resolve(b.dataset.area);
-      const t = await textPrompt("Where is this display?", cur && !opts.includes(cur) ? cur : "", { placeholder: "For example: By the deli" });
+      let t = await textPrompt("Where is this display?", cur && !opts.includes(cur) ? cur : "", { placeholder: "For example: By the deli" });
       if (!t) return resolve(null);
-      const sd2 = storeDisp(st, true); if (!DISPLAY_AREAS.includes(t)) sd2.areas = [t, ...sd2.areas.filter(x => x !== t)].slice(0, 12);
+      t = t.slice(0, 40); const sd2 = storeDisp(st, true); if (!DISPLAY_AREAS.includes(t)) sd2.areas = [t, ...sd2.areas.filter(x => x !== t)].slice(0, 12);
       save(); resolve(t);
     };
   });
@@ -3607,7 +3633,7 @@ function openStoreDisplay(slot, d) {
   if (b("after")) b("after").onclick = () => { close(); shootAfter(slot, n); };
   if (b("shoot")) b("shoot").onclick = () => {
     close(); endHoldSession();
-    dspPending = { store: st, id: d.id };
+    dspPending = { store: st, id: d.id, at: Date.now() };
     state.settings.baSlot = slot; state.settings.captureKind = "display"; state.settings.camWhen = "before"; save();
     showView("capture");
     toast(`Your next display photo is ${areaName(d)}`);
@@ -3821,7 +3847,7 @@ async function awayCheck() {
       const near = nearestStore(pos), cur = storeOf(baSlot());
       if (near && near.store === cur) return;   // at the open store: nothing to ask
       if (near && autoSwitchStore(near.store, cur)) return;
-      if (near) suggest = near.store;   // no room for it on the store buttons: offer it below
+      if (near) suggest = near.store;   // no room for it in the store list: offer it below
     }
   }
   if (long && storeOf(baSlot())) askStillHere(away, suggest);
@@ -3843,7 +3869,7 @@ function askStillHere(awayMs, suggest) {
   d.querySelector('[data-a="other"]').onclick = () => {
     close();
     const e = state.stores.findIndex(s => !s);
-    if (e < 0) return toast("All five store buttons are in use. Tap one at the top to change its number.");
+    if (e < 0) return toast("All five store spots are in use. Open Store at the top to change one, or Save & clear the shift.");
     pickSlot(e);   // an empty slot asks for its number
   };
 }
@@ -3852,7 +3878,7 @@ function switchToStore(v) {
   let i = state.stores.findIndex(s => s === v);
   if (i < 0) {
     i = state.stores.findIndex(s => !s);
-    if (i < 0) return toast("All five store buttons are in use. Tap one at the top to change its number.");
+    if (i < 0) return toast("All five store spots are in use. Open Store at the top to change one, or Save & clear the shift.");
     state.stores[i] = v; state.recentStores = [v, ...(state.recentStores || []).filter(x => x !== v)].slice(0, 8); save();
   }
   if (i !== baSlot()) pickSlot(i);
@@ -3861,8 +3887,8 @@ function switchToStore(v) {
 
 // ---- New day ----
 function oldWork() {
-  const t0 = startOfToday(), photos = allPhotoItems().filter(x => x.at < t0).flatMap(photosOf), notes = [];   // 3.0: shelves are photos (close-ups counted)
-  return { photos, notes, oldest: Math.min(...allPhotoItems().filter(x => x.at < t0).map(x => x.at), Date.now()) };
+  const t0 = startOfToday(), photos = allPhotoItems().filter(x => x.at < t0), notes = [];   // the main photos (what Save & clear saves)
+  return { photos, notes, oldest: Math.min(...photos.map(x => x.at), Date.now()) };
 }
 function newDayDue() {
   if (Date.now() < newDaySnooze || state.settings.newDayAsked === dayKey(Date.now())) return false;
@@ -3959,6 +3985,7 @@ async function retakePhoto(oldId) {
   for (const s of state.shots) if (s.photo === oldId) s.photo = id;
   for (const r of [...state.notes, ...state.shots]) { if (r.dg === oldId) r.dg = id; if (r.pair === oldId) r.pair = id; }   // a display that started with this photo
   if (displayTarget && displayTarget.anchor === oldId) displayTarget.anchor = id;
+  if (afterPick && afterPick.anchor === oldId) afterPick.anchor = id;
   save(); renderAll(); scheduleSweep();
   toast("Retaken");
   checkPhotoQuality(id);
@@ -4013,9 +4040,9 @@ function tutBegin() {
   if (gsel.on) galSelectEnd(true);
   tut.saved = snapshot(); tutorialActive = true;   // from here nothing is saved until it ends
   const s = JSON.parse(tut.saved);
-  Object.assign(s, { notes: [], shots: [], stores: ["", "", "", "", ""], storeName: "", texted: {}, displayMemory: {}, recentStores: [] });
+  Object.assign(s, { notes: [], shots: [], stores: ["", "", "", "", ""], storeName: "", texted: {}, displayMemory: {}, storeDisplays: {}, recentStores: [] });
   Object.assign(s.settings, { baSlot: 0, captureKind: "aisle", camWhen: "before", hideDone: false, photoCheck: false, nextCats: [] });   // practice: everything on Aisle, no photo warnings
-  state = s; lastNoteId = null; lastShotId = null; displayTarget = null;
+  state = s; lastNoteId = null; lastShotId = null; displayTarget = null; dspPending = null; afterPick = null; gal.cat = null;
   renderAll(); showView("capture");
   tut.timer = setInterval(tutTick, 150);
   tutGo(0);
@@ -4027,7 +4054,7 @@ function tutEnd() {
     hold.session = null;   // a practice shelf: nothing to file
     document.querySelectorAll("#layer .overlay").forEach(o => (o._close ? o._close() : o.remove()));
     if (gsel.on) galSelectEnd(true);
-    state = JSON.parse(tut.saved); tut.saved = null; lastNoteId = null; lastShotId = null; displayTarget = null;
+    state = JSON.parse(tut.saved); tut.saved = null; lastNoteId = null; lastShotId = null; displayTarget = null; dspPending = null; afterPick = null; gal.cat = null;
     tutorialActive = false;
     renderHoldBar(); renderAll(); showView("capture");
     scheduleSweep();   // the practice photos go
@@ -4165,6 +4192,12 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "3.6.1", notes: [
+    "Fixed: the camera screen was 4 pixels too tall, so it could bounce when touched.",
+    "Fixed: Add close-ups on a Gallery photo did nothing if the camera was on After.",
+    "Fixed: photos taken in the last half second could go unsaved if the app was closed right then.",
+    "A store number can't be open twice. A shelf left alone for 10 minutes closes, so the next tap starts a new one.",
+    "Less memory when swiping through lots of photos, a tidier practice run, and clearer wording." ] },
   { v: "3.6.0", notes: [
     "The Displays tab shows each display's Before and After side by side. One without an After has a Shoot After button that opens the camera in After, on that display.",
     "The practice run covers everything: labels, close-ups, flipping to After, the Displays tab and swiping through photos.",
@@ -4298,7 +4331,7 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 100;
+const REVISION = 101;
 // More
 function renderMore() {
   const v = $("#view-more");
@@ -4334,7 +4367,7 @@ function renderMore() {
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
     ${enc.last.ready != null ? `<p class="sec-foot">Last photo: ready for the next tap in ${enc.last.ready} ms${enc.last.saved != null ? `, saved in ${enc.last.saved} ms (${enc.last.path})` : ""}.</p>` : ""}
-    <p class="foot">Shelfie 3.6.0 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 3.6.1 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   v.querySelector("#haptic-shutter").onchange = e => { state.settings.hapticShutter = state.settings.hapticTaps = e.target.checked; save(); syncHaptics(); };   // one switch for both (3.4)
   v.querySelector("#btn-backup").onclick = saveBackup;
@@ -4382,7 +4415,7 @@ wireEdgeBack("#view-changelog.active", () => showView("more"));   // swipe in fr
 // 2.12.2: swipe sideways to change sets
 wirePageSwipe([
   { when: () => view === "gallery", off: () => gsel.on,   // not while selecting photos
-    list: () => KINDS, cur: () => gal.kind || baKind(), go: k => { gal.kind = k; renderGallery(); }, moving: () => $("#view-gallery") },
+    list: () => KINDS, cur: () => gal.kind || baKind(), go: k => { gal.kind = k; gal.cat = null; renderGallery(); }, moving: () => $("#view-gallery") },
 ]);
 document.querySelectorAll(".cam-lens button").forEach(b => (b.onclick = () => { pulse(b); setLens(b.dataset.lens); }));
 renderAll();
