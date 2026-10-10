@@ -3021,9 +3021,9 @@ async function shareBatch(slot, w) {
   if (!list.length) return;
   const store = storeOf(slot) || await askStore(slot); if (store == null) return;
   const files = [], dnum = displayNumbers();
-  for (const [i, x] of list.entries()) for (const [j, p] of photosOf(x).entries()) {
-    const blob = await getPhoto(p).catch(() => null);
-    if (blob) files.push(new File([blob], `${WHEN_LABEL[w]}-${i + 1}-${(dn => (x.kind === "display" && dn ? `Display${dn[0]}` : KIND_LABEL[x.kind]))(dnum.get(w + "|" + x.photo))}${j ? `-closeup${j}` : ""}.jpg`, { type: "image/jpeg" }));
+  for (const [i, x] of list.entries()) {   // 3.5.3: the main photo of each set only, no close-ups (Save & clear still saves them)
+    const blob = await getPhoto(x.photo).catch(() => null);
+    if (blob) files.push(new File([blob], `${WHEN_LABEL[w]}-${i + 1}-${(dn => (x.kind === "display" && dn ? `Display${dn[0]}` : KIND_LABEL[x.kind]))(dnum.get(w + "|" + x.photo))}.jpg`, { type: "image/jpeg" }));
   }
   if (!files.length) return toast("These photos are missing");
   const when = new Date(list[0].at).toLocaleDateString([], { month: "short", day: "numeric" });
@@ -3378,9 +3378,9 @@ async function galDelete() {
 }
 
 // ---- Texted: which photos "Text all" has sent, per store and Before / After ----
-const untexted = (slot, w) => { const sent = new Set(((state.texted || {})[slot] || {})[w] || []); return itemsOf(slot, w).filter(x => photosOf(x).some(p => !sent.has(p))).length; };   // a close-up added later counts
+const untexted = (slot, w) => { const sent = new Set(((state.texted || {})[slot] || {})[w] || []); return itemsOf(slot, w).filter(x => !sent.has(x.photo)).length; };   // the main photos (close-ups aren't texted)
 function markTexted(slot, w) {
-  state.texted = state.texted || {}; (state.texted[slot] = state.texted[slot] || {})[w] = itemsOf(slot, w).flatMap(photosOf);
+  state.texted = state.texted || {}; (state.texted[slot] = state.texted[slot] || {})[w] = itemsOf(slot, w).map(x => x.photo);
   save(); if (view === "gallery") renderGallery();
 }
 
@@ -3972,7 +3972,7 @@ const T_STEPS = [
   { id: "open", target: () => $("#view-gallery .shelf-card"), text: "Tap a photo to see it with its close-ups.", hint: "tap", done: () => !!shelfSheetOpen() },
   { id: "look", inLayer: true, target: () => shelfSheetOpen() && shelfSheetOpen().querySelector('[data-a="close"]'),
     text: "Swipe sideways through the close-ups to see what's low. Then tap Done.", hint: "glow", done: () => !shelfSheetOpen() },
-  { id: "text", target: () => $("#gal-share"), text: "Text all sends a store's photos, close-ups included, to your boss. The orange dot means that batch isn't sent yet.", hint: "dot", next: true },
+  { id: "text", target: () => $("#gal-share"), text: "Text all sends a store's photos to your boss (the main photo of each spot, not the close-ups). The orange dot means that batch isn't sent yet.", hint: "dot", next: true },
   { id: "select", target: () => $("#view-gallery .shot"), text: "Hold a photo to select it. Then you can move it to another store, type or display.",
     hint: "press", next: true, done: () => gsel.on },
   { id: "clear", enter: () => { if (gsel.on) galSelectEnd(); }, target: () => $('#view-gallery [data-a="shift"]'),
@@ -4144,6 +4144,7 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "3.5.3", notes: ["Text all Before sends just the main photo of each aisle, shelf and display, not the close-ups. Save & clear the shift still saves the close-ups to your phone."] },
   { v: "3.5.2", notes: ["Swipe through all of a store's After photos, from one type to the next (Aisle, Shelf, Display, Backstock), the same way as the Before sets. After photos are listed oldest first, like the Before ones."] },
   { v: "3.5.1", notes: [
     "Swipe the camera picture left for After, right for Before.",
@@ -4271,7 +4272,7 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 98;
+const REVISION = 99;
 // More
 function renderMore() {
   const v = $("#view-more");
@@ -4307,7 +4308,7 @@ function renderMore() {
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
     ${enc.last.ready != null ? `<p class="sec-foot">Last photo: ready for the next tap in ${enc.last.ready} ms${enc.last.saved != null ? `, saved in ${enc.last.saved} ms (${enc.last.path})` : ""}.</p>` : ""}
-    <p class="foot">Shelfie 3.5.2 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 3.5.3 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   v.querySelector("#haptic-shutter").onchange = e => { state.settings.hapticShutter = state.settings.hapticTaps = e.target.checked; save(); syncHaptics(); };   // one switch for both (3.4)
   v.querySelector("#btn-backup").onclick = saveBackup;
