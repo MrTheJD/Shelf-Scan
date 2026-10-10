@@ -1040,6 +1040,18 @@ header.top .store .caret { width: 0; height: 0; border-left: 4px solid transpare
 .st-cur { color: var(--red); display: flex; } .st-cur svg.i { width: 20px; height: 20px; stroke-width: 3; }
 .st-more { width: 44px; height: 44px; border: 0; background: none; color: var(--muted); display: flex; align-items: center; justify-content: center; border-radius: 12px; }
 .shift-clear { margin-top: 28px; color: var(--red); }
+
+/* ---------- 3.5: Before and After in one Camera tab ---------- */
+.deck-side.when-btn { width: auto; min-width: 76px; padding: 6px 10px; flex-direction: column; gap: 2px; border-radius: 16px; background: var(--chip); }
+.when-btn b { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); transition: color .2s ease, transform .3s var(--spring); }
+.when-btn:not(.after) b[data-w="before"], .when-btn.after b[data-w="after"] { color: var(--text); transform: scale(1.12); }
+.when-btn.after b[data-w="after"] { color: var(--ok); }
+.when-btn:not(.after) b[data-w="before"] { color: var(--red); }
+#view-capture.when-after .camera { border-color: var(--ok); }
+#view-capture.when-after .cam-chip { background: var(--ok); color: #fff; }
+#view-capture.when-after .shutter-big { border-color: var(--ok); }
+#view-capture.when-after .shutter-big span { background: var(--ok); }
+#last-note.plain::after { display: none; }
 </style>
 </head>
 <body data-view="capture">
@@ -1051,7 +1063,8 @@ header.top .store .caret { width: 0; height: 0; border-left: 4px solid transpare
 </header>
 
 <main>
-  <!-- BEFORE: a big viewfinder, with everything you tap sitting in the bottom third. Tap: the shelf; tap again: close-ups (shelf.js) -->
+  <!-- CAMERA (3.5: Before and After in one tab): a big viewfinder, with everything you tap in the bottom third. Before: tap for the shelf,
+       again for close-ups (shelf.js). After: one photo per tap. The flip button next to the shutter switches. -->
   <section class="view active mode-aisle" id="view-capture">
     <div class="camera" id="camera">
       <video id="cam-video" playsinline muted autoplay hidden></video><canvas class="cam-canvas" aria-hidden="true"></canvas>
@@ -1067,6 +1080,7 @@ header.top .store .caret { width: 0; height: 0; border-left: 4px solid transpare
       <button class="cam-sound" aria-label="Shutter sound"></button>
       <div class="cam-lens" hidden><button data-lens="ultra" aria-label="Wide angle, 0.5 times">.5</button><button data-lens="wide" aria-label="Normal, 1 times">1×</button></div>
       <button class="cam-stop" id="btn-cam-stop" aria-label="Turn the camera off" hidden><span data-icon="x"></span></button>
+      <button class="pair-pip" id="pair-pip" hidden aria-label="This display's Before photo"><img alt=""><span></span></button>
     </div>
     <div class="deck">
       <div class="seg cap-seg" id="cap-seg">
@@ -1077,48 +1091,14 @@ header.top .store .caret { width: 0; height: 0; border-left: 4px solid transpare
       </div>
       <div class="dpick-row" id="dpick-row" hidden aria-label="Which display is this?"></div>
       <div class="cat-row" id="cat-row" hidden aria-label="What's on this shelf"></div>
+      <div class="pair-strip" id="pair-strip" hidden></div>
       <div class="deck-row">
         <button class="deck-side left" id="last-note" aria-label="Open the last photos again" style="visibility:hidden"></button>
         <div class="shutter-wrap"><button class="shutter-big" id="btn-shutter" aria-label="Take a photo of the aisle"><span></span></button></div>
-        <button class="deck-side right" id="btn-open-needed" aria-label="Open the Gallery"><span data-icon="grid"></span><span class="badge" id="deck-badge" hidden></span></button>
+        <button class="deck-side right when-btn" id="btn-when" aria-label="Switch to After"><b data-w="before">Before</b><b data-w="after">After</b></button>
       </div>
       <div class="hold-bar" id="hold-bar" hidden><span class="grow" id="hold-text"></span><button class="btn sm primary" id="hold-done">Next shelf</button></div>
       <p class="cap-hint" id="shutter-label">Tap the shutter for the aisle, then again for close-ups of what's low.</p>
-    </div>
-  </section>
-
-  <!-- BEFORE/AFTER: the same viewfinder, photo only. Each shot is filed by the two switches. -->
-  <section class="view mode-aisle" id="view-ba">
-    <div class="camera" id="ba-camera">
-      <video id="ba-video" playsinline muted autoplay hidden></video><canvas class="cam-canvas" aria-hidden="true"></canvas>
-      <div class="cam-wait" id="ba-starting" hidden>Starting the camera…</div>
-      <div class="cam-off" id="ba-off">
-        <span data-icon="camera"></span>
-        <button class="btn primary" id="ba-cam-start">Start camera</button>
-        <p id="ba-error"></p>
-        <button class="btn quiet" id="ba-phonecam" hidden><span data-icon="image"></span>Use phone camera instead</button>
-      </div>
-      <span class="cam-chip" id="ba-band">BEFORE · AISLE</span>
-      <button class="disp-chip" id="ba-disp" hidden></button>
-      <button class="cam-sound" aria-label="Shutter sound"></button>
-      <div class="cam-lens" hidden><button data-lens="ultra" aria-label="Wide angle, 0.5 times">.5</button><button data-lens="wide" aria-label="Normal, 1 times">1×</button></div>
-      <button class="cam-stop" id="ba-cam-stop" aria-label="Turn the camera off" hidden><span data-icon="x"></span></button>
-      <button class="pair-pip" id="pair-pip" hidden aria-label="This display's Before photo"><img alt=""><span></span></button>
-    </div>
-    <div class="deck">
-      <div class="pair-strip" id="pair-strip" hidden></div>
-      <div class="seg cap-seg" id="ba-kind-seg">
-        <button data-k="aisle" class="active">Aisle</button>
-        <button data-k="shelf">Shelf</button>
-        <button data-k="display">Display</button>
-        <button data-k="backstock">Backstock</button>
-      </div>
-      <div class="deck-row">
-        <button class="deck-side left" id="ba-last" aria-label="Open the last photo" style="visibility:hidden"></button>
-        <div class="shutter-wrap"><button class="shutter-big" id="ba-shutter" aria-label="Take a photo"><span></span></button></div>
-        <button class="deck-side right" id="ba-gallery" aria-label="Open the Gallery"><span data-icon="image"></span><span class="badge" id="ba-count" hidden></span></button>
-      </div>
-      <p class="cap-hint" id="ba-hint"></p>
     </div>
   </section>
 
@@ -1130,8 +1110,7 @@ header.top .store .caret { width: 0; height: 0; border-left: 4px solid transpare
 <div class="dock solid sel-bar" id="gal-bar" hidden></div>
 
 <nav class="tabs" id="tabs">
-  <button data-view="capture" class="active"><span data-icon="camera"></span>Before</button>
-  <button data-view="ba"><span data-icon="image"></span>After</button>
+  <button data-view="capture" class="active"><span data-icon="camera"></span>Camera</button>
   <button data-view="displays"><span data-icon="pin"></span>Displays<span class="badge" id="dsp-badge" hidden></span></button>
   <button data-view="gallery"><span data-icon="grid"></span>Gallery<span class="badge" id="need-badge" hidden></span></button>
   <button data-view="more"><span data-icon="sliders"></span>More</button>
@@ -2087,8 +2066,8 @@ const fitVideos = () => document.querySelectorAll(".camera video").forEach(fitVi
 // Only the camera tab that is showing has the live feed; the other video is emptied. A hidden video that kept the feed was sometimes drawn
 // small with black bars on every side when its tab came back (an iPhone drawing bug), so the feed is attached fresh whenever a tab shows.
 function attachFeed() {
-  const vis = view === "capture" ? "#cam-video" : view === "ba" ? "#ba-video" : null;
-  for (const id of ["#cam-video", "#ba-video"]) {
+  const vis = view === "capture" ? "#cam-video" : null;
+  for (const id of ["#cam-video"]) {
     const v = $(id); if (!v) continue;
     if (id === vis && cam.stream) {
       if (v.srcObject !== cam.stream) v.srcObject = cam.stream;
@@ -2371,8 +2350,8 @@ function renderHoldBar() {
   const on = !!n && hold.session.slot === baSlot();
   bar.hidden = !on; $("#shutter-label").style.visibility = on ? "hidden" : "";   // the hint keeps its space; the bar sits over it
   const row = $("#cat-row");
-  row.hidden = captureKind() === "backstock" && !on;
-  renderDispPick(n, on);   // 3.2: an untagged display: which one is it?
+  renderDispPick(n, on);   // 3.2: an untagged display: which one is it? (it takes the labels' place for a moment)
+  row.hidden = (captureKind() === "backstock" && !on) || camWhen() === "after" || !$("#dpick-row").hidden;   // labels are for Before photos
   const cats = on ? noteCats(n) : nextCats(), key = (on ? n.id : "next") + "|" + cats.join(",");
   if (on) {
     const kind = noteKind(n), disp = kind === "display", num = shelfLabel(n), cu = n.photos.length - 1;
@@ -2432,7 +2411,7 @@ function renderGallery() {
   }
   const shown = gal.cat ? mine.filter(x => x.note && noteCats(x.note).includes(gal.cat)) : mine;
   html += `<div class="cluster-h">Before<span class="n">${gal.cat ? `${shown.length} of ${mine.length} · ${esc(CAT_LABEL[gal.cat])}` : mine.length}</span></div>`;
-  if (!mine.length) html += `<p class="muted small" style="margin:4px 0 0">${kind === "backstock" ? "No back stock photos for this store yet." : `No ${KIND_PLURAL[kind]} for this store yet. Snap ${{ aisle: "an aisle", shelf: "a shelf", display: "a display" }[kind]} on the Before tab.`}</p>`;
+  if (!mine.length) html += `<p class="muted small" style="margin:4px 0 0">${kind === "backstock" ? "No back stock photos for this store yet." : `No ${KIND_PLURAL[kind]} for this store yet. Snap ${{ aisle: "an aisle", shelf: "a shelf", display: "a display" }[kind]} on the Camera tab.`}</p>`;
   else if (kind === "backstock") html += `<div class="shot-grid">${[...mine].reverse().map(x => tile("before", x)).join("")}</div>`;
   else {
     const label = new Map(mine.map(x => [x.photo, x.note ? shelfLabel(x.note) : timeOf(x.at)]));
@@ -2453,7 +2432,7 @@ function renderGallery() {
     html += list.length && kind === "display"   // displays: one group each, numbered like the Before ones
       ? displayGroups(slot, "after").map(g => `<div class="disp-h">Display ${g.num}<span>${g.items.length} photo${g.items.length === 1 ? "" : "s"}</span></div><div class="shot-grid">${g.items.map(x => tile("after", x)).join("")}</div>`).join("")
       : list.length ? `<div class="shot-grid">${list.map(x => tile("after", x)).join("")}</div>`
-      : `<p class="muted small" style="margin:4px 0 0">No After photos of ${KIND_PLURAL[kind]} yet. Take them on the After tab.</p>`;
+      : `<p class="muted small" style="margin:4px 0 0">No After photos of ${KIND_PLURAL[kind]} yet. Flip the camera to After to take them.</p>`;
   }
   html += `<button class="btn block shift-clear" data-a="shift">${icon("download")}Save &amp; clear the shift</button>
     <p class="sec-foot">End of shift: saves every store's photos to your phone, then empties the stores and photos. Display lists and store locations stay.</p>`;
@@ -2600,12 +2579,12 @@ function migrateShelves() {
 }
 // ---------- Views ----------
 let view = "capture";
-const isCamView = () => view === "capture" || view === "ba";   // the two tabs with a viewfinder
+const isCamView = () => view === "capture";   // the Camera tab (3.5: Before and After in one)
+const camWhen = () => (state.settings.camWhen === "after" ? "after" : "before");
 function showView(v) {
-  if (v !== "capture") endHoldSession();   // leaving the Before tab closes the open shelf
-  if (v === "ba" && view !== "ba") afterPick = null;   // opening the After tab: start on the first display still missing its After
-  if (v === "gallery" && view !== "gallery") gal.kind = view === "capture" ? captureKind() : baKind();
-  const order = ["capture", "ba", "displays", "gallery", "more", "changelog"], from = order.indexOf(view), to = order.indexOf(v);
+  if (v !== "capture") endHoldSession();   // leaving the camera closes the open shelf
+  if (v === "gallery" && view !== "gallery") gal.kind = captureKind();
+  const order = ["capture", "displays", "gallery", "more", "changelog"], from = order.indexOf(view), to = order.indexOf(v);
   if (from !== to) document.body.dataset.dir = to > from ? "fwd" : "back";
   const subPage = x => x === "changelog";   // pages inside More
   document.body.dataset.nav = subPage(v) ? "push" : subPage(view) && v === "more" ? "pop" : "";
@@ -2628,14 +2607,18 @@ function renderAll() {
   db.hidden = !left; db.textContent = left;
   if (view === "capture") renderCapture();
   if (view === "displays") renderDisplays();
-  if (view === "ba") renderBA();
   if (view === "changelog") renderChangelog();
   if (view === "gallery") renderGallery();
   if (view === "more") renderMore();
 }
 const timeOf = ts => new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
-// ---------- Capture (the Before tab) ----------
+// ---------- The Camera tab: Before (shelves and close-ups) or After (one photo per tap) ----------
+function flipWhen() {
+  const to = camWhen() === "after" ? "before" : "after";
+  endHoldSession(); state.settings.camWhen = to; if (to === "after") afterPick = null;   // After: start on the first display still missing its After
+  save(); haptic("tick"); renderCapture(); pulse($("#btn-when")); box_flash();
+}
 function renderCapture() {
   const on = !!cam.stream;
   $("#cam-off").hidden = on || cam.starting;
@@ -2647,29 +2630,39 @@ function renderCapture() {
   $("#btn-phonecam").hidden = !cam.error;   // the fallback only shows when the live camera isn't working
   $("#btn-cam-stop").hidden = !on;
   $("#btn-shutter").disabled = cam.starting;
-  const ck = captureKind();
+  const ck = captureKind(), after = camWhen() === "after", st = storeOf(baSlot());
+  if (after && hold.session) endHoldSession();
+  const sec0 = $("#view-capture"); sec0.classList.toggle("when-after", after);
+  const wb = $("#btn-when"); wb.classList.toggle("after", after); wb.setAttribute("aria-label", after ? "Taking After photos. Tap to switch to Before" : "Taking Before photos. Tap to switch to After");
   renderHoldBar();   // first: it swaps the Aisle | Display switch for the category buttons while a shelf is open
   document.querySelectorAll("#cap-seg button").forEach(b => b.classList.toggle("active", b.dataset.k === ck));
   if (!$("#cap-seg").hidden) syncIndicator($("#cap-seg"), false);
   const sec = $("#view-capture");
   setModeClass(sec, ck);
-  $("#cap-band").textContent = KIND_LABEL[ck].toUpperCase();
-  $("#shutter-label").textContent = !storeOf(baSlot()) ? "Tap the shutter or Set store at the top to set the store number."
+  setTextPop($("#cap-band"), `${st ? `#${st} · ` : ""}${after ? "AFTER" : "BEFORE"} · ${KIND_LABEL[ck].toUpperCase()}`);
+  $("#shutter-label").textContent = !st ? "Tap the shutter or Set store at the top to set the store number."
+    : after ? `Snap the finished ${KIND_LABEL[ck].toLowerCase()}. Files under store#${st} · After · ${KIND_LABEL[ck]}.`
     : ck === "backstock" ? "Tap the shutter to photograph the back stock."
     : !cam.stream ? "Tap the shutter to use the phone camera."
     : ck === "display" ? "Pick what it holds, tap the shutter for the display, then again for more of it." : `Pick what it holds, tap the shutter for ${KIND_ONE[ck]}, then again for close-ups.`;
   const n = sessNote();
-  $("#btn-shutter").setAttribute("aria-label", ck === "backstock" ? "Take a photo of the back stock" : n ? "Take a close-up" : `Take a photo of the ${ck}`);
-  // Under the thumb: the last photo set on the left (tap to open it again), the Gallery on the right.
-  const last = state.notes.find(x => x.id === lastNoteId && x.slot === baSlot()) || state.notes.find(x => x.slot === baSlot() && (x.photos || [])[0]);
+  $("#btn-shutter").setAttribute("aria-label", after ? `Take the After photo of the ${ck}` : ck === "backstock" ? "Take a photo of the back stock" : n ? "Take a close-up" : `Take a photo of the ${ck}`);
+  // Under the thumb: the last photos on the left (Before: the last shelf, tap to open it again; After: the last After photo), the flip on the right.
   const lb = $("#last-note");
-  lb.style.visibility = last ? "visible" : "hidden";
-  if (last) {
-    if (lb.dataset.p !== last.photos[0]) { lb.dataset.p = last.photos[0]; lb.innerHTML = `<img data-photo="${esc(last.photos[0])}" alt="">`; hydratePhotos(lb); }
-    lb.onclick = () => addToShelf(last);
-    lb.setAttribute("aria-label", hold.session && hold.session.note === last.id ? "Look at these photos" : "Open the last photos again");
-  } else lb.dataset.p = "";
-  $("#btn-open-needed").onclick = () => showView("gallery");
+  if (after) {
+    const mine = afterItems(baSlot()).map(i => i.shot).reverse(), s = mine.find(x => x.id === lastShotId) || mine[0];
+    lb.style.visibility = s ? "visible" : "hidden"; lb.classList.add("plain");
+    if (s) { if (lb.dataset.p !== s.photo) { lb.dataset.p = s.photo; lb.innerHTML = `<img data-photo="${esc(s.photo)}" alt="">`; hydratePhotos(lb); } lb.onclick = () => openShot(s); lb.setAttribute("aria-label", "Open the last After photo"); }
+    else lb.dataset.p = "";
+  } else {
+    const last = state.notes.find(x => x.id === lastNoteId && x.slot === baSlot()) || state.notes.find(x => x.slot === baSlot() && (x.photos || [])[0]);
+    lb.style.visibility = last ? "visible" : "hidden"; lb.classList.remove("plain");
+    if (last) {
+      if (lb.dataset.p !== last.photos[0]) { lb.dataset.p = last.photos[0]; lb.innerHTML = `<img data-photo="${esc(last.photos[0])}" alt="">`; hydratePhotos(lb); }
+      lb.onclick = () => addToShelf(last);
+      lb.setAttribute("aria-label", hold.session && hold.session.note === last.id ? "Look at these photos" : "Open the last photos again");
+    } else lb.dataset.p = "";
+  }
   renderBA();
 }
 
@@ -2815,7 +2808,7 @@ function openPhotoFull(src, set) {
 // Notes carry the slot they were taken in (n.slot); After photos are state.shots ({ id, at, slot, when: "after", kind, photo }).
 // Shots with when "before" are Before photos from 2.0 and earlier (when the second tab took both).
 const SLOTS = 5;
-const baKind = () => normKind(state.settings.baKind);
+const baKind = () => captureKind();   // 3.5: one camera, one Aisle | Shelf | Display | Backstock switch
 const baSlot = () => { const n = +state.settings.baSlot; return n >= 0 && n < SLOTS ? n : 0; };
 const storeOf = i => String((state.stores || [])[i] || "").trim();
 const WHEN_LABEL = { before: "Before", after: "After" };
@@ -2836,31 +2829,9 @@ const afterItems = slot => state.shots.filter(x => x.slot === slot && x.when !==
 const itemsOf = (slot, w) => (w === "before" ? beforeItems(slot) : afterItems(slot));
 const slotCount = i => beforeItems(i).length + afterItems(i).length;
 
-// Draws the After tab, and the parts of the Before tab that belong to the stores (its slot row and the store on its camera label).
+// The After parts of the Camera tab: which display an After photo is for (Display only), and the display count on the camera.
 function renderBA() {
-  const on = !!cam.stream, k = baKind(), slot = baSlot(), st = storeOf(slot);
-  setTextPop($("#cap-band"), `${st ? `#${st} · ` : ""}${KIND_LABEL[captureKind()].toUpperCase()}`);
-  $("#ba-off").hidden = on || cam.starting;
-  $("#ba-video").hidden = !on;
-  $("#ba-starting").hidden = !cam.starting;
-  $("#ba-error").textContent = cam.error;
-  renderSoundBtn();
-  renderLens();
-  $("#ba-phonecam").hidden = !cam.error;
-  $("#ba-cam-stop").hidden = !on;
-  $("#ba-shutter").disabled = cam.starting;
-  document.querySelectorAll("#ba-kind-seg button").forEach(b => b.classList.toggle("active", b.dataset.k === k));
-  if (view === "ba") syncIndicator($("#ba-kind-seg"), false);
-  const sec = $("#view-ba");
-  setModeClass(sec, k);
-  setTextPop($("#ba-band"), `${st ? `#${st} · ` : ""}AFTER · ${KIND_LABEL[k].toUpperCase()}`);
-  $("#ba-hint").textContent = st ? `Snap the finished ${k}. Files under store#${st} · After · ${KIND_LABEL[k]}.` : "Tap Set store at the top to set the store number.";
-  $("#ba-shutter").setAttribute("aria-label", `Take the after photo of the ${k}`);
-  const mine = afterItems(slot).map(i => i.shot).reverse(), last = mine.find(s => s.id === lastShotId) || mine[0], lb = $("#ba-last");
-  lb.style.visibility = last ? "visible" : "hidden";
-  if (last && lb.dataset.shot !== last.photo) { lb.dataset.shot = last.photo; lb.innerHTML = `<img data-photo="${esc(last.photo)}" alt="">`; hydratePhotos(lb); }
-  const n = slotCount(slot), c = $("#ba-count"); c.hidden = !n; c.textContent = n;
-  renderPairStrip(slot, k);
+  renderPairStrip(baSlot(), camWhen() === "after" ? captureKind() : null);
   renderDisplayChips();
 }
 
@@ -2935,14 +2906,14 @@ async function onShutterBA(forcePhone) {
   if (baKind() === "display" && !pick) { toast("Take this store's Before display photos first."); return; }   // every display has a Before and an After
   const shot = { id: newId("s"), at: Date.now(), slot, when: "after", kind: baKind(), photo: null };
   if (pick) shot.pair = pick.anchor;   // filed under the display picked in the strip
-  if (cam.stream && !forcePhone) { const r = snapNow("#ba-video", "#ba-camera", "#ba-shutter", $("#ba-last")); if (!r) return; shot.photo = r.id; }
+  if (cam.stream && !forcePhone) { const r = snapNow("#cam-video", "#camera", "#btn-shutter", $("#last-note")); if (!r) return; shot.photo = r.id; }
   else {
     primeShutter(); haptic("shutter");
     const blob = await cameraPhoto(); if (!blob) return;
     playShutter(); shot.photo = newId("p");
     try { await savePhoto(shot.photo, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
   }
-  state.shots.unshift(shot); lastShotId = shot.id; save(); renderAll(); pulse($("#ba-last")); checkPhotoQuality(shot.photo);
+  state.shots.unshift(shot); lastShotId = shot.id; save(); renderAll(); pulse($("#last-note")); checkPhotoQuality(shot.photo);
   toast(`Saved to store#${storeOf(slot)} · After · ${KIND_LABEL[shot.kind]}`);
 }
 
@@ -2951,7 +2922,7 @@ async function snapBackstock(forcePhone) {
   if (hold.session) endHoldSession();
   const slot = baSlot();
   const shot = { id: newId("s"), at: Date.now(), slot, when: "before", kind: "backstock", photo: null };
-  if (cam.stream && !forcePhone) { const r = snapNow("#cam-video", "#camera", "#btn-shutter", $("#btn-open-needed")); if (!r) return; shot.photo = r.id; }
+  if (cam.stream && !forcePhone) { const r = snapNow("#cam-video", "#camera", "#btn-shutter", $("#last-note")); if (!r) return; shot.photo = r.id; }
   else {
     primeShutter(); haptic("shutter");
     const blob = await cameraPhoto(); if (!blob) return;
@@ -2965,15 +2936,9 @@ async function snapBackstock(forcePhone) {
 
 function wireBA() {
   wirePairStrip();
-  $("#ba-cam-start").onclick = startCamera;
-  $("#ba-cam-stop").onclick = () => { state.settings.camOK = false; save(); stopCamera(); };
-  $("#ba-shutter").onclick = () => onShutterBA(false);
-  $("#ba-phonecam").onclick = () => onShutterBA(true);
   $("#hdr-store").onclick = openStores;
-  document.querySelectorAll("#ba-kind-seg button").forEach(b => (b.onclick = () => { state.settings.baKind = b.dataset.k; save(); renderBA(); }));
-  $("#ba-gallery").onclick = () => openGallery();
-  for (const id of ["#cap-disp", "#ba-disp"]) $(id).onclick = () => showView("displays");   // 3.2: the Displays tab
-  $("#ba-last").onclick = () => { const s = state.shots.find(x => x.id === lastShotId && x.slot === baSlot()) || afterItems(baSlot()).map(i => i.shot).pop(); if (s) openShot(s); };
+  $("#cap-disp").onclick = () => showView("displays");   // 3.2: the Displays tab
+  $("#btn-when").onclick = flipWhen;
 }
 
 // One batch = every Before photo of a store (Aisle and Display together), or every After photo. The phone's share sheet opens with
@@ -3193,14 +3158,13 @@ function renderDisplayChips() {
     if (show && b.dataset.t !== text) { b.dataset.t = text; b.innerHTML = text; if (typeof pulse === "function") pulse(b); }
   };
   const tFor = when => (displayTarget && displayTarget.slot === slot && displayTarget.when === when ? displayTarget : null);
-  { // Before tab
+  if (camWhen() === "after") {
+    const n = displayGroups(slot, "after").filter(g => !g.loose).length, m = displayGroups(slot, "before").length;
+    paint("cap-disp", captureKind() === "display" && m > 0, `After: ${n} of ${plural(m)}`, null);
+  } else {
     const t = tFor("before"), n = displayGroups(slot, "before").length;
     const c = dispCounts(storeOf(slot));
     paint("cap-disp", captureKind() === "display" && (n || c || t), t ? `Next photo joins display ${t.n} ${icon("x")}` : c ? `${c.found} of ${c.total} found` : plural(n), t);
-  }
-  { // After tab
-    const t = null, n = displayGroups(slot, "after").filter(g => !g.loose).length, m = displayGroups(slot, "before").length;
-    paint("ba-disp", baKind() === "display" && m > 0, `After: ${n} of ${plural(m)}`, t);
   }
 }
 // "Display 2" for a display photo (the same numbering as the displays list and the Gallery), or just "Display" if it can't be placed.
@@ -3347,15 +3311,15 @@ async function slotMenu(el) {
   else if (pick === "loc") await new Promise(r => spotActions(st, () => { renderAll(); r(); }));
 }
 
-// ---- After tab, Display mode: which Before display this After is for ----
+// ---- After, Display: which Before display this After is for (k: the type, or null in Before) ----
 function renderPairStrip(slot, k) {
-  const strip = $("#pair-strip"), pip = $("#pair-pip"), shutter = $("#ba-shutter"); if (!strip) return;
+  const strip = $("#pair-strip"), pip = $("#pair-pip"), shutter = $("#btn-shutter"); if (!strip) return;
   if (k !== "display") { strip.hidden = true; pip.hidden = true; strip.dataset.key = ""; shutter.classList.remove("off"); return; }
   const gs = displayGroups(slot, "after", { all: true }).filter(g => !g.loose), cur = afterPickFor(slot);
   strip.hidden = false; shutter.classList.toggle("off", !cur);
   if (!cur) {
     if (strip.dataset.key !== "none") { strip.dataset.key = "none"; strip.innerHTML = `<p class="pair-empty">${icon("warn")}Take this store's Before display photos first.</p>`; }
-    pip.hidden = true; $("#ba-hint").textContent = "Every display needs a Before photo before its After."; return;
+    pip.hidden = true; $("#shutter-label").textContent = "Every display needs a Before photo before its After."; return;
   }
   const key = gs.map(g => g.anchor + ":" + g.items.length).join(",") + "|" + cur.anchor;
   if (strip.dataset.key !== key) {
@@ -3369,7 +3333,7 @@ function renderPairStrip(slot, k) {
   if (pip.dataset.p !== bp) { pip.dataset.p = bp; photoURL(thumbId(bp)).then(u => u || photoURL(bp)).then(u => { if (u && pip.dataset.p === bp) pip.querySelector("img").src = u; }); }
   pip.querySelector("span").textContent = `Before · ${cur.num}`;
   pip.hidden = !cam.stream;
-  $("#ba-hint").textContent = `Shooting display ${cur.num}${cur.items.length ? ` (${cur.items.length} so far)` : ""}. Tap another above to switch.`;
+  $("#shutter-label").textContent = `Shooting display ${cur.num}${cur.items.length ? ` (${cur.items.length} so far)` : ""}. Tap another above to switch.`;
 }
 function wirePairStrip() {
   $("#pair-strip").onclick = e => { const b = e.target.closest("[data-pair]"); if (!b) return; afterPick = { slot: baSlot(), anchor: b.dataset.pair }; haptic("tick"); pulse(b); renderBA(); };
@@ -3509,7 +3473,7 @@ function renderDisplays() {
         <i class="dsp-check${n ? " on" : ""}">${icon("check")}</i></button>`;
     };
     const todo = act.filter(d => !f.has(d.id)), done = act.filter(d => f.has(d.id));
-    if (!act.length) html += `<div class="empty">${icon("camera")}<h3>No displays saved for #${esc(st)} yet</h3><p>On the Before tab, switch to Display and snap each one. Tap New under the camera and pick where it is. Next visit they're listed here to check off.</p></div>`;
+    if (!act.length) html += `<div class="empty">${icon("camera")}<h3>No displays saved for #${esc(st)} yet</h3><p>On the Camera tab, switch to Display and snap each one. Tap New under the camera and pick where it is. Next visit they're listed here to check off.</p></div>`;
     if (todo.length) html += `<div class="sec-h">To find · ${todo.length}</div><div class="list group">${todo.map(row).join("")}</div>`;
     if (done.length) html += `<div class="sec-h">Found today · ${done.length}</div><div class="list group">${done.map(row).join("")}</div>`;
     const untagged = state.notes.filter(n => n.slot === slot && noteKind(n) === "display" && !n.sd && (n.photos || [])[0]).sort((a, b) => a.at - b.at);
@@ -3544,7 +3508,7 @@ function openStoreDisplay(slot, d) {
   if (b("shoot")) b("shoot").onclick = () => {
     close(); endHoldSession();
     dspPending = { store: st, id: d.id };
-    state.settings.baSlot = slot; state.settings.captureKind = "display"; save();
+    state.settings.baSlot = slot; state.settings.captureKind = "display"; state.settings.camWhen = "before"; save();
     showView("capture");
     toast(`Your next display photo is ${areaName(d)}`);
   };
@@ -3879,12 +3843,12 @@ async function checkPhotoQuality(id) {
 // Take the picture again and put it in place of the old one everywhere it's used (notes, After/Before shots, an open shelf, displays).
 async function retakePhoto(oldId) {
   if (!photoInUse(oldId)) return;
-  const onAfter = view === "ba", vid = onAfter ? "#ba-video" : "#cam-video", box = onAfter ? "#ba-camera" : "#camera";
+  const vid = "#cam-video", box = "#camera";
   const live = !!cam.stream && isCamView();
   let id = null;
   if (live) {
     toast("Hold steady…"); await qSleep(700);
-    const r = snapNow(vid, box, onAfter ? "#ba-shutter" : "#btn-shutter", null); if (!r) return;
+    const r = snapNow(vid, box, "#btn-shutter", null); if (!r) return;
     id = r.id; await r.preview;
   } else {
     const blob = await cameraPhoto(); if (!blob) return toast("Couldn't retake it. Use the shutter again.");
@@ -4095,6 +4059,10 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "3.5.0", notes: [
+    "Before and After are one Camera tab. The button next to the shutter flips between them; the camera turns green for After.",
+    "After shows only what After needs: the display picker (on Display) instead of the labels, and one photo per tap.",
+    "Four tabs: Camera, Displays, Gallery, More. One camera to keep running, so flipping is instant." ] },
   { v: "3.4.0", notes: [
     "One store button at the top right instead of a row of five: tap it to switch stores, add one, or change a number. The camera picture is bigger.",
     "Clear is now Save & clear the shift, at the bottom of the Gallery, away from the store buttons.",
@@ -4213,7 +4181,7 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 95;
+const REVISION = 96;
 // More
 function renderMore() {
   const v = $("#view-more");
@@ -4249,7 +4217,7 @@ function renderMore() {
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
     ${enc.last.ready != null ? `<p class="sec-foot">Last photo: ready for the next tap in ${enc.last.ready} ms${enc.last.saved != null ? `, saved in ${enc.last.saved} ms (${enc.last.path})` : ""}.</p>` : ""}
-    <p class="foot">Shelfie 3.4.0 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 3.5.0 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   v.querySelector("#haptic-shutter").onchange = e => { state.settings.hapticShutter = state.settings.hapticTaps = e.target.checked; save(); syncHaptics(); };   // one switch for both (3.4)
   v.querySelector("#btn-backup").onclick = saveBackup;
@@ -4280,13 +4248,14 @@ $("#btn-cam-stop").onclick = () => { state.settings.camOK = false; save(); stopC
 document.querySelectorAll("#cap-seg button").forEach(b => (b.onclick = () => { if (hold.session && b.dataset.k !== captureKind()) endHoldSession(); state.settings.captureKind = b.dataset.k; save(); renderCapture(); }));
 // 3.0: a tap takes the shelf photo; the taps after it are close-ups of the same shelf, until Next shelf (shelf.js)
 $("#btn-shutter").onclick = () => {
+  if (camWhen() === "after") return onShutterBA(false);   // 3.5: After, one photo per tap
   if (!storeOf(baSlot())) { askStore(baSlot()); return; }   // like the After tab: the first tap asks for the store number, nothing else
   if (!cam.stream || captureKind() === "backstock") return onShutter(false, captureKind());
   shelfShot();
 };
 $("#btn-shutter").addEventListener("contextmenu", e => e.preventDefault());   // no "copy / look up" menu on a long press
 wireShelfCapture();
-$("#btn-phonecam").onclick = () => onShutter(true, captureKind());
+$("#btn-phonecam").onclick = () => (camWhen() === "after" ? onShutterBA(true) : onShutter(true, captureKind()));
 wireBA();
 wireSoundBtn();
 wireHaptics();
