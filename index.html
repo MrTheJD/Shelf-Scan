@@ -1007,6 +1007,26 @@ body.gal-selecting .shelf-card :is(.tick, .out-badge) { display: none; }
 .dsp-check svg.i { width: 16px; height: 16px; stroke-width: 3.2; }
 .dsp-check.on { background: var(--ok); border-color: var(--ok); color: #fff; }
 .disp-chip { cursor: pointer; }
+
+/* 3.2.1: Gallery photos in order, tagged with their categories */
+.shelf-card > span { left: 6px; top: 6px; bottom: auto; }
+.shelf-card .cu { left: auto; right: 6px; }
+body.gal-selecting .shelf-card .cu { display: none; }
+.cat-tags { font-style: normal; position: absolute; left: 6px; right: 6px; bottom: 6px; display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-start; }
+.ctag { display: inline-flex; align-items: center; gap: 3px; min-height: 26px; padding: 0 9px; border-radius: 999px; background: var(--cat); color: var(--on-cat, #fff); font-size: 12px; font-weight: 800; font-style: normal; box-shadow: 0 1px 4px rgba(0, 0, 0, .3); transition: transform .4s var(--spring), background-color .15s ease; }
+.ctag svg.i { width: 12px; height: 12px; stroke-width: 3.4; }
+.ctag:active { transform: scale(.9); }
+.ctag.done { background: rgba(20, 20, 20, .72); color: #fff; text-decoration: line-through; text-decoration-thickness: 2px; }
+.ctag.out { background: var(--warn); color: #fff; }
+.shelf-card.done img { opacity: .45; filter: grayscale(.7); }
+
+/* 3.2.1b: tags are labels; one done check per photo; filter by category */
+.shelf-card .cat-tags { right: 54px; }
+.shelf-card .ctag { min-height: 22px; padding: 0 8px; font-size: 11px; }
+.gal-filter { margin: 12px 0 0; }
+.gal-filter .cat { min-height: 40px; font-size: 13px; }
+.sh-done svg.i { width: 18px; height: 18px; stroke-width: 3; }
+.sh-done.on { background: var(--ok); border-color: var(--ok); color: #fff; }
 </style>
 </head>
 <body data-view="capture">
@@ -1044,7 +1064,7 @@ body.gal-selecting .shelf-card :is(.tick, .out-badge) { display: none; }
         <button data-k="backstock">Backstock</button>
       </div>
       <div class="dpick-row" id="dpick-row" hidden aria-label="Which display is this?"></div>
-      <div class="cat-row" id="cat-row" hidden aria-label="What's low on this shelf"></div>
+      <div class="cat-row" id="cat-row" hidden aria-label="What's on this shelf"></div>
       <div class="deck-row">
         <button class="deck-side left" id="last-note" aria-label="Open the last photos again" style="visibility:hidden"></button>
         <div class="shutter-wrap"><button class="shutter-big" id="btn-shutter" aria-label="Take a photo of the aisle"><span></span></button></div>
@@ -3334,7 +3354,8 @@ function textPrompt(title, value = "", { ok = "Save", placeholder = "" } = {}) {
 // ---------- 3.0: shelves, close-ups and five categories ----------
 // Tap the shutter: the shelf photo. The camera stays live, and every tap after that is a close-up of a low spot on the same shelf, until
 // Next shelf (or changing tab or store). While a shelf is open, five category buttons sit where the Aisle | Display | Backstock switch was:
-// tap what's low. A shelf is one note: { photos: [shelf, close-up, close-up…], cats: ["coke", "sprite"], ticks: {coke: true}, out: {sprite: true} }.
+// tap what it mostly holds (3.2.1: the categories are for finding it again, not what's needed; the close-ups show what's low).
+// A shelf is one note: { photos: [shelf, close-up, close-up…], cats: ["coke", "sprite"], done: true once what it needed is pulled }.
 // 2.x voice notes are merged into shelves once, at start-up (migrateShelves).
 const CATS = ["coke", "drpepper", "sprite", "sport", "energy"];
 const CAT_LABEL = { coke: "Coke", drpepper: "Dr Pepper", sprite: "Sprite", sport: "Sport drinks", energy: "Energy drinks" };
@@ -3343,8 +3364,6 @@ const CAT_SHORT = { coke: "Coke", drpepper: "Dr Pepper", sprite: "Sprite", sport
 const BRAND_CAT = { "coca cola": "coke", "diet coke": "coke", "dr pepper": "drpepper", "diet dr pepper": "drpepper", sprite: "sprite",
   powerade: "sport", bodyarmor: "sport", "bodyarmor lyte": "sport", "monster energy": "energy", reign: "energy", nos: "energy", "full throttle": "energy" };
 const noteCats = n => CATS.filter(c => (n.cats || []).includes(c));   // always in the usual order
-const isOut = (n, c) => !!(n.out || {})[c];
-const catDone = (n, c) => !!(n.ticks || {})[c] || isOut(n, c);
 const MAX_CLOSEUPS = 24;
 let lastNoteId = null;
 
@@ -3407,7 +3426,7 @@ function addToShelf(n) {
 }
 function toggleCat(n, c) {
   n.cats = n.cats || [];
-  if (n.cats.includes(c)) { n.cats = n.cats.filter(x => x !== c); if (n.ticks) delete n.ticks[c]; if (n.out) delete n.out[c]; }
+  if (n.cats.includes(c)) n.cats = n.cats.filter(x => x !== c);
   else n.cats.push(c);
   haptic("tick"); save(); renderAll();
 }
@@ -3435,11 +3454,8 @@ function wireShelfCapture() {
   $("#hold-done").onclick = () => { const n = sessNote(); endHoldSession(); if (n) { haptic("ok"); pulse($("#last-note")); } };
 }
 
-// ---- Counting and naming ----
+// ---- Naming ----
 const shelfNotes = (slot, kind) => state.notes.filter(n => (slot == null || n.slot === slot) && (!kind || noteKind(n) === kind) && noteKind(n) !== "backstock");
-// what's left to pull: one per category not ticked off (or marked none in the back) on each shelf
-const openCount = (kind, slot = null) => shelfNotes(slot, kind).reduce((t, n) => t + noteCats(n).filter(c => !catDone(n, c)).length, 0);
-const openTotal = slot => openCount(null, slot);
 // "Aisle 3" / "Shelf 1" / "Display 2": numbered by time within the store and type, the same numbers as the saved file names
 function shelfLabel(n) {
   const kind = noteKind(n);
@@ -3447,72 +3463,47 @@ function shelfLabel(n) {
   const list = beforeItems(n.slot).filter(x => x.kind === kind), i = list.findIndex(x => x.photo === (n.photos || [])[0]);
   return i < 0 ? KIND_LABEL[kind] : `${KIND_LABEL[kind]} ${i + 1}`;
 }
-const outList = slot => shelfNotes(slot).flatMap(n => noteCats(n).filter(c => isOut(n, c)).map(c => ({ n, c })));
-// The text for the boss: per store, what was out in the back, by category
-async function shareOuts(slot) {
-  const list = outList(slot); if (!list.length) return;
-  const by = new Map();
-  for (const { n, c } of [...list].sort((p, q) => p.n.at - q.n.at)) (by.get(c) || by.set(c, []).get(c)).push(shelfLabel(n));
-  const st = storeOf(slot);
-  const text = `${st ? `store#${st}` : "Store"} – none in the back:\n` + CATS.filter(c => by.has(c)).map(c => `• ${CAT_LABEL[c]} (${[...new Set(by.get(c))].join(", ")})`).join("\n");
-  try { if (navigator.share) { await navigator.share({ text }); return; } } catch (e) { if (e && e.name === "AbortError") return; }
-  try { await navigator.clipboard.writeText(text); toast("Copied. Paste it into a text."); } catch (e) { toast("Sharing isn't available here"); }
-}
-function tickCat(n, c) {
-  n.ticks = n.ticks || {};
-  n.ticks[c] = !n.ticks[c]; if (n.ticks[c] && n.out) delete n.out[c];
-  haptic(n.ticks[c] ? "ok" : "tick"); save();
-}
-function setOut(n, c, on) {
-  n.out = n.out || {};
-  if (on) { n.out[c] = true; if (n.ticks) delete n.ticks[c]; } else delete n.out[c];
-  save();
-}
+// 3.2.1: the categories say what a shelf mostly holds (to find it again). Done is one check per photo: "I've pulled what this one needed."
+function toggleDone(n) { n.done = !n.done; haptic(n.done ? "ok" : "tick"); save(); }
 
-// ---- The Gallery tab (3.0 called it Shelves): one store at a time; Aisle / Shelf / Display / Backstock; Before grouped by category, then After ----
-const gal = { slot: null, kind: null };
+// ---- The Gallery tab: one store at a time; Aisle / Shelf / Display / Backstock; Before in order (filter by category), then After ----
+const gal = { slot: null, kind: null, cat: null };
 function openGallery() { showView("gallery"); }
 function renderGallery() {
   const v = $("#view-gallery");
   if (gal.slot == null) gal.slot = baSlot();
   if (!gal.kind) gal.kind = captureKind();
   if (gsel.on && gsel.slot !== gal.slot) galSelectEnd(true);   // a selection belongs to one store
-  const slot = gal.slot, kind = gal.kind, st = storeOf(slot), hide = state.settings.hideDone === true;
-  const before = beforeItems(slot), after = afterItems(slot), left = openTotal(slot);
-  const anyCats = shelfNotes(slot).some(n => noteCats(n).length);
-  const hideBtn = anyCats ? `<button class="hide-done" data-a="hide-done">${hide ? "Show done" : "Hide done"}</button>` : "";
-  let html = `<div class="list-head"><h2>Gallery</h2><span class="muted small">${left ? `${left} to pull` : st ? `store#${esc(st)}` : ""}</span>${hideBtn}</div>
+  const slot = gal.slot, kind = gal.kind, st = storeOf(slot);
+  const before = beforeItems(slot), after = afterItems(slot);
+  let html = `<div class="list-head"><h2>Gallery</h2><span class="muted small">${st ? `store#${esc(st)}` : ""}</span></div>
     <div class="slots" id="gal-slots">${slotsHTML(slot)}</div>
     <div class="row" id="gal-share">${["before", "after"].map(w => { const n = itemsOf(slot, w).length, u = untexted(slot, w); return `<button class="btn sm primary grow" data-share="${w}"${n ? "" : " disabled"}>${icon("upload")}Text all ${WHEN_LABEL[w]} (${n})${n ? (u ? `<i class="tx-dot" aria-label="not sent yet"></i>` : `<i class="tx-ok" aria-label="sent">${icon("check")}</i>`) : ""}</button>`; }).join("")}</div>`;
-  const outs = outList(slot).length;
-  if (outs) html += `<div class="out-bar"><span class="out-dot"></span><span class="grow"><b>${outs}</b> none in the back</span><button class="btn sm" data-a="out-share">${icon("upload")}Text it</button></div>`;
-  html += `<div class="seg" id="gal-seg">${KINDS.map(k => { const o = k === "backstock" ? 0 : openCount(k, slot), n = [...before, ...after].filter(x => x.kind === k).length;
-    return `<button data-k="${k}" class="${k === kind ? "active" : ""}">${KIND_LABEL[k]} ${o ? `<span class="kcount">${o}</span>` : n ? `<span class="kcount grey">${n}</span>` : ""}</button>`; }).join("")}</div>`;
+  html += `<div class="seg" id="gal-seg">${KINDS.map(k => { const n = [...before, ...after].filter(x => x.kind === k).length;
+    return `<button data-k="${k}" class="${k === kind ? "active" : ""}">${KIND_LABEL[k]} ${n ? `<span class="kcount grey">${n}</span>` : ""}</button>`; }).join("")}</div>`;
   const tile = (w, x) => `<button class="shot${gsel.keys.has(w + "|" + x.photo) ? " sel" : ""}" data-w="${w}" data-p="${esc(x.photo)}" data-photo-wrap><img data-photo="${esc(x.photo)}" alt=""><span>${esc(timeOf(x.at))}</span><i class="sel-mark">${icon("check")}</i></button>`;
   // Before
   const mine = before.filter(x => x.kind === kind);
-  html += `<div class="cluster-h">Before<span class="n">${mine.length}</span></div>`;
-  if (!mine.length) html += `<p class="muted small" style="margin:4px 0 0">${kind === "backstock" ? "No back stock photos for this store yet." : `No ${KIND_PLURAL[kind]} for this store yet. Snap ${{ aisle: "an aisle", shelf: "a shelf", display: "a display" }[kind]} on the Before tab, then tap what's low.`}</p>`;
+  if (kind !== "backstock") {   // find by category: tap one to see only those
+    const has = new Set(mine.flatMap(x => (x.note ? noteCats(x.note) : [])));
+    if (gal.cat && !has.has(gal.cat)) gal.cat = null;
+    if (has.size) html += `<div class="cat-row gal-filter" id="gal-filter">${CATS.filter(c => has.has(c)).map(c => `<button class="cat c-${c}${gal.cat === c ? " on" : ""}" data-fcat="${c}" aria-pressed="${gal.cat === c}">${esc(CAT_SHORT[c])}</button>`).join("")}</div>`;
+  }
+  const shown = gal.cat ? mine.filter(x => x.note && noteCats(x.note).includes(gal.cat)) : mine;
+  html += `<div class="cluster-h">Before<span class="n">${gal.cat ? `${shown.length} of ${mine.length} · ${esc(CAT_LABEL[gal.cat])}` : mine.length}</span></div>`;
+  if (!mine.length) html += `<p class="muted small" style="margin:4px 0 0">${kind === "backstock" ? "No back stock photos for this store yet." : `No ${KIND_PLURAL[kind]} for this store yet. Snap ${{ aisle: "an aisle", shelf: "a shelf", display: "a display" }[kind]} on the Before tab.`}</p>`;
   else if (kind === "backstock") html += `<div class="shot-grid">${[...mine].reverse().map(x => tile("before", x)).join("")}</div>`;
   else {
     const label = new Map(mine.map(x => [x.photo, x.note ? shelfLabel(x.note) : timeOf(x.at)]));
-    const card = (x, c) => {
-      const n = x.note, done = !!(c && n.ticks && n.ticks[c]), out = !!(c && isOut(n, c)), cu = n ? n.photos.length - 1 : 0;
-      return `<button class="shot shelf-card${done ? " done" : ""}${out ? " out" : ""}${gsel.keys.has("before|" + x.photo) ? " sel" : ""}" data-w="before" data-p="${esc(x.photo)}"${c ? ` data-c="${c}"` : ""} data-photo-wrap>
-        <img data-photo="${esc(x.photo)}" alt=""><span>${esc(label.get(x.photo))}</span>${cu ? `<b class="cu">+${cu}</b>` : ""}${out ? `<em class="out-badge">None in back</em>` : ""}
-        ${c ? `<i class="tick${done ? " on" : ""}" data-tick="${c}" role="button" aria-label="${done ? "Mark not pulled" : `Mark ${esc(CAT_LABEL[c])} pulled`}">${icon("check")}</i>` : ""}<i class="sel-mark">${icon("check")}</i></button>`;
+    // in order (Aisle 1, 2, 3…), each photo labelled with what it mostly holds, and a check for done
+    const card = x => {
+      const n = x.note, cats = n ? noteCats(n) : [], cu = n ? n.photos.length - 1 : 0, done = !!(n && n.done);
+      const tags = cats.map(c => `<i class="ctag c-${c}">${esc(CAT_SHORT[c])}</i>`).join("");
+      return `<button class="shot shelf-card${done ? " done" : ""}${gsel.keys.has("before|" + x.photo) ? " sel" : ""}" data-w="before" data-p="${esc(x.photo)}" data-photo-wrap>
+        <img data-photo="${esc(x.photo)}" alt=""><span>${esc(label.get(x.photo))}</span>${cu ? `<b class="cu">+${cu}</b>` : ""}
+        ${tags ? `<em class="cat-tags">${tags}</em>` : ""}${n ? `<i class="tick${done ? " on" : ""}" data-done="1" role="button" aria-label="${done ? "Done. Tap to undo" : "Mark done"}">${icon("check")}</i>` : ""}<i class="sel-mark">${icon("check")}</i></button>`;
     };
-    let shown = 0;
-    for (const c of CATS) {
-      const rows = mine.filter(x => x.note && noteCats(x.note).includes(c)); if (!rows.length) continue;
-      const vis = hide ? rows.filter(x => !catDone(x.note, c)) : rows, n = rows.filter(x => !catDone(x.note, c)).length;
-      if (!vis.length) continue;
-      shown += vis.length;
-      html += `<div class="cat-h"><i class="cat-dot c-${c}"></i>${esc(CAT_LABEL[c])}<span class="n">${n ? `${n} to pull` : "done"}</span></div><div class="shot-grid two">${vis.map(x => card(x, c)).join("")}</div>`;
-    }
-    const plain = mine.filter(x => !x.note || !noteCats(x.note).length);
-    if (plain.length) html += `<div class="cat-h plain">No category<span class="n">${plain.length}</span></div><div class="shot-grid two">${plain.map(x => card(x, null)).join("")}</div>`;
-    else if (hide && !shown) html += `<div class="empty small-empty">${icon("check")}<h3>All pulled here</h3><p>Tap Show done to see them again.</p></div>`;
+    html += shown.length ? `<div class="shot-grid two">${shown.map(card).join("")}</div>` : `<p class="muted small" style="margin:4px 0 0">None tagged ${esc(CAT_LABEL[gal.cat])} here.</p>`;
   }
   // After
   if (kind !== "backstock" || after.some(x => x.kind === kind)) {
@@ -3535,23 +3526,16 @@ function renderGallery() {
     if (galPress.fired) { galPress.fired = false; return; }   // the click that ends a long press
     if (gsel.on) { const t = e.target.closest(".shot"); if (t) { galToggle(t.dataset.w + "|" + t.dataset.p); return; } }
     if (e.target.closest("#gal-slots [data-act]")) { saveAndClear(); return; }
-    const sb = e.target.closest("#gal-slots [data-slot]"); if (sb) { gal.slot = +sb.dataset.slot; renderGallery(); return; }
-    const kb = e.target.closest("#gal-seg [data-k]"); if (kb) { gal.kind = kb.dataset.k; renderGallery(); return; }
+    const sb = e.target.closest("#gal-slots [data-slot]"); if (sb) { gal.slot = +sb.dataset.slot; gal.cat = null; renderGallery(); return; }
+    const kb = e.target.closest("#gal-seg [data-k]"); if (kb) { gal.kind = kb.dataset.k; gal.cat = null; renderGallery(); return; }
+    const fb = e.target.closest("[data-fcat]"); if (fb) { gal.cat = gal.cat === fb.dataset.fcat ? null : fb.dataset.fcat; haptic("tick"); renderGallery(); return; }
     const sh = e.target.closest("[data-share]"); if (sh) { if (!sh.disabled) shareBatch(slot, sh.dataset.share); return; }
-    if (e.target.closest('[data-a="hide-done"]')) { state.settings.hideDone = !hide; save(); renderGallery(); return; }
-    if (e.target.closest('[data-a="out-share"]')) { shareOuts(slot); return; }
     const t = e.target.closest(".shot");
     if (t) {
       const x = itemsOf(slot, t.dataset.w).find(i => i.photo === t.dataset.p); if (!x) return;
-      const tk = e.target.closest("[data-tick]");
-      if (tk && x.note) {
-        tickCat(x.note, tk.dataset.tick); const on = !!x.note.ticks[tk.dataset.tick];
-        t.classList.toggle("done", on); t.classList.remove("out"); tk.classList.toggle("on", on); pulse(tk);
-        setTimeout(() => { if (view === "gallery") renderAll(); }, hide && on ? 380 : 0);
-        if (hide && on) t.classList.add("leaving");
-        return;
-      }
-      if (x.note) openShelf(x.note, t.dataset.c || null); else openShot(x.shot);
+      const tk = e.target.closest("[data-done]");
+      if (tk && x.note) { toggleDone(x.note); t.classList.toggle("done", !!x.note.done); tk.classList.toggle("on", !!x.note.done); pulse(tk); return; }
+      if (x.note) openShelf(x.note); else openShot(x.shot);
       return;
     }
     if (e.target.closest('[data-a="clear"]')) clearShots(slot);
@@ -3559,15 +3543,15 @@ function renderGallery() {
   };
 }
 
-// ---- One shelf: the photo and its close-ups, what's low, pulled / none in the back ----
-function openShelf(n, focusCat) {
+// ---- One shelf: the photo and its close-ups, what it holds, done ----
+function openShelf(n) {
   let idx = 0;
   const s = el(`<div class="sheet check-sheet shelf-sheet"><div class="handle"></div><h2 id="sh-title"></h2>
     <div class="zoom-stage" id="sh-stage"><img alt=""><span class="zoom-hint">Pinch to zoom</span></div>
     <div class="sh-strip" id="sh-strip"></div><p class="sh-said" id="sh-said" hidden></p>
-    <div class="sec-h">What's low</div><div class="cat-row sheet-cats" id="sh-cats"></div>
-    <div class="list group sh-status" id="sh-status"></div>
-    <div class="row" style="margin-top:14px"><button class="btn sm grow" data-a="add">${icon("camera")}Add close-ups</button><button class="btn sm grow quiet" data-a="more">More…</button></div>
+    <div class="sec-h">What's on it</div><div class="cat-row sheet-cats" id="sh-cats"></div>
+    <button class="btn block sh-done" data-a="done" style="margin-top:14px"></button>
+    <div class="row" style="margin-top:8px"><button class="btn sm grow" data-a="add">${icon("camera")}Add close-ups</button><button class="btn sm grow quiet" data-a="more">More…</button></div>
     <button class="btn primary block" data-a="close">Done</button></div>`);
   const close = openLayer(s, { onClose: () => renderAll() });
   const img = s.querySelector("img"), stage = s.querySelector("#sh-stage");
@@ -3590,18 +3574,11 @@ function openShelf(n, focusCat) {
     const said = s.querySelector("#sh-said"); said.hidden = !n.text; if (n.text) said.textContent = `Said: “${n.text}”`;
     const cats = noteCats(n);
     s.querySelector("#sh-cats").innerHTML = CATS.map(c => `<button class="cat c-${c}${cats.includes(c) ? " on" : ""}" data-cat="${c}" aria-pressed="${cats.includes(c)}">${esc(CAT_SHORT[c])}</button>`).join("");
-    const box = s.querySelector("#sh-status");
-    box.hidden = !cats.length;
-    box.innerHTML = cats.map(c => { const done = !!(n.ticks || {})[c], out = isOut(n, c);
-      return `<div class="item cat-stat${c === focusCat ? " focus" : ""}"><i class="cat-dot c-${c}"></i><b class="grow">${esc(CAT_SHORT[c])}</b>
-        <button class="mini${done ? " on" : ""}" data-done="${c}">${icon("check")}Pulled</button><button class="mini warn${out ? " on" : ""}" data-out="${c}">None in back</button></div>`; }).join("");
+    const db = s.querySelector('[data-a="done"]');
+    db.classList.toggle("on", !!n.done); db.innerHTML = n.done ? `${icon("check")}Done · tap to undo` : `${icon("check")}Mark done`;
   };
   s.querySelector("#sh-cats").onclick = e => { const b = e.target.closest("[data-cat]"); if (!b) return; toggleCat(n, b.dataset.cat); draw(); pulse(s.querySelector(`#sh-cats [data-cat="${b.dataset.cat}"]`)); };
-  s.querySelector("#sh-status").onclick = e => {
-    const d = e.target.closest("[data-done]"), o = e.target.closest("[data-out]");
-    if (d) { tickCat(n, d.dataset.done); draw(); pulse(s.querySelector(`[data-done="${d.dataset.done}"]`)); }
-    else if (o) { const c = o.dataset.out; setOut(n, c, !isOut(n, c)); haptic("tick"); draw(); pulse(s.querySelector(`[data-out="${c}"]`)); }
-  };
+  s.querySelector('[data-a="done"]').onclick = () => { toggleDone(n); draw(); pulse(s.querySelector('[data-a="done"]')); };
   s.querySelector('[data-a="add"]').onclick = () => {
     close();
     if (Number.isInteger(n.slot)) state.settings.baSlot = n.slot;
@@ -3672,10 +3649,11 @@ function migrateShelves() {
       }
     }
     for (const c of cats) { if (seen[c].any) outs[c] = true; else if (seen[c].all) ticks[c] = true; }
+    const done = group.every(n => Object.keys(n.ticks || {}).length && Object.values(n.ticks).every(Boolean));
     const photos = [...new Set(group.flatMap(n => n.photos || []))];
     if (photo && photos[0] !== photo) photos.unshift(photo);
     return { id: f.id, at: Math.min(...group.map(n => n.at)), slot: Number.isInteger(f.slot) ? f.slot : 0, kind: noteKind(f), photos, audio: null, secs: 0,
-      text: [...new Set(words)].join(" · "), status: "done", parts: [], flag: false, ticks, out: outs, err: "", bk: 3, cats, v3: 1, ...(group.find(n => n.dg) ? { dg: group.find(n => n.dg).dg } : {}), was2: 1 };
+      text: [...new Set(words)].join(" · "), status: "done", ...(done ? { done: true } : {}), parts: [], flag: false, ticks, out: outs, err: "", bk: 3, cats, v3: 1, ...(group.find(n => n.dg) ? { dg: group.find(n => n.dg).dg } : {}), was2: 1 };
   };
   for (const [k, group] of byPhoto) out.push(make(group, k.slice(0, k.lastIndexOf("|"))));
   for (const s of oldShots) out.push({ id: newId("n"), at: s.at, slot: s.slot, kind: normKind(s.kind), photos: [s.photo], audio: null, secs: 0, text: "", status: "done", parts: [], flag: false,
@@ -3709,11 +3687,7 @@ function showView(v) {
 }
 function renderAll() {
   const hs = storeOf(baSlot()); $("#hdr-store").textContent = hs ? "Store " + hs : "";   // the store that's open on the camera tabs
-  const open = openTotal(baSlot());   // what's left to pull at this store
-  const badge = $("#need-badge");
-  if (open && String(open) !== badge.textContent) bump(badge);
-  badge.hidden = !open; badge.textContent = open;
-  const dc = dispCounts(hs), left = dc ? dc.total - dc.found : 0, db = $("#dsp-badge");   // displays still to find at this store
+  const dc = dispCounts(hs), left = dc ? dc.total - dc.found : 0, db = $("#dsp-badge");   // displays still to find at this store   // displays still to find at this store
   db.hidden = !left; db.textContent = left;
   if (view === "capture") renderCapture();
   if (view === "displays") renderDisplays();
@@ -3758,8 +3732,6 @@ function renderCapture() {
     lb.onclick = () => addToShelf(last);
     lb.setAttribute("aria-label", hold.session && hold.session.note === last.id ? "Look at these photos" : "Open the last photos again");
   } else lb.dataset.p = "";
-  const open = openTotal(baSlot()), db = $("#deck-badge");
-  db.hidden = !open; db.textContent = open;
   $("#btn-open-needed").onclick = () => showView("gallery");
   renderBA();
 }
@@ -5078,14 +5050,13 @@ const T_STEPS = [
   { id: "shelf", target: () => $("#view-capture .shutter-wrap"), text: "Tap the shutter to photograph the aisle.", hint: "tap", done: () => !!sessNote() },
   { id: "closeup", target: () => $("#view-capture .shutter-wrap"), text: "Something low? Get close and tap again. Each tap is a close-up of this spot.", hint: "tap",
     done: () => !!sessNote() && sessNote().photos.length > 1 },
-  { id: "cat", target: () => $("#cat-row"), text: "Tap what's low here. Pick as many as you need.", hint: "glow", done: () => !!sessNote() && noteCats(sessNote()).length > 0 },
+  { id: "cat", target: () => $("#cat-row"), text: "Tap what this spot mostly holds, so it's easy to find later. Pick as many as fit.", hint: "glow", done: () => !!sessNote() && noteCats(sessNote()).length > 0 },
   { id: "next", target: () => $("#hold-done"), text: "Moving on? Tap Next aisle, then snap the next spot.", hint: "tap", done: () => !hold.session },
-  { id: "shelvestab", target: () => $('#tabs [data-view="gallery"]'), text: "Your photos are on the Gallery tab, sorted by category.", hint: "tap", done: () => view === "gallery" },
-  { id: "tick", target: () => $("#view-gallery .shelf-card .tick"), text: "Tap the check once you've pulled it from the back.", hint: "tick",
-    done: () => state.notes.some(n => Object.values(n.ticks || {}).some(Boolean)) },
+  { id: "shelvestab", target: () => $('#tabs [data-view="gallery"]'), text: "Your photos are on the Gallery tab, aisles with aisles, shelves with shelves.", hint: "tap", done: () => view === "gallery" },
+  { id: "tick", target: () => $("#view-gallery .shelf-card .tick"), text: "Pulled what this one needed? Tap its check.", hint: "tick", done: () => state.notes.some(n => n.done) },
   { id: "open", target: () => $("#view-gallery .shelf-card"), text: "Tap a photo to see it with its close-ups.", hint: "tap", done: () => !!shelfSheetOpen() },
   { id: "look", inLayer: true, target: () => shelfSheetOpen() && shelfSheetOpen().querySelector('[data-a="close"]'),
-    text: "Swipe sideways through the close-ups. None left in the back? Mark it here. Then tap Done.", hint: "glow", done: () => !shelfSheetOpen() },
+    text: "Swipe sideways through the close-ups to see what's low. Then tap Done.", hint: "glow", done: () => !shelfSheetOpen() },
   { id: "text", target: () => $("#gal-share"), text: "Text all sends a store's photos, close-ups included, to your boss. The orange dot means that batch isn't sent yet.", hint: "dot", next: true },
   { id: "select", target: () => $("#view-gallery .shot"), text: "Hold a photo to select it. Then you can move it to another store, type or display.",
     hint: "press", next: true, done: () => gsel.on },
@@ -5258,6 +5229,11 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "3.2.1", notes: [
+    "The Gallery shows each type's photos in order (Aisle 1, 2, 3…), each labelled with what it mostly holds: Coke, Dr Pepper, Sprite, Sport, Energy.",
+    "Tap a category at the top of the Gallery to see only those photos, to find a shelf quickly.",
+    "Each photo has one check for done, once you've pulled what it needed.",
+    "The categories are labels, not a to-pull list: the to-pull counts and “None in back” are gone. The close-ups show what's low." ] },
   { v: "3.2.0", notes: [
     "A new Displays tab: each store keeps its list of displays from visit to visit, with a photo and where it is (near Pharmacy, Checkouts…). Check them off as you find them, so none get missed.",
     "Shooting a display: after the first photo, the store's displays show under the camera. Tap the one it is, or New and pick where it is (or type it). You only tag a display when it's new.",
@@ -5363,7 +5339,7 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 92;
+const REVISION = 93;
 // More
 function renderMore() {
   const v = $("#view-more");
@@ -5401,7 +5377,7 @@ function renderMore() {
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
     ${enc.last.ready != null ? `<p class="sec-foot">Last photo: ready for the next tap in ${enc.last.ready} ms${enc.last.saved != null ? `, saved in ${enc.last.saved} ms (${enc.last.path})` : ""}.</p>` : ""}
-    <p class="foot">Shelfie 3.2.0 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 3.2.1 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   attachHapticOverlay(v.querySelector("#haptic-try"), () => toast("Felt a tap? Then the shutter will too."));
   v.querySelector("#haptic-shutter").onchange = e => { state.settings.hapticShutter = e.target.checked; save(); syncHaptics(); };

@@ -1,5 +1,5 @@
 // Offline support for Shelfie (formerly Shelf Scan): the app shell is cached on install, and old caches are deleted on activate.
-const CACHE = "shelfscan-v320-v60";
+const CACHE = "shelfscan-v321-v61";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
