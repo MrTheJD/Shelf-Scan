@@ -2431,7 +2431,7 @@ function renderGallery() {
   }
   // After
   if (kind !== "backstock" || after.some(x => x.kind === kind)) {
-    const list = after.filter(x => x.kind === kind).reverse();
+    const list = after.filter(x => x.kind === kind);   // 3.5.2: oldest first, like the Before photos (and the order they swipe in)
     html += `<div class="cluster-h">After<span class="n">${list.length}</span></div>`;
     html += list.length && kind === "display"   // displays: one group each, numbered like the Before ones
       ? displayGroups(slot, "after").map(g => `<div class="disp-h">Display ${g.num}<span>${g.items.length} photo${g.items.length === 1 ? "" : "s"}</span></div><div class="shot-grid">${g.items.map(x => tile("after", x)).join("")}</div>`).join("")
@@ -3124,6 +3124,15 @@ async function saveAndClear() {
   hideHint();
   return clearEverything();
 }
+// Every After photo of a store, in the order the Gallery shows them
+function afterOrder(slot) {
+  const out = [];
+  for (const k of KINDS) {
+    if (k === "display") for (const g of displayGroups(slot, "after")) out.push(...g.items.map(i => i.shot));
+    else out.push(...afterItems(slot).filter(i => i.kind === k).map(i => i.shot));
+  }
+  return out;
+}
 // ---- One After photo: zoom, save to the phone's Photos, move, delete ----
 function openShot(x, onChange) {
   const name = () => `${KIND_LABEL[x.kind]}-${WHEN_LABEL[x.when === "before" ? "before" : "after"]}-${new Date(x.at).toISOString().slice(0, 16).replace(/[-:T]/g, "")}.jpg`;
@@ -3135,7 +3144,8 @@ function openShot(x, onChange) {
   const head = () => { s.querySelector("h2").textContent = `${storeOf(x.slot) ? `#${storeOf(x.slot)} · ` : ""}${WHEN_LABEL[x.when === "before" ? "before" : "after"]} · ${x.kind === "display" ? displayLabel(x.photo, x.slot, x.when === "before" ? "before" : "after") : KIND_LABEL[x.kind]} · ${new Date(x.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`; };
   head();
   const img = s.querySelector("img");
-  const same = () => itemsOf(x.slot, x.when === "before" ? "before" : "after").filter(i => i.kind === x.kind && i.shot).map(i => i.shot);
+  // 3.5.2: an After photo swipes through every After photo of the store, in Gallery order (Aisle, Shelf, Display 1, 2…, Backstock; oldest first)
+  const same = () => (x.when === "before" ? itemsOf(x.slot, "before").filter(i => i.kind === x.kind && i.shot).map(i => i.shot) : afterOrder(x.slot));
   const nextShot = d => { const L = same(); return L[L.indexOf(x) + d] || null; };
   zoomStage(img, s.querySelector(".zoom-stage"), {
     fullList: () => { const list = same().map(y => y.photo); return { list, index: Math.max(0, list.indexOf(x.photo)) }; },   // full screen swipes through that Gallery section
@@ -4134,6 +4144,7 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "3.5.2", notes: ["Swipe through all of a store's After photos, from one type to the next (Aisle, Shelf, Display, Backstock), the same way as the Before sets. After photos are listed oldest first, like the Before ones."] },
   { v: "3.5.1", notes: [
     "Swipe the camera picture left for After, right for Before.",
     "Photos slide like a carousel: the next one comes in with your finger, in the Gallery, full screen and in After photos.",
@@ -4260,7 +4271,7 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 97;
+const REVISION = 98;
 // More
 function renderMore() {
   const v = $("#view-more");
@@ -4296,7 +4307,7 @@ function renderMore() {
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
     ${enc.last.ready != null ? `<p class="sec-foot">Last photo: ready for the next tap in ${enc.last.ready} ms${enc.last.saved != null ? `, saved in ${enc.last.saved} ms (${enc.last.path})` : ""}.</p>` : ""}
-    <p class="foot">Shelfie 3.5.1 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 3.5.2 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   v.querySelector("#haptic-shutter").onchange = e => { state.settings.hapticShutter = state.settings.hapticTaps = e.target.checked; save(); syncHaptics(); };   // one switch for both (3.4)
   v.querySelector("#btn-backup").onclick = saveBackup;
