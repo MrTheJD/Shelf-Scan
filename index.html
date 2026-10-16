@@ -1083,6 +1083,11 @@ header.top .store .caret { width: 0; height: 0; border-left: 4px solid transpare
 /* five types on one switch */
 .cap-seg button, #gal-seg button { font-size: 13.5px; letter-spacing: -.01em; padding: 0 1px; gap: 3px; }
 #gal-seg .kcount { min-width: 16px; padding: 0 4px; font-size: 10.5px; line-height: 16px; }
+
+/* ---------- 3.8: display sides ---------- */
+.dsp-pair .shelf-thumb.main { width: 62px; height: 62px; border-radius: 13px; }
+#hold-lock { min-height: 32px; padding: 0 14px; flex: none; }
+#view-capture #hold-bar { outline: none; }
 </style>
 </head>
 <body data-view="capture">
@@ -1122,7 +1127,6 @@ header.top .store .caret { width: 0; height: 0; border-left: 4px solid transpare
         <button data-k="backstock">Backstock</button>
       </div>
       <div class="dpick-row" id="dpick-row" hidden aria-label="Which display is this?"></div>
-      <div class="cat-row" id="cat-row" hidden aria-label="What's on this shelf"></div>
       <div class="pair-strip" id="pair-strip" hidden></div>
       <div class="deck-row">
         <button class="deck-side left" id="last-note" aria-label="Open the last photo" style="visibility:hidden"></button>
@@ -1130,7 +1134,7 @@ header.top .store .caret { width: 0; height: 0; border-left: 4px solid transpare
         <div class="shutter-wrap"><button class="shutter-big" id="btn-shutter" aria-label="Take a photo of the aisle"><span></span></button></div>
         <button class="deck-side right when-btn" id="btn-when" aria-label="Switch to After"><b data-w="before">Before</b><b data-w="after">After</b></button>
       </div>
-      <button class="hold-bar" id="hold-bar" hidden aria-label="Open the last spot"><span class="hb-thumb" id="hold-thumb"></span><span class="grow" id="hold-text"></span><i class="hb-go" aria-hidden="true"></i></button>
+      <div class="hold-bar" id="hold-bar" hidden role="button" tabindex="0" aria-label="Open the last spot"><span class="hb-thumb" id="hold-thumb"></span><span class="grow" id="hold-text"></span><button class="btn sm primary" id="hold-lock" hidden>Done</button><i class="hb-go" aria-hidden="true"></i></div>
       <p class="cap-hint" id="shutter-label" aria-hidden="true"></p>
     </div>
   </section>
@@ -1229,6 +1233,7 @@ function migrate() {
   state.settings = Object.assign(f.settings, state.settings || {});
   if (state.settings.haptics === false) { state.settings.hapticShutter = false; state.settings.hapticTaps = false; }   // the single haptics switch of 1.0.0 became two
   delete state.settings.haptics;
+  delete state.settings.nextCats;   // 3.7.1: no labels any more
   // 3.4: what voice notes and the product list kept is gone (the product list was written to its own key since 2.9.2)
   for (const k of ["products", "productsApart", "deleted", "outbox", "sync", "recents", "pickUse", "learned", "tags", "config", "team", "received"]) delete state[k];
   try { localStorage.removeItem(STORAGE_KEY + ".products"); localStorage.removeItem(PASS_KEY); localStorage.removeItem("shelfscan.dev"); } catch (e) {}
@@ -1974,7 +1979,7 @@ function wireSoundBtn() {
 // A backup is one small file: the settings, the store numbers, store locations and each store's display list (areas, not photos).
 // "Save a backup" hands it to the phone's share sheet (Save to Files, AirDrop, Mail...), and "Restore from a backup" reads it back.
 // Nothing goes to any server. Backups from 2.x (with a product list) can still be restored: the product list is ignored.
-const BK_SETTINGS = ["beep", "captureKind", "baWhen", "baKind", "baSlot", "lens", "hapticShutter", "hapticTaps", "photoCheck", "geo", "nextCats", "feedFix"];   // (pad2 is in beforeafter.js)
+const BK_SETTINGS = ["beep", "captureKind", "baWhen", "baKind", "baSlot", "lens", "hapticShutter", "hapticTaps", "photoCheck", "geo", "feedFix"];   // (pad2 is in beforeafter.js)
 
 function bkSnapshot() {
   const settings = {}; for (const k of BK_SETTINGS) settings[k] = state.settings[k];
@@ -2011,7 +2016,6 @@ async function restoreBackup(data) {
   if (!(await confirmDialog(`Restore the backup${when ? ` from <b>${esc(when)}</b>` : ""}? This replaces this phone's settings, store locations and display lists${hasPhotos ? "" : " and store numbers"}. Your photos stay.`, { ok: "Restore", danger: true }))) return;
   const snap = snapshot(), next = JSON.parse(snap), str = (x, n) => String(x || "").slice(0, n);
   for (const k of BK_SETTINGS) { const x = data.settings && data.settings[k]; if (x !== undefined && (next.settings[k] === undefined || typeof x === typeof next.settings[k])) next.settings[k] = x; }   // same kind of value only
-  if (!Array.isArray(next.settings.nextCats)) delete next.settings.nextCats;
   if (!hasPhotos && Array.isArray(data.stores)) { next.stores = data.stores.slice(0, 5).map(x => str(x, 20)); next.storeName = str(data.storeName, 20); }   // photos are filed by slot, so store numbers only change when there are none
   if (Array.isArray(data.recentStores)) next.recentStores = data.recentStores.map(x => str(x, 20)).filter(Boolean).slice(0, 8);
   if (data.storeSpots && typeof data.storeSpots === "object") next.storeSpots = Object.fromEntries(Object.entries(data.storeSpots)
@@ -2331,9 +2335,14 @@ let lastNoteId = null;
 
 // The open shelf (kept under the 2.x name "hold": other parts check hold.session)
 const hold = { session: null };   // { note: id, kind, slot }
+const lock = { id: null };   // 3.8: "Add sides": the camera is locked to one display (red retakes its main picture, blue adds a side)
+const isDisp = n => !!n && noteKind(n) === "display";
+const SIDE = n => (isDisp(n) ? ["side", "sides"] : ["close-up", "close-ups"]);
+const lockedNote = () => (lock.id ? state.notes.find(n => n.id === lock.id && n.slot === baSlot() && isDisp(n)) || null : null);
 const newSession = (n, slot = baSlot()) => ({ note: n.id, kind: noteKind(n), slot, last: Date.now() });   // last: when a photo was last added (a shelf left open for 10 minutes closes itself)
 const sessNote = () => (hold.session ? state.notes.find(n => n.id === hold.session.note) || null : null);
 function endHoldSession() {
+  lock.id = null;
   if (!hold.session) return;
   hold.session = null;
   flushShots();
@@ -2350,14 +2359,15 @@ function shelfShot() {
 }
 // What the blue shutter adds to: the spot just taken (or the one opened with Add close-ups), else the last one of this type at this store.
 function closeTarget() {
+  const L = lockedNote(); if (L) return L;
   const s = sessNote(); if (s && hold.session.slot === baSlot() && noteKind(s) === captureKind()) return s;
   return state.notes.find(n => n.slot === baSlot() && noteKind(n) === captureKind() && (n.photos || [])[0]) || null;
 }
 async function closeupShot(forcePhone) {
   if (!storeOf(baSlot())) { askStore(baSlot()); return; }
   const n = closeTarget();
-  if (!n) { toast(`Take the ${KIND_LABEL[captureKind()].toLowerCase()} first with the red shutter, then close-ups with the blue one`); pulse($("#btn-shutter")); return; }
-  if (n.photos.length > MAX_CLOSEUPS) { toast(`That's the most close-ups for ${shelfLabel(n)}`); return; }
+  if (!n) { toast(captureKind() === "display" ? "Take the display first with the red shutter, then its sides with the blue one" : `Take the ${KIND_LABEL[captureKind()].toLowerCase()} first with the red shutter, then close-ups with the blue one`); pulse($("#btn-shutter")); return; }
+  if (n.photos.length > MAX_CLOSEUPS) { toast(`That's the most ${SIDE(n)[1]} for ${shelfLabel(n)}`); return; }
   let id;
   if (cam.stream && !forcePhone) { const r = snapNow("#cam-video", "#camera", "#btn-closeup", $("#hold-bar").hidden ? null : $("#hold-thumb")); if (!r) return; id = r.id; }
   else {
@@ -2372,12 +2382,37 @@ async function closeupShot(forcePhone) {
   afterShot.ids.push(id); afterShot(); renderHoldBar(); pulse($("#hold-bar"));
 }
 // A new spot (red shutter, or the iPhone camera when the live one isn't working): it becomes what the blue shutter adds to.
+// "Add sides" mode: the red shutter replaces the display's main picture (Undo in the notice); its anchors follow the new photo
+function replacePhotoEverywhere(old, id) {
+  for (const x of [...state.notes, ...state.shots]) { if (x.dg === old) x.dg = id; if (x.pair === old) x.pair = id; }
+  if (afterPick && afterPick.anchor === old) afterPick.anchor = id;
+  if (displayTarget && displayTarget.anchor === old) displayTarget.anchor = id;
+}
+function replaceMain(n, id) {
+  const snap = snapshot(), old = n.photos[0];
+  n.photos[0] = id; replacePhotoEverywhere(old, id);
+  const dl = n.sd && storeDisp(storeOf(n.slot)), d = dl && dl.list.find(x => x.id === n.sd); if (d) keepDisplayPhoto(d, id);
+  hold.session = newSession(n); lastNoteId = n.id;
+  afterShot.ids.push(id); afterShot(); renderHoldBar(); scheduleSweep();
+  toast("Main picture replaced", snap);
+}
+// Open a display's camera: red = its main picture again, blue = another side, Done leaves
+function startSides(n) {
+  if (!isDisp(n)) return;
+  endHoldSession();
+  if (Number.isInteger(n.slot)) state.settings.baSlot = n.slot;
+  state.settings.captureKind = "display"; state.settings.camWhen = "before"; save();
+  showView("capture");
+  lock.id = n.id; hold.session = newSession(n); lastNoteId = n.id; renderAll();
+  toast(`Adding sides to ${shelfLabel(n)}`);
+}
 function shelfAddPhoto(id) {
+  const L = lockedNote(); if (L) return replaceMain(L, id);
   hold.session = null;   // a new spot every time (it becomes the close-up target below)
   {
     const kind = captureKind(), slot = baSlot(), dg = takeDisplayDg(slot, "before", kind);
     const s = { id: newId("n"), at: Date.now(), slot, kind, photos: [id], audio: null, secs: 0, text: "", status: "done", parts: [], flag: false,
-      ticks: {}, out: {}, err: "", bk: 3, cats: nextCats(), v3: 1, ...(dg ? { dg } : {}) };
+      ticks: {}, out: {}, err: "", bk: 3, cats: [], v3: 1, ...(dg ? { dg } : {}) };
     if (kind === "display" && dspPending && dspPending.store === storeOf(slot) && Date.now() - (dspPending.at || 0) < 10 * 60000) { const d = dispActive(storeDisp(storeOf(slot))).find(x => x.id === dspPending.id); if (d) { s.sd = d.id; d.at = Date.now(); setTimeout(() => keepDisplayPhoto(d, id), 800); } dspPending = null; }   // "Shoot this one"
     state.notes.unshift(s); lastNoteId = s.id;
     hold.session = newSession(s, slot);
@@ -2412,39 +2447,30 @@ function toggleCat(n, c) {
   haptic("tick"); save(); renderAll();
 }
 // The labels the next shelf gets (sticky: they stay lit until changed)
-const nextCats = () => CATS.filter(c => (state.settings.nextCats || []).includes(c));
 // The bar under the camera while a shelf is open, and the category buttons above the shutter (always, except for Backstock)
 function renderHoldBar() {
   const bar = document.getElementById("hold-bar"); if (!bar) return;
   const before = camWhen() === "before" && captureKind() !== "backstock", t = before ? closeTarget() : null, s = sessNote();
   bar.hidden = !t; $("#cu-wrap").hidden = !before;
   $("#btn-closeup").classList.toggle("off", !t);
-  const row = $("#cat-row");
-  renderDispPick(s, !!s && before && hold.session.slot === baSlot());   // 3.2: a display just taken: which one is it? (it takes the labels' place for a moment)
-  row.hidden = !before || !$("#dpick-row").hidden;   // labels are for Before photos
-  const cats = nextCats(), key = "next|" + cats.join(",");
+  renderDispPick(s, !!s && before && hold.session.slot === baSlot());   // 3.2: a display just taken: which one is it?
+  $("#hold-lock").hidden = !(t && lockedNote() === t);
+  $("#btn-closeup").setAttribute("aria-label", captureKind() === "display" ? "Add a side of this display" : "Take a close-up of the last spot");
   if (t) {
-    const disp = noteKind(t) === "display", cu = t.photos.length - 1, tc = noteCats(t);
-    $("#hold-text").innerHTML = `<b>${esc(shelfLabel(t))}</b>${tc.length ? ` · ${esc(tc.map(c => CAT_SHORT[c]).join(", "))}` : ""} · ${disp ? `${t.photos.length} photo${t.photos.length === 1 ? "" : "s"}` : `${cu} close-up${cu === 1 ? "" : "s"}`}`;
+    const disp = isDisp(t), cu = t.photos.length - 1, np = disp ? t.photos.length : cu;
+    const dl = disp && t.sd && storeDisp(storeOf(t.slot)), dd = dl && dl.list.find(x => x.id === t.sd), area = dd && dd.area;
+    $("#hold-text").innerHTML = `<b>${esc(shelfLabel(t))}</b>${area ? ` · ${esc(area)}` : ""} · ${np} ${SIDE(t)[np === 1 ? 0 : 1]}`;
     const th = $("#hold-thumb"), p = t.photos[t.photos.length - 1];
     if (th.dataset.p !== p) { th.dataset.p = p; th.innerHTML = `<img data-photo="${esc(p)}" alt="">`; hydratePhotos(th); }
   }
-  if (row.dataset.key !== key || !row.children.length) {
-    row.dataset.key = key;
-    row.innerHTML = CATS.map(c => `<button class="cat c-${c}${cats.includes(c) ? " on" : ""}" data-cat="${c}" aria-pressed="${cats.includes(c)}">${esc(CAT_SHORT[c])}</button>`).join("");
-  }
 }
 function wireShelfCapture() {
-  // 3.7: the labels are for the next red-shutter photo (and stay lit after it); a spot already taken is changed in the Gallery
-  $("#cat-row").onclick = e => {
-    const b = e.target.closest("[data-cat]"); if (!b) return;
-    const c = b.dataset.cat, cur = nextCats();
-    state.settings.nextCats = cur.includes(c) ? cur.filter(x => x !== c) : [...cur, c];
-    haptic("tick"); save(); renderHoldBar(); pulse($(`#cat-row [data-cat="${c}"]`));
-  };
   $("#btn-closeup").onclick = () => closeupShot(!cam.stream);   // no live camera: the iPhone camera app
   $("#btn-closeup").addEventListener("contextmenu", e => e.preventDefault());
-  $("#hold-bar").onclick = () => { const n = closeTarget(); if (n) openShelf(n); };
+  $("#hold-bar").onclick = e => {
+    if (e.target.closest("#hold-lock")) { endHoldSession(); haptic("ok"); return; }   // Done: leave "Add sides"
+    const n = closeTarget(); if (n) openShelf(n);
+  };
   wireDispPick();
 }
 
@@ -2471,32 +2497,26 @@ function renderGallery() {
   const slot = gal.slot, kind = gal.kind, st = storeOf(slot);
   const before = beforeItems(slot), after = afterItems(slot);
   let html = `<div class="list-head"><h2>Gallery</h2><span class="muted small">${st ? `store#${esc(st)}` : ""}</span></div>
-    <div class="row" id="gal-share">${["before", "after"].map(w => { const n = itemsOf(slot, w).length, u = untexted(slot, w); return `<button class="btn sm primary grow" data-share="${w}"${n ? "" : " disabled"}>${icon("upload")}Text all ${WHEN_LABEL[w]} (${n})${n ? (u ? `<i class="tx-dot" aria-label="not sent yet"></i>` : `<i class="tx-ok" aria-label="sent">${icon("check")}</i>`) : ""}</button>`; }).join("")}</div>`;
+    <div class="row" id="gal-share">${["before", "after"].map(w => { const n = itemsOf(slot, w).reduce((t, x) => t + sendPhotos(x).length, 0), u = untexted(slot, w); return `<button class="btn sm primary grow" data-share="${w}"${n ? "" : " disabled"}>${icon("upload")}Text all ${WHEN_LABEL[w]} (${n})${n ? (u ? `<i class="tx-dot" aria-label="not sent yet"></i>` : `<i class="tx-ok" aria-label="sent">${icon("check")}</i>`) : ""}</button>`; }).join("")}</div>`;
   html += `<div class="seg" id="gal-seg">${KINDS.map(k => { const n = [...before, ...after].filter(x => x.kind === k).length;
     return `<button data-k="${k}" class="${k === kind ? "active" : ""}">${KIND_LABEL[k]} ${n ? `<span class="kcount grey">${n}</span>` : ""}</button>`; }).join("")}</div>`;
   const tile = (w, x) => `<button class="shot${gsel.keys.has(w + "|" + x.photo) ? " sel" : ""}" data-w="${w}" data-p="${esc(x.photo)}" data-photo-wrap><img data-photo="${esc(x.photo)}" alt=""><span>${esc(timeOf(x.at))}</span><i class="sel-mark">${icon("check")}</i></button>`;
   // Before
   const mine = before.filter(x => x.kind === kind);
-  if (kind !== "backstock") {   // find by category: tap one to see only those
-    const has = new Set(mine.flatMap(x => (x.note ? noteCats(x.note) : [])));
-    if (gal.cat && !has.has(gal.cat)) gal.cat = null;
-    if (has.size) html += `<div class="cat-row gal-filter" id="gal-filter">${CATS.filter(c => has.has(c)).map(c => `<button class="cat c-${c}${gal.cat === c ? " on" : ""}" data-fcat="${c}" aria-pressed="${gal.cat === c}">${esc(CAT_SHORT[c])}</button>`).join("")}</div>`;
-  }
-  const shown = gal.cat ? mine.filter(x => x.note && noteCats(x.note).includes(gal.cat)) : mine;
-  html += `<div class="cluster-h">Before<span class="n">${gal.cat ? `${shown.length} of ${mine.length} · ${esc(CAT_LABEL[gal.cat])}` : mine.length}</span></div>`;
+  const shown = mine;
+  html += `<div class="cluster-h">Before<span class="n">${mine.length}</span></div>`;
   if (!mine.length) html += `<p class="muted small" style="margin:4px 0 0">${kind === "backstock" ? "No back stock photos for this store yet." : `No ${KIND_PLURAL[kind]} for this store yet. Snap ${{ aisle: "an aisle", shelf: "a shelf", display: "a display", cooler: "a cooler" }[kind]} on the Camera tab.`}</p>`;
   else if (kind === "backstock") html += `<div class="shot-grid">${[...mine].reverse().map(x => tile("before", x)).join("")}</div>`;
   else {
     const label = new Map(mine.map(x => [x.photo, x.note ? shelfLabel(x.note) : timeOf(x.at)]));
-    // in order (Aisle 1, 2, 3…), each photo labelled with what it mostly holds, and a check for done
+    // in order (Aisle 1, 2, 3…), with its close-up count and a check for done
     const card = x => {
-      const n = x.note, cats = n ? noteCats(n) : [], cu = n ? n.photos.length - 1 : 0, done = !!(n && n.done);
-      const tags = cats.map(c => `<i class="ctag c-${c}">${esc(CAT_SHORT[c])}</i>`).join("");
+      const n = x.note, cu = n ? n.photos.length - 1 : 0, done = !!(n && n.done);
       return `<button class="shot shelf-card${done ? " done" : ""}${gsel.keys.has("before|" + x.photo) ? " sel" : ""}" data-w="before" data-p="${esc(x.photo)}" data-photo-wrap>
-        <img data-photo="${esc(x.photo)}" alt=""><span>${esc(label.get(x.photo))}</span>${cu ? `<b class="cu">+${cu}</b>` : ""}
-        ${tags ? `<em class="cat-tags">${tags}</em>` : ""}${n ? `<i class="tick${done ? " on" : ""}" data-done="1" role="button" aria-label="${done ? "Done. Tap to undo" : "Mark done"}">${icon("check")}</i>` : ""}<i class="sel-mark">${icon("check")}</i></button>`;
+        <img data-photo="${esc(x.photo)}" alt=""><span>${esc(label.get(x.photo))}</span>${cu ? `<b class="cu">${isDisp(n) ? `${cu + 1} sides` : `+${cu}`}</b>` : ""}
+        ${n ? `<i class="tick${done ? " on" : ""}" data-done="1" role="button" aria-label="${done ? "Done. Tap to undo" : "Mark done"}">${icon("check")}</i>` : ""}<i class="sel-mark">${icon("check")}</i></button>`;
     };
-    html += shown.length ? `<div class="shot-grid two">${shown.map(card).join("")}</div>` : `<p class="muted small" style="margin:4px 0 0">None tagged ${esc(CAT_LABEL[gal.cat])} here.</p>`;
+    html += shown.length ? `<div class="shot-grid two">${shown.map(card).join("")}</div>` : "";
   }
   // After
   if (kind !== "backstock" || after.some(x => x.kind === kind)) {
@@ -2518,8 +2538,7 @@ function renderGallery() {
     if (galPress.fired) { galPress.fired = false; return; }   // the click that ends a long press
     if (gsel.on) { const t = e.target.closest(".shot"); if (t) { galToggle(t.dataset.w + "|" + t.dataset.p); return; } }
     if (e.target.closest('[data-a="shift"]')) { saveAndClear(); return; }
-    const kb = e.target.closest("#gal-seg [data-k]"); if (kb) { gal.kind = kb.dataset.k; gal.cat = null; renderGallery(); return; }
-    const fb = e.target.closest("[data-fcat]"); if (fb) { gal.cat = gal.cat === fb.dataset.fcat ? null : fb.dataset.fcat; haptic("tick"); renderGallery(); return; }
+    const kb = e.target.closest("#gal-seg [data-k]"); if (kb) { gal.kind = kb.dataset.k; renderGallery(); return; }
     const sh = e.target.closest("[data-share]"); if (sh) { if (!sh.disabled) shareBatch(slot, sh.dataset.share); return; }
     const t = e.target.closest(".shot");
     if (t) {
@@ -2538,9 +2557,8 @@ function openShelf(n) {
   const s = el(`<div class="sheet check-sheet shelf-sheet"><div class="handle"></div><h2 id="sh-title"></h2>
     <div class="zoom-stage" id="sh-stage"><img alt=""><span class="zoom-hint">Pinch to zoom</span></div>
     <div class="sh-strip" id="sh-strip"></div><p class="sh-said" id="sh-said" hidden></p>
-    <div class="sec-h">What's on it</div><div class="cat-row sheet-cats" id="sh-cats"></div>
     <button class="btn block sh-done" data-a="done" style="margin-top:14px"></button>
-    <div class="row" style="margin-top:8px"><button class="btn sm grow" data-a="add">${icon("camera")}Add close-ups</button><button class="btn sm grow quiet" data-a="more">More…</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn sm grow" data-a="add"></button><button class="btn sm grow quiet" data-a="more">More…</button></div>
     <button class="btn primary block" data-a="close">Done</button></div>`);
   const close = openLayer(s, { onClose: () => renderAll() });
   const img = s.querySelector("img"), stage = s.querySelector("#sh-stage");
@@ -2566,24 +2584,27 @@ function openShelf(n) {
     img.src = u || "";
     stage.classList.toggle("empty-photo", !id);
     const strip = s.querySelector("#sh-strip");
-    strip.innerHTML = n.photos.length > 1 ? n.photos.map((p, i) => `<button class="sh-th${i === idx ? " on" : ""}" data-i="${i}" aria-label="${i ? `Close-up ${i}` : "The whole photo"}"><img data-photo="${esc(p)}" alt=""><small>${i ? i : KIND_LABEL[noteKind(n)]}</small></button>`).join("") : "";
+    strip.innerHTML = n.photos.length > 1 ? n.photos.map((p, i) => `<button class="sh-th${i === idx ? " on" : ""}" data-i="${i}" aria-label="${i ? (isDisp(n) ? `Side ${i + 1}` : `Close-up ${i}`) : (isDisp(n) ? "Main picture" : "The whole photo")}"><img data-photo="${esc(p)}" alt=""><small>${i ? (isDisp(n) ? i + 1 : i) : (isDisp(n) ? "Main" : KIND_LABEL[noteKind(n)])}</small></button>`).join("") : "";
     hydratePhotos(strip);
     strip.querySelector(".sh-th.on")?.scrollIntoView({ inline: "center", block: "nearest" });
+    setTitle();
+  };
+  const setTitle = () => {
+    const st = storeOf(n.slot);
+    s.querySelector("#sh-title").textContent = `${st ? `#${st} · ` : ""}${shelfLabel(n)} · ${isDisp(n) && n.photos.length > 1 ? `side ${idx + 1} of ${n.photos.length}` : timeOf(n.at)}`;
   };
   s.querySelector("#sh-strip").onclick = e => { const b = e.target.closest("[data-i]"); if (b) { idx = +b.dataset.i; haptic("tick"); show(); } };
   const draw = () => {
-    const st = storeOf(n.slot);
-    s.querySelector("#sh-title").textContent = `${st ? `#${st} · ` : ""}${shelfLabel(n)} · ${timeOf(n.at)}`;
+    setTitle();
+    s.querySelector('[data-a="add"]').innerHTML = icon("camera") + (isDisp(n) ? "Add sides" : "Add close-ups");
     const said = s.querySelector("#sh-said"); said.hidden = !n.text; if (n.text) said.textContent = `Said: “${n.text}”`;
-    const cats = noteCats(n);
-    s.querySelector("#sh-cats").innerHTML = CATS.map(c => `<button class="cat c-${c}${cats.includes(c) ? " on" : ""}" data-cat="${c}" aria-pressed="${cats.includes(c)}">${esc(CAT_SHORT[c])}</button>`).join("");
     const db = s.querySelector('[data-a="done"]');
     db.classList.toggle("on", !!n.done); db.innerHTML = n.done ? `${icon("check")}Done · tap to undo` : `${icon("check")}Mark done`;
   };
-  s.querySelector("#sh-cats").onclick = e => { const b = e.target.closest("[data-cat]"); if (!b) return; toggleCat(n, b.dataset.cat); draw(); pulse(s.querySelector(`#sh-cats [data-cat="${b.dataset.cat}"]`)); };
   s.querySelector('[data-a="done"]').onclick = () => { toggleDone(n); draw(); pulse(s.querySelector('[data-a="done"]')); };
   s.querySelector('[data-a="add"]').onclick = () => {
     close();
+    if (isDisp(n)) { startSides(n); return; }
     if (Number.isInteger(n.slot)) state.settings.baSlot = n.slot;
     state.settings.captureKind = noteKind(n); state.settings.camWhen = "before"; save();
     showView("capture");
@@ -2594,13 +2615,19 @@ function openShelf(n) {
     const pick = await menu(shelfLabel(n), [
       { label: "Save this photo to Photos", value: "save" },
       ...kindMoves(noteKind(n)).filter(m => m.value !== "kind:backstock"),
-      idx > 0 ? { label: `Make close-up ${idx} its own spot`, value: "split" } : { label: "Make this a close-up of… ›", value: "merge" },
-      ...(idx > 0 ? [{ label: `Delete close-up ${idx}`, value: "delphoto", danger: true }] : []),
-      { label: n.photos.length > 1 ? `Delete ${shelfLabel(n)} and its close-ups` : `Delete ${shelfLabel(n)}`, value: "delete", danger: true }]);
+      ...(idx > 0 && isDisp(n) ? [{ label: "Make this side the main picture", value: "main" }] : []),
+      idx > 0 ? { label: `Make ${isDisp(n) ? `side ${idx + 1} its own display` : `close-up ${idx} its own spot`}`, value: "split" } : { label: `Make this a ${SIDE(n)[0]} of… ›`, value: "merge" },
+      ...(idx > 0 ? [{ label: `Delete ${isDisp(n) ? `side ${idx + 1}` : `close-up ${idx}`}`, value: "delphoto", danger: true }] : []),
+      { label: n.photos.length > 1 ? `Delete ${shelfLabel(n)} and its ${SIDE(n)[1]}` : `Delete ${shelfLabel(n)}`, value: "delete", danger: true }]);
     if (pick === "save") savePhotoToPhotos(n.photos[idx], `${shelfLabel(n).replace(/\s+/g, "")}${idx ? `-closeup${idx}` : ""}.jpg`);
     else if (String(pick).startsWith("kind:")) { const snap = snapshot(); n.kind = normKind(pick.slice(5)); delete n.dg; save(); renderAll(); draw(); toast(`Moved to ${KIND_LABEL[n.kind]}`, snap); }
-    else if (pick === "delphoto") { const snap = snapshot(); n.photos.splice(idx, 1); idx = Math.max(0, idx - 1); save(); renderAll(); scheduleSweep(); show(); toast("Close-up deleted", snap); }
+    else if (pick === "delphoto") { const snap = snapshot(); n.photos.splice(idx, 1); idx = Math.max(0, idx - 1); save(); renderAll(); scheduleSweep(); show(); toast(`${isDisp(n) ? "Side" : "Close-up"} deleted`, snap); }
     else if (pick === "delete") { close(); deleteShelf(n); }
+    else if (pick === "main") {
+      const snap = snapshot(), old = n.photos[0], [p] = n.photos.splice(idx, 1); n.photos.unshift(p); replacePhotoEverywhere(old, p); idx = 0;
+      const dl = n.sd && storeDisp(storeOf(n.slot)), d = dl && dl.list.find(x => x.id === n.sd); if (d) keepDisplayPhoto(d, p);
+      save(); renderAll(); show(); toast("That side is now the main picture", snap);
+    }
     else if (pick === "split") {
       const snap = snapshot(), s2 = splitCloseup(n, idx); if (!s2) return;
       save(); renderAll(); n = s2; idx = 0; draw(); show(); pulse(s.querySelector("#sh-title"));
@@ -2625,13 +2652,13 @@ function spotChoices(n, exclude = []) {
   const prev = all.filter(m => noteKind(m) === noteKind(n) && m.at < n.at).pop();
   return prev ? [prev, ...all.filter(m => m !== prev)] : all;
 }
-const spotName = m => shelfLabel(m) + (noteCats(m).length ? ` · ${noteCats(m).map(c => CAT_SHORT[c]).join(", ")}` : "");
+const spotName = m => shelfLabel(m);
 // A close-up becomes a spot of its own, right after the one it was in (same type and labels)
 function splitCloseup(n, idx) {
   const p = n.photos[idx]; if (!p || idx < 1) return null;
   n.photos.splice(idx, 1);
   const s = { id: newId("n"), at: n.at + 1, slot: n.slot, kind: noteKind(n), photos: [p], audio: null, secs: 0, text: "", status: "done", parts: [], flag: false,
-    ticks: {}, out: {}, err: "", bk: 3, cats: noteCats(n), v3: 1 };
+    ticks: {}, out: {}, err: "", bk: 3, cats: [], v3: 1 };
   state.notes.push(s); state.notes.sort((a, b) => b.at - a.at);
   return s;
 }
@@ -2794,7 +2821,7 @@ function renderCapture() {
   setModeClass(sec, ck);
   setTextPop($("#cap-band"), `${st ? `#${st} · ` : ""}${after ? "AFTER" : "BEFORE"} · ${KIND_LABEL[ck].toUpperCase()}`);
   const n = sessNote();
-  $("#btn-shutter").setAttribute("aria-label", after ? `Take the After photo of the ${ck}` : ck === "backstock" ? "Take a photo of the back stock" : `Take a photo of a new ${ck}`);
+  $("#btn-shutter").setAttribute("aria-label", after ? `Take the After photo of the ${ck}` : ck === "backstock" ? "Take a photo of the back stock" : lockedNote() ? "Retake this display's main picture" : ck === "display" ? "Take the main picture of a new display" : `Take a photo of a new ${ck}`);
   // Under the thumb: the last photos on the left (Before: the last shelf, tap to open it again; After: the last After photo), the flip on the right.
   const lb = $("#last-note");
   if (after || ck === "backstock") {   // After and Backstock: one photo per tap; the last one is on the left
@@ -3121,9 +3148,9 @@ async function shareBatch(slot, w) {
   if (!list.length) return;
   const store = storeOf(slot) || await askStore(slot); if (store == null) return;
   const files = [], dnum = displayNumbers();
-  for (const [i, x] of list.entries()) {   // 3.5.3: the main photo of each set only, no close-ups (Save & clear still saves them)
-    const blob = await getPhoto(x.photo).catch(() => null);
-    if (blob) files.push(new File([blob], `${WHEN_LABEL[w]}-${i + 1}-${(dn => (x.kind === "display" && dn ? `Display${dn[0]}` : KIND_LABEL[x.kind]))(dnum.get(w + "|" + x.photo))}.jpg`, { type: "image/jpeg" }));
+  for (const [i, x] of list.entries()) for (const [j, p] of sendPhotos(x).entries()) {   // the main photo of each spot, and every side of a display
+    const blob = await getPhoto(p).catch(() => null);
+    if (blob) files.push(new File([blob], `${WHEN_LABEL[w]}-${i + 1}-${(dn => (x.kind === "display" && dn ? `Display${dn[0]}` : KIND_LABEL[x.kind]))(dnum.get(w + "|" + x.photo))}${j ? `-side${j + 1}` : ""}.jpg`, { type: "image/jpeg" }));
   }
   if (!files.length) return toast("These photos are missing");
   const when = new Date(list[0].at).toLocaleDateString([], { month: "short", day: "numeric" });
@@ -3137,7 +3164,7 @@ async function shareBatch(slot, w) {
 function askSaveFirst(n) {
   return new Promise(resolve => {
     const d = el(`<div class="dialog"><p><b>Clear everything?</b></p>
-      <p>This clears every store number, all Before photos and close-ups, and all After photos. Do you want to save the ${n} main Before and After photo${n === 1 ? "" : "s"} to this phone first? (Close-ups aren't saved.)</p>
+      <p>This clears every store number, all Before photos and close-ups, and all After photos. Do you want to save the ${n} main Before and After photo${n === 1 ? "" : "s"} to this phone first? (Close-ups aren't saved; display sides are.)</p>
       <div class="stack"><button class="btn primary block" data-a="save">${icon("download")}Yes, save them first</button>
       <button class="btn block" data-a="clear">No, just clear</button>
       <button class="btn block quiet" data-a="c">Cancel</button></div></div>`);
@@ -3157,6 +3184,8 @@ function showSaveHint(n) {
 // unless the save went through.
 const pad2 = n => String(n).padStart(2, "0");
 // A Before or After picture's photos: a shelf's photo and its close-ups, or the one photo of a shot
+// 3.8: every side of a display goes to the boss (they are its Before photos); close-ups of the rest stay on the phone
+const sendPhotos = x => (x.note && x.kind === "display" ? photosOf(x) : [x.photo]);
 const photosOf = x => (x.note ? (x.note.photos || []).filter(Boolean) : [x.photo]);
 function allPhotoItems() {
   const seen = new Set(), out = [];
@@ -3197,17 +3226,20 @@ async function saveAndClear() {
   const noAfter = [];
   for (let i = 0; i < SLOTS; i++) for (const g of displayGroups(i, "after", { all: true })) if (!g.loose && !g.items.length) noAfter.push(`${storeOf(i) ? "#" + storeOf(i) : "Slot " + (i + 1)} Display ${g.num}`);
   if (noAfter.length && !(await confirmDialog(`No After photo yet: <b>${noAfter.map(esc).join(", ")}</b>. Clear anyway?`, { ok: "Continue", cancel: "Go back" }))) return false;
-  const choice = await askSaveFirst(list.length);
+  const choice = await askSaveFirst(list.reduce((t, x) => t + sendPhotos(x).length, 0));
   if (!choice) return false;
   if (choice === "clear") return clearEverything();
   const count = {}, files = [], dnum = displayNumbers();
-  let want = 0;
+  let want = 0; const dcount = {};
   for (const x of list) {
     const d = new Date(x.at), key = `${x.slot}|${x.when}|${x.kind}`; count[key] = (count[key] || 0) + 1;
-    const base = `store${(storeOf(x.slot) || "none").replace(/[^A-Za-z0-9-]/g, "")}_${WHEN_LABEL[x.when]}_${(dn => (x.kind === "display" && dn ? `Display${dn[0]}_${dn[1]}` : `${KIND_LABEL[x.kind]}_${count[key]}`))(dnum.get(x.when + "|" + x.photo))}`;
-    want++;   // 3.6: the main photo of each set only (no close-ups)
-    const blob = await getPhoto(x.photo).catch(() => null);
-    if (blob) files.push(new File([blob], `${base}_${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}.jpg`, { type: "image/jpeg" }));
+    const dn = dnum.get(x.when + "|" + x.photo), isD = x.kind === "display" && dn, dk = isD ? `${x.slot}|${x.when}|${dn[0]}` : "";
+    const base = `store${(storeOf(x.slot) || "none").replace(/[^A-Za-z0-9-]/g, "")}_${WHEN_LABEL[x.when]}_${isD ? `Display${dn[0]}` : `${KIND_LABEL[x.kind]}_${count[key]}`}`;
+    for (const p of sendPhotos(x)) {   // 3.8: the main photo of each spot, and every side of a display (Display3_1, Display3_2…); no close-ups
+      want++;
+      const blob = await getPhoto(p).catch(() => null);
+      if (blob) files.push(new File([blob], `${base}${isD ? `_${dcount[dk] = (dcount[dk] || 0) + 1}` : ""}_${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}.jpg`, { type: "image/jpeg" }));
+    }
   }
   if (files.length < want) { toast("Some photos are missing, so nothing was cleared"); return false; }
   const hideHint = showSaveHint(files.length);
@@ -3484,9 +3516,9 @@ async function galDelete() {
 }
 
 // ---- Texted: which photos "Text all" has sent, per store and Before / After ----
-const untexted = (slot, w) => { const sent = new Set(((state.texted || {})[slot] || {})[w] || []); return itemsOf(slot, w).filter(x => !sent.has(x.photo)).length; };   // the main photos (close-ups aren't texted)
+const untexted = (slot, w) => { const sent = new Set(((state.texted || {})[slot] || {})[w] || []); return itemsOf(slot, w).filter(x => sendPhotos(x).some(p => !sent.has(p))).length; };   // main photos and display sides (close-ups aren't texted)
 function markTexted(slot, w) {
-  state.texted = state.texted || {}; (state.texted[slot] = state.texted[slot] || {})[w] = itemsOf(slot, w).map(x => x.photo);
+  state.texted = state.texted || {}; (state.texted[slot] = state.texted[slot] || {})[w] = itemsOf(slot, w).flatMap(sendPhotos);
   save(); if (view === "gallery") renderGallery();
 }
 
@@ -3660,8 +3692,8 @@ function renderDisplays() {
     const row = d => {
       const n = f.get(d.id), num = n && numOf(n), ag = n ? afterG(n) : null, aft = ag ? ag.items.length : 0, ap = aft ? ag.items[aft - 1].photo : null;
       return `<button class="item disp-row dsp-row${n ? " found" : ""}${aft ? " paired" : ""}" data-d="${esc(d.id)}">
-        <span class="dsp-pair"><span class="shelf-thumb">${(n || d.photo) ? `<img data-photo="${esc(n ? n.photos[0] : d.photo)}" alt="">` : icon("image")}</span>${n ? `<span class="shelf-thumb after${ap ? "" : " empty"}">${ap ? `<img data-photo="${esc(ap)}" alt="">` : "<small>After</small>"}</span>` : ""}</span>
-        <div class="grow"><div class="name">${esc(areaName(d))}</div><div class="sub">${n ? `Found${num ? ` · Display ${num}` : ""} · ${aft ? "After ✓" : "No After yet"}` : `Not found yet${d.at ? ` · last seen ${esc(new Date(d.at).toLocaleDateString([], { month: "short", day: "numeric" }))}` : ""}`}</div></div>
+        <span class="dsp-pair"><span class="shelf-thumb main">${(n || d.photo) ? `<img data-photo="${esc(n ? n.photos[0] : d.photo)}" alt="">` : icon("image")}</span>${n ? `<span class="shelf-thumb after${ap ? "" : " empty"}">${ap ? `<img data-photo="${esc(ap)}" alt="">` : "<small>After</small>"}</span>` : ""}</span>
+        <div class="grow"><div class="name">${esc(areaName(d))}</div><div class="sub">${n ? `Found${num ? ` · Display ${num}` : ""}${n.photos.length > 1 ? ` · ${n.photos.length} sides` : ""} · ${aft ? "After ✓" : "No After yet"}` : `Not found yet${d.at ? ` · last seen ${esc(new Date(d.at).toLocaleDateString([], { month: "short", day: "numeric" }))}` : ""}`}</div></div>
         ${n && !aft ? `<i class="dsp-after" role="button" data-after="${esc(d.id)}">${icon("camera")}After</i>` : `<i class="dsp-check${n ? " on" : ""}">${icon("check")}</i>`}</button>`;
     };
     const todo = act.filter(d => !f.has(d.id)), done = act.filter(d => f.has(d.id));
@@ -3696,17 +3728,24 @@ function openStoreDisplay(slot, d) {
   const st = storeOf(slot), n = dispFound(st).get(d.id);
   const hasAfter = !!(n && displayGroups(slot, "after").some(g => !g.loose && g.items.length && g.before.items.some(x => x.note === n)));
   const s = el(`<div class="sheet check-sheet shelf-sheet"><div class="handle"></div><h2></h2>
-    <div class="zoom-stage"><img alt=""><span class="zoom-hint">Pinch to zoom</span></div><p class="sh-said"></p>
-    <div class="stack" style="margin-top:12px">${n && !hasAfter ? `<button class="btn primary block" data-a="after">${icon("camera")}Shoot the After</button>` : ""}${n ? `<button class="btn block" data-a="open">${icon("image")}Open today's photos</button>` : d.gone ? "" : `<button class="btn primary block" data-a="shoot">${icon("camera")}Shoot this one</button>`}
+    <div class="zoom-stage"><img alt=""><span class="zoom-hint">Pinch to zoom</span></div><div class="sh-strip" id="ds-strip"></div><p class="sh-said"></p>
+    <div class="stack" style="margin-top:12px">${n && !hasAfter ? `<button class="btn primary block" data-a="after">${icon("camera")}Shoot the After</button>` : ""}${n ? `<button class="btn block" data-a="sides">${icon("camera")}Add sides</button><button class="btn block" data-a="open">${icon("image")}Open the sides</button>` : d.gone ? "" : `<button class="btn primary block" data-a="shoot">${icon("camera")}Shoot this one</button>`}
     <div class="row"><button class="btn sm grow" data-a="area">${icon("note")}Change area</button><button class="btn sm grow quiet" data-a="more">More…</button></div></div>
     <button class="btn primary block" data-a="close" style="margin-top:12px">Done</button></div>`);
   const close = openLayer(s, { onClose: () => renderAll() });
-  const head = () => { s.querySelector("h2").textContent = `#${st} · ${areaName(d)}`; s.querySelector(".sh-said").textContent = n ? "Found today." : d.gone ? "Marked gone." : `Not found yet${d.at ? `. Last seen ${new Date(d.at).toLocaleDateString([], { month: "short", day: "numeric" })}` : ""}.`; };
+  const head = () => { s.querySelector("h2").textContent = `#${st} · ${areaName(d)}`; s.querySelector(".sh-said").textContent = n ? `Found today · ${n.photos.length} side${n.photos.length === 1 ? "" : "s"}.` : d.gone ? "Marked gone." : `Not found yet${d.at ? `. Last seen ${new Date(d.at).toLocaleDateString([], { month: "short", day: "numeric" })}` : ""}.`; };
   head();
   const img = s.querySelector("img"), pid = n ? n.photos[0] : d.photo;
   zoomStage(img, s.querySelector(".zoom-stage"), { fullList: () => (n ? { list: n.photos, index: 0 } : null) });
   if (pid) (n ? photoURL(pid) : photoURL(pid)).then(u => { if (u) img.src = u; }); else s.querySelector(".zoom-stage").classList.add("empty-photo");
+  if (n && n.photos.length > 1) {   // the sides, one tap each
+    const strip = s.querySelector("#ds-strip");
+    strip.innerHTML = n.photos.map((p, i) => `<button class="sh-th${i === 0 ? " on" : ""}" data-i="${i}" aria-label="${i ? `Side ${i + 1}` : "Main picture"}"><img data-photo="${esc(p)}" alt=""><small>${i ? i + 1 : "Main"}</small></button>`).join("");
+    hydratePhotos(strip);
+    strip.onclick = e => { const t = e.target.closest("[data-i]"); if (!t) return; strip.querySelectorAll(".sh-th").forEach(x => x.classList.toggle("on", x === t)); photoURL(n.photos[+t.dataset.i]).then(u => { if (u) img.src = u; }); };
+  }
   const b = a => s.querySelector(`[data-a="${a}"]`);
+  if (b("sides")) b("sides").onclick = () => { close(); startSides(n); };
   if (b("open")) b("open").onclick = () => { close(); openShelf(n); };
   if (b("after")) b("after").onclick = () => { close(); shootAfter(slot, n); };
   if (b("shoot")) b("shoot").onclick = () => {
@@ -4082,8 +4121,6 @@ const T_STEPS = [
     layerText: "Type a store number, then tap Continue.", hint: "tap", done: () => !!storeOf(baSlot()) },
   { id: "camera", skip: () => !!cam.stream, target: () => (cam.starting ? null : $("#btn-cam-start")), text: "Turn on the camera.",
     hint: "tap", done: () => !!cam.stream, fail: () => !!cam.error },
-  { id: "cat", target: () => $("#cat-row"), text: "First, tap what this aisle mostly holds. It stays picked for the next ones until you change it.", hint: "glow",
-    done: () => nextCats().length > 0 || (!!sessNote() && noteCats(sessNote()).length > 0) },
   { id: "shelf", target: () => $("#btn-shutter").parentElement, text: "Tap the red shutter to photograph the whole aisle.", hint: "tap", done: () => state.notes.length > 0 },
   { id: "closeup", target: () => $("#cu-wrap"), text: "Something low? Get close and tap the blue shutter. Each blue tap is a close-up of the aisle you just took.", hint: "tap",
     done: () => state.notes.some(n => n.photos.length > 1) },
@@ -4092,7 +4129,7 @@ const T_STEPS = [
   { id: "after", target: () => $("#btn-shutter").parentElement, text: "Snap the finished aisle. In After, each tap is one photo.", hint: "tap", done: () => state.shots.some(s => s.when === "after") },
   { id: "back", target: () => $("#btn-when"), text: "Swipe the picture right, or tap here, to go back to Before.", hint: "tap", done: () => camWhen() === "before" },
   { id: "displays", target: () => $('#tabs [data-view="displays"]'), text: "Displays are easy to miss. The Displays tab keeps each store's list from visit to visit.", hint: "tap", done: () => view === "displays" },
-  { id: "dspinfo", target: () => $("#view-displays .list-head"), text: "When you snap a display, tap New under the camera and pick where it is. Next visit, each one is ticked off here as you find it, and Shoot After takes you straight to its After photo.", hint: null, next: true },
+  { id: "dspinfo", target: () => $("#view-displays .list-head"), text: "Displays: the red shutter takes a display's main picture and the blue one adds each side. Every side goes to your boss. Tap New under the camera and pick where it is. Next visit, each display is ticked off here as you find it; Add sides or Shoot After take you straight to its camera.", hint: null, next: true },
   { id: "shelvestab", target: () => $('#tabs [data-view="gallery"]'), text: "Your photos are on the Gallery tab, aisles with aisles, shelves with shelves.", hint: "tap", done: () => view === "gallery" },
   { id: "tick", target: () => $("#view-gallery .shelf-card .tick"), text: "Pulled what this one needed? Tap its check.", hint: "tick", done: () => state.notes.some(n => n.done) },
   { id: "open", target: () => $("#view-gallery .shelf-card"), text: "Tap a photo to see it with its close-ups.", hint: "tap", done: () => !!shelfSheetOpen() },
@@ -4119,8 +4156,8 @@ function tutBegin() {
   tut.saved = snapshot(); tutorialActive = true;   // from here nothing is saved until it ends
   const s = JSON.parse(tut.saved);
   Object.assign(s, { notes: [], shots: [], stores: ["", "", "", "", ""], storeName: "", texted: {}, displayMemory: {}, storeDisplays: {}, recentStores: [] });
-  Object.assign(s.settings, { baSlot: 0, captureKind: "aisle", camWhen: "before", hideDone: false, photoCheck: false, nextCats: [] });   // practice: everything on Aisle, no photo warnings
-  state = s; lastNoteId = null; lastShotId = null; displayTarget = null; dspPending = null; afterPick = null; gal.cat = null;
+  Object.assign(s.settings, { baSlot: 0, captureKind: "aisle", camWhen: "before", hideDone: false, photoCheck: false });   // practice: everything on Aisle, no photo warnings
+  state = s; lastNoteId = null; lastShotId = null; displayTarget = null; dspPending = null; afterPick = null;
   renderAll(); showView("capture");
   tut.timer = setInterval(tutTick, 150);
   tutGo(0);
@@ -4132,7 +4169,7 @@ function tutEnd() {
     hold.session = null;   // a practice shelf: nothing to file
     document.querySelectorAll("#layer .overlay").forEach(o => (o._close ? o._close() : o.remove()));
     if (gsel.on) galSelectEnd(true);
-    state = JSON.parse(tut.saved); tut.saved = null; lastNoteId = null; lastShotId = null; displayTarget = null; dspPending = null; afterPick = null; gal.cat = null;
+    state = JSON.parse(tut.saved); tut.saved = null; lastNoteId = null; lastShotId = null; displayTarget = null; dspPending = null; afterPick = null;
     tutorialActive = false;
     renderHoldBar(); renderAll(); showView("capture");
     scheduleSweep();   // the practice photos go
@@ -4270,6 +4307,11 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "3.8.0", notes: [
+    "Displays have a main picture and sides. In Display, the red shutter takes the main picture (which identifies it in the Displays tab) and the blue one adds each side. Every side goes to your boss with Text all Before and is saved with Save & clear.",
+    "The Displays tab shows each display's main picture large, with its number of sides. Tap a display for its sides, Add sides (the camera locked to that display: red retakes the main picture, blue adds a side, Done leaves), or Shoot the After.",
+    "In a display's photos: Make this side the main picture, Make a side its own display, or Make this a side of another.",
+    "The Soda / Sport / Energy / Protein labels are gone: one less row on the camera, a bigger picture, and no tags or filter in the Gallery." ] },
   { v: "3.7.0", notes: [
     "Two shutters: the big red one always takes a new spot; the blue one beside it adds a close-up to the spot you just took. No more Next aisle, so a whole aisle can't end up as close-ups.",
     "The bar under the shutters shows what the close-ups go to (Aisle 3 · 2 close-ups); tap it to look at that spot.",
@@ -4416,7 +4458,7 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 102;
+const REVISION = 103;
 // More
 function renderMore() {
   const v = $("#view-more");
@@ -4453,7 +4495,7 @@ function renderMore() {
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
     ${enc.last.ready != null ? `<p class="sec-foot">Last photo: ready for the next tap in ${enc.last.ready} ms${enc.last.saved != null ? `, saved in ${enc.last.saved} ms (${enc.last.path})` : ""}.</p>` : ""}
-    <p class="foot">Shelfie 3.7.0 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 3.8.0 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   v.querySelector("#haptic-shutter").onchange = e => { state.settings.hapticShutter = state.settings.hapticTaps = e.target.checked; save(); syncHaptics(); };   // one switch for both (3.4)
   v.querySelector("#btn-backup").onclick = saveBackup;
@@ -4502,7 +4544,7 @@ wireEdgeBack("#view-changelog.active", () => showView("more"));   // swipe in fr
 // 2.12.2: swipe sideways to change sets
 wirePageSwipe([
   { when: () => view === "gallery", off: () => gsel.on,   // not while selecting photos
-    list: () => KINDS, cur: () => gal.kind || baKind(), go: k => { gal.kind = k; gal.cat = null; renderGallery(); }, moving: () => $("#view-gallery") },
+    list: () => KINDS, cur: () => gal.kind || baKind(), go: k => { gal.kind = k; renderGallery(); }, moving: () => $("#view-gallery") },
 ]);
 document.querySelectorAll(".cam-lens button").forEach(b => (b.onclick = () => { pulse(b); setLens(b.dataset.lens); }));
 renderAll();
