@@ -1088,6 +1088,47 @@ header.top .store .caret { width: 0; height: 0; border-left: 4px solid transpare
 .dsp-pair .shelf-thumb.main { width: 62px; height: 62px; border-radius: 13px; }
 #hold-lock { min-height: 32px; padding: 0 14px; flex: none; }
 #view-capture #hold-bar { outline: none; }
+
+/* ---------- 3.8.1: a color for each picture type ---------- */
+:root { --k-aisle: #F40009; --on-k-aisle: #fff; --k-shelf: #E8800A; --on-k-shelf: #1A0F00; --k-display: #7B3FE4; --on-k-display: #fff;
+  --k-cooler: #0891B2; --on-k-cooler: #fff; --k-backstock: var(--box); --on-k-backstock: var(--on-box); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --k-display: #9B6CFF; --k-cooler: #22B8D6; --k-shelf: #F0932B; } }
+:root[data-theme="dark"] { --k-display: #9B6CFF; --k-cooler: #22B8D6; --k-shelf: #F0932B; }
+
+#view-capture:not(.when-after).mode-aisle .camera { border-color: var(--k-aisle); }
+#view-capture:not(.when-after).mode-aisle .cam-chip { background: var(--k-aisle); color: var(--on-k-aisle); }
+#view-capture:not(.when-after).mode-aisle .shutter-big:not(.cu) { border-color: var(--k-aisle); }
+#view-capture:not(.when-after).mode-aisle .shutter-big:not(.cu) span { background: var(--k-aisle); color: var(--on-k-aisle); }
+#view-capture.mode-aisle #cap-seg button[data-k="aisle"].active { color: var(--k-aisle); }
+#gal-seg button[data-k="aisle"].active { color: var(--k-aisle); }
+
+#view-capture:not(.when-after).mode-shelf .camera { border-color: var(--k-shelf); }
+#view-capture:not(.when-after).mode-shelf .cam-chip { background: var(--k-shelf); color: var(--on-k-shelf); }
+#view-capture:not(.when-after).mode-shelf .shutter-big:not(.cu) { border-color: var(--k-shelf); }
+#view-capture:not(.when-after).mode-shelf .shutter-big:not(.cu) span { background: var(--k-shelf); color: var(--on-k-shelf); }
+#view-capture.mode-shelf #cap-seg button[data-k="shelf"].active { color: var(--k-shelf); }
+#gal-seg button[data-k="shelf"].active { color: var(--k-shelf); }
+
+#view-capture:not(.when-after).mode-display .camera { border-color: var(--k-display); }
+#view-capture:not(.when-after).mode-display .cam-chip { background: var(--k-display); color: var(--on-k-display); }
+#view-capture:not(.when-after).mode-display .shutter-big:not(.cu) { border-color: var(--k-display); }
+#view-capture:not(.when-after).mode-display .shutter-big:not(.cu) span { background: var(--k-display); color: var(--on-k-display); }
+#view-capture.mode-display #cap-seg button[data-k="display"].active { color: var(--k-display); }
+#gal-seg button[data-k="display"].active { color: var(--k-display); }
+
+#view-capture:not(.when-after).mode-cooler .camera { border-color: var(--k-cooler); }
+#view-capture:not(.when-after).mode-cooler .cam-chip { background: var(--k-cooler); color: var(--on-k-cooler); }
+#view-capture:not(.when-after).mode-cooler .shutter-big:not(.cu) { border-color: var(--k-cooler); }
+#view-capture:not(.when-after).mode-cooler .shutter-big:not(.cu) span { background: var(--k-cooler); color: var(--on-k-cooler); }
+#view-capture.mode-cooler #cap-seg button[data-k="cooler"].active { color: var(--k-cooler); }
+#gal-seg button[data-k="cooler"].active { color: var(--k-cooler); }
+
+#view-capture:not(.when-after).mode-backstock .camera { border-color: var(--k-backstock); }
+#view-capture:not(.when-after).mode-backstock .cam-chip { background: var(--k-backstock); color: var(--on-k-backstock); }
+#view-capture:not(.when-after).mode-backstock .shutter-big:not(.cu) { border-color: var(--k-backstock); }
+#view-capture:not(.when-after).mode-backstock .shutter-big:not(.cu) span { background: var(--k-backstock); color: var(--on-k-backstock); }
+#view-capture.mode-backstock #cap-seg button[data-k="backstock"].active { color: var(--k-backstock); }
+#gal-seg button[data-k="backstock"].active { color: var(--k-backstock); }
 </style>
 </head>
 <body data-view="capture">
@@ -4307,6 +4348,7 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "3.8.1", notes: ["Each picture type has its own color in the camera: Aisle red, Shelf amber, Display violet, Cooler cyan, Backstock brown (After stays green, the close-up shutter blue). The selected type's name is colored too, here and in the Gallery."] },
   { v: "3.8.0", notes: [
     "Displays have a main picture and sides. In Display, the red shutter takes the main picture (which identifies it in the Displays tab) and the blue one adds each side. Every side goes to your boss with Text all Before and is saved with Save & clear.",
     "The Displays tab shows each display's main picture large, with its number of sides. Tap a display for its sides, Add sides (the camera locked to that display: red retakes the main picture, blue adds a side, Done leaves), or Shoot the After.",
@@ -4458,7 +4500,7 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 103;
+const REVISION = 104;
 // More
 function renderMore() {
   const v = $("#view-more");
@@ -4495,7 +4537,7 @@ function renderMore() {
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
     ${enc.last.ready != null ? `<p class="sec-foot">Last photo: ready for the next tap in ${enc.last.ready} ms${enc.last.saved != null ? `, saved in ${enc.last.saved} ms (${enc.last.path})` : ""}.</p>` : ""}
-    <p class="foot">Shelfie 3.8.0 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 3.8.1 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   v.querySelector("#haptic-shutter").onchange = e => { state.settings.hapticShutter = state.settings.hapticTaps = e.target.checked; save(); syncHaptics(); };   // one switch for both (3.4)
   v.querySelector("#btn-backup").onclick = saveBackup;
