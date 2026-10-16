@@ -1066,6 +1066,23 @@ header.top .store .caret { width: 0; height: 0; border-left: 4px solid transpare
 .dsp-row.found .dsp-pair .shelf-thumb:first-child { box-shadow: none; }
 .dsp-after { flex: none; display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 0 12px; border-radius: 999px; background: var(--ok); color: #fff; font-size: 13px; font-weight: 800; font-style: normal; }
 .dsp-after svg.i { width: 15px; height: 15px; }
+
+/* ---------- 3.7: two shutters, Cooler, a smooth camera picture ---------- */
+.shutter-wrap.cu { width: 64px; height: 64px; justify-self: start; }
+.shutter-wrap.cu[hidden] { display: none; }
+.shutter-big.cu { width: 64px; height: 64px; padding: 4px; border-color: var(--c-sport); }
+.shutter-big.cu span { background: var(--c-sport); color: #fff; display: flex; align-items: center; justify-content: center; }
+.shutter-big.cu.off { opacity: .4; }
+#view-capture.mode-display .shutter-big.cu, #view-capture.mode-backstock .shutter-big.cu { border-color: var(--c-sport); }
+#view-capture.mode-display .shutter-big.cu span { background: var(--c-sport); }
+#last-note[hidden] { display: none; }
+#view-capture #hold-bar { border: 0; color: var(--text); font: inherit; font-size: 14px; text-align: left; gap: 10px; padding: 0 10px 0 4px; cursor: pointer; }
+.hb-thumb { width: 36px; height: 36px; flex: none; border-radius: 9px; overflow: hidden; background: var(--surface-2); }
+.hb-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hb-go { width: 8px; height: 8px; border-right: 2px solid var(--faint); border-top: 2px solid var(--faint); transform: rotate(45deg); flex: none; }
+/* five types on one switch */
+.cap-seg button, #gal-seg button { font-size: 13.5px; letter-spacing: -.01em; padding: 0 1px; gap: 3px; }
+#gal-seg .kcount { min-width: 16px; padding: 0 4px; font-size: 10.5px; line-height: 16px; }
 </style>
 </head>
 <body data-view="capture">
@@ -1101,17 +1118,19 @@ header.top .store .caret { width: 0; height: 0; border-left: 4px solid transpare
         <button data-k="aisle" class="active">Aisle</button>
         <button data-k="shelf">Shelf</button>
         <button data-k="display">Display</button>
+        <button data-k="cooler">Cooler</button>
         <button data-k="backstock">Backstock</button>
       </div>
       <div class="dpick-row" id="dpick-row" hidden aria-label="Which display is this?"></div>
       <div class="cat-row" id="cat-row" hidden aria-label="What's on this shelf"></div>
       <div class="pair-strip" id="pair-strip" hidden></div>
       <div class="deck-row">
-        <button class="deck-side left" id="last-note" aria-label="Open the last photos again" style="visibility:hidden"></button>
+        <button class="deck-side left" id="last-note" aria-label="Open the last photo" style="visibility:hidden"></button>
+        <div class="shutter-wrap cu" id="cu-wrap" hidden><button class="shutter-big cu" id="btn-closeup" aria-label="Take a close-up of the last spot"><span><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M10.5 7.5v6M7.5 10.5h6"/></svg></span></button></div>
         <div class="shutter-wrap"><button class="shutter-big" id="btn-shutter" aria-label="Take a photo of the aisle"><span></span></button></div>
         <button class="deck-side right when-btn" id="btn-when" aria-label="Switch to After"><b data-w="before">Before</b><b data-w="after">After</b></button>
       </div>
-      <div class="hold-bar" id="hold-bar" hidden><span class="grow" id="hold-text"></span><button class="btn sm primary" id="hold-done">Next shelf</button></div>
+      <button class="hold-bar" id="hold-bar" hidden aria-label="Open the last spot"><span class="hb-thumb" id="hold-thumb"></span><span class="grow" id="hold-text"></span><i class="hb-go" aria-hidden="true"></i></button>
       <p class="cap-hint" id="shutter-label" aria-hidden="true"></p>
     </div>
   </section>
@@ -1220,12 +1239,12 @@ function migrate() {
     state.stores = Array.from({ length: 5 }, (_, i) => String(old[i] || ""));
     if (old[5] && !state.stores[4]) { state.stores[4] = String(old[5]); for (const s of state.shots) if (s.slot === 5) s.slot = 4; } }
   if (!state.stores.some(Boolean) && state.storeName) state.stores[0] = String(state.storeName);
-  for (const s of state.shots) { if (s.when !== "after") s.when = "before"; if (s.kind !== "display" && s.kind !== "backstock" && s.kind !== "shelf") s.kind = "aisle"; if (!(s.slot >= 0 && s.slot < 6)) s.slot = 0; delete s.shared; delete s.pushed; }
+  for (const s of state.shots) { if (s.when !== "after") s.when = "before"; if (s.kind !== "display" && s.kind !== "backstock" && s.kind !== "shelf" && s.kind !== "cooler") s.kind = "aisle"; if (!(s.slot >= 0 && s.slot < 6)) s.slot = 0; delete s.shared; delete s.pushed; }
   state.notes = (Array.isArray(state.notes) ? state.notes : []).filter(n => n && !n.dev);   // notes that came from other phones
   for (const n of state.notes) {
     for (const k of ["mod", "pushed", "_sig", "by", "team", "items", "rev", "edited"]) delete n[k];
     n.photos = n.photos || [];
-    if (n.kind !== "display" && n.kind !== "shelf") n.kind = "aisle";
+    if (n.kind !== "display" && n.kind !== "shelf" && n.kind !== "cooler") n.kind = "aisle";
     n.ticks = n.ticks || {};
     if (!n.out || typeof n.out !== "object") n.out = {};
   }
@@ -1955,7 +1974,7 @@ function wireSoundBtn() {
 // A backup is one small file: the settings, the store numbers, store locations and each store's display list (areas, not photos).
 // "Save a backup" hands it to the phone's share sheet (Save to Files, AirDrop, Mail...), and "Restore from a backup" reads it back.
 // Nothing goes to any server. Backups from 2.x (with a product list) can still be restored: the product list is ignored.
-const BK_SETTINGS = ["beep", "captureKind", "baWhen", "baKind", "baSlot", "lens", "hapticShutter", "hapticTaps", "photoCheck", "geo", "nextCats"];   // (pad2 is in beforeafter.js)
+const BK_SETTINGS = ["beep", "captureKind", "baWhen", "baKind", "baSlot", "lens", "hapticShutter", "hapticTaps", "photoCheck", "geo", "nextCats", "feedFix"];   // (pad2 is in beforeafter.js)
 
 function bkSnapshot() {
   const settings = {}; for (const k of BK_SETTINGS) settings[k] = state.settings[k];
@@ -2016,7 +2035,7 @@ async function startCamera() {
   const gen = ++cam.gen;
   cam.starting = true; cam.error = ""; renderCapture();
   // 3.0: the camera's full size (about 4032 x 3024), all the time, so a tap saves the frame on screen with nothing to wait for
-  const wanted = useUltra => ({ ...(useUltra && cam.ultraId ? { deviceId: { exact: cam.ultraId } } : { facingMode: { ideal: "environment" } }), width: { ideal: 4032 }, height: { ideal: 3024 } });
+  const wanted = useUltra => ({ ...(useUltra && cam.ultraId ? { deviceId: { exact: cam.ultraId } } : { facingMode: { ideal: "environment" } }), width: { ideal: 4032 }, height: { ideal: 3024 }, frameRate: { ideal: 30 } });
   const open = useUltra => navigator.mediaDevices.getUserMedia({ video: wanted(useUltra) });   // 3.0: camera only (no voice notes, so no microphone)
   const openLens = async useUltra => {
     try { return await open(useUltra); }
@@ -2100,13 +2119,17 @@ function attachFeed() {
       if (v.srcObject !== cam.stream) v.srcObject = cam.stream;
       v.play().catch(() => {});
       requestAnimationFrame(() => fitVideo(v));
-      paintFeed(v);
+      if (feedFix()) paintFeed(v);   // 3.7: only with "Camera picture fix" on; normally the video is shown as it is (smooth)
     } else if (v.srcObject) v.srcObject = null;
   }
 }
 // The viewfinder picture: each frame of the video is painted onto the canvas over it, covering the frame and centred (the same crop the
 // photo gets). The canvas matches the frame's size every frame, so the picture can't be drawn small with bars around it.
+// 3.7: copying every 12 MP frame onto a canvas made the picture stutter on iPhone (it was a 2.4.2 workaround for black bars, from when
+// the camera ran at 1920 x 1440). The video is now shown directly; the copy is only made with More › Camera picture fix switched on.
+const feedFix = () => state.settings.feedFix === true;
 function paintFeed(v) {
+  if (!feedFix()) return;
   const c = v && v.nextElementSibling;
   if (!c || !c.classList.contains("cam-canvas") || v._painting) return;
   const ctx = c.getContext("2d", { alpha: false }); if (!ctx) return;
@@ -2317,21 +2340,41 @@ function endHoldSession() {
   if (typeof renderCapture === "function" && view === "capture") renderCapture(); else renderHoldBar();
 }
 
-// ---- Taking the photos ----
+// ---- Taking the photos (3.7: two shutters) ----
+// The red shutter: always a new spot (Aisle 4, Shelf 2…). The blue one: a close-up of the last spot. No more "Next aisle": a whole aisle
+// can't end up as close-ups of the one before.
 function shelfShot() {
-  if (hold.session && (!sessNote() || hold.session.slot !== baSlot() || hold.session.kind !== captureKind() || Date.now() - (hold.session.last || 0) > 10 * 60000)) endHoldSession();   // deleted, moved, or left alone a long while: this tap starts a new one
-  const n = sessNote();
-  if (n && n.photos.length > MAX_CLOSEUPS) { toast("That's the most close-ups for one shelf. Tap Next shelf."); pulse($("#hold-done")); return; }
-  const r = snapNow("#cam-video", "#camera", "#btn-shutter", $("#last-note")); if (!r) return;
+  const fly = $("#hold-bar").hidden ? null : $("#hold-thumb");
+  const r = snapNow("#cam-video", "#camera", "#btn-shutter", fly); if (!r) return;
   shelfAddPhoto(r.id);
 }
-// A new photo: the next close-up of the open shelf, or a new shelf (which opens).
+// What the blue shutter adds to: the spot just taken (or the one opened with Add close-ups), else the last one of this type at this store.
+function closeTarget() {
+  const s = sessNote(); if (s && hold.session.slot === baSlot() && noteKind(s) === captureKind()) return s;
+  return state.notes.find(n => n.slot === baSlot() && noteKind(n) === captureKind() && (n.photos || [])[0]) || null;
+}
+async function closeupShot(forcePhone) {
+  if (!storeOf(baSlot())) { askStore(baSlot()); return; }
+  const n = closeTarget();
+  if (!n) { toast(`Take the ${KIND_LABEL[captureKind()].toLowerCase()} first with the red shutter, then close-ups with the blue one`); pulse($("#btn-shutter")); return; }
+  if (n.photos.length > MAX_CLOSEUPS) { toast(`That's the most close-ups for ${shelfLabel(n)}`); return; }
+  let id;
+  if (cam.stream && !forcePhone) { const r = snapNow("#cam-video", "#camera", "#btn-closeup", $("#hold-bar").hidden ? null : $("#hold-thumb")); if (!r) return; id = r.id; }
+  else {
+    primeShutter(); haptic("shutter");
+    const blob = await cameraPhoto(); if (!blob) return;
+    playShutter(); id = newId("p");
+    try { await savePhoto(id, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
+  }
+  if (!state.notes.includes(n)) return;   // deleted meanwhile
+  n.photos.push(id);
+  hold.session = newSession(n); hold.session.last = Date.now(); lastNoteId = n.id;
+  afterShot.ids.push(id); afterShot(); renderHoldBar(); pulse($("#hold-bar"));
+}
+// A new spot (red shutter, or the iPhone camera when the live one isn't working): it becomes what the blue shutter adds to.
 function shelfAddPhoto(id) {
-  const n = sessNote();
-  if (n) {
-    n.photos.push(id); hold.session.last = Date.now(); renderHoldBar(); afterShot();
-    pulse($("#hold-bar"));
-  } else {
+  hold.session = null;   // a new spot every time (it becomes the close-up target below)
+  {
     const kind = captureKind(), slot = baSlot(), dg = takeDisplayDg(slot, "before", kind);
     const s = { id: newId("n"), at: Date.now(), slot, kind, photos: [id], audio: null, secs: 0, text: "", status: "done", parts: [], flag: false,
       ticks: {}, out: {}, err: "", bk: 3, cats: nextCats(), v3: 1, ...(dg ? { dg } : {}) };
@@ -2339,7 +2382,7 @@ function shelfAddPhoto(id) {
     state.notes.unshift(s); lastNoteId = s.id;
     hold.session = newSession(s, slot);
     renderCapture(); afterShot();
-    pulse($("#cat-row"));
+    pulse($("#hold-bar"));
   }
   afterShot.ids.push(id);
 }
@@ -2362,18 +2405,6 @@ function flushShots(redraw) {
   for (const id of ids) checkPhotoQuality(id);
 }
 document.addEventListener("visibilitychange", () => { if (document.hidden) flushShots(); });   // the app going away: save now
-// The thumbnail button: open the last shelf again (more close-ups or categories), or, if it's the one open, look at it.
-function addToShelf(n) {
-  if (!n) return;
-  if (hold.session && hold.session.note === n.id) return openShelf(n);
-  endHoldSession();
-  if (Number.isInteger(n.slot) && n.slot !== baSlot()) { state.settings.baSlot = n.slot; }
-  if (noteKind(n) !== captureKind()) state.settings.captureKind = noteKind(n);
-  state.settings.camWhen = "before";   // close-ups are Before photos
-  hold.session = newSession(n); lastNoteId = n.id;
-  save(); renderAll(); haptic("tick"); pulse($("#last-note"));
-  toast(`${shelfLabel(n)} is open again. Tap the shutter for more close-ups.`);
-}
 function toggleCat(n, c) {
   n.cats = n.cats || [];
   if (n.cats.includes(c)) n.cats = n.cats.filter(x => x !== c);
@@ -2384,17 +2415,19 @@ function toggleCat(n, c) {
 const nextCats = () => CATS.filter(c => (state.settings.nextCats || []).includes(c));
 // The bar under the camera while a shelf is open, and the category buttons above the shutter (always, except for Backstock)
 function renderHoldBar() {
-  const bar = document.getElementById("hold-bar"), n = sessNote(); if (!bar) return;
-  const on = !!n && hold.session.slot === baSlot();
-  bar.hidden = !on; $("#shutter-label").style.visibility = on ? "hidden" : "";   // the hint keeps its space; the bar sits over it
+  const bar = document.getElementById("hold-bar"); if (!bar) return;
+  const before = camWhen() === "before" && captureKind() !== "backstock", t = before ? closeTarget() : null, s = sessNote();
+  bar.hidden = !t; $("#cu-wrap").hidden = !before;
+  $("#btn-closeup").classList.toggle("off", !t);
   const row = $("#cat-row");
-  renderDispPick(n, on);   // 3.2: an untagged display: which one is it? (it takes the labels' place for a moment)
-  row.hidden = (captureKind() === "backstock" && !on) || camWhen() === "after" || !$("#dpick-row").hidden;   // labels are for Before photos
-  const cats = on ? noteCats(n) : nextCats(), key = (on ? n.id : "next") + "|" + cats.join(",");
-  if (on) {
-    const kind = noteKind(n), disp = kind === "display", num = shelfLabel(n), cu = n.photos.length - 1;
-    $("#hold-text").innerHTML = `<b>${esc(num)}</b>${cats.length ? ` · ${esc(cats.map(c => CAT_SHORT[c]).join(", "))}` : ""} · ${disp ? `${n.photos.length} photo${n.photos.length === 1 ? "" : "s"}` : `${cu} close-up${cu === 1 ? "" : "s"}`}`;
-    $("#hold-done").textContent = `Next ${KIND_LABEL[kind].toLowerCase()}`;
+  renderDispPick(s, !!s && before && hold.session.slot === baSlot());   // 3.2: a display just taken: which one is it? (it takes the labels' place for a moment)
+  row.hidden = !before || !$("#dpick-row").hidden;   // labels are for Before photos
+  const cats = nextCats(), key = "next|" + cats.join(",");
+  if (t) {
+    const disp = noteKind(t) === "display", cu = t.photos.length - 1, tc = noteCats(t);
+    $("#hold-text").innerHTML = `<b>${esc(shelfLabel(t))}</b>${tc.length ? ` · ${esc(tc.map(c => CAT_SHORT[c]).join(", "))}` : ""} · ${disp ? `${t.photos.length} photo${t.photos.length === 1 ? "" : "s"}` : `${cu} close-up${cu === 1 ? "" : "s"}`}`;
+    const th = $("#hold-thumb"), p = t.photos[t.photos.length - 1];
+    if (th.dataset.p !== p) { th.dataset.p = p; th.innerHTML = `<img data-photo="${esc(p)}" alt="">`; hydratePhotos(th); }
   }
   if (row.dataset.key !== key || !row.children.length) {
     row.dataset.key = key;
@@ -2402,15 +2435,17 @@ function renderHoldBar() {
   }
 }
 function wireShelfCapture() {
+  // 3.7: the labels are for the next red-shutter photo (and stay lit after it); a spot already taken is changed in the Gallery
   $("#cat-row").onclick = e => {
     const b = e.target.closest("[data-cat]"); if (!b) return;
-    const c = b.dataset.cat, n = sessNote();
-    if (n) { toggleCat(n, c); state.settings.nextCats = noteCats(n); }   // the open shelf, and the ones after it
-    else { const cur = nextCats(); state.settings.nextCats = cur.includes(c) ? cur.filter(x => x !== c) : [...cur, c]; haptic("tick"); save(); renderHoldBar(); }
-    save(); pulse($(`#cat-row [data-cat="${c}"]`));
+    const c = b.dataset.cat, cur = nextCats();
+    state.settings.nextCats = cur.includes(c) ? cur.filter(x => x !== c) : [...cur, c];
+    haptic("tick"); save(); renderHoldBar(); pulse($(`#cat-row [data-cat="${c}"]`));
   };
+  $("#btn-closeup").onclick = () => closeupShot(!cam.stream);   // no live camera: the iPhone camera app
+  $("#btn-closeup").addEventListener("contextmenu", e => e.preventDefault());
+  $("#hold-bar").onclick = () => { const n = closeTarget(); if (n) openShelf(n); };
   wireDispPick();
-  $("#hold-done").onclick = () => { const n = sessNote(); endHoldSession(); if (n) { haptic("ok"); pulse($("#last-note")); } };
 }
 
 // ---- Naming ----
@@ -2449,7 +2484,7 @@ function renderGallery() {
   }
   const shown = gal.cat ? mine.filter(x => x.note && noteCats(x.note).includes(gal.cat)) : mine;
   html += `<div class="cluster-h">Before<span class="n">${gal.cat ? `${shown.length} of ${mine.length} · ${esc(CAT_LABEL[gal.cat])}` : mine.length}</span></div>`;
-  if (!mine.length) html += `<p class="muted small" style="margin:4px 0 0">${kind === "backstock" ? "No back stock photos for this store yet." : `No ${KIND_PLURAL[kind]} for this store yet. Snap ${{ aisle: "an aisle", shelf: "a shelf", display: "a display" }[kind]} on the Camera tab.`}</p>`;
+  if (!mine.length) html += `<p class="muted small" style="margin:4px 0 0">${kind === "backstock" ? "No back stock photos for this store yet." : `No ${KIND_PLURAL[kind]} for this store yet. Snap ${{ aisle: "an aisle", shelf: "a shelf", display: "a display", cooler: "a cooler" }[kind]} on the Camera tab.`}</p>`;
   else if (kind === "backstock") html += `<div class="shot-grid">${[...mine].reverse().map(x => tile("before", x)).join("")}</div>`;
   else {
     const label = new Map(mine.map(x => [x.photo, x.note ? shelfLabel(x.note) : timeOf(x.at)]));
@@ -2559,16 +2594,59 @@ function openShelf(n) {
     const pick = await menu(shelfLabel(n), [
       { label: "Save this photo to Photos", value: "save" },
       ...kindMoves(noteKind(n)).filter(m => m.value !== "kind:backstock"),
+      idx > 0 ? { label: `Make close-up ${idx} its own spot`, value: "split" } : { label: "Make this a close-up of… ›", value: "merge" },
       ...(idx > 0 ? [{ label: `Delete close-up ${idx}`, value: "delphoto", danger: true }] : []),
       { label: n.photos.length > 1 ? `Delete ${shelfLabel(n)} and its close-ups` : `Delete ${shelfLabel(n)}`, value: "delete", danger: true }]);
     if (pick === "save") savePhotoToPhotos(n.photos[idx], `${shelfLabel(n).replace(/\s+/g, "")}${idx ? `-closeup${idx}` : ""}.jpg`);
     else if (String(pick).startsWith("kind:")) { const snap = snapshot(); n.kind = normKind(pick.slice(5)); delete n.dg; save(); renderAll(); draw(); toast(`Moved to ${KIND_LABEL[n.kind]}`, snap); }
     else if (pick === "delphoto") { const snap = snapshot(); n.photos.splice(idx, 1); idx = Math.max(0, idx - 1); save(); renderAll(); scheduleSweep(); show(); toast("Close-up deleted", snap); }
     else if (pick === "delete") { close(); deleteShelf(n); }
+    else if (pick === "split") {
+      const snap = snapshot(), s2 = splitCloseup(n, idx); if (!s2) return;
+      save(); renderAll(); n = s2; idx = 0; draw(); show(); pulse(s.querySelector("#sh-title"));
+      toast(`Now its own spot: ${shelfLabel(s2)}`, snap);
+    }
+    else if (pick === "merge") {
+      const name = shelfLabel(n), dst = await pickSpotFor(n, [], "Make it a close-up of"); if (!dst) return;
+      const snap = snapshot(), first = dst.photos.length;
+      mergeSpot(n, dst); save(); renderAll(); n = dst; idx = Math.min(first, dst.photos.length - 1); draw(); show(); pulse(s.querySelector("#sh-title"));
+      toast(`${name} is now close-ups of ${shelfLabel(dst)}`, snap);
+    }
   };
   s.querySelector('[data-a="close"]').onclick = close;
   show(); draw();
   if (n.photos[0]) heroInto(img);   // zoom out of the card that was tapped
+}
+// ---- 3.7: close-ups and spots, either way round ----
+// The spots a photo could become close-ups of: the one just before it first, then the rest in Gallery order
+function spotChoices(n, exclude = []) {
+  const all = beforeItems(n.slot).filter(x => x.note && x.note !== n && !exclude.includes(x.note)).map(x => x.note)
+    .sort((a, b) => KINDS.indexOf(noteKind(a)) - KINDS.indexOf(noteKind(b)) || a.at - b.at);
+  const prev = all.filter(m => noteKind(m) === noteKind(n) && m.at < n.at).pop();
+  return prev ? [prev, ...all.filter(m => m !== prev)] : all;
+}
+const spotName = m => shelfLabel(m) + (noteCats(m).length ? ` · ${noteCats(m).map(c => CAT_SHORT[c]).join(", ")}` : "");
+// A close-up becomes a spot of its own, right after the one it was in (same type and labels)
+function splitCloseup(n, idx) {
+  const p = n.photos[idx]; if (!p || idx < 1) return null;
+  n.photos.splice(idx, 1);
+  const s = { id: newId("n"), at: n.at + 1, slot: n.slot, kind: noteKind(n), photos: [p], audio: null, secs: 0, text: "", status: "done", parts: [], flag: false,
+    ticks: {}, out: {}, err: "", bk: 3, cats: noteCats(n), v3: 1 };
+  state.notes.push(s); state.notes.sort((a, b) => b.at - a.at);
+  return s;
+}
+// A spot (its photo and close-ups) becomes close-ups of another
+function mergeSpot(src, dst) {
+  if (src === dst) return;
+  dst.photos.push(...src.photos.filter(p => !dst.photos.includes(p)));
+  state.notes = state.notes.filter(x => x !== src);
+  if (hold.session && hold.session.note === src.id) hold.session = newSession(dst, hold.session.slot);
+  if (lastNoteId === src.id) lastNoteId = dst.id;
+}
+async function pickSpotFor(n, exclude, title) {
+  const L = spotChoices(n, exclude); if (!L.length) { toast("There's no other spot at this store to add it to"); return null; }
+  const id = await menu(title, L.slice(0, 16).map(m => ({ label: spotName(m), value: m.id })));
+  return L.find(m => m.id === id) || null;
 }
 function deleteShelf(n) {
   const snap = snapshot();
@@ -2716,32 +2794,24 @@ function renderCapture() {
   setModeClass(sec, ck);
   setTextPop($("#cap-band"), `${st ? `#${st} · ` : ""}${after ? "AFTER" : "BEFORE"} · ${KIND_LABEL[ck].toUpperCase()}`);
   const n = sessNote();
-  $("#btn-shutter").setAttribute("aria-label", after ? `Take the After photo of the ${ck}` : ck === "backstock" ? "Take a photo of the back stock" : n ? "Take a close-up" : `Take a photo of the ${ck}`);
+  $("#btn-shutter").setAttribute("aria-label", after ? `Take the After photo of the ${ck}` : ck === "backstock" ? "Take a photo of the back stock" : `Take a photo of a new ${ck}`);
   // Under the thumb: the last photos on the left (Before: the last shelf, tap to open it again; After: the last After photo), the flip on the right.
   const lb = $("#last-note");
-  if (after) {
-    const mine = afterItems(baSlot()).map(i => i.shot).reverse(), s = mine.find(x => x.id === lastShotId) || mine[0];
-    lb.style.visibility = s ? "visible" : "hidden"; lb.classList.add("plain");
-    if (s) { if (lb.dataset.p !== s.photo) { lb.dataset.p = s.photo; lb.innerHTML = `<img data-photo="${esc(s.photo)}" alt="">`; hydratePhotos(lb); } lb.onclick = () => openShot(s); lb.setAttribute("aria-label", "Open the last After photo"); }
+  if (after || ck === "backstock") {   // After and Backstock: one photo per tap; the last one is on the left
+    const mine = (after ? afterItems(baSlot()) : beforeItems(baSlot()).filter(i => i.kind === "backstock")).map(i => i.shot).filter(Boolean).reverse(), s = mine.find(x => x.id === lastShotId) || mine[0];
+    lb.hidden = false; lb.style.visibility = s ? "visible" : "hidden"; lb.classList.add("plain");
+    if (s) { if (lb.dataset.p !== s.photo) { lb.dataset.p = s.photo; lb.innerHTML = `<img data-photo="${esc(s.photo)}" alt="">`; hydratePhotos(lb); } lb.onclick = () => openShot(s); lb.setAttribute("aria-label", "Open the last photo"); }
     else lb.dataset.p = "";
-  } else {
-    const last = state.notes.find(x => x.id === lastNoteId && x.slot === baSlot()) || state.notes.find(x => x.slot === baSlot() && (x.photos || [])[0]);
-    lb.style.visibility = last ? "visible" : "hidden"; lb.classList.remove("plain");
-    if (last) {
-      if (lb.dataset.p !== last.photos[0]) { lb.dataset.p = last.photos[0]; lb.innerHTML = `<img data-photo="${esc(last.photos[0])}" alt="">`; hydratePhotos(lb); }
-      lb.onclick = () => addToShelf(last);
-      lb.setAttribute("aria-label", hold.session && hold.session.note === last.id ? "Look at these photos" : "Open the last photos again");
-    } else lb.dataset.p = "";
-  }
+  } else lb.hidden = true;   // Before: the blue close-up shutter is there instead (3.7)
   renderBA();
 }
 
-const KINDS = ["aisle", "shelf", "display", "backstock"];   // 3.1: Shelf, for shelves outside the main aisle
-const normKind = k => (k === "display" || k === "backstock" || k === "shelf" ? k : "aisle");
+const KINDS = ["aisle", "shelf", "display", "cooler", "backstock"];   // 3.1: Shelf, for shelves outside the main aisle; 3.7: Cooler, the coolers by the registers
+const normKind = k => (k === "display" || k === "backstock" || k === "shelf" || k === "cooler" ? k : "aisle");
 const noteKind = n => normKind(n.kind);
-const KIND_LABEL = { aisle: "Aisle", shelf: "Shelf", display: "Display", backstock: "Backstock" };
-const KIND_PLURAL = { aisle: "aisles", shelf: "shelves", display: "displays", backstock: "backstock" };
-const KIND_ONE = { aisle: "the aisle", shelf: "the shelf", display: "the display", backstock: "the back stock" };
+const KIND_LABEL = { aisle: "Aisle", shelf: "Shelf", display: "Display", cooler: "Cooler", backstock: "Backstock" };
+const KIND_PLURAL = { aisle: "aisles", shelf: "shelves", display: "displays", cooler: "coolers", backstock: "backstock" };
+const KIND_ONE = { aisle: "the aisle", shelf: "the shelf", display: "the display", cooler: "the cooler", backstock: "the back stock" };
 const captureKind = () => normKind(state.settings.captureKind);
 // "Move to …" menu items for the two kinds something isn't, and the camera tab colours for the kind that's on
 const kindMoves = cur => KINDS.filter(k => k !== cur).map(k => ({ label: `Move to ${KIND_LABEL[k]}`, value: "kind:" + k }));
@@ -3033,7 +3103,7 @@ async function snapBackstock(forcePhone) {
     playShutter(); shot.photo = newId("p");
     try { await savePhoto(shot.photo, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
   }
-  state.shots.unshift(shot); afterShot.ids.push(shot.photo); afterShot(); renderCapture();
+  state.shots.unshift(shot); lastShotId = shot.id; afterShot.ids.push(shot.photo); afterShot(); renderCapture();
   toast(`Saved to store#${storeOf(slot)} · Before · Backstock`);
 }
 
@@ -3340,7 +3410,9 @@ async function galMove() {
   const whens = new Set(sel.map(x => x.w)), oneWhen = whens.size === 1 ? [...whens][0] : null;
   const kinds = new Set(sel.flatMap(x => [...x.notes.map(r => noteKind(r)), ...x.shots.map(r => normKind(r.kind))]));
   // step 2: the short list for one kind of change
+  const onlySpots = sel.every(x => x.notes.length && !x.shots.length), selNotes = sel.flatMap(x => x.notes);
   const subs = {
+    cu: () => ({ title: "Make close-ups of", opts: spotChoices(selNotes[0], selNotes).slice(0, 16).map(m => ({ label: `Make close-ups of ${spotName(m)}`, value: "cu:" + m.id })) }),
     store: () => ({ title: "Change store", opts: Array.from({ length: SLOTS }, (_, i) => i).filter(i => i !== cur)
       .map(i => ({ label: storeOf(i) ? `Move to store #${storeOf(i)}` : `Move to empty slot ${i + 1}…`, value: "slot:" + i })) }),
     type: () => ({ title: "Change type", opts: KINDS.filter(k => !(k === "backstock" && hasNotes) && !(kinds.size === 1 && kinds.has(k)))
@@ -3355,6 +3427,7 @@ async function galMove() {
   const top = [{ label: "Change store ›", value: "store" }, { label: "Change type ›", value: "type" }];
   if (oneWhen) top[gal.kind === "display" ? "unshift" : "push"]({ label: "Change display ›", value: "disp" });   // displays are counted per Before / After
   if (!hasNotes) top.push({ label: "Before or After ›", value: "when" });
+  if (onlySpots) top.push({ label: "Make close-ups of… ›", value: "cu" });   // 3.7: these photos (and their close-ups) join another spot
   let pick = null;
   for (;;) {
     const t = await menu(`Move ${n} photo${n === 1 ? "" : "s"}`, top); if (!t) return;
@@ -3387,6 +3460,11 @@ async function galMove() {
     save(); galSelectEnd(true); gal.kind = "display"; renderAll();
     const num = (displayGroups(cur, oneWhen).find(g => g.anchor === anchor) || {}).num || "";
     toast(val === "new" ? `Made display ${num}` : `Moved to display ${num}`, snap);
+  } else if (what === "cu") {
+    const dst = state.notes.find(m => m.id === val); if (!dst) return;
+    for (const r of selNotes) mergeSpot(r, dst);
+    save(); galSelectEnd(true); renderAll();
+    toast(`Now close-ups of ${shelfLabel(dst)}`, snap);
   } else if (what === "when") {
     for (const x of sel) for (const r of x.shots) { r.when = val; delete r.dg; }
     save(); galSelectEnd(true); renderAll();
@@ -4006,12 +4084,12 @@ const T_STEPS = [
     hint: "tap", done: () => !!cam.stream, fail: () => !!cam.error },
   { id: "cat", target: () => $("#cat-row"), text: "First, tap what this aisle mostly holds. It stays picked for the next ones until you change it.", hint: "glow",
     done: () => nextCats().length > 0 || (!!sessNote() && noteCats(sessNote()).length > 0) },
-  { id: "shelf", target: () => $("#view-capture .shutter-wrap"), text: "Tap the shutter to photograph the whole aisle.", hint: "tap", done: () => !!sessNote() },
-  { id: "closeup", target: () => $("#view-capture .shutter-wrap"), text: "Something low? Get close and tap again. Each tap is a close-up of this spot.", hint: "tap",
-    done: () => !!sessNote() && sessNote().photos.length > 1 },
-  { id: "next", target: () => $("#hold-done"), text: "Moving on? Tap Next aisle, then snap the next spot. (Aisle, Shelf, Display and Backstock are the switch above.)", hint: "tap", done: () => !hold.session },
+  { id: "shelf", target: () => $("#btn-shutter").parentElement, text: "Tap the red shutter to photograph the whole aisle.", hint: "tap", done: () => state.notes.length > 0 },
+  { id: "closeup", target: () => $("#cu-wrap"), text: "Something low? Get close and tap the blue shutter. Each blue tap is a close-up of the aisle you just took.", hint: "tap",
+    done: () => state.notes.some(n => n.photos.length > 1) },
+  { id: "next", target: () => $("#btn-shutter").parentElement, text: "Next aisle? Just tap the red shutter again: each red tap is a new spot. (Aisle, Shelf, Display, Cooler and Backstock are the switch above.)", hint: "tap", done: () => state.notes.length > 1 },
   { id: "flip", target: () => $("#btn-when"), text: "Finished stocking? Swipe the camera picture left, or tap here, for After photos. The camera turns green.", hint: "tap", done: () => camWhen() === "after" },
-  { id: "after", target: () => $("#view-capture .shutter-wrap"), text: "Snap the finished aisle. In After, each tap is one photo.", hint: "tap", done: () => state.shots.some(s => s.when === "after") },
+  { id: "after", target: () => $("#btn-shutter").parentElement, text: "Snap the finished aisle. In After, each tap is one photo.", hint: "tap", done: () => state.shots.some(s => s.when === "after") },
   { id: "back", target: () => $("#btn-when"), text: "Swipe the picture right, or tap here, to go back to Before.", hint: "tap", done: () => camWhen() === "before" },
   { id: "displays", target: () => $('#tabs [data-view="displays"]'), text: "Displays are easy to miss. The Displays tab keeps each store's list from visit to visit.", hint: "tap", done: () => view === "displays" },
   { id: "dspinfo", target: () => $("#view-displays .list-head"), text: "When you snap a display, tap New under the camera and pick where it is. Next visit, each one is ticked off here as you find it, and Shoot After takes you straight to its After photo.", hint: null, next: true },
@@ -4192,6 +4270,13 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "3.7.0", notes: [
+    "Two shutters: the big red one always takes a new spot; the blue one beside it adds a close-up to the spot you just took. No more Next aisle, so a whole aisle can't end up as close-ups.",
+    "The bar under the shutters shows what the close-ups go to (Aisle 3 · 2 close-ups); tap it to look at that spot.",
+    "Cooler, for the coolers by the registers, next to Aisle, Shelf, Display and Backstock.",
+    "A much smoother camera picture: the phone now draws it directly instead of the app copying every frame. If you ever see black bars around it, switch on More › Camera picture fix.",
+    "The labels are for the next photo you take; change a photo that's already taken in the Gallery.",
+    "Close-ups and spots can be swapped: open a spot, swipe to a close-up, More… › Make it its own spot; or on a main photo, More… › Make this a close-up of… In the Gallery, select photos and Move… › Make close-ups of…" ] },
   { v: "3.6.1", notes: [
     "Fixed: the camera screen was 4 pixels too tall, so it could bounce when touched.",
     "Fixed: Add close-ups on a Gallery photo did nothing if the camera was on After.",
@@ -4331,7 +4416,7 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 101;
+const REVISION = 102;
 // More
 function renderMore() {
   const v = $("#view-more");
@@ -4348,6 +4433,7 @@ function renderMore() {
     <div class="sec-h">Photos</div>
     <div class="list group">
       <div class="item set"><label class="grow" for="photo-check"><div class="name">Warn about blurry or dark photos</div><div class="sub">Right after a photo, if it looks blurry or too dark, you get a Retake button.</div></label><input type="checkbox" switch id="photo-check" ${photoCheckOn() ? "checked" : ""}></div>
+      <div class="item set"><label class="grow" for="feed-fix"><div class="name">Camera picture fix</div><div class="sub">Only if the camera picture shows black bars or doesn't fill its frame. It makes the picture less smooth.</div></label><input type="checkbox" switch id="feed-fix" ${feedFix() ? "checked" : ""}></div>
     </div>
     <div class="sec-h">Stores</div>
     <div class="list group">
@@ -4367,12 +4453,13 @@ function renderMore() {
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
     ${enc.last.ready != null ? `<p class="sec-foot">Last photo: ready for the next tap in ${enc.last.ready} ms${enc.last.saved != null ? `, saved in ${enc.last.saved} ms (${enc.last.path})` : ""}.</p>` : ""}
-    <p class="foot">Shelfie 3.6.1 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 3.7.0 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   v.querySelector("#haptic-shutter").onchange = e => { state.settings.hapticShutter = state.settings.hapticTaps = e.target.checked; save(); syncHaptics(); };   // one switch for both (3.4)
   v.querySelector("#btn-backup").onclick = saveBackup;
   v.querySelector("#btn-restore").onclick = pickBackupFile;
   v.querySelector("#photo-check").onchange = e => { state.settings.photoCheck = e.target.checked; save(); };
+  v.querySelector("#feed-fix").onchange = e => { state.settings.feedFix = e.target.checked; save(); if (cam.stream) { stopCamera(); startCamera(); } };
   v.querySelector("#btn-practice").onclick = () => startTutorial();
   v.querySelector("#geo-on").onchange = e => { state.settings.geo = e.target.checked; save(); if (e.target.checked) getPos(); };   // turning it on: the iPhone asks now
   v.querySelector("#btn-spots").onclick = () => openStoreSpots();
