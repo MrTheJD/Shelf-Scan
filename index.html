@@ -2376,6 +2376,11 @@ let lastNoteId = null;
 
 // The open shelf (kept under the 2.x name "hold": other parts check hold.session)
 const hold = { session: null };   // { note: id, kind, slot }
+// The blue shutter's icon: a magnifier for close-ups, a stack of photos for a display's sides (3.8.2)
+const BLUE_ICON = {
+  closeup: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M10.5 7.5v6M7.5 10.5h6"/></svg>',
+  side: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="3" width="13" height="13" rx="2.5"/><path d="M4 8v10a3 3 0 0 0 3 3h10"/><path d="M11 13l2.5-2.5L16 13l2-2"/></svg>',
+};
 const lock = { id: null };   // 3.8: "Add sides": the camera is locked to one display (red retakes its main picture, blue adds a side)
 const isDisp = n => !!n && noteKind(n) === "display";
 const SIDE = n => (isDisp(n) ? ["side", "sides"] : ["close-up", "close-ups"]);
@@ -2497,6 +2502,7 @@ function renderHoldBar() {
   renderDispPick(s, !!s && before && hold.session.slot === baSlot());   // 3.2: a display just taken: which one is it?
   $("#hold-lock").hidden = !(t && lockedNote() === t);
   $("#btn-closeup").setAttribute("aria-label", captureKind() === "display" ? "Add a side of this display" : "Take a close-up of the last spot");
+  { const sp = $("#btn-closeup span"), want = captureKind() === "display" ? "side" : "closeup"; if (sp.dataset.i !== want) { sp.dataset.i = want; sp.innerHTML = BLUE_ICON[want]; } }
   if (t) {
     const disp = isDisp(t), cu = t.photos.length - 1, np = disp ? t.photos.length : cu;
     const dl = disp && t.sd && storeDisp(storeOf(t.slot)), dd = dl && dl.list.find(x => x.id === t.sd), area = dd && dd.area;
@@ -4348,6 +4354,7 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "3.8.2", notes: ["The blue shutter shows a stack of photos when it takes a display's sides, and keeps the magnifier for close-ups."] },
   { v: "3.8.1", notes: ["Each picture type has its own color in the camera: Aisle red, Shelf amber, Display violet, Cooler cyan, Backstock brown (After stays green, the close-up shutter blue). The selected type's name is colored too, here and in the Gallery."] },
   { v: "3.8.0", notes: [
     "Displays have a main picture and sides. In Display, the red shutter takes the main picture (which identifies it in the Displays tab) and the blue one adds each side. Every side goes to your boss with Text all Before and is saved with Save & clear.",
@@ -4500,7 +4507,7 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 104;
+const REVISION = 105;
 // More
 function renderMore() {
   const v = $("#view-more");
@@ -4537,7 +4544,7 @@ function renderMore() {
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
     ${enc.last.ready != null ? `<p class="sec-foot">Last photo: ready for the next tap in ${enc.last.ready} ms${enc.last.saved != null ? `, saved in ${enc.last.saved} ms (${enc.last.path})` : ""}.</p>` : ""}
-    <p class="foot">Shelfie 3.8.1 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 3.8.2 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   v.querySelector("#haptic-shutter").onchange = e => { state.settings.hapticShutter = state.settings.hapticTaps = e.target.checked; save(); syncHaptics(); };   // one switch for both (3.4)
   v.querySelector("#btn-backup").onclick = saveBackup;
