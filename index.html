@@ -1129,6 +1129,39 @@ header.top .store .caret { width: 0; height: 0; border-left: 4px solid transpare
 #view-capture:not(.when-after).mode-backstock .shutter-big:not(.cu) span { background: var(--k-backstock); color: var(--on-k-backstock); }
 #view-capture.mode-backstock #cap-seg button[data-k="backstock"].active { color: var(--k-backstock); }
 #gal-seg button[data-k="backstock"].active { color: var(--k-backstock); }
+
+/* ---------- 3.9: display cards with a picture carousel ---------- */
+.dc-list { display: flex; flex-direction: column; gap: 14px; }
+.dc { background: var(--surface); border-radius: 18px; padding: 10px 0 12px; content-visibility: auto; contain-intrinsic-size: auto 340px; }
+.dc-head { display: flex; align-items: center; gap: 6px; padding: 0 6px 0 14px; }
+.dc-area { flex: 1; min-width: 0; text-align: left; border: 0; background: none; font: inherit; font-size: 18px; font-weight: 800; letter-spacing: -.01em; color: var(--text); padding: 6px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dc-more { width: 44px; height: 40px; border: 0; background: none; color: var(--muted); border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+.dc-status { padding: 0 14px 8px; font-size: 13px; color: var(--muted); }
+.dc.found .dc-status { color: var(--ok); font-weight: 650; }
+.dc-track { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity; padding: 0 14px; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.dc-track::-webkit-scrollbar { display: none; }
+.dc-slide { position: relative; flex: 0 0 150px; height: 200px; border-radius: 14px; overflow: hidden; background: var(--chip); scroll-snap-align: start; border: 0; padding: 0; color: inherit; font: inherit; }
+.dc-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dc-slide.r img { opacity: .55; filter: grayscale(.5); }
+.dc-slide.add, .dc-slide.none { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--muted); font-size: 13px; font-weight: 700; background: var(--surface-2); border: 2px dashed var(--line); }
+.dc-slide.add svg.i, .dc-slide.none svg.i { width: 26px; height: 26px; }
+.dc-tag { position: absolute; left: 6px; bottom: 6px; padding: 2px 9px; border-radius: 999px; background: rgba(0, 0, 0, .62); color: #fff; font-size: 11px; font-weight: 800; font-style: normal; }
+.dc-tag.main { background: var(--red); } .dc-tag.after { background: var(--ok); }
+.dc-star { position: absolute; right: 2px; top: 2px; width: 44px; height: 44px; border: 0; background: none; display: flex; align-items: center; justify-content: center; }
+.dc-star svg, .star-btn svg { width: 26px; height: 26px; fill: rgba(0, 0, 0, .3); stroke: #fff; stroke-width: 1.8; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .5)); }
+.dc-star.on svg, .star-btn.on svg { fill: #FFC107; stroke: #FFC107; }
+.dc-foot { display: flex; align-items: center; gap: 10px; padding: 10px 14px 0; }
+.dc-ok { flex: 1; display: inline-flex; align-items: center; gap: 6px; color: var(--ok); font-weight: 750; font-size: 14px; }
+.dc-ok svg.i { width: 16px; height: 16px; stroke-width: 3; }
+.dc-foot .btn.ok { background: var(--ok); border-color: var(--ok); }
+.star-btn { position: absolute; left: 4px; top: 4px; z-index: 4; width: 48px; height: 48px; border: 0; background: none; display: flex; align-items: center; justify-content: center; }
+.star-btn[hidden] { display: none; }
+.hb-thumb.multi { width: auto; height: 36px; display: flex; gap: 5px; background: none; overflow: visible; }
+.hb-mini { position: relative; width: 36px; height: 36px; border-radius: 9px; overflow: hidden; background: var(--surface-2); flex: none; }
+.hb-mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hb-thumb.multi .hb-mini.main { overflow: visible; box-shadow: 0 0 0 2px #FFC107; }
+.hb-thumb.multi .hb-mini.main::after { content: "★"; position: absolute; right: -4px; top: -9px; font-size: 14px; color: #FFC107; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+.hb-more { align-self: center; font-size: 12px; font-weight: 800; color: var(--muted); }
 </style>
 </head>
 <body data-view="capture">
@@ -1537,7 +1570,7 @@ function backfillThumb(id) {
 async function sweepMedia() {
   if (tutorialActive) return;   // during practice the real photos aren't in the state: never tidy then
   try {
-    const keepP = new Set([...state.notes.flatMap(n => n.photos || []), ...(state.shots || []).map(s => s.photo), ...Object.values(state.displayMemory || {}).flatMap(m => m.photos || []), ...Object.values(state.storeDisplays || {}).flatMap(s => (s.list || []).map(d => d.photo).filter(Boolean))]);
+    const keepP = new Set([...state.notes.flatMap(n => n.photos || []), ...(state.shots || []).map(s => s.photo), ...Object.values(state.displayMemory || {}).flatMap(m => m.photos || []), ...Object.values(state.storeDisplays || {}).flatMap(s => (s.list || []).flatMap(d => [d.photo, ...(d.refs || [])]).filter(Boolean))]);
     for (const id of enc.waits.keys()) keepP.add(id);   // still being saved
     const ps = await mediaTx("photos", "readonly", s => s.getAllKeys()), as = await mediaTx("audio", "readonly", s => s.getAllKeys());
     for (const k of ps) { const base = String(k).endsWith("~t") ? String(k).slice(0, -2) : k; if (!keepP.has(base)) await delPhoto(k); }
@@ -2024,7 +2057,7 @@ const BK_SETTINGS = ["beep", "captureKind", "baWhen", "baKind", "baSlot", "lens"
 
 function bkSnapshot() {
   const settings = {}; for (const k of BK_SETTINGS) settings[k] = state.settings[k];
-  const storeDisplays = Object.fromEntries(Object.entries(state.storeDisplays || {}).map(([st, s]) => [st, { list: (s.list || []).map(({ photo, ...d }) => d), areas: s.areas || [] }]));
+  const storeDisplays = Object.fromEntries(Object.entries(state.storeDisplays || {}).map(([st, s]) => [st, { list: (s.list || []).map(({ photo, refs, srcs, ...d }) => d), areas: s.areas || [] }]));
   return { v: 2, app: "Shelfie", at: Date.now(), settings, stores: state.stores, storeName: state.storeName || "",
     recentStores: state.recentStores || [], storeSpots: state.storeSpots || {}, storeDisplays };
 }
@@ -2381,6 +2414,7 @@ const BLUE_ICON = {
   closeup: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21M10.5 7.5v6M7.5 10.5h6"/></svg>',
   side: '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="3" width="13" height="13" rx="2.5"/><path d="M4 8v10a3 3 0 0 0 3 3h10"/><path d="M11 13l2.5-2.5L16 13l2-2"/></svg>',
 };
+const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2l2.6 5.5 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.5l6-.8z" stroke-linejoin="round"/></svg>';
 const lock = { id: null };   // 3.8: "Add sides": the camera is locked to one display (red retakes its main picture, blue adds a side)
 const isDisp = n => !!n && noteKind(n) === "display";
 const SIDE = n => (isDisp(n) ? ["side", "sides"] : ["close-up", "close-ups"]);
@@ -2423,11 +2457,17 @@ async function closeupShot(forcePhone) {
     try { await savePhoto(id, blob); } catch (e) { return toast("Couldn't save the photo. Phone storage may be full."); }
   }
   if (!state.notes.includes(n)) return;   // deleted meanwhile
-  n.photos.push(id);
+  n.photos.push(id); syncRefsSoon(n);
   hold.session = newSession(n); hold.session.last = Date.now(); lastNoteId = n.id;
   afterShot.ids.push(id); afterShot(); renderHoldBar(); pulse($("#hold-bar"));
 }
 // A new spot (red shutter, or the iPhone camera when the live one isn't working): it becomes what the blue shutter adds to.
+// The star: make this picture the display's main picture (Undo in the notice); everything that points at the old main follows the new one
+function makeMain(n, idx) {
+  if (!isDisp(n) || !(idx > 0) || !n.photos[idx]) return;
+  const snap = snapshot(), old = n.photos[0], [p] = n.photos.splice(idx, 1); n.photos.unshift(p); replacePhotoEverywhere(old, p);
+  save(); syncRefsSoon(n); renderAll(); haptic("ok"); toast("That's now the main picture", snap);
+}
 // "Add sides" mode: the red shutter replaces the display's main picture (Undo in the notice); its anchors follow the new photo
 function replacePhotoEverywhere(old, id) {
   for (const x of [...state.notes, ...state.shots]) { if (x.dg === old) x.dg = id; if (x.pair === old) x.pair = id; }
@@ -2437,7 +2477,7 @@ function replacePhotoEverywhere(old, id) {
 function replaceMain(n, id) {
   const snap = snapshot(), old = n.photos[0];
   n.photos[0] = id; replacePhotoEverywhere(old, id);
-  const dl = n.sd && storeDisp(storeOf(n.slot)), d = dl && dl.list.find(x => x.id === n.sd); if (d) keepDisplayPhoto(d, id);
+  syncRefsSoon(n);
   hold.session = newSession(n); lastNoteId = n.id;
   afterShot.ids.push(id); afterShot(); renderHoldBar(); scheduleSweep();
   toast("Main picture replaced", snap);
@@ -2459,7 +2499,7 @@ function shelfAddPhoto(id) {
     const kind = captureKind(), slot = baSlot(), dg = takeDisplayDg(slot, "before", kind);
     const s = { id: newId("n"), at: Date.now(), slot, kind, photos: [id], audio: null, secs: 0, text: "", status: "done", parts: [], flag: false,
       ticks: {}, out: {}, err: "", bk: 3, cats: [], v3: 1, ...(dg ? { dg } : {}) };
-    if (kind === "display" && dspPending && dspPending.store === storeOf(slot) && Date.now() - (dspPending.at || 0) < 10 * 60000) { const d = dispActive(storeDisp(storeOf(slot))).find(x => x.id === dspPending.id); if (d) { s.sd = d.id; d.at = Date.now(); setTimeout(() => keepDisplayPhoto(d, id), 800); } dspPending = null; }   // "Shoot this one"
+    if (kind === "display" && dspPending && dspPending.store === storeOf(slot) && Date.now() - (dspPending.at || 0) < 10 * 60000) { const d = dispActive(storeDisp(storeOf(slot))).find(x => x.id === dspPending.id); if (d) { s.sd = d.id; d.at = d.ord = Date.now(); syncRefsSoon(s); } dspPending = null; }   // "Shoot this one"
     state.notes.unshift(s); lastNoteId = s.id;
     hold.session = newSession(s, slot);
     renderCapture(); afterShot();
@@ -2505,10 +2545,16 @@ function renderHoldBar() {
   { const sp = $("#btn-closeup span"), want = captureKind() === "display" ? "side" : "closeup"; if (sp.dataset.i !== want) { sp.dataset.i = want; sp.innerHTML = BLUE_ICON[want]; } }
   if (t) {
     const disp = isDisp(t), cu = t.photos.length - 1, np = disp ? t.photos.length : cu;
-    const dl = disp && t.sd && storeDisp(storeOf(t.slot)), dd = dl && dl.list.find(x => x.id === t.sd), area = dd && dd.area;
-    $("#hold-text").innerHTML = `<b>${esc(shelfLabel(t))}</b>${area ? ` · ${esc(area)}` : ""} · ${np} ${SIDE(t)[np === 1 ? 0 : 1]}`;
-    const th = $("#hold-thumb"), p = t.photos[t.photos.length - 1];
-    if (th.dataset.p !== p) { th.dataset.p = p; th.innerHTML = `<img data-photo="${esc(p)}" alt="">`; hydratePhotos(th); }
+    $("#hold-text").innerHTML = `<b>${esc(shelfLabel(t))}</b> · ${np} ${SIDE(t)[np === 1 ? 0 : 1]}`;
+    const th = $("#hold-thumb"), n = t.photos.length;
+    if (disp) {
+      const idxs = n <= 3 ? t.photos.map((_, i) => i) : [0, n - 2, n - 1], key = idxs.map(i => t.photos[i]).join("|") + "#" + n;
+      th.classList.add("multi");
+      if (th.dataset.p !== key) { th.dataset.p = key; th.innerHTML = idxs.map(i => `<span class="hb-mini${i ? "" : " main"}" data-i="${i}"><img data-photo="${esc(t.photos[i])}" alt=""></span>`).join("") + (n > 3 ? `<span class="hb-more">+${n - 3}</span>` : ""); hydratePhotos(th); }
+    } else {
+      const p = t.photos[n - 1]; th.classList.remove("multi");
+      if (th.dataset.p !== p) { th.dataset.p = p; th.innerHTML = `<img data-photo="${esc(p)}" alt="">`; hydratePhotos(th); }
+    }
   }
 }
 function wireShelfCapture() {
@@ -2516,7 +2562,9 @@ function wireShelfCapture() {
   $("#btn-closeup").addEventListener("contextmenu", e => e.preventDefault());
   $("#hold-bar").onclick = e => {
     if (e.target.closest("#hold-lock")) { endHoldSession(); haptic("ok"); return; }   // Done: leave "Add sides"
-    const n = closeTarget(); if (n) openShelf(n);
+    const t = closeTarget(), m = e.target.closest(".hb-mini");
+    if (m && t && isDisp(t) && +m.dataset.i > 0) { makeMain(t, +m.dataset.i); return; }   // a tap on another picture of this display: it's the main picture now
+    if (t) openShelf(t);
   };
   wireDispPick();
 }
@@ -2609,6 +2657,8 @@ function openShelf(n) {
     <button class="btn primary block" data-a="close">Done</button></div>`);
   const close = openLayer(s, { onClose: () => renderAll() });
   const img = s.querySelector("img"), stage = s.querySelector("#sh-stage");
+  const star = el(`<button class="star-btn" aria-label="Make this the main picture" hidden>${STAR}</button>`); stage.appendChild(star);
+  star.onclick = e => { e.stopPropagation(); if (idx > 0) { makeMain(n, idx); idx = 0; show(); } else toast("This is the main picture"); };
   // every Before set of this store, in Gallery order (Aisle 1, 2…, Shelf 1…, Display 1…): swiping past one set's last photo goes on to the next set
   const sets = () => beforeItems(n.slot).filter(x => x.note && (x.note.photos || []).length).sort((a, b) => KINDS.indexOf(a.kind) - KINDS.indexOf(b.kind) || a.at - b.at).map(x => x.note);
   const neighbor = d => {
@@ -2630,6 +2680,7 @@ function openShelf(n) {
     const u = id ? (await photoURL(id)) || (await photoURL(thumbId(id))) : null;
     img.src = u || "";
     stage.classList.toggle("empty-photo", !id);
+    star.hidden = !isDisp(n) || n.photos.length < 2; star.classList.toggle("on", idx === 0);
     const strip = s.querySelector("#sh-strip");
     strip.innerHTML = n.photos.length > 1 ? n.photos.map((p, i) => `<button class="sh-th${i === idx ? " on" : ""}" data-i="${i}" aria-label="${i ? (isDisp(n) ? `Side ${i + 1}` : `Close-up ${i}`) : (isDisp(n) ? "Main picture" : "The whole photo")}"><img data-photo="${esc(p)}" alt=""><small>${i ? (isDisp(n) ? i + 1 : i) : (isDisp(n) ? "Main" : KIND_LABEL[noteKind(n)])}</small></button>`).join("") : "";
     hydratePhotos(strip);
@@ -2668,22 +2719,18 @@ function openShelf(n) {
       { label: n.photos.length > 1 ? `Delete ${shelfLabel(n)} and its ${SIDE(n)[1]}` : `Delete ${shelfLabel(n)}`, value: "delete", danger: true }]);
     if (pick === "save") savePhotoToPhotos(n.photos[idx], `${shelfLabel(n).replace(/\s+/g, "")}${idx ? `-closeup${idx}` : ""}.jpg`);
     else if (String(pick).startsWith("kind:")) { const snap = snapshot(); n.kind = normKind(pick.slice(5)); delete n.dg; save(); renderAll(); draw(); toast(`Moved to ${KIND_LABEL[n.kind]}`, snap); }
-    else if (pick === "delphoto") { const snap = snapshot(); n.photos.splice(idx, 1); idx = Math.max(0, idx - 1); save(); renderAll(); scheduleSweep(); show(); toast(`${isDisp(n) ? "Side" : "Close-up"} deleted`, snap); }
+    else if (pick === "delphoto") { const snap = snapshot(); n.photos.splice(idx, 1); idx = Math.max(0, idx - 1); syncRefsSoon(n); save(); renderAll(); scheduleSweep(); show(); toast(`${isDisp(n) ? "Side" : "Close-up"} deleted`, snap); }
     else if (pick === "delete") { close(); deleteShelf(n); }
-    else if (pick === "main") {
-      const snap = snapshot(), old = n.photos[0], [p] = n.photos.splice(idx, 1); n.photos.unshift(p); replacePhotoEverywhere(old, p); idx = 0;
-      const dl = n.sd && storeDisp(storeOf(n.slot)), d = dl && dl.list.find(x => x.id === n.sd); if (d) keepDisplayPhoto(d, p);
-      save(); renderAll(); show(); toast("That side is now the main picture", snap);
-    }
+    else if (pick === "main") { makeMain(n, idx); idx = 0; show(); }
     else if (pick === "split") {
       const snap = snapshot(), s2 = splitCloseup(n, idx); if (!s2) return;
-      save(); renderAll(); n = s2; idx = 0; draw(); show(); pulse(s.querySelector("#sh-title"));
+      syncRefsSoon(n); save(); renderAll(); n = s2; idx = 0; draw(); show(); pulse(s.querySelector("#sh-title"));
       toast(`Now its own spot: ${shelfLabel(s2)}`, snap);
     }
     else if (pick === "merge") {
       const name = shelfLabel(n), dst = await pickSpotFor(n, [], "Make it a close-up of"); if (!dst) return;
       const snap = snapshot(), first = dst.photos.length;
-      mergeSpot(n, dst); save(); renderAll(); n = dst; idx = Math.min(first, dst.photos.length - 1); draw(); show(); pulse(s.querySelector("#sh-title"));
+      mergeSpot(n, dst); syncRefsSoon(dst); save(); renderAll(); n = dst; idx = Math.min(first, dst.photos.length - 1); draw(); show(); pulse(s.querySelector("#sh-title"));
       toast(`${name} is now close-ups of ${shelfLabel(dst)}`, snap);
     }
   };
@@ -2930,7 +2977,7 @@ function zoomStage(img, stage, opt = {}) {
   const zoomTo = (ns, p) => { ns = Math.max(1, Math.min(MAX, ns)); tx = p.x - (p.x - tx) * ns / s; ty = p.y - (p.y - ty) * ns / s; s = ns; };
   const reset = () => { s = 1; tx = ty = 0; pull = 0; };
   stage.addEventListener("pointerdown", e => {
-    if (e.target.closest(".zoom-expand")) return;
+    if (e.target.closest(".zoom-expand, .star-btn")) return;
     try { stage.setPointerCapture(e.pointerId); } catch (_) {}
     cancelAnimationFrame(glide); clearTimeout(tapTimer);
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -3623,12 +3670,13 @@ function storeDisp(st, make) {
   if (!all[st]) {
     const mem = (state.displayMemory || {})[st];
     if (!mem && !make) return null;
-    all[st] = { list: (mem ? mem.photos : []).map(p => ({ id: newId("sd"), area: "", photo: p, at: mem.at })), areas: [] };
+    all[st] = { list: (mem ? mem.photos : []).map((p, i) => ({ id: newId("sd"), area: "", photo: p, at: mem.at, ord: mem.at + i })), areas: [] };
     if (mem) delete state.displayMemory[st];   // the list owns those thumbnails now
   }
   return all[st];
 }
-const dispActive = sd => (sd ? sd.list.filter(d => !d.gone) : []);
+const byOrd = (a, b) => (a.ord || a.at || 0) - (b.ord || b.at || 0);   // the order they were found: a walking route
+const dispActive = sd => (sd ? sd.list.filter(d => !d.gone).sort(byOrd) : []);
 // today's display shelf for each listed display: id → note
 function dispFound(st) {
   const m = new Map();
@@ -3644,25 +3692,52 @@ const areaName = d => d.area || "Area not set";
 
 // ---- tagging a display photo ----
 function tagDisplay(n, d) {
-  n.sd = d.id; d.at = Date.now(); d.gone = false;
+  n.sd = d.id; d.at = d.ord = Date.now(); d.gone = false;
   if (dspPending && dspPending.id === d.id) dspPending = null;
   save(); renderAll(); haptic("tick");
-  keepDisplayPhoto(d, (n.photos || [])[0]);
+  syncRefsSoon(n);
 }
 async function newDisplayFor(n) {
   const st = storeOf(n.slot); if (!st) return;
   const area = await askArea(st); if (area == null) return;
-  const d = { id: newId("sd"), area, photo: null, at: Date.now() };
+  const d = { id: newId("sd"), area, photo: null, at: Date.now(), ord: Date.now() };
   storeDisp(st, true).list.push(d);
   tagDisplay(n, d); toast(`New display: ${area}`);
 }
-// the list keeps its own small copy of the latest photo (the shelf photos go at Clear)
-async function keepDisplayPhoto(d, photo) {
-  if (!photo || tutorialActive) return;
-  const b = (await getPhoto(thumbId(photo)).catch(() => null)) || null; if (!b) return;
-  const id = newId("dm"); try { await putPhoto(id, b); } catch (e) { return; }
-  const old = d.photo; d.photo = id; save();
-  if (old && String(old).startsWith("dm") && !Object.values(state.displayMemory || {}).some(m => (m.photos || []).includes(old))) delPhoto(old).catch(() => {});
+// Each listed display keeps small copies of its pictures (main first, up to 8) for next visit: d.refs (copies) and d.srcs (the photo each came
+// from, so only new pictures are copied). d.photo is the main one. Rebuilt a moment after the pictures change.
+const refTimers = new Map(), refRun = new Map();
+function syncRefsSoon(n) {
+  if (!n || !n.sd || tutorialActive) return;
+  clearTimeout(refTimers.get(n.id));
+  refTimers.set(n.id, setTimeout(() => { refTimers.delete(n.id); syncRefs(n); }, 1200));
+}
+async function syncRefs(n) {
+  if (refRun.get(n.id)) { refRun.set(n.id, 2); return; }
+  refRun.set(n.id, 1);
+  try { await syncRefsOnce(n); } catch (e) {}
+  const again = refRun.get(n.id) === 2; refRun.delete(n.id);
+  if (again) syncRefs(n);
+}
+async function syncRefsOnce(n) {
+  if (tutorialActive || !n.sd) return;
+  const sdl = storeDisp(storeOf(n.slot)), d = sdl && sdl.list.find(x => x.id === n.sd); if (!d) return;
+  const have = new Map((d.srcs || []).map((p, i) => [p, (d.refs || [])[i]]));
+  const refs = [], srcs = [];
+  for (const p of (n.photos || []).slice(0, 8)) {
+    let r = have.get(p);
+    if (!r) {
+      const b = await getPhoto(thumbId(p)).catch(() => null); if (!b) continue;
+      r = newId("dm"); try { await putPhoto(r, b); } catch (e) { continue; }
+    }
+    refs.push(r); srcs.push(p);
+  }
+  if (!refs.length) return;
+  const old = new Set([...(d.refs || []), d.photo].filter(x => x && String(x).startsWith("dm")));
+  for (const r of refs) old.delete(r);
+  d.refs = refs; d.srcs = srcs; d.photo = refs[0];
+  save();
+  for (const r of old) delPhoto(r).catch(() => {});
   if (view === "displays") renderDisplays();
 }
 // Where is it? The usual areas (and the ones typed for this store first), or type one.
@@ -3723,10 +3798,14 @@ function pickDisplayFor(n) {
   };
 }
 
-// ---- the tab ----
+// ---- the tab (3.9): one card per display, each with a carousel of its pictures ----
+// Found today: the main picture (starred), its sides, then its After photos. Not found yet: last visit's pictures, faded, in the order they were
+// found then (a walking list). Star a picture to make it the display's main picture; that is the one kept as its reference for next visit.
+const dcScroll = new Map();   // display id → how far its carousel was swiped, kept when the tab redraws
 function renderDisplays() {
   const v = $("#view-displays");
-  dsp.slot = baSlot();   // 3.4: the store at the top
+  v.querySelectorAll(".dc[data-d]").forEach(c => { const t = c.querySelector(".dc-track"); if (t) dcScroll.set(c.dataset.d, t.scrollLeft); });
+  dsp.slot = baSlot();   // the store at the top
   const slot = dsp.slot, st = storeOf(slot), c = dispCounts(st);
   let html = `<div class="list-head"><h2>Displays</h2><span class="muted small">${st ? `store#${esc(st)}` : ""}${c ? ` · ${c.found} of ${c.total} found` : ""}</span></div>`;
   if (!st) html += `<div class="empty">${icon("camera")}<h3>Pick a store</h3><p>Tap Set store at the top. Each store keeps its own list of displays.</p></div>`;
@@ -3735,31 +3814,52 @@ function renderDisplays() {
     const before = displayGroups(slot, "before"), afterGs = displayGroups(slot, "after", { all: true });
     const numOf = n => (before.find(g => g.items.some(x => x.note === n)) || {}).num;
     const afterG = n => afterGs.find(g => !g.loose && g.before.items.some(x => x.note === n));
-    // 3.6: Before and After side by side; a display with no After yet has Shoot After
-    const row = d => {
-      const n = f.get(d.id), num = n && numOf(n), ag = n ? afterG(n) : null, aft = ag ? ag.items.length : 0, ap = aft ? ag.items[aft - 1].photo : null;
-      return `<button class="item disp-row dsp-row${n ? " found" : ""}${aft ? " paired" : ""}" data-d="${esc(d.id)}">
-        <span class="dsp-pair"><span class="shelf-thumb main">${(n || d.photo) ? `<img data-photo="${esc(n ? n.photos[0] : d.photo)}" alt="">` : icon("image")}</span>${n ? `<span class="shelf-thumb after${ap ? "" : " empty"}">${ap ? `<img data-photo="${esc(ap)}" alt="">` : "<small>After</small>"}</span>` : ""}</span>
-        <div class="grow"><div class="name">${esc(areaName(d))}</div><div class="sub">${n ? `Found${num ? ` · Display ${num}` : ""}${n.photos.length > 1 ? ` · ${n.photos.length} sides` : ""} · ${aft ? "After ✓" : "No After yet"}` : `Not found yet${d.at ? ` · last seen ${esc(new Date(d.at).toLocaleDateString([], { month: "short", day: "numeric" }))}` : ""}`}</div></div>
-        ${n && !aft ? `<i class="dsp-after" role="button" data-after="${esc(d.id)}">${icon("camera")}After</i>` : `<i class="dsp-check${n ? " on" : ""}">${icon("check")}</i>`}</button>`;
+    const card = d => {
+      const n = f.get(d.id), num = n && numOf(n), ag = n ? afterG(n) : null, afters = ag ? ag.items : [];
+      const bp = n ? n.photos : (d.refs && d.refs.length ? d.refs : d.photo ? [d.photo] : []);
+      const slides = bp.map((p, i) => `<div class="dc-slide ${n ? "b" : "r"}" data-p="${esc(p)}"><img data-photo="${esc(p)}" alt="">${n
+        ? `<b class="dc-tag${i ? "" : " main"}">${i ? i + 1 : "Main"}</b><button class="dc-star${i ? "" : " on"}" data-star="${i}" aria-label="${i ? "Make this the main picture" : "The main picture"}">${STAR}</button>`
+        : `<b class="dc-tag">${i ? i + 1 : "Last time"}</b>`}</div>`).join("")
+        + afters.map(x => `<div class="dc-slide a" data-p="${esc(x.photo)}"><img data-photo="${esc(x.photo)}" alt=""><b class="dc-tag after">After</b></div>`).join("");
+      const none = !bp.length && !afters.length ? `<div class="dc-slide none">${icon("image")}<span>No picture yet</span></div>` : "";
+      const end = n ? `<button class="dc-slide add" data-addside>${icon("camera")}<span>Add side</span></button>` : "";
+      const seen = d.at ? new Date(d.at).toLocaleDateString([], { month: "short", day: "numeric" }) : "";
+      const status = n ? `Found · Display ${num || ""}${n.photos.length > 1 ? ` · ${n.photos.length} sides` : ""}` : `Not found yet${seen ? ` · last seen ${esc(seen)}` : ""}`;
+      const foot = n ? (afters.length ? `<span class="dc-ok">${icon("check")}After ✓${afters.length > 1 ? ` · ${afters.length}` : ""}</span><button class="btn sm quiet" data-after>More After</button>`
+          : `<button class="btn sm primary ok" data-after>${icon("camera")}Shoot the After</button>`)
+        : `<button class="btn sm primary" data-shoot>${icon("camera")}Shoot this one</button>`;
+      return `<div class="dc${n ? " found" : ""}" data-d="${esc(d.id)}"><div class="dc-head"><button class="dc-area" data-area>${esc(areaName(d))}</button><button class="dc-more" data-more aria-label="Options for ${esc(areaName(d))}">${icon("dots")}</button></div>
+        <div class="dc-status">${status}</div><div class="dc-track">${none}${slides}${end}</div><div class="dc-foot">${foot}</div></div>`;
     };
     const todo = act.filter(d => !f.has(d.id)), done = act.filter(d => f.has(d.id));
-    if (!act.length) html += `<div class="empty">${icon("camera")}<h3>No displays saved for #${esc(st)} yet</h3><p>On the Camera tab, switch to Display and snap each one. Tap New under the camera and pick where it is. Next visit they're listed here to check off.</p></div>`;
-    if (todo.length) html += `<div class="sec-h">To find · ${todo.length}</div><div class="list group">${todo.map(row).join("")}</div>`;
-    if (done.length) html += `<div class="sec-h">Found today · ${done.length}</div><div class="list group">${done.map(row).join("")}</div>`;
+    if (!act.length) html += `<div class="empty">${icon("camera")}<h3>No displays saved for #${esc(st)} yet</h3><p>On the Camera tab, switch to Display and snap each one. Tap New under the camera and pick where it is. Next visit they're listed here, in the order you found them, to check off.</p></div>`;
+    if (todo.length) html += `<div class="sec-h">To find · ${todo.length}</div><div class="dc-list">${todo.map(card).join("")}</div>`;
+    if (done.length) html += `<div class="sec-h">Found today · ${done.length}</div><div class="dc-list">${done.map(card).join("")}</div>`;
     const untagged = state.notes.filter(n => n.slot === slot && noteKind(n) === "display" && !n.sd && (n.photos || [])[0]).sort((a, b) => a.at - b.at);
     if (untagged.length) html += `<div class="sec-h">Not on the list · ${untagged.length}</div><div class="list group">${untagged.map(n => `<button class="item disp-row" data-n="${esc(n.id)}">
         <span class="shelf-thumb"><img data-photo="${esc(n.photos[0])}" alt=""></span><div class="grow"><div class="name">${esc(shelfLabel(n))}</div><div class="sub">Tap to say which display it is</div></div>${icon("jump")}</button>`).join("")}</div>`;
-    if (gone.length) html += `<div class="sec-h">Gone · ${gone.length}</div><div class="list group">${gone.map(d => `<button class="item disp-row gone" data-d="${esc(d.id)}">
+    if (gone.length) html += `<div class="sec-h">Gone · ${gone.length}</div><div class="list group">${gone.map(d => `<button class="item disp-row gone" data-back="${esc(d.id)}">
         <span class="shelf-thumb">${d.photo ? `<img data-photo="${esc(d.photo)}" alt="">` : icon("image")}</span><div class="grow"><div class="name">${esc(areaName(d))}</div><div class="sub">Not counted. Tap to bring it back.</div></div></button>`).join("")}</div>`;
     if (act.length) html += `<p class="sec-foot">Kept for #${esc(st)} from visit to visit. Clear doesn't remove it.</p>`;
   }
   v.innerHTML = html;
+  v.querySelectorAll(".dc[data-d]").forEach(c => { const x = dcScroll.get(c.dataset.d); if (x) c.querySelector(".dc-track").scrollLeft = x; });
   hydratePhotos(v);
   v.onclick = e => {
-    const ab = e.target.closest("[data-after]"); if (ab) { const n = dispFound(st).get(ab.dataset.after); if (n) shootAfter(slot, n); return; }
     const nb = e.target.closest("[data-n]"); if (nb) { const n = state.notes.find(x => x.id === nb.dataset.n); if (n) pickDisplayFor(n); return; }
-    const db = e.target.closest("[data-d]"); if (db) { const d = (storeDisp(st) || { list: [] }).list.find(x => x.id === db.dataset.d); if (d) openStoreDisplay(slot, d); }
+    const sdl = storeDisp(st);
+    const gb = e.target.closest("[data-back]"); if (gb) { const d = sdl && sdl.list.find(x => x.id === gb.dataset.back); if (d) { d.gone = false; save(); renderAll(); toast("Back on the list"); } return; }
+    const cd = e.target.closest(".dc"); if (!cd) return;
+    const d = sdl && sdl.list.find(x => x.id === cd.dataset.d); if (!d) return;
+    const n = dispFound(st).get(d.id);
+    const sb = e.target.closest("[data-star]"); if (sb) { const i = +sb.dataset.star; if (n && i > 0) { dcScroll.set(d.id, 0); makeMain(n, i); } else toast("That's already the main picture"); return; }
+    if (e.target.closest("[data-addside]")) { if (n) startSides(n); return; }
+    if (e.target.closest("[data-shoot]")) { shootThis(slot, d); return; }
+    if (e.target.closest("[data-after]")) { if (n) shootAfter(slot, n); return; }
+    if (e.target.closest("[data-area]")) { askArea(st, d.area).then(a => { if (a == null) return; d.area = a; save(); renderAll(); }); return; }
+    if (e.target.closest("[data-more]")) { displayMenu(slot, d, n); return; }
+    const sl = e.target.closest(".dc-slide[data-p]");   // a picture: full screen, swipe through all of this display's pictures
+    if (sl) { const ps = [...cd.querySelectorAll(".dc-slide[data-p]")].map(x => x.dataset.p); photoURL(sl.dataset.p).then(u => u && openPhotoFull(u, { list: ps, index: Math.max(0, ps.indexOf(sl.dataset.p)) })); }
   };
 }
 // Straight to the camera, in After, on this display
@@ -3771,51 +3871,32 @@ function shootAfter(slot, n) {
   afterPick = { slot, anchor: g.anchor }; renderCapture();
   toast(`After photo for display ${g.num}`);
 }
-function openStoreDisplay(slot, d) {
-  const st = storeOf(slot), n = dispFound(st).get(d.id);
-  const hasAfter = !!(n && displayGroups(slot, "after").some(g => !g.loose && g.items.length && g.before.items.some(x => x.note === n)));
-  const s = el(`<div class="sheet check-sheet shelf-sheet"><div class="handle"></div><h2></h2>
-    <div class="zoom-stage"><img alt=""><span class="zoom-hint">Pinch to zoom</span></div><div class="sh-strip" id="ds-strip"></div><p class="sh-said"></p>
-    <div class="stack" style="margin-top:12px">${n && !hasAfter ? `<button class="btn primary block" data-a="after">${icon("camera")}Shoot the After</button>` : ""}${n ? `<button class="btn block" data-a="sides">${icon("camera")}Add sides</button><button class="btn block" data-a="open">${icon("image")}Open the sides</button>` : d.gone ? "" : `<button class="btn primary block" data-a="shoot">${icon("camera")}Shoot this one</button>`}
-    <div class="row"><button class="btn sm grow" data-a="area">${icon("note")}Change area</button><button class="btn sm grow quiet" data-a="more">More…</button></div></div>
-    <button class="btn primary block" data-a="close" style="margin-top:12px">Done</button></div>`);
-  const close = openLayer(s, { onClose: () => renderAll() });
-  const head = () => { s.querySelector("h2").textContent = `#${st} · ${areaName(d)}`; s.querySelector(".sh-said").textContent = n ? `Found today · ${n.photos.length} side${n.photos.length === 1 ? "" : "s"}.` : d.gone ? "Marked gone." : `Not found yet${d.at ? `. Last seen ${new Date(d.at).toLocaleDateString([], { month: "short", day: "numeric" })}` : ""}.`; };
-  head();
-  const img = s.querySelector("img"), pid = n ? n.photos[0] : d.photo;
-  zoomStage(img, s.querySelector(".zoom-stage"), { fullList: () => (n ? { list: n.photos, index: 0 } : null) });
-  if (pid) (n ? photoURL(pid) : photoURL(pid)).then(u => { if (u) img.src = u; }); else s.querySelector(".zoom-stage").classList.add("empty-photo");
-  if (n && n.photos.length > 1) {   // the sides, one tap each
-    const strip = s.querySelector("#ds-strip");
-    strip.innerHTML = n.photos.map((p, i) => `<button class="sh-th${i === 0 ? " on" : ""}" data-i="${i}" aria-label="${i ? `Side ${i + 1}` : "Main picture"}"><img data-photo="${esc(p)}" alt=""><small>${i ? i + 1 : "Main"}</small></button>`).join("");
-    hydratePhotos(strip);
-    strip.onclick = e => { const t = e.target.closest("[data-i]"); if (!t) return; strip.querySelectorAll(".sh-th").forEach(x => x.classList.toggle("on", x === t)); photoURL(n.photos[+t.dataset.i]).then(u => { if (u) img.src = u; }); };
+// A display not found yet: the next display picture you take is it
+function shootThis(slot, d) {
+  endHoldSession();
+  dspPending = { store: storeOf(slot), id: d.id, at: Date.now() };
+  state.settings.baSlot = slot; state.settings.captureKind = "display"; state.settings.camWhen = "before"; save();
+  showView("capture");
+  toast(`Your next display picture is ${areaName(d)}`);
+}
+async function displayMenu(slot, d, n) {
+  const st = storeOf(slot);
+  const pick = await menu(areaName(d), [
+    { label: "Change area", value: "area" },
+    ...(n ? [{ label: "Add sides", value: "sides" }, { label: "Open all its pictures", value: "open" }] : d.gone ? [] : [{ label: "Shoot this one", value: "shoot" }]),
+    d.gone ? { label: "Bring it back", value: "back" } : { label: "Mark gone (it's not there any more)", value: "gone" },
+    { label: "Remove from the list", value: "del", danger: true }]);
+  if (pick === "area") { const a = await askArea(st, d.area); if (a == null) return; d.area = a; save(); renderAll(); }
+  else if (pick === "sides") startSides(n);
+  else if (pick === "open") openShelf(n);
+  else if (pick === "shoot") shootThis(slot, d);
+  else if (pick === "gone") { d.gone = true; save(); renderAll(); toast("Marked gone"); }
+  else if (pick === "back") { d.gone = false; save(); renderAll(); toast("Back on the list"); }
+  else if (pick === "del") {
+    const snap = snapshot(), sd = storeDisp(st);
+    sd.list = sd.list.filter(x => x.id !== d.id); for (const x of state.notes) if (x.sd === d.id) delete x.sd;
+    save(); renderAll(); scheduleSweep(); toast("Removed", snap);
   }
-  const b = a => s.querySelector(`[data-a="${a}"]`);
-  if (b("sides")) b("sides").onclick = () => { close(); startSides(n); };
-  if (b("open")) b("open").onclick = () => { close(); openShelf(n); };
-  if (b("after")) b("after").onclick = () => { close(); shootAfter(slot, n); };
-  if (b("shoot")) b("shoot").onclick = () => {
-    close(); endHoldSession();
-    dspPending = { store: st, id: d.id, at: Date.now() };
-    state.settings.baSlot = slot; state.settings.captureKind = "display"; state.settings.camWhen = "before"; save();
-    showView("capture");
-    toast(`Your next display photo is ${areaName(d)}`);
-  };
-  b("area").onclick = async () => { const a = await askArea(st, d.area); if (a == null) return; d.area = a; save(); head(); renderAll(); };
-  b("more").onclick = async () => {
-    const pick = await menu(areaName(d), [
-      d.gone ? { label: "Bring it back", value: "back" } : { label: "Mark gone (it's not there any more)", value: "gone" },
-      { label: "Remove from the list", value: "del", danger: true }]);
-    if (pick === "gone") { d.gone = true; save(); close(); toast("Marked gone"); }
-    else if (pick === "back") { d.gone = false; save(); close(); toast("Back on the list"); }
-    else if (pick === "del") {
-      const snap = snapshot(), sd = storeDisp(st);
-      sd.list = sd.list.filter(x => x.id !== d.id); for (const x of state.notes) if (x.sd === d.id) delete x.sd;
-      save(); close(); scheduleSweep(); toast("Removed", snap);
-    }
-  };
-  b("close").onclick = close;
 }
 // ---------- Store by location (2.12) ----------
 // When a store number is set, the phone's position is remembered for it (averaged over visits, kept on this phone only). When Shelfie
@@ -4176,7 +4257,7 @@ const T_STEPS = [
   { id: "after", target: () => $("#btn-shutter").parentElement, text: "Snap the finished aisle. In After, each tap is one photo.", hint: "tap", done: () => state.shots.some(s => s.when === "after") },
   { id: "back", target: () => $("#btn-when"), text: "Swipe the picture right, or tap here, to go back to Before.", hint: "tap", done: () => camWhen() === "before" },
   { id: "displays", target: () => $('#tabs [data-view="displays"]'), text: "Displays are easy to miss. The Displays tab keeps each store's list from visit to visit.", hint: "tap", done: () => view === "displays" },
-  { id: "dspinfo", target: () => $("#view-displays .list-head"), text: "Displays: the red shutter takes a display's main picture and the blue one adds each side. Every side goes to your boss. Tap New under the camera and pick where it is. Next visit, each display is ticked off here as you find it; Add sides or Shoot After take you straight to its camera.", hint: null, next: true },
+  { id: "dspinfo", target: () => $("#view-displays .list-head"), text: "Displays: the red shutter takes a display's main picture and the blue one adds each side; every side goes to your boss. Not the front? Tap the star on a better picture to make it the main one. Next visit, this tab is your walking list: each display's pictures from last time, in order, ticked off as you find them.", hint: null, next: true },
   { id: "shelvestab", target: () => $('#tabs [data-view="gallery"]'), text: "Your photos are on the Gallery tab, aisles with aisles, shelves with shelves.", hint: "tap", done: () => view === "gallery" },
   { id: "tick", target: () => $("#view-gallery .shelf-card .tick"), text: "Pulled what this one needed? Tap its check.", hint: "tick", done: () => state.notes.some(n => n.done) },
   { id: "open", target: () => $("#view-gallery .shelf-card"), text: "Tap a photo to see it with its close-ups.", hint: "tap", done: () => !!shelfSheetOpen() },
@@ -4354,6 +4435,11 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "3.9.0", notes: [
+    "A new Displays tab: each display is a card with a carousel of its pictures. Swipe sideways through the main picture, its sides and its After photos; tap one for full screen.",
+    "The star: tap the star on any picture to make it the display's main picture, so you don't have to shoot the front first. It's the picture that identifies the display, here and next visit. In the camera, tap another picture in the bar under the shutters to do the same.",
+    "Displays you haven't found yet show last visit's pictures, faded, in the order you found them last time, like a walking list.",
+    "Add side, Shoot this one and Shoot the After are on each card." ] },
   { v: "3.8.2", notes: ["The blue shutter shows a stack of photos when it takes a display's sides, and keeps the magnifier for close-ups."] },
   { v: "3.8.1", notes: ["Each picture type has its own color in the camera: Aisle red, Shelf amber, Display violet, Cooler cyan, Backstock brown (After stays green, the close-up shutter blue). The selected type's name is colored too, here and in the Gallery."] },
   { v: "3.8.0", notes: [
@@ -4507,7 +4593,7 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 105;
+const REVISION = 106;
 // More
 function renderMore() {
   const v = $("#view-more");
@@ -4544,7 +4630,7 @@ function renderMore() {
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
     ${enc.last.ready != null ? `<p class="sec-foot">Last photo: ready for the next tap in ${enc.last.ready} ms${enc.last.saved != null ? `, saved in ${enc.last.saved} ms (${enc.last.path})` : ""}.</p>` : ""}
-    <p class="foot">Shelfie 3.8.2 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 3.9.0 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   v.querySelector("#haptic-shutter").onchange = e => { state.settings.hapticShutter = state.settings.hapticTaps = e.target.checked; save(); syncHaptics(); };   // one switch for both (3.4)
   v.querySelector("#btn-backup").onclick = saveBackup;
