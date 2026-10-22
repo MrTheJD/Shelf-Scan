@@ -946,18 +946,8 @@ body[data-nav="push"] #view-changelog.active { animation: pushIn .5s cubic-bezie
 .shot-grid.two { grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .shot.shelf-card { aspect-ratio: 3 / 4; border-radius: 14px; }
 .shelf-card img { transition: opacity .25s ease, filter .25s ease, transform .4s var(--spring); }
-.shelf-card.done img { opacity: .4; filter: grayscale(.7); }
 .shelf-card .cu { position: absolute; left: 6px; top: 6px; padding: 2px 8px; border-radius: 999px; background: rgba(0, 0, 0, .62); color: #fff; font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .shelf-card .out-badge { position: absolute; right: 6px; top: 6px; padding: 3px 8px; border-radius: 999px; background: var(--warn); color: #fff; font-size: 11px; font-weight: 800; font-style: normal; }
-.shelf-card .tick { position: absolute; right: 6px; bottom: 6px; width: 42px; height: 42px; border-radius: 50%; background: rgba(255, 255, 255, .94); border: 2px solid rgba(0, 0, 0, .1); box-shadow: 0 1px 5px rgba(0, 0, 0, .25); display: flex; align-items: center; justify-content: center; color: #fff; transition: background-color .18s ease, transform .4s var(--spring); }
-.shelf-card .tick svg.i { width: 22px; height: 22px; stroke-width: 3; opacity: 0; transition: opacity .15s ease; }
-.shelf-card .tick.on { background: var(--red); border-color: var(--red); }
-.shelf-card .tick.on svg.i { opacity: 1; }
-.shelf-card .tick:active { transform: scale(.88); }
-.shelf-card.leaving { animation: cardOut .36s ease forwards; }
-@keyframes cardOut { to { opacity: 0; transform: scale(.85); } }
-body.gal-selecting .shelf-card :is(.tick, .out-badge) { display: none; }
-.shelf-card .tick.tut-ghost { border-color: var(--red); animation: tutGlowSm 1.8s ease-in-out infinite; }
 .small-empty { padding: 32px 24px; }
 /* one shelf */
 .shelf-sheet .zoom-stage { aspect-ratio: 3 / 4; max-height: 52dvh; }
@@ -1018,15 +1008,12 @@ body.gal-selecting .shelf-card .cu { display: none; }
 .ctag:active { transform: scale(.9); }
 .ctag.done { background: rgba(20, 20, 20, .72); color: #fff; text-decoration: line-through; text-decoration-thickness: 2px; }
 .ctag.out { background: var(--warn); color: #fff; }
-.shelf-card.done img { opacity: .45; filter: grayscale(.7); }
 
 /* 3.2.1b: tags are labels; one done check per photo; filter by category */
 .shelf-card .cat-tags { right: 54px; }
 .shelf-card .ctag { min-height: 22px; padding: 0 8px; font-size: 11px; }
 .gal-filter { margin: 12px 0 0; }
 .gal-filter .cat { min-height: 40px; font-size: 13px; }
-.sh-done svg.i { width: 18px; height: 18px; stroke-width: 3; }
-.sh-done.on { background: var(--ok); border-color: var(--ok); color: #fff; }
 
 /* ---------- 3.4: one store button ---------- */
 header.top .store { border: 0; background: rgba(255, 255, 255, .16); color: var(--on-red); font: inherit; font-size: 14px; font-weight: 750; opacity: 1; min-height: 36px; padding: 0 12px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; transition: background-color .15s ease, transform .4s var(--spring); }
@@ -1308,6 +1295,7 @@ function migrate() {
   if (state.settings.haptics === false) { state.settings.hapticShutter = false; state.settings.hapticTaps = false; }   // the single haptics switch of 1.0.0 became two
   delete state.settings.haptics;
   delete state.settings.nextCats;   // 3.7.1: no labels any more
+  for (const n of state.notes || []) delete n.done;   // 3.9.1: no "Mark done" any more
   // 3.4: what voice notes and the product list kept is gone (the product list was written to its own key since 2.9.2)
   for (const k of ["products", "productsApart", "deleted", "outbox", "sync", "recents", "pickUse", "learned", "tags", "config", "team", "received"]) delete state[k];
   try { localStorage.removeItem(STORAGE_KEY + ".products"); localStorage.removeItem(PASS_KEY); localStorage.removeItem("shelfscan.dev"); } catch (e) {}
@@ -2578,8 +2566,6 @@ function shelfLabel(n) {
   const list = beforeItems(n.slot).filter(x => x.kind === kind), i = list.findIndex(x => x.photo === (n.photos || [])[0]);
   return i < 0 ? KIND_LABEL[kind] : `${KIND_LABEL[kind]} ${i + 1}`;
 }
-// 3.2.1: the categories say what a shelf mostly holds (to find it again). Done is one check per photo: "I've pulled what this one needed."
-function toggleDone(n) { n.done = !n.done; haptic(n.done ? "ok" : "tick"); save(); }
 
 // ---- The Gallery tab: one store at a time; Aisle / Shelf / Display / Backstock; Before in order (filter by category), then After ----
 const gal = { slot: null, kind: null, cat: null };
@@ -2606,10 +2592,10 @@ function renderGallery() {
     const label = new Map(mine.map(x => [x.photo, x.note ? shelfLabel(x.note) : timeOf(x.at)]));
     // in order (Aisle 1, 2, 3…), with its close-up count and a check for done
     const card = x => {
-      const n = x.note, cu = n ? n.photos.length - 1 : 0, done = !!(n && n.done);
-      return `<button class="shot shelf-card${done ? " done" : ""}${gsel.keys.has("before|" + x.photo) ? " sel" : ""}" data-w="before" data-p="${esc(x.photo)}" data-photo-wrap>
+      const n = x.note, cu = n ? n.photos.length - 1 : 0;
+      return `<button class="shot shelf-card${gsel.keys.has("before|" + x.photo) ? " sel" : ""}" data-w="before" data-p="${esc(x.photo)}" data-photo-wrap>
         <img data-photo="${esc(x.photo)}" alt=""><span>${esc(label.get(x.photo))}</span>${cu ? `<b class="cu">${isDisp(n) ? `${cu + 1} sides` : `+${cu}`}</b>` : ""}
-        ${n ? `<i class="tick${done ? " on" : ""}" data-done="1" role="button" aria-label="${done ? "Done. Tap to undo" : "Mark done"}">${icon("check")}</i>` : ""}<i class="sel-mark">${icon("check")}</i></button>`;
+        <i class="sel-mark">${icon("check")}</i></button>`;
     };
     html += shown.length ? `<div class="shot-grid two">${shown.map(card).join("")}</div>` : "";
   }
@@ -2638,8 +2624,6 @@ function renderGallery() {
     const t = e.target.closest(".shot");
     if (t) {
       const x = itemsOf(slot, t.dataset.w).find(i => i.photo === t.dataset.p); if (!x) return;
-      const tk = e.target.closest("[data-done]");
-      if (tk && x.note) { toggleDone(x.note); t.classList.toggle("done", !!x.note.done); tk.classList.toggle("on", !!x.note.done); pulse(tk); return; }
       if (x.note) openShelf(x.note); else openShot(x.shot);
       return;
     }
@@ -2652,8 +2636,7 @@ function openShelf(n) {
   const s = el(`<div class="sheet check-sheet shelf-sheet"><div class="handle"></div><h2 id="sh-title"></h2>
     <div class="zoom-stage" id="sh-stage"><img alt=""><span class="zoom-hint">Pinch to zoom</span></div>
     <div class="sh-strip" id="sh-strip"></div><p class="sh-said" id="sh-said" hidden></p>
-    <button class="btn block sh-done" data-a="done" style="margin-top:14px"></button>
-    <div class="row" style="margin-top:8px"><button class="btn sm grow" data-a="add"></button><button class="btn sm grow quiet" data-a="more">More…</button></div>
+    <div class="row" style="margin-top:14px"><button class="btn sm grow" data-a="add"></button><button class="btn sm grow quiet" data-a="more">More…</button></div>
     <button class="btn primary block" data-a="close">Done</button></div>`);
   const close = openLayer(s, { onClose: () => renderAll() });
   const img = s.querySelector("img"), stage = s.querySelector("#sh-stage");
@@ -2696,10 +2679,7 @@ function openShelf(n) {
     setTitle();
     s.querySelector('[data-a="add"]').innerHTML = icon("camera") + (isDisp(n) ? "Add sides" : "Add close-ups");
     const said = s.querySelector("#sh-said"); said.hidden = !n.text; if (n.text) said.textContent = `Said: “${n.text}”`;
-    const db = s.querySelector('[data-a="done"]');
-    db.classList.toggle("on", !!n.done); db.innerHTML = n.done ? `${icon("check")}Done · tap to undo` : `${icon("check")}Mark done`;
   };
-  s.querySelector('[data-a="done"]').onclick = () => { toggleDone(n); draw(); pulse(s.querySelector('[data-a="done"]')); };
   s.querySelector('[data-a="add"]').onclick = () => {
     close();
     if (isDisp(n)) { startSides(n); return; }
@@ -2816,11 +2796,10 @@ function migrateShelves() {
       }
     }
     for (const c of cats) { if (seen[c].any) outs[c] = true; else if (seen[c].all) ticks[c] = true; }
-    const done = group.every(n => Object.keys(n.ticks || {}).length && Object.values(n.ticks).every(Boolean));
     const photos = [...new Set(group.flatMap(n => n.photos || []))];
     if (photo && photos[0] !== photo) photos.unshift(photo);
     return { id: f.id, at: Math.min(...group.map(n => n.at)), slot: Number.isInteger(f.slot) ? f.slot : 0, kind: noteKind(f), photos, audio: null, secs: 0,
-      text: [...new Set(words)].join(" · "), status: "done", ...(done ? { done: true } : {}), parts: [], flag: false, ticks, out: outs, err: "", bk: 3, cats, v3: 1, ...(group.find(n => n.dg) ? { dg: group.find(n => n.dg).dg } : {}), was2: 1 };
+      text: [...new Set(words)].join(" · "), status: "done", parts: [], flag: false, ticks, out: outs, err: "", bk: 3, cats, v3: 1, ...(group.find(n => n.dg) ? { dg: group.find(n => n.dg).dg } : {}), was2: 1 };
   };
   for (const [k, group] of byPhoto) out.push(make(group, k.slice(0, k.lastIndexOf("|"))));
   for (const s of oldShots) out.push({ id: newId("n"), at: s.at, slot: s.slot, kind: normKind(s.kind), photos: [s.photo], audio: null, secs: 0, text: "", status: "done", parts: [], flag: false,
@@ -4259,7 +4238,6 @@ const T_STEPS = [
   { id: "displays", target: () => $('#tabs [data-view="displays"]'), text: "Displays are easy to miss. The Displays tab keeps each store's list from visit to visit.", hint: "tap", done: () => view === "displays" },
   { id: "dspinfo", target: () => $("#view-displays .list-head"), text: "Displays: the red shutter takes a display's main picture and the blue one adds each side; every side goes to your boss. Not the front? Tap the star on a better picture to make it the main one. Next visit, this tab is your walking list: each display's pictures from last time, in order, ticked off as you find them.", hint: null, next: true },
   { id: "shelvestab", target: () => $('#tabs [data-view="gallery"]'), text: "Your photos are on the Gallery tab, aisles with aisles, shelves with shelves.", hint: "tap", done: () => view === "gallery" },
-  { id: "tick", target: () => $("#view-gallery .shelf-card .tick"), text: "Pulled what this one needed? Tap its check.", hint: "tick", done: () => state.notes.some(n => n.done) },
   { id: "open", target: () => $("#view-gallery .shelf-card"), text: "Tap a photo to see it with its close-ups.", hint: "tap", done: () => !!shelfSheetOpen() },
   { id: "look", inLayer: true, target: () => shelfSheetOpen() && shelfSheetOpen().querySelector('[data-a="close"]'),
     text: "Swipe sideways through the close-ups, and on to the next aisle. Then tap Done.", hint: "glow", done: () => !shelfSheetOpen() },
@@ -4435,6 +4413,7 @@ function tutNudge(row) {
 addEventListener("resize", () => { if (tutorialActive) tutTick(); });
 // ---------- What's new (2.11): every release since 1.0.0, newest first. Add an entry with each release. ----------
 const CHANGELOG = [
+  { v: "3.9.1", notes: ["Mark done is gone: After photos are the sign a spot is finished. Gallery photos are cleaner, with just their name and close-up count."] },
   { v: "3.9.0", notes: [
     "A new Displays tab: each display is a card with a carousel of its pictures. Swipe sideways through the main picture, its sides and its After photos; tap one for full screen.",
     "The star: tap the star on any picture to make it the display's main picture, so you don't have to shoot the front first. It's the picture that identifies the display, here and next visit. In the camera, tap another picture in the bar under the shutters to do the same.",
@@ -4593,7 +4572,7 @@ function renderChangelog() {
   v.querySelector('[data-a="back"]').onclick = () => showView("more");
 }
 // The running count of releases since the project began (every pushed update; the phones' old automatic sync commits don't count). Add one with each push.
-const REVISION = 106;
+const REVISION = 107;
 // More
 function renderMore() {
   const v = $("#view-more");
@@ -4630,7 +4609,7 @@ function renderMore() {
     </div>
     <div class="list group" style="margin-top:28px"><button class="item row-btn danger" id="btn-reset"><span class="grow">Reset this phone</span></button></div>
     ${enc.last.ready != null ? `<p class="sec-foot">Last photo: ready for the next tap in ${enc.last.ready} ms${enc.last.saved != null ? `, saved in ${enc.last.saved} ms (${enc.last.path})` : ""}.</p>` : ""}
-    <p class="foot">Shelfie 3.9.0 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
+    <p class="foot">Shelfie 3.9.1 · revision ${REVISION} · ${photos} photo${photos === 1 ? "" : "s"}<br>
       <span style="opacity:.7">Screen ${screen.width}×${screen.height}${navigator.standalone ? " · home screen" : ""}</span></p>`;
   v.querySelector("#haptic-shutter").onchange = e => { state.settings.hapticShutter = state.settings.hapticTaps = e.target.checked; save(); syncHaptics(); };   // one switch for both (3.4)
   v.querySelector("#btn-backup").onclick = saveBackup;
